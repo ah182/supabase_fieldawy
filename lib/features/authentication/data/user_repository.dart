@@ -94,8 +94,12 @@ class UserRepository {
       return user;
     } catch (e) {
       print('Error fetching user data once: $e');
-      // إرجاع null في حالة حدوث خطأ أو عدم العثور على المستخدم
-      return null;
+      // If there's an error (e.g., network), but we have a cached user, return the cached user.
+      if (cachedUser != null) {
+        return cachedUser;
+      }
+      // If there's no cached user, rethrow the error so the UI can handle it.
+      rethrow;
     }
   }
 

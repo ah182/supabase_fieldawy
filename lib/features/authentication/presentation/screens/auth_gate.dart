@@ -1,5 +1,8 @@
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'dart:async';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/login_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/language_selection_screen.dart';
@@ -10,8 +13,12 @@ import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper
 import 'package:fieldawy_store/services/app_state_manager.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:fieldawy_store/core/providers/connectivity_provider.dart';
+import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:fieldawy_store/features/home/presentation/screens/home_screen.dart';
 
-class AuthGate extends ConsumerWidget {
+class AuthGate extends HookConsumerWidget {
   const AuthGate({super.key});
 
   @override
@@ -28,6 +35,17 @@ class AuthGate extends ConsumerWidget {
         }
 
         if (user != null) {
+          // Listen for userDataProvider to recover from an error, then refresh home data.
+          ref.listen<AsyncValue<UserModel?>>(userDataProvider, (previous, next) {
+            final wasError = previous?.hasError ?? false;
+            final hasData = next.hasValue;
+            if (wasError && hasData) {
+              // We just recovered from an error. Let's refresh the home screen data.
+              ref.invalidate(paginatedProductsProvider);
+              ref.invalidate(allDistributorProductsForSearchProvider);
+            }
+          });
+
           final userData = ref.watch(userDataProvider);
 
           return userData.when(
@@ -69,8 +87,40 @@ class AuthGate extends ConsumerWidget {
               return const DrawerWrapper();
             },
             loading: () => const SplashScreen(),
-            error: (e, s) =>
-                Scaffold(body: Center(child: Text('Error loading user: $e'))),
+            error: (e, s) {
+              final connectivity = ref.watch(connectivityStatusProvider);
+              return connectivity.when(
+                data: (status) {
+                  if (status.contains(ConnectivityResult.none)) {
+                    return const DrawerWrapper();
+                  }
+
+                  // Online but failed to fetch user data. Retry with a grace period.
+                  final retryCount = useState(0);
+
+                  useEffect(() {
+                    if (retryCount.value < 3) {
+                      final timer = Timer(const Duration(seconds: 3), () {
+                        retryCount.value++;
+                        ref.invalidate(userDataProvider);
+                      });
+                      return timer.cancel;
+                    }
+                    return null;
+                  }, [retryCount.value]);
+
+                  if (retryCount.value >= 3) {
+                    return Scaffold(
+                        body: Center(child: Text('Error loading user: $e')));
+                  } else {
+                    return const SplashScreen(); // Show loader during grace period
+                  }
+                },
+                loading: () => const SplashScreen(),
+                error: (e, s) => Scaffold(
+                    body: Center(child: Text('Connectivity Error: $e'))),
+              );
+            },
           );
         }
 
@@ -78,7 +128,24 @@ class AuthGate extends ConsumerWidget {
         return const LoginScreen();
       },
       loading: () => const SplashScreen(),
-      error: (e, s) => Scaffold(body: Center(child: Text('Auth Error: $e'))),
+      error: (e, s) {
+        final connectivity = ref.watch(connectivityStatusProvider);
+        final currentUser = Supabase.instance.client.auth.currentUser;
+
+        return connectivity.when(
+          data: (status) {
+            if (status.contains(ConnectivityResult.none) && currentUser != null) {
+              // Offline but has a cached user, so let them in.
+              return const DrawerWrapper();
+            }
+            // Otherwise, it's a real auth error.
+            return Scaffold(body: Center(child: Text('Auth Error: $e')));
+          },
+          loading: () => const SplashScreen(),
+          error: (e, s) =>
+              Scaffold(body: Center(child: Text('Connectivity Error: $e'))),
+        );
+      },
     );
   }
 
