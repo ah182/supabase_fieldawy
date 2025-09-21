@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "665551059689",
+    "project_id": "fieldawy-store-app",
+    "storage_bucket": "fieldawy-store-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:665551059689:android:cd266cedbef84f5c888e78",
+        "android_client_info": {
+          "package_name": "com.example.fieldawy_store"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "665551059689-m9hj365sm92f303nlobr972nfst60hnv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fieldawy_store",
+            "certificate_hash": "e5e678e76c9e1b7b433b61aa5ea8edb1cd4b587e"
+          }
+        },
+        {
+          "client_id": "665551059689-eknfiilhcmp2ugd5so346fodqri5smko.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAySg6p5glXrsJUV2xPqzx47DDj0f3hy3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "665551059689-eknfiilhcmp2ugd5so346fodqri5smko.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,122 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../data/user_repository.dart';
+import '../../services/auth_service.dart';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+
+class RejectionScreen extends ConsumerWidget {
+  const RejectionScreen({super.key});
+
+  Future<void> _contactSupport(BuildContext context, WidgetRef ref) async {
+    // 1. جلب الاسم والبريد الإلكتروني للمستخدم الحالي
+    final user = ref.read(authServiceProvider).currentUser;
+    final userName = user?.userMetadata?['name'] ?? 'غير متوفر';
+    final userEmail = user?.email ?? 'غير متوفر';
+
+    // 2. إنشاء نص الرسالة مع تمرير البيانات
+    final message = 'supportMessageRejected'.tr(namedArgs: {
+      'name': userName,
+      'email': userEmail,
+    });
+
+    final encodedMessage = Uri.encodeComponent(message);
+    final Uri whatsappUrl = Uri.parse(
+      'https://wa.me/201017016217?text=$encodedMessage',
+    );
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              elevation: 0,
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.transparent,
+              content: AwesomeSnackbarContent(
+                title: 'تنبيه',
+                message: 'cannotOpenWhatsApp'.tr(),
+                contentType: ContentType.warning,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Failed to launch URL: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 80,
+                color: Colors.orange.shade700,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'documentsMismatch'.tr(),
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'rejectionMessage'.tr(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(height: 1.5),
+              ),
+              const SizedBox(height: 48),
+              ElevatedButton(
+                onPressed: () async {
+                  final user = ref.read(authServiceProvider).currentUser;
+                  if (user != null) {
+                    await ref
+                        .read(userRepositoryProvider)
+                        .reInitiateOnboarding(user.id);
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (context) => const AuthGate()),
+                        (Route<dynamic> route) => false,
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Text('reuploadDocuments'.tr()),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => _contactSupport(context, ref),
+                child: Text('contactSupport'.tr()),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(authServiceProvider).signOut();
+                },
+                child: Text('signOut'.tr()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
