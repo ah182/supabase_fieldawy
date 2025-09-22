@@ -67,11 +67,16 @@ class UserRepository {
         'whatsapp_number': whatsappNumber,
         'is_profile_complete': true, // الأهم: تغيير حالة اكتمال الملف
       }).eq('id', id); // شرط التحديث: حيث id = القيمة المعطاة
-      _cache.invalidate('distributors');
+      _cache.invalidate('distributors'); // This is for distributors, not user.
+
+      // Invalidate the user cache after updating the profile
+      _cache.invalidate('user_$id'); // Add this line
+
     } catch (e) {
       print('Error completing user profile in Supabase: $e');
       rethrow;
     }
+    
   }
 
   // دالة لجلب بيانات المستخدم مرة واحدة
@@ -87,7 +92,12 @@ class UserRepository {
       // التأكد من أن الـ id ليس فارغاً لتجنب الأخطاء
       if (id.isEmpty) return null;
 
-      final data = await _client.from('users').select().eq('id', id).single();
+      final data = await _client.from('users').select().eq('id', id).maybeSingle();
+
+      if (data == null) {
+        // User not found in DB, return null
+        return null;
+      }
 
       final user = UserModel.fromMap(data);
       _cache.set(cacheKey, user);

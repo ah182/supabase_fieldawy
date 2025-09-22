@@ -5,7 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'dart:async';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/login_screen.dart';
-import 'package:fieldawy_store/features/authentication/presentation/screens/language_selection_screen.dart';
+import 'package:fieldawy_store/features/authentication/presentation/screens/onboarding_selection_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/rejection_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/pending_review_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/splash_screen.dart';
@@ -65,7 +65,7 @@ class AuthGate extends HookConsumerWidget {
 
               // 🟡 الملف غير مكتمل → يروح يكمّل البروفايل
               if (!userModel.isProfileComplete) {
-                return const LanguageSelectionScreen();
+                return const OnboardingSelectionScreen();
               }
 
               // 🟠 إعادة مراجعة
