@@ -11,6 +11,8 @@ create table if not exists public.users (
   whatsapp_number text,
   company_name text,
   is_verified boolean default false,
+  governorates jsonb,
+  centers jsonb,
   created_at timestamp with time zone default now()
 );
 
@@ -102,9 +104,11 @@ create or replace function complete_user_profile(
   p_display_name text,
   p_whatsapp_number text,
   p_role text,
-  p_document_url text
+  p_document_url text,
+  p_governorates jsonb,
+  p_centers jsonb
 )
-returns void as $$
+returns void as $
 begin
   update public.users
   set
@@ -112,8 +116,10 @@ begin
     whatsapp_number = p_whatsapp_number,
     role = p_role,
     document_url = p_document_url,
+    governorates = p_governorates,
+    centers = p_centers,
     is_profile_complete = true
   where
     uid = auth.uid();
 end;
-$$ language plpgsql;
+$ language plpgsql;

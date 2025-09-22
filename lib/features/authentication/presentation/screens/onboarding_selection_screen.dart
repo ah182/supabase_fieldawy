@@ -1,9 +1,11 @@
+import 'package:fieldawy_store/features/authentication/presentation/screens/governorate_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_role.dart';
-import 'package:fieldawy_store/features/authentication/presentation/screens/document_upload_screen.dart';
+
+
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 
 class OnboardingSelectionScreen extends HookConsumerWidget {
@@ -29,10 +31,10 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
 
       context.setLocale(selectedLanguage.value!).then((_) {
         if (!context.mounted) return;
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).push(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                DocumentUploadScreen(role: selectedRole.value!),
+                GovernorateSelectionScreen(role: selectedRole.value!),
             transitionDuration: const Duration(milliseconds: 500),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {

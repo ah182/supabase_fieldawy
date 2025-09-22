@@ -109,5 +109,10 @@
     "EGP": "EGP",
     "edit": "Edit",
     "delete": "Delete",
-    "An error occurred:": "An error occurred:"
+    "An error occurred:": "An error occurred:",
+  "app_title": "Fieldawy Store",
+  "continue": "Continue",
+  "complete_your_profile": "Complete Your Profile",
+  "select_governorates_and_centers": "Select Governorates and Centers You Cover",
+  "select_centers": "Select Centers"
 }

@@ -1,6 +1,7 @@
+import 'package:fieldawy_store/features/authentication/presentation/screens/onboarding_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/home_screen.dart';
-import 'package:fieldawy_store/features/authentication/presentation/screens/role_selection_screen.dart';
+
 import 'package:fieldawy_store/features/authentication/presentation/screens/rejection_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/pending_review_screen.dart';
 
@@ -15,7 +16,7 @@ class NavigationService {
       case 'rejected':
         return const RejectionScreen();
       default:
-        return const RoleSelectionScreen();
+        return const OnboardingSelectionScreen();
     }
   }
 }

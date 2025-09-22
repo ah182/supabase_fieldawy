@@ -58,6 +58,8 @@ class UserRepository {
     required String documentUrl,
     required String displayName,
     required String whatsappNumber,
+    required List<String> governorates,
+    required List<String> centers,
   }) async {
     try {
       await _client.from('users').update({
@@ -65,6 +67,8 @@ class UserRepository {
         'document_url': documentUrl,
         'display_name': displayName,
         'whatsapp_number': whatsappNumber,
+        'governorates': governorates,
+        'centers': centers,
         'is_profile_complete': true, // الأهم: تغيير حالة اكتمال الملف
       }).eq('id', id); // شرط التحديث: حيث id = القيمة المعطاة
       _cache.invalidate('distributors'); // This is for distributors, not user.

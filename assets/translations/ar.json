@@ -107,5 +107,7 @@
     "EGP": "جنيه",
     "edit": "تعديل",
     "delete": "حذف",
-    "An error occurred:": "حدث خطأ:"
+    "An error occurred:": "حدث خطأ:",
+    "select_governorates_and_centers": "اختر المحافظات والمراكز التي تغطيها",
+    "select_centers": "اختر المراكز"
 }
