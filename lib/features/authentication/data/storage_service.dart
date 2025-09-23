@@ -91,11 +91,9 @@ class StorageService {
 
         return result;
       } else {
-        print('Temp upload failed: $respStr');
         return null;
       }
     } catch (e) {
-      print('❌ Temp upload error: $e');
       return null;
     }
   }

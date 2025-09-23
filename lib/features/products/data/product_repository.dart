@@ -207,6 +207,27 @@ class ProductRepository {
     _scheduleCacheInvalidation();
   }
 
+  Future<void> removeMultipleProductsFromDistributorCatalog({
+    required String distributorId,
+    required List<String> productIdsWithPackage,
+  }) async {
+    try {
+      final List<String> docIdsToDelete = productIdsWithPackage.map((idWithPackage) {
+        // Assuming idWithPackage is in the format "productId_package"
+        // The actual docId in Supabase is "${distributorId}_${productId}_${package}"
+        return "${distributorId}_$idWithPackage";
+      }).toList();
+
+      await _supabase.from('distributor_products').delete().inFilter('id', docIdsToDelete);
+
+      // Schedule cache invalidation
+      _scheduleCacheInvalidation();
+    } catch (e) {
+      print('Error deleting multiple products from distributor catalog: $e');
+      rethrow;
+    }
+  }
+
   /// إضافة منتج جديد للكتالوج الرئيسي
   Future<String?> addProductToCatalog(ProductModel product) async {
     final response =
