@@ -32,7 +32,7 @@ class DocumentUploadController extends StateNotifier<File?> {
           state = File(pickedFile.path);
         }
       } catch (e) {
-        print('Failed to pick image: $e');
+        // Handle error
       }
     } else if (status.isPermanentlyDenied) {
       if (context.mounted) {

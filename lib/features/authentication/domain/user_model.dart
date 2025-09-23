@@ -14,6 +14,8 @@ class UserModel {
   // 2. إضافة الحقول الجديدة لتكون متوافقة مع UserRepository
   final String? documentUrl;
   final String? whatsappNumber;
+  final List<String>? governorates;
+  final List<String>? centers;
   final DateTime createdAt;
 
   UserModel({
@@ -27,6 +29,8 @@ class UserModel {
     // إضافة الحقول الجديدة للـ constructor
     this.documentUrl,
     this.whatsappNumber,
+    this.governorates,
+    this.centers,
     required this.createdAt,
   });
 
@@ -42,6 +46,8 @@ class UserModel {
       isProfileComplete: map['is_profile_complete'] ?? false,
       documentUrl: map['document_url'],
       whatsappNumber: map['whatsapp_number'],
+      governorates: List<String>.from(map['governorates'] ?? []),
+      centers: List<String>.from(map['centers'] ?? []),
       // 5. تحويل التاريخ من نص إلى كائن DateTime
       createdAt: DateTime.parse(map['created_at']),
     );
@@ -59,6 +65,8 @@ class UserModel {
       'is_profile_complete': isProfileComplete,
       'document_url': documentUrl,
       'whatsapp_number': whatsappNumber,
+      'governorates': governorates,
+      'centers': centers,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -73,6 +81,8 @@ class UserModel {
     bool? isProfileComplete,
     String? documentUrl,
     String? whatsappNumber,
+    List<String>? governorates,
+    List<String>? centers,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -85,6 +95,8 @@ class UserModel {
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       documentUrl: documentUrl ?? this.documentUrl,
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
+      governorates: governorates ?? this.governorates,
+      centers: centers ?? this.centers,
       createdAt: createdAt ?? this.createdAt,
     );
   }

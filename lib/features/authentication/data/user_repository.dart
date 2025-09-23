@@ -83,6 +83,27 @@ class UserRepository {
     
   }
 
+  Future<void> updateUserProfile({
+    required String id,
+    required String displayName,
+    required String whatsappNumber,
+    required List<String> governorates,
+    required List<String> centers,
+  }) async {
+    try {
+      await _client.from('users').update({
+        'display_name': displayName,
+        'whatsapp_number': whatsappNumber,
+        'governorates': governorates,
+        'centers': centers,
+      }).eq('id', id);
+      _cache.invalidate('user_$id');
+    } catch (e) {
+      print('Error updating user profile in Supabase: $e');
+      rethrow;
+    }
+  }
+
   // دالة لجلب بيانات المستخدم مرة واحدة
   Future<UserModel?> getUser(String id) async {
     final cacheKey = 'user_$id';

@@ -26,8 +26,9 @@ class Governorate {
 
 class GovernorateSelectionScreen extends HookConsumerWidget {
   final UserRole role;
+  final Function(List<String> governorates, List<String> centers)? onContinue;
 
-  const GovernorateSelectionScreen({super.key, required this.role});
+  const GovernorateSelectionScreen({super.key, required this.role, this.onContinue});
 
   Future<List<Governorate>> _loadGovernorates(BuildContext context) async {
     final String response =
@@ -68,26 +69,31 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
         if (selectedGovernorates.value.contains(g.name)) g.name: g.centers
     };
 
-    void onContinue() {
-      Navigator.of(context).push(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              DocumentUploadScreen(
-            role: role,
-            governorates: selectedGovernorates.value.toList(),
-            centers: selectedCenters.value.toList(),
+    void _onContinuePressed() {
+      if (onContinue != null) {
+        onContinue!(selectedGovernorates.value.toList(), selectedCenters.value.toList());
+        Navigator.of(context).pop();
+      } else {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                DocumentUploadScreen(
+              role: role,
+              governorates: selectedGovernorates.value.toList(),
+              centers: selectedCenters.value.toList(),
+            ),
+            transitionDuration: const Duration(milliseconds: 500),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0);
+              const end = Offset.zero;
+              final tween = Tween(begin: begin, end: end)
+                  .chain(CurveTween(curve: Curves.ease));
+              return SlideTransition(
+                  position: animation.drive(tween), child: child);
+            },
           ),
-          transitionDuration: const Duration(milliseconds: 500),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            final tween = Tween(begin: begin, end: end)
-                .chain(CurveTween(curve: Curves.ease));
-            return SlideTransition(
-                position: animation.drive(tween), child: child);
-          },
-        ),
-      );
+        );
+      }
     }
 
     // Updated chip colors for the new theme
@@ -315,7 +321,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: ElevatedButton(
-          onPressed: isContinueEnabled ? onContinue : null,
+          onPressed: isContinueEnabled ? _onContinuePressed : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color.fromARGB(255, 41, 152, 186),
             disabledBackgroundColor: Colors.grey.shade300,

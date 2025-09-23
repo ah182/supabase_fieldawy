@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/favorites_screen.dart';
+import 'package:fieldawy_store/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,7 +181,14 @@ class ProfileScreen extends ConsumerWidget {
                                 _buildProfileOption(
                                   icon: Icons.edit_outlined,
                                   title: 'editProfile'.tr(),
-                                  onTap: () {},
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            EditProfileScreen(userModel: userModel),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const Divider(
                                     height: 0, indent: 16, endIndent: 16),
