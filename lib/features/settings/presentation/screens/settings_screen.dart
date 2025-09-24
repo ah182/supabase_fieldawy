@@ -15,7 +15,11 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentThemeMode = ref.watch(themeNotifierProvider);
     final textTheme = Theme.of(context).textTheme;
-    final selectedIndex = 3;
+
+    final userData = ref.watch(userDataProvider);
+    final userRole = userData.asData?.value?.role ?? '';
+    final isDoctor = userRole == 'doctor';
+    final selectedIndex = isDoctor ? 4 : 3;
 
     // دالة مساعدة لتغيير الثيم لتجنب تكرار الكود
     void changeTheme(ThemeMode mode) {

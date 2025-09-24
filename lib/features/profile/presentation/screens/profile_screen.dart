@@ -49,7 +49,10 @@ class ProfileScreen extends ConsumerWidget {
     final userDataAsync = ref.watch(userDataProvider);
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final selectedIndex = 2;
+
+    final userRole = userDataAsync.asData?.value?.role ?? '';
+    final isDoctor = userRole == 'doctor';
+    final selectedIndex = isDoctor ? 3 : 2;
 
     final sliverAppBar = SliverAppBar(
       title: Text('profile'.tr()),

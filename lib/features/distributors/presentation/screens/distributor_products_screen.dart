@@ -20,6 +20,8 @@ import "../../../products/domain/product_model.dart";
 import "package:awesome_snackbar_content/awesome_snackbar_content.dart";
 import "package:fieldawy_store/features/products/application/favorites_provider.dart";
 import "package:fieldawy_store/main.dart";
+import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
+import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
 
 /* -------------------------------------------------------------------------- */
 /*                               DATA PROVIDERS                               */
@@ -1009,6 +1011,58 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                 ),
                               );
                             },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withAlpha(230),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(30),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        iconSize: 18,
+                        onPressed: () {
+                          final order = ref.read(orderProvider);
+                          final isProductInCart = order.any((item) =>
+                              item.product.id == product.id &&
+                              item.product.distributorId == product.distributorId &&
+                              item.product.selectedPackage == product.selectedPackage);
+
+                          ref.read(orderProvider.notifier).addProduct(product);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isProductInCart
+                                  ? 'تم تحديث كمية ${product.name} في السلة'
+                                  : 'تمت إضافة ${product.name} إلى السلة'),
+                              duration: const Duration(seconds: 2),
+                              action: SnackBarAction(
+                                label: 'عرض السلة',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => const OrdersScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           );
                         },
                       ),

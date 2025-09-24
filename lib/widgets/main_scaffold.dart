@@ -9,6 +9,7 @@ import 'package:fieldawy_store/features/products/presentation/screens/my_product
 import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
+import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
 
 class MainScaffold extends ConsumerWidget {
   final Widget body;
@@ -56,9 +57,12 @@ class MainScaffold extends ConsumerWidget {
           screen = const CategoryScreen();
           break;
         case 2:
-          screen = const ProfileScreen();
+          screen = const OrdersScreen();
           break;
         case 3:
+          screen = const ProfileScreen();
+          break;
+        case 4:
           screen = const SettingsScreen();
           break;
         default:
@@ -92,6 +96,8 @@ class MainScaffold extends ConsumerWidget {
           final isDoctor = user?.role == 'doctor';
 
           return SalomonBottomBar(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            itemPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             currentIndex: selectedIndex,
             onTap: (index) => _onItemTapped(context, ref, index),
             items: [
@@ -118,6 +124,12 @@ class MainScaffold extends ConsumerWidget {
                   icon: const Icon(Icons.category),
                   title: const Text("Categories"),
                   selectedColor: Colors.pink,
+                ),
+              if (isDoctor)
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.shopping_cart),
+                  title: const Text("Orders"),
+                  selectedColor: Colors.green,
                 ),
               SalomonBottomBarItem(
                 icon: const Icon(Icons.person),
