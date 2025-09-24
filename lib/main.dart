@@ -13,6 +13,10 @@ import 'features/authentication/data/storage_service.dart';
 import 'services/app_state_manager.dart';
 import 'core/supabase/supabase_init.dart';
 
+import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
+import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
 // الشاشات
 import 'features/authentication/presentation/screens/auth_gate.dart';
 import 'features/authentication/presentation/screens/splash_screen.dart';
@@ -26,6 +30,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(ProductModelAdapter());
+  Hive.registerAdapter(OrderItemModelAdapter());
+  await Hive.openBox<OrderItemModel>('orders');
+  await Hive.openBox<String>('favorites');
 
   runApp(const ConnectivityHandler());
 }

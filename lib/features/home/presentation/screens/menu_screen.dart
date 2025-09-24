@@ -14,6 +14,7 @@ import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -147,6 +148,14 @@ class MenuScreen extends ConsumerWidget {
               ZoomDrawer.of(context)!.close();
               Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => const DistributorsScreen()));
+            }),
+        _buildMenuItem(
+            icon: Icons.shopping_cart_outlined,
+            title: 'Orders',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const OrdersScreen()));
             }),
         _buildMenuItem(
             icon: Icons.add_box_outlined, title: 'addDrug'.tr(), onTap: () {}),

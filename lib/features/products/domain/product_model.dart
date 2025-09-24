@@ -1,17 +1,36 @@
+import 'package:hive/hive.dart';
+
+part 'product_model.g.dart';
+
+@HiveType(typeId: 0)
 class ProductModel {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String name;
+  @HiveField(2)
   final String? description;
+  @HiveField(3)
   final String? activePrinciple;
+  @HiveField(4)
   final String? company;
+  @HiveField(5)
   final String? action;
+  @HiveField(6)
   final String? package;
+  @HiveField(7)
   final List<String> availablePackages;
+  @HiveField(8)
   final String imageUrl;
+  @HiveField(9)
   final double? price;
+  @HiveField(10)
   final String? distributorId;
+  @HiveField(11)
   final DateTime? createdAt;
+  @HiveField(12)
   final String? selectedPackage;
+  @HiveField(13)
   late bool isFavorite;
 
   ProductModel({

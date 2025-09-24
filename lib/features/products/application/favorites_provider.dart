@@ -1,41 +1,43 @@
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 
 class FavoritesNotifier extends StateNotifier<List<String>> {
   FavoritesNotifier() : super([]) {
     _loadFavorites();
   }
 
-  static const _favoritesKey = 'favorites';
+  final _box = Hive.box<String>('favorites');
 
   String _getUniqueKey(ProductModel product) {
     return '${product.id}_${product.distributorId}_${product.selectedPackage}';
   }
 
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getStringList(_favoritesKey) ?? [];
+  void _loadFavorites() {
+    state = _box.values.toList();
   }
 
-  Future<void> _saveFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_favoritesKey, state);
+  Future<void> _updateHiveBox() async {
+    await _box.clear();
+    await _box.addAll(state);
   }
 
   void addToFavorites(ProductModel product) {
     final key = _getUniqueKey(product);
     if (!state.contains(key)) {
       state = [...state, key];
-      _saveFavorites();
+      _updateHiveBox();
     }
   }
 
   void removeFromFavorites(ProductModel product) {
     final key = _getUniqueKey(product);
+    final originalLength = state.length;
     state = state.where((k) => k != key).toList();
-    _saveFavorites();
+    if (state.length < originalLength) {
+      _updateHiveBox();
+    }
   }
 
   bool isFavorite(ProductModel product) {
@@ -59,7 +61,7 @@ final favoritesProvider = StateNotifierProvider<FavoritesNotifier, List<String>>
 final favoriteProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final favoriteIds = ref.watch(favoritesProvider);
   final allProductsAsync = ref.watch(internalAllProductsProvider);
-  
+
   return allProductsAsync.when(
     data: (products) {
       return products.where((product) {
