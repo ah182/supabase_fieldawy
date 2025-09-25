@@ -25,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "com.example.fieldawy_store"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
