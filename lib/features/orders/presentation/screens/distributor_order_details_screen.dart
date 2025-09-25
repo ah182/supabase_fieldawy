@@ -1,9 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:printing/printing.dart';
+import 'package:fieldawy_store/widgets/invoice_preview_screen.dart';
+import 'package:fieldawy_store/services/invoice_service.dart';
+
+import 'package:pdfrx/pdfrx.dart';
+import 'package:image/image.dart' as img;
+import 'package:collection/collection.dart';
 
 import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 
 class DistributorOrderDetailsScreen extends ConsumerWidget {
   final String distributorName;
@@ -19,20 +28,27 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final orderState = ref.watch(orderProvider);
+    final userDataAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
 
-    // Filter the products for the current distributor from the latest order state
+    // Find the distributor
+    final distributor = distributorsAsync.whenOrNull(
+      data: (distributors) => distributors.firstWhereOrNull(
+        (d) => d.displayName == distributorName,
+      ),
+    );
+    final whatsappNumber = distributor?.whatsappNumber;
+
     final currentProducts = orderState
         .where((item) => item.product.distributorId == distributorName)
         .toList();
 
     if (currentProducts.isEmpty && context.mounted) {
-      // If there are no more products for this distributor, pop the screen.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).pop();
       });
     }
 
-    // Calculate total price
     final totalPrice = currentProducts.fold<double>(0.0, (sum, item) {
       final price = item.product.price ?? 0.0;
       return sum + (price * item.quantity);
@@ -41,11 +57,8 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            size: 18,
-            color: theme.colorScheme.onSurface,
-          ),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -60,6 +73,134 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: Icon(Icons.receipt_long_outlined,
+                color: theme.colorScheme.onSurface),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                builder: (ctx) => Wrap(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.picture_as_pdf),
+                      title: const Text('  PDF طباعة الفاتورة'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        try {
+                          final invoiceService = InvoiceService();
+                          final orderData = {
+                            'id': 'ORDER-123',
+                            'date': DateTime.now().toString(),
+                            'distributorName': distributorName,
+                            'products': currentProducts
+                                .map((item) => {
+                                      'name': item.product.name,
+                                      'quantity': item.quantity,
+                                      'price': item.product.price ?? 0.0,
+                                      'selectedPackage':
+                                          item.product.selectedPackage,
+                                    })
+                                .toList(),
+                            'total': totalPrice,
+                            'clientName': userDataAsync.value?.displayName ??
+                                'N/A', // Use the actual clientName
+                          };
+                          final pdfBytes =
+                              await invoiceService.createInvoice(orderData);
+                          await Printing.layoutPdf(
+                              onLayout: (format) => pdfBytes);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Failed to generate PDF: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.image),
+                      title: const Text('  معاينة الفاتورة'),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        PdfDocument? doc;
+                        try {
+                          final invoiceService = InvoiceService();
+                          final orderData = {
+                            'id': 'ORDER-123',
+                            'date': DateTime.now().toString(),
+                            'distributorName': distributorName,
+                            'products': currentProducts
+                                .map((item) => {
+                                      'name': item.product.name,
+                                      'quantity': item.quantity,
+                                      'price': item.product.price ?? 0.0,
+                                      'selectedPackage':
+                                          item.product.selectedPackage,
+                                    })
+                                .toList(),
+                            'total': totalPrice,
+                            'clientName': userDataAsync.value?.displayName ??
+                                'N/A', // Use the actual clientName
+                          };
+                          final pdfBytes =
+                              await invoiceService.createInvoice(orderData);
+
+                          // ✅ Render PDF with proper screen scale
+                          doc = await PdfDocument.openData(pdfBytes);
+                          final page = doc.pages.first;
+                          final dpr = MediaQuery.of(context).devicePixelRatio;
+
+                          final renderWidth = (page.width * dpr * 0.5).toInt();
+                          final renderHeight =
+                              (page.height * dpr * 0.5).toInt();
+
+                          final pageImage = await page.render(
+                            width: renderWidth,
+                            height: renderHeight,
+                          );
+
+                          if (pageImage != null) {
+                            final image = img.Image.fromBytes(
+                              width: pageImage.width,
+                              height: pageImage.height,
+                              bytes: pageImage.pixels.buffer,
+                              order: img.ChannelOrder.rgba,
+                            );
+                            final pngBytes = img.encodePng(image);
+
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InvoicePreviewScreen(
+                                      imageBytes: pngBytes,
+                                      pdfBytes: pdfBytes,
+                                      whatsappNumber: whatsappNumber,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Failed to create image preview: $e')),
+                            );
+                          }
+                        } finally {
+                          doc?.dispose();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.all(6),
@@ -67,11 +208,8 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
               color: theme.colorScheme.primary,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(
-              Icons.shopping_bag_outlined,
-              size: 16,
-              color: theme.colorScheme.onPrimary,
-            ),
+            child: Icon(Icons.shopping_bag_outlined,
+                size: 16, color: theme.colorScheme.onPrimary),
           ),
         ],
       ),
@@ -99,10 +237,8 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
-                // الصف الأول: الصورة + معلومات المنتج + السعر في Badge + أيقونة الحذف
                 Row(
                   children: [
-                    // Product image
                     Container(
                       width: 70,
                       height: 70,
@@ -134,15 +270,11 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 12),
-
-                    // Product info - يأخذ المساحة المتبقية
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Product name
                           Text(
                             product.name,
                             style: TextStyle(
@@ -153,10 +285,7 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-
                           const SizedBox(height: 6),
-
-                          // Package info
                           if (product.selectedPackage != null &&
                               product.selectedPackage!.isNotEmpty)
                             Text(
@@ -169,10 +298,7 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    // Price Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
@@ -203,10 +329,7 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    // Delete button في أقصى اليمين
                     GestureDetector(
                       onTap: () => ref
                           .read(orderProvider.notifier)
@@ -217,23 +340,16 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                           color: theme.colorScheme.errorContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 16,
-                          color: theme.colorScheme.error,
-                        ),
+                        child: Icon(Icons.delete_outline,
+                            size: 16, color: theme.colorScheme.error),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
-                // الصف الثاني: عداد الكمية في الوسط - مصغر
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Quantity control container - مصغر
                     Container(
                       decoration: BoxDecoration(
                         color:
@@ -247,7 +363,6 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Decrease button - مصغر
                           GestureDetector(
                             onTap: orderItem.quantity > 1
                                 ? () => ref
@@ -273,8 +388,6 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-
-                          // Quantity display - مصغر
                           Container(
                             width: 36,
                             height: 26,
@@ -288,8 +401,6 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-
-                          // Increase button - مصغر
                           GestureDetector(
                             onTap: () => ref
                                 .read(orderProvider.notifier)
@@ -301,11 +412,8 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
                                 color: theme.colorScheme.primary,
                                 borderRadius: BorderRadius.circular(13),
                               ),
-                              child: Icon(
-                                Icons.add,
-                                size: 14,
-                                color: theme.colorScheme.onPrimary,
-                              ),
+                              child: Icon(Icons.add,
+                                  size: 14, color: theme.colorScheme.onPrimary),
                             ),
                           ),
                         ],
@@ -318,7 +426,7 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
           );
         },
       ),
-     bottomNavigationBar: Container(
+      bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           boxShadow: [
@@ -366,7 +474,6 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
           ),
         ),
       ),
-
     );
   }
 }

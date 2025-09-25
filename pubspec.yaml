@@ -43,13 +43,19 @@ dependencies:
   dotted_border: ^2.1.0 
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  
+  flutter_plugin_android_lifecycle: ^2.0.17
   awesome_dialog: ^3.2.1
   awesome_snackbar_content: ^0.1.3
   cloud_firestore: ^6.0.1
   equatable: ^2.0.5
   connectivity_plus: ^6.0.3
   google_sign_in: ^6.2.0
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  
+  pdfrx: ^2.1.5
+  gal: ^2.3.2
+  image: ^4.0.17
   
 
 dev_dependencies:
@@ -79,8 +85,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/fonts/
     - assets/translations/
     - .env
+assets:
+    - assets/fonts/Cairo-Regular.ttf
+    - assets/fonts/Cairo-Bold.ttf
 
 fonts:
   - family: Cairo
