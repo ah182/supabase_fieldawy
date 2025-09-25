@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:fieldawy_store/widgets/invoice_preview_screen.dart';
@@ -14,7 +16,7 @@ import 'package:collection/collection.dart';
 import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 
-class DistributorOrderDetailsScreen extends ConsumerWidget {
+class DistributorOrderDetailsScreen extends HookConsumerWidget {
   final String distributorName;
   final List<OrderItemModel> products;
 
@@ -31,6 +33,24 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
     final userDataAsync = ref.watch(userDataProvider);
     final distributorsAsync = ref.watch(distributorsProvider);
 
+    final controller = useAnimationController(
+      duration: const Duration(milliseconds: 800),
+    );
+
+    final animation = useMemoized(
+        () => Tween(begin: -0.1, end: 0.1).animate(
+              CurvedAnimation(
+                parent: controller,
+                curve: Curves.easeInOut,
+              ),
+            ),
+        [controller]);
+
+    useEffect(() {
+      controller.repeat(reverse: true);
+      return null; // Dispose is handled automatically by useAnimationController
+    }, const []);
+
     // Find the distributor
     final distributor = distributorsAsync.whenOrNull(
       data: (distributors) => distributors.firstWhereOrNull(
@@ -43,11 +63,12 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
         .where((item) => item.product.distributorId == distributorName)
         .toList();
 
-    if (currentProducts.isEmpty && context.mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pop();
-      });
-    }
+    // The automatic pop logic was removed to fix the dispose error.
+    // if (currentProducts.isEmpty && context.mounted) {
+    //   WidgetsBinding.instance.addPostFrameCallback((_) {
+    //     Navigator.of(context).pop();
+    //   });
+    // }
 
     final totalPrice = currentProducts.fold<double>(0.0, (sum, item) {
       final price = item.product.price ?? 0.0;
@@ -73,134 +94,6 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: Icon(Icons.receipt_long_outlined,
-                color: theme.colorScheme.onSurface),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (ctx) => Wrap(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.picture_as_pdf),
-                      title: const Text('  PDF طباعة الفاتورة'),
-                      onTap: () async {
-                        Navigator.of(ctx).pop();
-                        try {
-                          final invoiceService = InvoiceService();
-                          final orderData = {
-                            'id': 'ORDER-123',
-                            'date': DateTime.now().toString(),
-                            'distributorName': distributorName,
-                            'products': currentProducts
-                                .map((item) => {
-                                      'name': item.product.name,
-                                      'quantity': item.quantity,
-                                      'price': item.product.price ?? 0.0,
-                                      'selectedPackage':
-                                          item.product.selectedPackage,
-                                    })
-                                .toList(),
-                            'total': totalPrice,
-                            'clientName': userDataAsync.value?.displayName ??
-                                'N/A', // Use the actual clientName
-                          };
-                          final pdfBytes =
-                              await invoiceService.createInvoice(orderData);
-                          await Printing.layoutPdf(
-                              onLayout: (format) => pdfBytes);
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Failed to generate PDF: $e')),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.image),
-                      title: const Text('  معاينة الفاتورة'),
-                      onTap: () async {
-                        Navigator.of(ctx).pop();
-                        PdfDocument? doc;
-                        try {
-                          final invoiceService = InvoiceService();
-                          final orderData = {
-                            'id': 'ORDER-123',
-                            'date': DateTime.now().toString(),
-                            'distributorName': distributorName,
-                            'products': currentProducts
-                                .map((item) => {
-                                      'name': item.product.name,
-                                      'quantity': item.quantity,
-                                      'price': item.product.price ?? 0.0,
-                                      'selectedPackage':
-                                          item.product.selectedPackage,
-                                    })
-                                .toList(),
-                            'total': totalPrice,
-                            'clientName': userDataAsync.value?.displayName ??
-                                'N/A', // Use the actual clientName
-                          };
-                          final pdfBytes =
-                              await invoiceService.createInvoice(orderData);
-
-                          // ✅ Render PDF with proper screen scale
-                          doc = await PdfDocument.openData(pdfBytes);
-                          final page = doc.pages.first;
-                          final dpr = MediaQuery.of(context).devicePixelRatio;
-
-                          final renderWidth = (page.width * dpr * 0.5).toInt();
-                          final renderHeight =
-                              (page.height * dpr * 0.5).toInt();
-
-                          final pageImage = await page.render(
-                            width: renderWidth,
-                            height: renderHeight,
-                          );
-
-                          if (pageImage != null) {
-                            final image = img.Image.fromBytes(
-                              width: pageImage.width,
-                              height: pageImage.height,
-                              bytes: pageImage.pixels.buffer,
-                              order: img.ChannelOrder.rgba,
-                            );
-                            final pngBytes = img.encodePng(image);
-
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => InvoicePreviewScreen(
-                                      imageBytes: pngBytes,
-                                      pdfBytes: pdfBytes,
-                                      whatsappNumber: whatsappNumber,
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Failed to create image preview: $e')),
-                            );
-                          }
-                        } finally {
-                          doc?.dispose();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.all(6),
@@ -214,10 +107,18 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
         ],
       ),
       backgroundColor: theme.colorScheme.background,
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: currentProducts.length,
-        itemBuilder: (context, index) {
+      body: currentProducts.isEmpty
+          ? Center(
+              child: Text(
+                'لا توجد منتجات لهذا الموزع',
+                style: TextStyle(
+                    fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: currentProducts.length,
+              itemBuilder: (context, index) {
           final orderItem = currentProducts[index];
           final product = orderItem.product;
 
@@ -439,17 +340,186 @@ class DistributorOrderDetailsScreen extends ConsumerWidget {
         ),
         child: SafeArea(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Total price ',
+                  'Create Invoice ',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onSurface,
                     letterSpacing: -0.2,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                  child: RotationTransition(
+                    turns: animation,
+                    child: IconButton(
+                      icon: Icon(Icons.receipt_long_outlined,
+                          color: theme.colorScheme.primary, size: 28),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (ctx) => Wrap(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.picture_as_pdf),
+                                title: const Text('  PDF طباعة الفاتورة'),
+                                onTap: () async {
+                                  Navigator.of(ctx).pop();
+                                  try {
+                                    final invoiceService = InvoiceService();
+                                    final orderData = {
+                                      'id': 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+                                      'date': DateTime.now().toString(),
+                                      'distributorName': distributorName,
+                                      'products': currentProducts
+                                          .map((item) => {
+                                                'name': item.product.name,
+                                                'quantity': item.quantity,
+                                                'price':
+                                                    item.product.price ?? 0.0,
+                                                'selectedPackage': item
+                                                    .product.selectedPackage,
+                                              })
+                                          .toList(),
+                                      'total': totalPrice,
+                                      'clientName': userDataAsync
+                                              .value?.displayName ??
+                                          'N/A', // Use the actual clientName
+                                    };
+                                    final pdfBytes = await invoiceService
+                                        .createInvoice(orderData);
+                                    await Printing.layoutPdf(
+                                        onLayout: (format) => pdfBytes);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Failed to generate PDF: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.image),
+                                title: const Text('  معاينة الفاتورة'),
+                                onTap: () async {
+                                  // First, close the modal bottom sheet.
+                                  Navigator.of(ctx).pop();
+
+                                  // Show a loading dialog.
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (BuildContext context) {
+                                      return const Center(
+                                          child: CircularProgressIndicator());
+                                    },
+                                  );
+
+                                  PdfDocument? doc;
+                                  try {
+                                    final invoiceService = InvoiceService();
+                                    final orderData = {
+                                      'id': 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+                                      'date': DateTime.now().toString(),
+                                      'distributorName': distributorName,
+                                      'products': currentProducts
+                                          .map((item) => {
+                                                'name': item.product.name,
+                                                'quantity': item.quantity,
+                                                'price':
+                                                    item.product.price ?? 0.0,
+                                                'selectedPackage': item
+                                                    .product.selectedPackage,
+                                              })
+                                          .toList(),
+                                      'total': totalPrice,
+                                      'clientName': userDataAsync
+                                              .value?.displayName ??
+                                          'N/A',
+                                    };
+                                    final pdfBytes = await invoiceService
+                                        .createInvoice(orderData);
+
+                                    // Open the PDF document
+                                    doc = await PdfDocument.openData(pdfBytes);
+                                    final dpr =
+                                        MediaQuery.of(context).devicePixelRatio;
+                                    final List<Uint8List> imageBytesList = [];
+
+                                    // Loop through all pages and render them
+                                    for (var i = 0; i < doc.pages.length; i++) {
+                                      final page = doc.pages[i];
+                                      final pageImage = await page.render(
+                                        width: (page.width * dpr * 0.5).toInt(),
+                                        height: (page.height * dpr * 0.5).toInt(),
+                                      );
+                                      if (pageImage != null) {
+                                        final image = img.Image.fromBytes(
+                                          width: pageImage.width,
+                                          height: pageImage.height,
+                                          bytes: pageImage.pixels.buffer,
+                                          order: img.ChannelOrder.rgba,
+                                        );
+                                        imageBytesList.add(img.encodePng(image));
+                                      }
+                                    }
+
+                                    if (imageBytesList.isNotEmpty) {
+                                      // Pop the loading dialog before navigating.
+                                      if (context.mounted) {
+                                        Navigator.of(context, rootNavigator: true).pop();
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                InvoicePreviewScreen(
+                                              imageBytesList: imageBytesList,
+                                              pdfBytes: pdfBytes,
+                                              whatsappNumber: whatsappNumber,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      // Pop the loading dialog if image generation fails.
+                                      if (context.mounted) {
+                                        Navigator.of(context, rootNavigator: true).pop();
+                                         ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Failed to generate invoice preview.')),
+                                        );
+                                      }
+                                    }
+                                  } catch (e) {
+                                    // Pop the loading dialog on error.
+                                    if (context.mounted) {
+                                      Navigator.of(context, rootNavigator: true)
+                                          .pop();
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Failed to create image preview: $e')),
+                                      );
+                                    }
+                                  } finally {
+                                    await doc?.dispose();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 Container(

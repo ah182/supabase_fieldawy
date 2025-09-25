@@ -43,7 +43,33 @@ class OrdersScreen extends ConsumerWidget {
                 ),
                 tooltip: 'مسح كل الطلبات',
                 onPressed: () {
-                  ref.read(orderProvider.notifier).clearOrder();
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext dialogContext) {
+                      return AlertDialog(
+                        title: const Text('تأكيد الحذف'),
+                        content: const Text(
+                            'هل أنت متأكد من رغبتك في مسح كل الطلبات؟'),
+                        actions: <Widget>[
+                          TextButton(
+                            child: const Text('إلغاء'),
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop(); // Dismiss the dialog
+                            },
+                          ),
+                          TextButton(
+                            child: Text('مسح',
+                                style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error)),
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop(); // Dismiss the dialog
+                              ref.read(orderProvider.notifier).clearOrder();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
             ),
