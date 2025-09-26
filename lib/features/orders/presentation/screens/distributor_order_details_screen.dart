@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:flutter/material.dart';
@@ -62,13 +64,6 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
     final currentProducts = orderState
         .where((item) => item.product.distributorId == distributorName)
         .toList();
-
-    // The automatic pop logic was removed to fix the dispose error.
-    // if (currentProducts.isEmpty && context.mounted) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     Navigator.of(context).pop();
-    //   });
-    // }
 
     final totalPrice = currentProducts.fold<double>(0.0, (sum, item) {
       final price = item.product.price ?? 0.0;
@@ -367,7 +362,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                             children: [
                               ListTile(
                                 leading: const Icon(Icons.picture_as_pdf),
-                                title: const Text('  PDF طباعة الفاتورة'),
+                                title: const Text('  PDF حفظ وطباعة الفاتورة'),
                                 onTap: () async {
                                   Navigator.of(ctx).pop();
                                   try {
@@ -397,12 +392,17 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                         onLayout: (format) => pdfBytes);
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text(
-                                                'Failed to generate PDF: $e')),
+                                       final snackBar = SnackBar(
+                                        elevation: 0,
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.transparent,
+                                        content: AwesomeSnackbarContent(
+                                          title: 'خطأ'.tr(),
+                                          message: 'فشل إنشاء ملف PDF: $e',
+                                          contentType: ContentType.failure,
+                                        ),
                                       );
+                                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
                                     }
                                   }
                                 },
@@ -493,9 +493,17 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                       // Pop the loading dialog if image generation fails.
                                       if (context.mounted) {
                                         Navigator.of(context, rootNavigator: true).pop();
-                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Failed to generate invoice preview.')),
+                                        final snackBar = SnackBar(
+                                          elevation: 0,
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: Colors.transparent,
+                                          content: AwesomeSnackbarContent(
+                                            title: 'خطأ'.tr(),
+                                            message: 'فشل إنشاء معاينة الفاتورة.',
+                                            contentType: ContentType.failure,
+                                          ),
                                         );
+                                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
                                       }
                                     }
                                   } catch (e) {
@@ -503,12 +511,17 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                     if (context.mounted) {
                                       Navigator.of(context, rootNavigator: true)
                                           .pop();
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text(
-                                                'Failed to create image preview: $e')),
+                                      final snackBar = SnackBar(
+                                        elevation: 0,
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.transparent,
+                                        content: AwesomeSnackbarContent(
+                                          title: 'خطأ'.tr(),
+                                          message: 'فشل إنشاء معاينة الفاتورة: $e',
+                                          contentType: ContentType.failure,
+                                        ),
                                       );
+                                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
                                     }
                                   } finally {
                                     await doc?.dispose();

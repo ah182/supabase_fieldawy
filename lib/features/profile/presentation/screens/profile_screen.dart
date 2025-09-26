@@ -34,13 +34,13 @@ class ProfileScreen extends ConsumerWidget {
   IconData _getRoleIcon(String role) {
     switch (role) {
       case 'doctor':
-        return Icons.local_hospital;
+        return Icons.local_hospital_rounded;
       case 'company':
-        return Icons.business;
+        return Icons.business_rounded;
       case 'distributor':
-        return Icons.storefront;
+        return Icons.storefront_rounded;
       default:
-        return Icons.person;
+        return Icons.person_rounded;
     }
   }
 
@@ -56,11 +56,12 @@ class ProfileScreen extends ConsumerWidget {
 
     final sliverAppBar = SliverAppBar(
       title: Text('profile'.tr()),
-      backgroundColor: Colors.transparent,
+      backgroundColor: colorScheme.surface,
       elevation: 0,
-      foregroundColor: colorScheme.onBackground,
+      scrolledUnderElevation: 0,
+      foregroundColor: colorScheme.onSurface,
       pinned: true,
-      floating: true,
+      floating: false,
     );
 
     return MainScaffold(
@@ -82,64 +83,109 @@ class ProfileScreen extends ConsumerWidget {
                       constraints: const BoxConstraints(maxWidth: 500),
                       child: Column(
                         children: [
-                          // --- User Info Header ---
+                          // --- User Info Header محسن ---
                           Stack(
                             alignment: Alignment.bottomRight,
                             children: [
-                              CircleAvatar(
-                                radius: 50,
-                                backgroundColor: colorScheme.surfaceVariant,
-                                backgroundImage: userModel.photoUrl != null &&
-                                        userModel.photoUrl!.isNotEmpty
-                                    ? CachedNetworkImageProvider(
-                                        userModel.photoUrl!)
-                                    : null,
-                                child: userModel.photoUrl == null ||
-                                        userModel.photoUrl!.isEmpty
-                                    ? Icon(Icons.person,
-                                        size: 50,
-                                        color: colorScheme.onSurfaceVariant)
-                                    : null,
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: userModel.photoUrl != null &&
+                                          userModel.photoUrl!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: userModel.photoUrl!,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.surfaceVariant,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: const Center(
+                                              child: ImageLoadingIndicator(
+                                                  size: 32),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.surfaceVariant,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Icon(
+                                              Icons.person_rounded,
+                                              size: 48,
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.person_rounded,
+                                          size: 48,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                ),
                               ),
                               Container(
+                                width: 32,
+                                height: 32,
                                 decoration: BoxDecoration(
                                   color: colorScheme.primary,
-                                  shape: BoxShape.circle,
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                      color: Theme.of(context)
-                                          .scaffoldBackgroundColor,
-                                      width: 3),
+                                    color: colorScheme.surface,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(4.0),
-                                  child: Icon(Icons.edit,
-                                      color: Colors.white, size: 16),
+                                child: const Icon(
+                                  Icons.edit_rounded,
+                                  color: Colors.white,
+                                  size: 16,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           Text(
                             userModel.displayName ?? 'N/A',
-                            style: textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            style: textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
                           // ignore: unnecessary_null_comparison
                           if (userModel.role != null)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(9999),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     _getRoleIcon(userModel.role),
-                                    size: 14,
+                                    size: 16,
                                     color: colorScheme.onSecondaryContainer,
                                   ),
                                   const SizedBox(width: 6),
@@ -147,7 +193,7 @@ class ProfileScreen extends ConsumerWidget {
                                     _getRoleDisplayName(userModel.role),
                                     style: textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -157,55 +203,79 @@ class ProfileScreen extends ConsumerWidget {
                           if (userModel.email != null)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(9999),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Text(
-                                userModel.email!,
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onPrimaryContainer,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.email_rounded,
+                                    size: 14,
+                                    color: colorScheme.onPrimaryContainer,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    userModel.email!,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           const SizedBox(height: 32),
 
-                          // --- Options List ---
-                          Card(
-                            elevation: 1,
-                            shadowColor:
-                                Theme.of(context).shadowColor.withOpacity(0.1),
+                          // --- Options List محسنة ---
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                             clipBehavior: Clip.antiAlias,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
                             child: Column(
                               children: [
                                 _buildProfileOption(
-                                  icon: Icons.edit_outlined,
+                                  icon: Icons.edit_rounded,
                                   title: 'editProfile'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
-                                        builder: (context) =>
-                                            EditProfileScreen(userModel: userModel),
+                                        builder: (context) => EditProfileScreen(
+                                            userModel: userModel),
                                       ),
                                     );
                                   },
                                 ),
-                                const Divider(
-                                    height: 0, indent: 16, endIndent: 16),
-                                // --- تم التعديل هنا ---
+                                Divider(
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                  color: colorScheme.outline.withOpacity(0.2),
+                                ),
                                 _buildProfileOption(
-                                  icon: Icons.notifications_outlined,
+                                  icon: Icons.notifications_rounded,
                                   title: 'notifications'.tr(),
                                   onTap: () {},
                                 ),
-                                const Divider(
-                                    height: 0, indent: 16, endIndent: 16),
-                                // --- وتم التعديل هنا ---
+                                Divider(
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                  color: colorScheme.outline.withOpacity(0.2),
+                                ),
                                 _buildProfileOption(
-                                  icon: Icons.favorite_border,
+                                  icon: Icons.favorite_rounded,
                                   title: 'favorites'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -216,10 +286,14 @@ class ProfileScreen extends ConsumerWidget {
                                     );
                                   },
                                 ),
-                                const Divider(
-                                    height: 0, indent: 16, endIndent: 16),
+                                Divider(
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                  color: colorScheme.outline.withOpacity(0.2),
+                                ),
                                 _buildProfileOption(
-                                  icon: Icons.settings_outlined,
+                                  icon: Icons.settings_rounded,
                                   title: 'settings'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -261,15 +335,45 @@ class ProfileScreen extends ConsumerWidget {
         final iconColor =
             isDestructive ? colorScheme.error : colorScheme.primary;
 
-        return ListTile(
-          leading: Icon(icon, color: iconColor),
-          title: Text(title,
-              style: TextStyle(fontWeight: FontWeight.w500, color: titleColor)),
-          trailing: isDestructive
-              ? null
-              : const Icon(Icons.arrow_forward_ios,
-                  size: 16, color: Colors.grey),
-          onTap: onTap,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: titleColor,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  if (!isDestructive)
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: colorScheme.onSurface.withOpacity(0.4),
+                    ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );

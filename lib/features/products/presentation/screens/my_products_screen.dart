@@ -8,6 +8,7 @@ import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 // ignore: unnecessary_import
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // <= مهم علشان HookConsumerWidget
+// ignore: unused_import
 import 'dart:ui' as ui; // <= لتفادي أي تعارض مع TextDirection
 import 'dart:async'; // <= مهم علشان Completer
 import 'package:cached_network_image/cached_network_image.dart';
@@ -36,7 +37,7 @@ void _showAnimatedBanner(BuildContext context) {
   Overlay.of(context).insert(overlayEntry);
 }
 
-// The animated banner widget
+// The animated banner widget - محسن مع لون أوضح
 class _AnimatedTopBanner extends StatefulWidget {
   final String message;
   final VoidCallback onDismiss;
@@ -57,17 +58,17 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
     _animation = Tween<Offset>(
-      begin: const Offset(0, -1.5),
+      begin: const Offset(0, -1.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
 
     // Schedule dismissal
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
         _controller.reverse().then((_) {
           widget.onDismiss();
@@ -88,98 +89,86 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
     final isDarkMode = theme.brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).viewPadding.top;
 
-    // Define theme-aware styles
-    final BoxDecoration decoration;
-    final Color iconAndTextColor;
-    final ButtonStyle buttonStyle;
-
-    if (isDarkMode) {
-      decoration = BoxDecoration(
-        color:  const Color.fromARGB(255, 33, 33, 34), // Elevated surface color
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromARGB(255, 18, 18, 18).withOpacity(0.6),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );  
-      iconAndTextColor = theme.colorScheme.onSurface;
-      buttonStyle = TextButton.styleFrom(
-        foregroundColor: iconAndTextColor,
-        backgroundColor: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      );
-    } else {
-      decoration = BoxDecoration(
-        color: theme.colorScheme.secondary, // Use solid color
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.4),
-            blurRadius: 12,
-            spreadRadius: -4,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      );
-      iconAndTextColor = theme.colorScheme.onPrimary;
-      buttonStyle = TextButton.styleFrom(
-        foregroundColor: iconAndTextColor,
-        backgroundColor: Colors.white.withOpacity(0.25),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      );
-    }
-
     return Positioned(
-      top: topPadding + 4,
-      left: 8,
-      right: 8,
+      top: topPadding + 8,
+      left: 12,
+      right: 12,
       child: SlideTransition(
         position: _animation,
         child: Material(
           color: Colors.transparent,
           child: Container(
-            decoration: decoration, // Apply the theme-aware decoration
+            decoration: BoxDecoration(
+              // لون أوضح وأكثر تباينًا للسناك بار
+              color: isDarkMode
+                  ? const Color.fromARGB(
+                      255, 55, 55, 60) // لون أفتح في الوضع المظلم
+                  : const Color.fromARGB(
+                      255, 240, 248, 255), // لون أزرق فاتح في الوضع العادي
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.touch_app_outlined, color: iconAndTextColor, size: 28),
-                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.touch_app_rounded,
+                        color: theme.colorScheme.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       widget.message,
-                      style: TextStyle(
-                        color: iconAndTextColor,
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.9)
+                            : const Color.fromARGB(255, 30, 60, 100),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () {
-                      if (mounted) {
-                        _controller.reverse().then((_) {
-                          widget.onDismiss();
-                        });
-                      }
-                    },
-                    style: buttonStyle,
-                    child: Text(
-                      'حسناً',
-                      style: TextStyle(
-                        color: iconAndTextColor,
-                        fontWeight: FontWeight.bold,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        if (mounted) {
+                          _controller.reverse().then((_) {
+                            widget.onDismiss();
+                          });
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        minimumSize: const Size(55, 30),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'حسناً',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -193,12 +182,9 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
   }
 }
 
-
 class MyProductsScreen extends HookConsumerWidget {
-  // <= غيرنا لـ HookConsumerWidget
   const MyProductsScreen({super.key});
 
-  /// دالة لإظهار ديالوج تفاصيل المنتج مع تصميم احترافي
   static void _showProductDetailDialog(
       BuildContext context, ProductModel product) {
     showGeneralDialog(
@@ -230,7 +216,6 @@ class MyProductsScreen extends HookConsumerWidget {
     );
   }
 
-  /// دالة تأكيد الحذف
   static Future<bool?> _showDeleteConfirmationDialog(
       BuildContext context, String productName) {
     final completer = Completer<bool?>();
@@ -258,7 +243,6 @@ class MyProductsScreen extends HookConsumerWidget {
     return completer.future;
   }
 
-  /// دالة تعديل السعر
   static Future<double?> _showEditPriceDialog(
       BuildContext context, ProductModel product) {
     final TextEditingController priceController = TextEditingController(
@@ -274,7 +258,6 @@ class MyProductsScreen extends HookConsumerWidget {
       body: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // إضافة اسم المنتج وحجم العبوة
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16.0),
@@ -396,24 +379,18 @@ class MyProductsScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // === استدعاء الـ Provider اللي بيجيب قائمة "أدويةي" ===
-    // Using the cached provider for better performance
     final myProductsAsync = ref.watch(myProductsProvider);
     final userRole = ref.watch(userDataProvider).asData?.value?.role ?? '';
     final searchFocusNode = useFocusNode();
     final isSelectionMode = useState(false);
     final selectedProducts = useState<Set<String>>({});
-
-    // State to track if hint has been shown
     final hasShownHint = useState(false);
 
-    // Show hint snackbar only once when products are loaded
     useEffect(() {
       if (!hasShownHint.value &&
           !isSelectionMode.value &&
           myProductsAsync is AsyncData<List<ProductModel>> &&
           myProductsAsync.value.isNotEmpty) {
-        // Show hint after a small delay to ensure UI is ready
         Future.delayed(const Duration(milliseconds: 500), () {
           if (context.mounted) {
             _showAnimatedBanner(context);
@@ -436,10 +413,8 @@ class MyProductsScreen extends HookConsumerWidget {
       );
     }
 
-    // === متغير علشان نسيط نص البحث ===
-    final searchQuery = useState<String>(''); // <= متغير البحث
+    final searchQuery = useState<String>('');
 
-    // Preload data for smoother transitions
     ref.listen(myProductsProvider, (previous, next) {
       // This will trigger data loading when the screen is first built
     });
@@ -456,10 +431,10 @@ class MyProductsScreen extends HookConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    // زر الحذف المحسن
                     FloatingActionButton(
                       heroTag: "btnDeleteAll",
                       onPressed: () async {
-                        // Delete all selected products
                         if (selectedProducts.value.isNotEmpty) {
                           final confirmDelete = await _showDeleteConfirmationDialog(
                               context,
@@ -516,10 +491,12 @@ class MyProductsScreen extends HookConsumerWidget {
                           }
                         }
                       },
-                      child: const Icon(Icons.delete),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.red[400],
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.delete_rounded),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
+                    // زر تحديد الكل المحسن
                     FloatingActionButton(
                       heroTag: "btnSelectAll",
                       onPressed: () async {
@@ -530,36 +507,29 @@ class MyProductsScreen extends HookConsumerWidget {
                                   '${product.id}_${product.selectedPackage ?? ''}')
                               .toSet();
 
-                          // Check if all products are already selected
                           if (selectedProducts.value.length ==
                                   allProductIds.length &&
                               selectedProducts.value
                                   .containsAll(allProductIds)) {
-                            // Deselect all
                             selectedProducts.value = {};
                           } else {
-                            // Select all
                             selectedProducts.value = allProductIds;
                           }
                         }
                       },
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
                       child: selectedProducts.value.length > 0 &&
                               selectedProducts.value.length ==
                                   (ref.read(myProductsProvider)
-                                          is AsyncData<List<ProductModel>>?
-                                      (ref.read(myProductsProvider)
+                                          is AsyncData<List<ProductModel>>
+                                      ? (ref.read(myProductsProvider)
                                               as AsyncData<List<ProductModel>>)
                                           .value
                                           .length
                                       : 0)
                           ? const Icon(Icons.deselect)
-                          : const Icon(Icons.select_all),
-                      backgroundColor:
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color.fromARGB(255, 44, 214, 223)
-                              : Theme.of(context).brightness == Brightness.dark
-                                  ? const Color.fromARGB(255, 31, 115, 151)
-                                  : Theme.of(context).colorScheme.primary,
+                          : const Icon(Icons.select_all_rounded),
                     ),
                   ],
                 ),
@@ -569,25 +539,18 @@ class MyProductsScreen extends HookConsumerWidget {
                   _showAddProductOptions(context, ref);
                 },
                 label: Text('addProduct'.tr()),
-                icon: const Icon(Icons.add),
-                elevation: 4,
-                backgroundColor:
-                    Theme.of(context).brightness == Brightness.light
-                        ? const Color.fromARGB(255, 44, 214,
-                            223) // لون أزرق أكتر صفاءً للوضع النهاري (kBlue)
-                        : Theme.of(context).brightness == Brightness.dark
-                            ? const Color.fromARGB(255, 31, 115, 151)
-                            : Theme.of(context).colorScheme.primary,
+                icon: const Icon(Icons.add_rounded),
+                elevation: 2,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
               ),
-        // === تعديل AppBar علشان يحتوي على SearchBar وعداد المنتجات ===
         appBar: AppBar(
           title: isSelectionMode.value
-              ? Text('${selectedProducts.value.length} selected')
+              ? Text('${selectedProducts.value.length} محدد')
               : Text('myMedicines'.tr()),
           leading: isSelectionMode.value
               ? IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () {
                     isSelectionMode.value = false;
                     selectedProducts.value = {};
@@ -597,139 +560,119 @@ class MyProductsScreen extends HookConsumerWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
-          // إضافة SearchBar وعداد المنتجات في الـ AppBar
+          // تحسين تصميم شريط البحث والعداد
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(
-                kToolbarHeight + 50.0), // زيادة الارتفاع لاستيعاب العداد
+            preferredSize: const Size.fromHeight(kToolbarHeight + 40.0),
             child: Column(
               children: [
-                // === شريط البحث ===
+                // شريط البحث المحسن
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   child: UnifiedSearchBar(
                     focusNode: searchFocusNode,
                     onChanged: (value) {
-                      // تحديث نص البحث في الـ state
                       searchQuery.value = value;
                     },
                     onClear: () {
-                      // مسح النص وتحديث الـ state
                       searchQuery.value = '';
                     },
-                    hintText: 'ابحث عن منتج...', // <= نص تلميحي
+                    hintText: 'ابحث عن منتج...',
                   ),
                 ),
-                // === عداد المنتجات الأنيق ===
+                // العداد المحسن
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0, vertical: 8.0),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color:
-                          Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.2),
                       width: 1,
                     ),
                   ),
-                  child: Column(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          myProductsAsync.when(
-                            data: (products) {
-                              if (isSelectionMode.value) {
-                                // Show selected count in selection mode
-                                return Text(
-                                  '${selectedProducts.value.length} of ${products.length} selected',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .secondary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                );
-                              } else {
-                                // Show total count in normal mode
-                                final totalCount = products.length;
-                                final filteredCount = searchQuery.value.isEmpty
-                                    ? totalCount
-                                    : products.where((product) {
-                                        final query =
-                                            searchQuery.value.toLowerCase();
-                                        final productName =
-                                            product.name.toLowerCase();
-                                        final productCompany =
-                                            product.company?.toLowerCase() ??
-                                                '';
-                                        final productActivePrinciple = product
-                                                .activePrinciple
-                                                ?.toLowerCase() ??
-                                            '';
-                                        return productName.contains(query) ||
-                                            productCompany.contains(query) ||
-                                            productActivePrinciple
-                                                .contains(query);
-                                      }).length;
-
-                                return Text(
-                                  searchQuery.value.isEmpty
-                                      ? 'إجمالي المنتجات: $totalCount'
-                                      : 'عرض $filteredCount من $totalCount منتج',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .secondary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                );
-                              }
-                            },
-                            loading: () => Text(
-                              'جارٍ العد...', 
+                      Icon(
+                        Icons.inventory_2_rounded,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      myProductsAsync.when(
+                        data: (products) {
+                          if (isSelectionMode.value) {
+                            return Text(
+                              '${selectedProducts.value.length} من ${products.length} محدد',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
                                     color:
-                                        Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
+                                        Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                            ),
-                            error: (_, __) => Text(
-                              'خطأ في العد',
+                            );
+                          } else {
+                            final totalCount = products.length;
+                            final filteredCount = searchQuery.value.isEmpty
+                                ? totalCount
+                                : products.where((product) {
+                                    final query =
+                                        searchQuery.value.toLowerCase();
+                                    final productName =
+                                        product.name.toLowerCase();
+                                    final productCompany =
+                                        product.company?.toLowerCase() ?? '';
+                                    final productActivePrinciple = product
+                                            .activePrinciple
+                                            ?.toLowerCase() ??
+                                        '';
+                                    return productName.contains(query) ||
+                                        productCompany.contains(query) ||
+                                        productActivePrinciple.contains(query);
+                                  }).length;
+
+                            return Text(
+                              searchQuery.value.isEmpty
+                                  ? 'إجمالي المنتجات: $totalCount'
+                                  : 'عرض $filteredCount من $totalCount منتج',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            );
+                          }
+                        },
+                        loading: () => Text(
+                          'جارٍ العد...',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        error: (_, __) => Text(
+                          'خطأ في العد',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.error,
                                     fontWeight: FontWeight.w500,
                                   ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      // Show hint only in normal mode when there are products
-                     
                     ],
                   ),
                 ),
@@ -745,22 +688,17 @@ class MyProductsScreen extends HookConsumerWidget {
           },
           child: myProductsAsync.when(
             data: (products) {
-              // === فلترة المنتجات حسب نص البحث (في الاسم، الشركة، والمادة الفعالة) ===
               List<ProductModel> filteredProducts;
               if (searchQuery.value.isEmpty) {
                 filteredProducts = products;
               } else {
                 filteredProducts = products.where((product) {
-                  // تحويل النص للحروف صغيرة علشان المقارنة تكون case-insensitive
                   final query = searchQuery.value.toLowerCase();
                   final productName = product.name.toLowerCase();
-                  // تأكد إن الخواص دي موجودة في ProductModel
-                  // افتراضيًا إن عندك company و activePrinciple
                   final productCompany = product.company?.toLowerCase() ?? '';
                   final productActivePrinciple =
                       product.activePrinciple?.toLowerCase() ?? '';
 
-                  // بنشوف لو النص موجود في أي واحد من الثلاثة
                   return productName.contains(query) ||
                       productCompany.contains(query) ||
                       productActivePrinciple.contains(query);
@@ -768,7 +706,6 @@ class MyProductsScreen extends HookConsumerWidget {
               }
 
               if (filteredProducts.isEmpty) {
-                // === عرض رسالة مناسبة لو مفيش نتائج للبحث ===
                 if (searchQuery.value.isNotEmpty) {
                   return LayoutBuilder(builder: (context, constraints) {
                     return SingleChildScrollView(
@@ -781,9 +718,12 @@ class MyProductsScreen extends HookConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.search_off_outlined, // <= أيقونة مناسبة
-                                size: 60,
-                                color: Theme.of(context).colorScheme.primary,
+                                Icons.search_off_rounded,
+                                size: 64,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.6),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -802,7 +742,6 @@ class MyProductsScreen extends HookConsumerWidget {
                     );
                   });
                 } else {
-                  // === لو مفيش منتجات أصلاً ===
                   return LayoutBuilder(builder: (context, constraints) {
                     return SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -814,9 +753,12 @@ class MyProductsScreen extends HookConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.medication_outlined,
-                                size: 60,
-                                color: Theme.of(context).colorScheme.primary,
+                                Icons.medication_liquid_rounded,
+                                size: 64,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.6),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -829,7 +771,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                     ),
                               ),
                               const SizedBox(height: 24),
-                              OutlinedButton.icon(
+                              FilledButton.icon(
                                 onPressed: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
@@ -849,160 +791,45 @@ class MyProductsScreen extends HookConsumerWidget {
                 }
               }
 
-              // === عرض قائمة المنتجات المفلترة ===
+              // القائمة المحسنة مع التعديلات المطلوبة
               return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 80.0),
-                itemCount: filteredProducts.length, // <= عدد العناصر المفلترة
+                padding: const EdgeInsets.only(bottom: 80.0, top: 8.0),
+                itemCount: filteredProducts.length,
                 itemBuilder: (context, index) {
-                  final product =
-                      filteredProducts[index]; // <= استخدام المنتج المفلتر
+                  final product = filteredProducts[index];
                   final isSelected = selectedProducts.value.contains(
                       '${product.id}_${product.selectedPackage ?? ''}');
-                      
-                  return Card(
+
+                  return Container(
                     margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: isSelected
-                          ? BorderSide(
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: isSelected
+                          ? Border.all(
                               color: Theme.of(context).colorScheme.primary,
                               width: 2,
                             )
-                          : BorderSide.none,
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : null,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: GestureDetector(
-                          onTap: () {
-                            _showProductDetailDialog(context, product);
-                          },
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).colorScheme.surfaceVariant,
-                              ),
-                              child: CachedNetworkImage(
-                                imageUrl: product.imageUrl,
-                                fit: BoxFit.contain,
-                                placeholder: (context, url) => Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceVariant,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Center(
-                                    child: ImageLoadingIndicator(size: 30),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceVariant,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.error_outline,
-                                    size: 30,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          product.name,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            if (product.selectedPackage != null &&
-                                product.selectedPackage!.isNotEmpty)
-                              Directionality(
-                                textDirection: ui.TextDirection.ltr,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .secondaryContainer,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    product.selectedPackage!,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSecondaryContainer,
-                                        ),
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 4),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text:
-                                        '${product.price?.toStringAsFixed(2) ?? '0.00'} ',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  TextSpan(
-                                    text: 'EGP'.tr(),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        isThreeLine: true,
+                    child: Material(
+                      color: isSelected
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.08)
+                          : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
                         onTap: isSelectionMode.value
                             ? () {
-                                // Toggle selection
                                 final productIdWithPackage =
                                     '${product.id}_${product.selectedPackage ?? ''}';
                                 if (selectedProducts.value
@@ -1015,7 +842,6 @@ class MyProductsScreen extends HookConsumerWidget {
                                       selectedProducts.value
                                         ..add(productIdWithPackage));
                                 }
-                                // Exit selection mode if no items are selected
                                 if (selectedProducts.value.isEmpty) {
                                   isSelectionMode.value = false;
                                 }
@@ -1024,184 +850,341 @@ class MyProductsScreen extends HookConsumerWidget {
                         onLongPress: isSelectionMode.value
                             ? null
                             : () {
-                                // Enter selection mode and select this item
                                 isSelectionMode.value = true;
                                 selectedProducts.value = {
                                   '${product.id}_${product.selectedPackage ?? ''}'
                                 };
                               },
-                        trailing: isSelectionMode.value
-                            ? Checkbox(
-                                value: selectedProducts.value.contains(
-                                        '${product.id}_${product.selectedPackage ?? ''}')
-                                    ? true
-                                    : false,
-                                onChanged: (bool? value) {
-                                  final productIdWithPackage =
-                                      '${product.id}_${product.selectedPackage ?? ''}';
-                                  if (value == true) {
-                                    selectedProducts.value = Set.from(
-                                        selectedProducts.value
-                                          ..add(productIdWithPackage));
-                                  } else {
-                                    selectedProducts.value = Set.from(
-                                        selectedProducts.value
-                                          ..remove(productIdWithPackage));
-                                    // Exit selection mode if no items are selected
-                                    if (selectedProducts.value.isEmpty) {
-                                      isSelectionMode.value = false;
-                                    }
-                                  }
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              // صورة المنتج (نفس التصميم)
+                              GestureDetector(
+                                onTap: () {
+                                  _showProductDetailDialog(context, product);
                                 },
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined,
-                                        color: Colors.blue),
-                                    onPressed: () async {
-                                      final newPrice =
-                                          await _showEditPriceDialog(
-                                              context, product);
-                                      if (newPrice != null) {
-                                        try {
-                                          final userId = ref
-                                              .read(authServiceProvider)
-                                              .currentUser
-                                              ?.id;
-                                          if (userId != null) {
-                                            await ref
-                                                .read(productRepositoryProvider)
-                                                .updateProductPriceInDistributorCatalog(
-                                                  distributorId: userId,
-                                                  productId: product.id,
-                                                  package:
-                                                      product.selectedPackage ??
-                                                          '',
-                                                  newPrice: newPrice,
-                                                );
-
-                                            // The repository now handles cache invalidation,
-                                            // and the provider re-fetches automatically
-                                            // because it watches productDataLastModifiedProvider.
-
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                elevation: 0,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                backgroundColor:
-                                                    Colors.transparent,
-                                                content: AwesomeSnackbarContent(
-                                                  title: 'Success',
-                                                  message:
-                                                      'Price updated successfully',
-                                                  contentType:
-                                                      ContentType.success,
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              elevation: 0,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              content: AwesomeSnackbarContent(
-                                                title: 'Error',
-                                                message:
-                                                    'Failed to update price. Please try again.',
-                                                contentType:
-                                                    ContentType.failure,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                    tooltip: 'edit'.tr(),
-                                    splashRadius: 20,
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceVariant,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: Colors.red),
-                                    onPressed: () async {
-                                      final confirmDelete =
-                                          await _showDeleteConfirmationDialog(
-                                              context, product.name);
-                                      if (confirmDelete == true) {
-                                        try {
-                                          final userId = ref
-                                              .read(authServiceProvider)
-                                              .currentUser
-                                              ?.id;
-                                          if (userId != null) {
-                                            await ref
-                                                .read(productRepositoryProvider)
-                                                .removeProductFromDistributorCatalog(
-                                                  distributorId: userId,
-                                                  productId: product.id,
-                                                  package:
-                                                      product.selectedPackage ??
-                                                          '',
-                                                );
-
-                                            ref
-                                                .read(cachingServiceProvider)
-                                                .invalidateWithPrefix(
-                                                    'my_products_');
-                                            ref.invalidate(myProductsProvider);
-
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                elevation: 0,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                backgroundColor:
-                                                    Colors.transparent,
-                                                content: AwesomeSnackbarContent(
-                                                  title: 'Success',
-                                                  message:
-                                                      'Product deleted successfully',
-                                                  contentType:
-                                                      ContentType.success,
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              elevation: 0,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              content: AwesomeSnackbarContent(
-                                                title: 'Error',
-                                                message:
-                                                    'Failed to delete product. Please try again.',
-                                                contentType:
-                                                    ContentType.failure,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                    tooltip: 'delete'.tr(),
-                                    splashRadius: 20,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      imageUrl: product.imageUrl,
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, url) => Container(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Center(
+                                          child:
+                                              ImageLoadingIndicator(size: 24),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.medication_rounded,
+                                          size: 28,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ],
+                                ),
                               ),
+                              const SizedBox(width: 16),
+                              // معلومات المنتج مع اسم أصغر
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // اسم المنتج بحجم أصغر
+                                    Text(
+                                      product.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize:
+                                                15, // حجم أصغر من titleMedium
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (product.selectedPackage != null &&
+                                        product.selectedPackage!.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondaryContainer,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          product.selectedPackage!,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSecondaryContainer,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 6),
+                                    // السعر
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onPrimaryContainer,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // الأزرار أو Checkbox
+                              if (isSelectionMode.value)
+                                Checkbox(
+                                  value: selectedProducts.value.contains(
+                                      '${product.id}_${product.selectedPackage ?? ''}'),
+                                  onChanged: (bool? value) {
+                                    final productIdWithPackage =
+                                        '${product.id}_${product.selectedPackage ?? ''}';
+                                    if (value == true) {
+                                      selectedProducts.value = Set.from(
+                                          selectedProducts.value
+                                            ..add(productIdWithPackage));
+                                    } else {
+                                      selectedProducts.value = Set.from(
+                                          selectedProducts.value
+                                            ..remove(productIdWithPackage));
+                                      if (selectedProducts.value.isEmpty) {
+                                        isSelectionMode.value = false;
+                                      }
+                                    }
+                                  },
+                                )
+                              else
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // زر التعديل بأيقونة أصغر
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.edit_rounded,
+                                            size: 16), // أيقونة أصغر
+                                        color: Colors.blue[600],
+                                        onPressed: () async {
+                                          final newPrice =
+                                              await _showEditPriceDialog(
+                                                  context, product);
+                                          if (newPrice != null) {
+                                            try {
+                                              final userId = ref
+                                                  .read(authServiceProvider)
+                                                  .currentUser
+                                                  ?.id;
+                                              if (userId != null) {
+                                                await ref
+                                                    .read(
+                                                        productRepositoryProvider)
+                                                    .updateProductPriceInDistributorCatalog(
+                                                      distributorId: userId,
+                                                      productId: product.id,
+                                                      package: product
+                                                              .selectedPackage ??
+                                                          '',
+                                                      newPrice: newPrice,
+                                                    );
+
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    elevation: 0,
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    content:
+                                                        AwesomeSnackbarContent(
+                                                      title: 'Success',
+                                                      message:
+                                                          'Price updated successfully',
+                                                      contentType:
+                                                          ContentType.success,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  elevation: 0,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  content:
+                                                      AwesomeSnackbarContent(
+                                                    title: 'Error',
+                                                    message:
+                                                        'Failed to update price. Please try again.',
+                                                    contentType:
+                                                        ContentType.failure,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32, // حجم أصغر
+                                          minHeight: 32, // حجم أصغر
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // زر الحذف بأيقونة أصغر
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.delete_rounded,
+                                            size: 16), // أيقونة أصغر
+                                        color: Colors.red[600],
+                                        onPressed: () async {
+                                          final confirmDelete =
+                                              await _showDeleteConfirmationDialog(
+                                                  context, product.name);
+                                          if (confirmDelete == true) {
+                                            try {
+                                              final userId = ref
+                                                  .read(authServiceProvider)
+                                                  .currentUser
+                                                  ?.id;
+                                              if (userId != null) {
+                                                await ref
+                                                    .read(
+                                                        productRepositoryProvider)
+                                                    .removeProductFromDistributorCatalog(
+                                                      distributorId: userId,
+                                                      productId: product.id,
+                                                      package: product
+                                                              .selectedPackage ??
+                                                          '',
+                                                    );
+
+                                                ref
+                                                    .read(
+                                                        cachingServiceProvider)
+                                                    .invalidateWithPrefix(
+                                                        'my_products_');
+                                                ref.invalidate(
+                                                    myProductsProvider);
+
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    elevation: 0,
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    content:
+                                                        AwesomeSnackbarContent(
+                                                      title: 'Success',
+                                                      message:
+                                                          'Product deleted successfully',
+                                                      contentType:
+                                                          ContentType.success,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  elevation: 0,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  content:
+                                                      AwesomeSnackbarContent(
+                                                    title: 'Error',
+                                                    message:
+                                                        'Failed to delete product. Please try again.',
+                                                    contentType:
+                                                        ContentType.failure,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32, // حجم أصغر
+                                          minHeight: 32, // حجم أصغر
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );

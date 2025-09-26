@@ -96,7 +96,7 @@ class InvoiceService {
               data: data,
               oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
             ),
-            pw.SizedBox(height: 30),
+            pw.Spacer(), // Use a spacer to push content to the bottom
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -117,7 +117,7 @@ class InvoiceService {
                 ),
               ],
             ),
-            pw.SizedBox(height: 40),
+            pw.SizedBox(height: 20),
             pw.Center(
               child: pw.Text('شكراً لتعاملكم معنا - Thank you for your business', style: const pw.TextStyle(color: PdfColors.grey600, fontSize: 14))
             )

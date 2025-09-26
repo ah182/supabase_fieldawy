@@ -63,6 +63,16 @@ class OrderNotifier extends StateNotifier<List<OrderItemModel>> {
     state = [];
     _box.clear();
   }
+
+  void removeProductsByDistributor(String distributorName) {
+    state = state.where((item) => item.product.distributorId != distributorName).toList();
+    _saveOrder();
+  }
+
+  void removeProductsByDistributors(Set<String> distributorNames) {
+    state = state.where((item) => !distributorNames.contains(item.product.distributorId)).toList();
+    _saveOrder();
+  }
 }
 
 final orderProvider =

@@ -1,7 +1,9 @@
+import "package:collection/collection.dart";
 import "package:fieldawy_store/core/caching/caching_service.dart";
 // lib/features/distributors/presentation/screens/distributor_products_screen.dart
 
 import "dart:ui" as ui;
+
 import "package:cached_network_image/cached_network_image.dart";
 import "package:easy_localization/easy_localization.dart";
 import "package:fieldawy_store/features/distributors/domain/distributor_model.dart";
@@ -21,7 +23,7 @@ import "package:awesome_snackbar_content/awesome_snackbar_content.dart";
 import "package:fieldawy_store/features/products/application/favorites_provider.dart";
 import "package:fieldawy_store/main.dart";
 import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
-import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
+
 
 /* -------------------------------------------------------------------------- */
 /*                               DATA PROVIDERS                               */
@@ -736,57 +738,32 @@ class DistributorProductsScreen extends HookConsumerWidget {
 
               return Column(
                 children: [
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(12),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: searchQuery.value.isEmpty
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primaryContainer
-                              .withAlpha(77)
-                          : Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer
-                              .withAlpha(77),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: searchQuery.value.isEmpty
-                            ? Theme.of(context).colorScheme.primary.withAlpha(51)
-                            : Theme.of(context)
-                                .colorScheme
-                                .secondary
-                                .withAlpha(51),
-                        width: 1,
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8, top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          searchQuery.value.isEmpty
-                              ? Icons.storefront_outlined
-                              : Icons.search_outlined,
-                          size: 16,
-                          color: searchQuery.value.isEmpty
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.secondary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          searchQuery.value.isEmpty
-                              ? '   ${filteredProducts.length}   :  عدد المنتجات المتاحة    '
-                              : '  ${filteredProducts.length}  : عدد المنتجات المتاحة ${filteredProducts.length == 1 ? '' : (filteredProducts.length <= 10 ? '' : '')}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: searchQuery.value.isEmpty
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.secondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min, // Let the row be as small as its children
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'عدد المنتجات: ${filteredProducts.length}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Expanded(
@@ -908,6 +885,13 @@ class DistributorProductsScreen extends HookConsumerWidget {
 
   Widget _buildProductCard(BuildContext context, WidgetRef ref,
       ProductModel product, String searchQuery, String distributorName) {
+    final order = ref.watch(orderProvider);
+    final orderItemInCart = order.firstWhereOrNull((item) =>
+        item.product.id == product.id &&
+        item.product.distributorId == product.distributorId &&
+        item.product.selectedPackage == product.selectedPackage);
+    final isProductInCart = orderItemInCart != null;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 3,
@@ -1023,7 +1007,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withAlpha(230),
+                        color: isProductInCart
+                            ? Colors.green.withAlpha(230)
+                            : Theme.of(context).colorScheme.primary.withAlpha(230),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -1035,35 +1021,14 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       ),
                       child: IconButton(
                         padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.add, color: Colors.white),
+                        icon: Icon(isProductInCart ? Icons.check : Icons.add, color: Colors.white),
                         iconSize: 18,
                         onPressed: () {
-                          final order = ref.read(orderProvider);
-                          final isProductInCart = order.any((item) =>
-                              item.product.id == product.id &&
-                              item.product.distributorId == product.distributorId &&
-                              item.product.selectedPackage == product.selectedPackage);
-
-                          ref.read(orderProvider.notifier).addProduct(product);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isProductInCart
-                                  ? 'تم تحديث كمية ${product.name} في السلة'
-                                  : 'تمت إضافة ${product.name} إلى السلة'),
-                              duration: const Duration(seconds: 2),
-                              action: SnackBarAction(
-                                label: 'عرض السلة',
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => const OrdersScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
+                          if (isProductInCart) {
+                            ref.read(orderProvider.notifier).removeProduct(orderItemInCart);
+                          } else {
+                            ref.read(orderProvider.notifier).addProduct(product);
+                          }
                         },
                       ),
                     ),

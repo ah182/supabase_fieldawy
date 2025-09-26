@@ -111,7 +111,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
     // لو `_lastShuffledQuery == currentSearchQuery`، يفضل نستخدم نفس `_shuffledDisplayItems`
   }
 
-      @override
+  @override
   Widget build(BuildContext context) {
     final allProductsAsync = ref.watch(productsProvider);
     final selection = ref.watch(catalogSelectionControllerProvider);
@@ -161,10 +161,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
             // إضافة SearchBar وعداد المنتجات في الـ AppBar
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(
-                  kToolbarHeight + 50.0), // زيادة الارتفاع لاستيعاب العداد
+                  kToolbarHeight + 40.0), // زيادة الارتفاع لاستيعاب العداد
               child: Column(
                 children: [
-                  // === شريط البحث ===
+                  // === شريط البحث المحسن ===
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16.0, vertical: 8.0),
@@ -186,22 +186,19 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       hintText: 'ابحث عن منتج...',
                     ),
                   ),
-                  // === عداد المنتجات الأنيق ===
+                  // === عداد المنتجات المحسن ===
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16.0),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0, vertical: 6.0),
+                        horizontal: 12.0, vertical: 8.0),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Theme.of(context)
                             .colorScheme
-                            .primary
-                            .withOpacity(0.3),
+                            .outline
+                            .withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -209,11 +206,11 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.storefront_outlined,
-                          size: 16,
+                          Icons.storefront_rounded,
+                          size: 18,
                           color: Theme.of(context).colorScheme.primary,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         allProductsAsync.when(
                           data: (products) {
                             // فلترة المنتجات حسب نص البحث
@@ -227,7 +224,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                                 final productCompany =
                                     product.company?.toLowerCase() ?? '';
                                 final productActivePrinciple =
-                                    product.activePrinciple?.toLowerCase() ?? '';
+                                    product.activePrinciple?.toLowerCase() ??
+                                        '';
 
                                 return productName.contains(query) ||
                                     productCompany.contains(query) ||
@@ -256,8 +254,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                                   .bodySmall
                                   ?.copyWith(
                                     color:
-                                        Theme.of(context).colorScheme.secondary,
-                                    fontWeight: FontWeight.w700,
+                                        Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
                                   ),
                             );
                           },
@@ -267,17 +265,19 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                                 .textTheme
                                 .bodySmall
                                 ?.copyWith(
-                                  color: Theme.of(context).colorScheme.secondary,
-                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w500,
                                 ),
                           ),
                           error: (_, __) => Text(
                             'خطأ في العد',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.error,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
                         ),
                       ],
@@ -353,15 +353,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       namedArgs: {'count': validSelections.length.toString()},
                     ),
                   ),
-                  backgroundColor:
-                      Theme.of(context).brightness == Brightness.light
-                          ? const Color.fromARGB(255, 44, 214,
-                              223) // لون أزرق أكتر صفاءً للوضع النهاري (kBlue)
-                          : Theme.of(context).brightness == Brightness.dark
-                              ? const Color.fromARGB(255, 31, 115, 151)
-                              : Theme.of(context).colorScheme.primary,
-                  icon: const Icon(Icons.check),
-                  // استخدام أنماط FAB الافتراضية
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.check_rounded),
+                  elevation: 2,
                 )
               : null,
           body: allProductsAsync.when(
@@ -399,9 +394,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.search_off_outlined,
-                          size: 60,
-                          color: Theme.of(context).colorScheme.primary,
+                          Icons.search_off_rounded,
+                          size: 64,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.6),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -421,9 +419,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.inventory_2_outlined,
-                          size: 60,
-                          color: Theme.of(context).colorScheme.primary,
+                          Icons.inventory_2_rounded,
+                          size: 64,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.6),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -440,7 +441,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 90),
+                padding: const EdgeInsets.only(bottom: 90, top: 8),
                 itemCount:
                     _shuffledDisplayItems.length, // استخدم القائمة العشوائية
                 itemBuilder: (context, index) {
@@ -448,7 +449,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen> {
                       index]; // استخدم العنصر من القائمة العشوائية
                   final ProductModel product = item['product'];
                   final String package = item['package'];
-                  return _ProductCatalogItem(product: product, package: package);
+                  return _ProductCatalogItem(
+                      product: product, package: package);
                 },
               );
             },
@@ -498,7 +500,6 @@ class _ProductCatalogItem extends HookConsumerWidget {
     final selection = ref.watch(catalogSelectionControllerProvider);
     final uniqueKey = '${product.id}_$package';
     final isSelected = selection.prices.containsKey(uniqueKey);
-    // final currentPrice = selection.prices[uniqueKey] ?? 0.0; // <= مش محتاجه كمان
 
     final priceController = useTextEditingController();
     final focusNode = useMemoized(() => FocusNode(), const []);
@@ -516,178 +517,232 @@ class _ProductCatalogItem extends HookConsumerWidget {
     useEffect(() {
       return () {
         focusNode.dispose();
-        // debounceTimer.value?.cancel(); // <= شيلته كمان
       };
     }, const []);
 
-    // === استخدام Card من Material ===
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    // === استخدام Container بدلاً من Card مع التصميم المحسن ===
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+            : Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: isSelected
+            ? Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                width: 1.5,
+              )
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      color: isSelected
-          ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
-          : null, // استخدام لون البطاقة الافتراضي إن مش محدد
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // === تحسين الصورة مع إمكانية المعاينة ===
-            GestureDetector(
-              onTap: () {
-                // استدعاء الدالة كـ static من الـ StatefulWidget
-                AddFromCatalogScreen._showProductDetailDialog(
-                    context, product, package);
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // === تحسين الصورة مع إمكانية المعاينة ===
+              GestureDetector(
+                onTap: () {
+                  // استدعاء الدالة كـ static من الـ StatefulWidget
+                  AddFromCatalogScreen._showProductDetailDialog(
+                      context, product, package);
+                },
                 child: Container(
-                  width: 50,
-                  height: 50,
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  child: CachedNetworkImage(
-                    imageUrl: product.imageUrl,
-                    fit: BoxFit.contain, // علشان الصورة تبان كلها
-                    placeholder: (context, url) =>
-                        const Center(child: ImageLoadingIndicator(size: 30)),
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.error_outline, size: 30),
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: product.imageUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: ImageLoadingIndicator(size: 24),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.medication_rounded,
+                          size: 28,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // === تحسين اسم المنتج ===
-                  Text(
-                    product.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // === تحسين الباكدج ===
-                  if (package.isNotEmpty)
-                    Directionality(
-                      textDirection: ui.TextDirection.ltr,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          package,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSecondaryContainer,
-                                  ),
-                        ),
-                      ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // === تحسين اسم المنتج بحجم أصغر ===
+                    Text(
+                      product.name,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 40,
-                    child: TextField(
-                      controller: priceController,
-                      focusNode: focusNode,
-                      enabled: true,
-                      onChanged: (value) {
-                        final controller = ref
-                            .read(catalogSelectionControllerProvider.notifier);
-
-                        if (value.trim().isEmpty) {
-                          // لو الحقل اتفضى → اشيل السعر من الاختيارات
-                          controller.removePrice(product.id, package);
-                        } else {
-                          // لو في قيمة → ابعتها
-                          controller.setPrice(product.id, package, value);
-                        }
-                      },
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'price'.tr(),
-                        prefixText: ' EGP ',
-                        prefixStyle: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        filled: true,
-                        fillColor: isSelected
-                            ? Theme.of(context)
+                    const SizedBox(height: 4),
+                    // === تحسين الباكدج ===
+                    if (package.isNotEmpty)
+                      Directionality(
+                        textDirection: ui.TextDirection.ltr,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
                                 .colorScheme
-                                .surfaceVariant
-                                .withOpacity(0.7)
-                            : Theme.of(context)
-                                .colorScheme
-                                .surfaceVariant
-                                .withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context)
-                                    .dividerColor
-                                    .withOpacity(0.5),
-                            width: isSelected ? 2.0 : 1.0,
+                                .secondaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            package,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondaryContainer,
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
+                      ),
+                    const SizedBox(height: 8),
+                    // === حقل السعر المحسن ===
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: priceController,
+                        focusNode: focusNode,
+                        enabled: true,
+                        onChanged: (value) {
+                          final controller = ref.read(
+                              catalogSelectionControllerProvider.notifier);
+
+                          if (value.trim().isEmpty) {
+                            // لو الحقل اتفضى → اشيل السعر من الاختيارات
+                            controller.removePrice(product.id, package);
+                          } else {
+                            // لو في قيمة → ابعتها
+                            controller.setPrice(product.id, package, value);
+                          }
+                        },
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'price'.tr(),
+                          prefixText: 'EGP ',
+                          prefixStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.primary,
-                            width: 2,
+                            fontSize: 12,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceVariant
+                              .withOpacity(0.5),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outline
+                                  .withOpacity(0.3),
+                              width: 1.0,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isSelected
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.5)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withOpacity(0.3),
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          hintText: isSelected ? null : 'حدد المنتج',
+                          hintStyle: TextStyle(
+                            color: Theme.of(context).disabledColor,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 12,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
                         ),
-                        hintText: isSelected ? null : '  حدد المنتج ',
-                        hintStyle: TextStyle(
-                          color: Theme.of(context).disabledColor,
-                          fontStyle: FontStyle.italic,
-                        ),
+                        style: TextStyle(fontSize: 14),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            // === تحسين الزر ===
-            // الـ Switch هياخد لونه من الـ Theme اللي حددناه فوق، فمش محتاجين نحدد ألوانه يدويًا
-            Switch.adaptive(
-              value: isSelected,
-              onChanged: (value) {
-                ref
-                    .read(catalogSelectionControllerProvider.notifier)
-                    .toggleProduct(product.id, package, priceController.text);
+              const SizedBox(width: 12),
+              // === تحسين الـ Switch ===
+              Switch.adaptive(
+                value: isSelected,
+                onChanged: (value) {
+                  ref
+                      .read(catalogSelectionControllerProvider.notifier)
+                      .toggleProduct(product.id, package, priceController.text);
 
-                // لو المنتج بقى محدد، نركز على حقل السعر
-                if (value) {
-                  // استخدام Future.microtask علشان نتأكد إن الحقل اتشالّك قبل ما نركز عليه
-                  Future.microtask(() {
-                    focusNode.requestFocus();
-                  });
-                } else {
-                  // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
-                  priceController.clear();
-                  focusNode.unfocus();
-                }
-              },
-            ),
-          ],
+                  // لو المنتج بقى محدد، نركز على حقل السعر
+                  if (value) {
+                    // استخدام Future.microtask علشان نتأكد إن الحقل اتشالّك قبل ما نركز عليه
+                    Future.microtask(() {
+                      focusNode.requestFocus();
+                    });
+                  } else {
+                    // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
+                    priceController.clear();
+                    focusNode.unfocus();
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

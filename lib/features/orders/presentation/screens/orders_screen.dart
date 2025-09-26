@@ -1,49 +1,160 @@
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:fieldawy_store/features/orders/presentation/screens/distributor_order_details_screen.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
+import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
 
-class OrdersScreen extends ConsumerWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final order = ref.watch(orderProvider);
-    final theme = Theme.of(context);
-    final distributorsAsync = ref.watch(distributorsProvider);
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
 
-    return MainScaffold(
-      selectedIndex: 2, // Index for Orders screen
-      appBar: AppBar(
-        title: Text(
-          'سلة الطلبات',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  bool _isSelectionMode = false;
+  final Set<String> _selectedDistributors = {};
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSelection(String distributorName) {
+    setState(() {
+      if (_selectedDistributors.contains(distributorName)) {
+        _selectedDistributors.remove(distributorName);
+      } else {
+        _selectedDistributors.add(distributorName);
+      }
+      if (_selectedDistributors.isEmpty) {
+        _isSelectionMode = false;
+      }
+    });
+  }
+
+  void _startSelectionMode(String distributorName) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedDistributors.add(distributorName);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedDistributors.clear();
+    });
+  }
+
+  AppBar _buildAppBar(BuildContext context, WidgetRef ref, bool hasOrders) {
+    final theme = Theme.of(context);
+    if (_isSelectionMode) {
+      return AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _exitSelectionMode,
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
+        title: Text('${_selectedDistributors.length} selected'),
         actions: [
-          if (order.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              child: IconButton(
-                icon: Icon(
-                  Icons.delete_sweep_outlined,
-                  color: theme.colorScheme.error,
-                  size: 22,
-                ),
-                tooltip: 'مسح كل الطلبات',
-                onPressed: () {
-                  showDialog(
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext dialogContext) {
+                  return AlertDialog(
+                    title: const Text('تأكيد الحذف'),
+                    content: Text(
+                        'هل أنت متأكد من حذف ${_selectedDistributors.length} طلب؟'),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text('إلغاء'),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                      TextButton(
+                        child: Text('حذف',
+                            style: TextStyle(color: theme.colorScheme.error)),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          ref
+                              .read(orderProvider.notifier)
+                              .removeProductsByDistributors(
+                                  _selectedDistributors);
+                          final snackBar = SnackBar(
+                            elevation: 0,
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.transparent,
+                            content: AwesomeSnackbarContent(
+                              title: 'نجاح'.tr(),
+                              message: 'تم حذف الطلبات المحددة بنجاح.',
+                              contentType: ContentType.success,
+                            ),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                          _exitSelectionMode();
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      );
+    }
+
+    return AppBar(
+      title: Text(
+        'Orders list ',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: true,
+      actions: [
+        if (hasOrders)
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: IconButton(
+              icon: Icon(
+                Icons.delete_sweep_outlined,
+                color: theme.colorScheme.error,
+                size: 22,
+              ),
+              tooltip: 'مسح كل الطلبات',
+              onPressed: () {
+                showDialog(
                     context: context,
                     builder: (BuildContext dialogContext) {
                       return AlertDialog(
@@ -54,7 +165,7 @@ class OrdersScreen extends ConsumerWidget {
                           TextButton(
                             child: const Text('إلغاء'),
                             onPressed: () {
-                              Navigator.of(dialogContext).pop(); // Dismiss the dialog
+                              Navigator.of(dialogContext).pop();
                             },
                           ),
                           TextButton(
@@ -62,365 +173,459 @@ class OrdersScreen extends ConsumerWidget {
                                 style: TextStyle(
                                     color: Theme.of(context).colorScheme.error)),
                             onPressed: () {
-                              Navigator.of(dialogContext).pop(); // Dismiss the dialog
+                              Navigator.of(dialogContext).pop();
                               ref.read(orderProvider.notifier).clearOrder();
+                              final snackBar = SnackBar(
+                                elevation: 0,
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.transparent,
+                                content: AwesomeSnackbarContent(
+                                  title: 'نجاح'.tr(),
+                                  message: 'تم مسح كل الطلبات بنجاح.',
+                                  contentType: ContentType.success,
+                                ),
+                              );
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(snackBar);
                             },
                           ),
                         ],
                       );
-                    },
-                  );
-                },
-              ),
+                    });
+              },
             ),
-        ],
+          ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: UnifiedSearchBar(
+            controller: _searchController,
+            hintText: 'ابحث عن طلبات موزع...',
+          ),
+        ),
       ),
-      body: distributorsAsync.when(
-        data: (distributorsData) {
-          final groupedByDistributor = <String, List<OrderItemModel>>{};
-          for (final item in order) {
-            final distributorName = item.product.distributorId ?? 'غير محدد';
-            if (groupedByDistributor.containsKey(distributorName)) {
-              groupedByDistributor[distributorName]!.add(item);
-            } else {
-              groupedByDistributor[distributorName] = [item];
-            }
-          }
+    );
+  }
 
-          final distributors = groupedByDistributor.keys.toList();
+  @override
+  Widget build(BuildContext context) {
+    final order = ref.watch(orderProvider);
+    final theme = Theme.of(context);
+    final distributorsAsync = ref.watch(distributorsProvider);
 
-          return Column(
-            children: [
-              Expanded(
-                child: order.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.colorScheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              child: Icon(
-                                Icons.shopping_cart_outlined,
-                                size: 64,
-                                color:
-                                    theme.colorScheme.primary.withOpacity(0.7),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              'سلة الطلبات فارغة',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'أضف المنتجات من شاشة الموزعين',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: distributors.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final distributorName = distributors[index];
-                          final products =
-                              groupedByDistributor[distributorName]!;
-                          final totalQuantity = products.fold<int>(
-                              0, (sum, item) => sum + item.quantity);
+    return GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: MainScaffold(
+          selectedIndex: 2, // Index for Orders screen
+          appBar: _buildAppBar(context, ref, order.isNotEmpty),
+          body: distributorsAsync.when(
+            data: (distributorsData) {
+              final groupedByDistributor = <String, List<OrderItemModel>>{};
+              for (final item in order) {
+                final distributorName =
+                    item.product.distributorId ?? 'غير محدد';
+                if (groupedByDistributor.containsKey(distributorName)) {
+                  groupedByDistributor[distributorName]!.add(item);
+                } else {
+                  groupedByDistributor[distributorName] = [item];
+                }
+              }
 
-                          final distributor = distributorsData.firstWhere(
-                            (d) => d.displayName == distributorName,
-                            orElse: () => distributorsData.first,
-                          );
-                          final role = distributor.distributorType;
+              final distributors = groupedByDistributor.keys.toList();
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.shadow
-                                      .withOpacity(0.06),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+              final filteredDistributors = _searchQuery.isEmpty
+                  ? distributors
+                  : distributors
+                      .where((d) =>
+                          d.toLowerCase().contains(_searchQuery.toLowerCase()))
+                      .toList();
+
+              if (order.isEmpty && _isSelectionMode) {
+                WidgetsBinding.instance
+                    .addPostFrameCallback((_) => _exitSelectionMode());
+              }
+
+              return Column(
+                children: [
+                  Expanded(
+                    child: order.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  child: Icon(
+                                    Icons.shopping_cart_outlined,
+                                    size: 64,
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  'سلة الطلبات فارغة',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'أضف المنتجات من شاشة الموزعين',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
-                              border: Border.all(
-                                color:
-                                    theme.colorScheme.outline.withOpacity(0.12),
-                                width: 1,
-                              ),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          DistributorOrderDetailsScreen(
-                                        distributorName: distributorName,
-                                        products: products,
+                          )
+                        : filteredDistributors.isEmpty
+                            ? Center(
+                                child: Text(
+                                    'لا توجد نتائج للبحث عن "$_searchQuery"'),
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.all(16.0),
+                                itemCount: filteredDistributors.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final distributorName =
+                                      filteredDistributors[index];
+                                  final products =
+                                      groupedByDistributor[distributorName]!;
+                                  final totalQuantity = products.fold<int>(
+                                      0, (sum, item) => sum + item.quantity);
+
+                                  final distributor =
+                                      distributorsData.firstWhere(
+                                    (d) => d.displayName == distributorName,
+                                    orElse: () => distributorsData.first,
+                                  );
+                                  final role = distributor.distributorType;
+                                  final isSelected = _selectedDistributors
+                                      .contains(distributorName);
+
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                              .withOpacity(0.2)
+                                          : theme.colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.outline
+                                                .withOpacity(0.12),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onLongPress: () {
+                                          if (!_isSelectionMode) {
+                                            _startSelectionMode(
+                                                distributorName);
+                                          }
+                                        },
+                                        onTap: () {
+                                          if (_isSelectionMode) {
+                                            _toggleSelection(distributorName);
+                                          } else {
+                                            showModalBottomSheet(
+                                              context: context,
+                                              builder: (ctx) => Wrap(
+                                                children: <Widget>[
+                                                  ListTile(
+                                                    leading: const Icon(Icons
+                                                        .receipt_long_outlined),
+                                                    title: const Text(
+                                                        'عرض تفاصيل الطلب الحالي'),
+                                                    onTap: () {
+                                                      Navigator.of(ctx).pop();
+                                                      Navigator.of(context)
+                                                          .push(
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              DistributorOrderDetailsScreen(
+                                                            distributorName:
+                                                                distributorName,
+                                                            products: products,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  ListTile(
+                                                    leading: const Icon(
+                                                        Icons.store_outlined),
+                                                    title: const Text(
+                                                        'الانتقال إلى صفحة الموزع'),
+                                                    onTap: () {
+                                                      Navigator.of(ctx).pop();
+                                                      Navigator.of(context)
+                                                          .push(
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              DistributorProductsScreen(
+                                                            distributor:
+                                                                distributor,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  ListTile(
+                                                    leading: Icon(
+                                                        Icons
+                                                            .delete_forever_outlined,
+                                                        color: theme
+                                                            .colorScheme.error),
+                                                    title: Text(
+                                                        'بدء طلب جديد (حذف الحالي)',
+                                                        style: TextStyle(
+                                                            color: theme
+                                                                .colorScheme
+                                                                .error)),
+                                                    onTap: () {
+                                                      Navigator.of(ctx).pop();
+                                                      ref
+                                                          .read(orderProvider
+                                                              .notifier)
+                                                          .removeProductsByDistributor(
+                                                              distributorName);
+                                                      Navigator.of(context)
+                                                          .push(
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              DistributorProductsScreen(
+                                                            distributor:
+                                                                distributor,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16.0),
+                                          child: Row(
+                                            children: [
+                                              Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  Container(
+                                                    width: 56,
+                                                    height: 56,
+                                                    decoration: BoxDecoration(
+                                                      color: theme.colorScheme
+                                                          .primaryContainer,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                      child: distributor
+                                                                      .photoURL !=
+                                                                  null &&
+                                                              distributor
+                                                                  .photoURL!
+                                                                  .isNotEmpty
+                                                          ? CachedNetworkImage(
+                                                              imageUrl:
+                                                                  distributor
+                                                                      .photoURL!,
+                                                              fit: BoxFit.cover,
+                                                              placeholder:
+                                                                  (context,
+                                                                          url) =>
+                                                                      Container(
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .primaryContainer,
+                                                              ),
+                                                              errorWidget:
+                                                                  (context, url,
+                                                                          error) =>
+                                                                      Icon(
+                                                                Icons.person,
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .onPrimaryContainer,
+                                                                size: 28,
+                                                              ),
+                                                            )
+                                                          : Icon(
+                                                              Icons.person,
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .onPrimaryContainer,
+                                                              size: 28,
+                                                            ),
+                                                    ),
+                                                  ),
+                                                  if (isSelected)
+                                                    Container(
+                                                      width: 56,
+                                                      height: 56,
+                                                      decoration: BoxDecoration(
+                                                        color: theme
+                                                            .colorScheme.primary
+                                                            .withOpacity(0.5),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Icon(Icons.check,
+                                                          color: Colors.white),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      distributorName,
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: theme.colorScheme
+                                                            .onSurface,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Row(
+                                                      children: [
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 8,
+                                                                  vertical: 4),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: theme
+                                                                .colorScheme
+                                                                .secondaryContainer,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .inventory_2_outlined,
+                                                                size: 14,
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .onSecondaryContainer,
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 4),
+                                                              Text(
+                                                                '$totalQuantity Products',
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                  color: theme
+                                                                      .colorScheme
+                                                                      .onSecondaryContainer,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    if (role != null)
+                                                      Row(
+                                                        children: [
+                                                          Icon(
+                                                            role == 'company'
+                                                                ? Icons.business
+                                                                : Icons
+                                                                    .person_outline,
+                                                            size: 15,
+                                                            color: theme
+                                                                .colorScheme
+                                                                .primary,
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 4),
+                                                          Text(
+                                                            role == 'company'
+                                                                ? 'Distribution compny '
+                                                                : 'Individual distributor ',
+                                                            style: TextStyle(
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .primary,
+                                                              fontSize: 13,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 16,
+                                                color: theme.colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   );
                                 },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Row(
-                                    children: [
-                                      // Avatar
-                                      Container(
-                                        width: 56,
-                                        height: 56,
-                                        decoration: BoxDecoration(
-                                          color: theme
-                                              .colorScheme.primaryContainer,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          child: distributor.photoURL != null &&
-                                                  distributor
-                                                      .photoURL!.isNotEmpty
-                                              ? CachedNetworkImage(
-                                                  imageUrl:
-                                                      distributor.photoURL!,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) =>
-                                                      Container(
-                                                    color: theme.colorScheme
-                                                        .primaryContainer,
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: theme.colorScheme
-                                                          .onPrimaryContainer,
-                                                      size: 28,
-                                                    ),
-                                                  ),
-                                                  errorWidget:
-                                                      (context, url, error) =>
-                                                          Container(
-                                                    color: theme.colorScheme
-                                                        .primaryContainer,
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: theme.colorScheme
-                                                          .onPrimaryContainer,
-                                                      size: 28,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Icon(
-                                                  Icons.person,
-                                                  color: theme.colorScheme
-                                                      .onPrimaryContainer,
-                                                  size: 28,
-                                                ),
-                                        ),
-                                      ),
-
-                                      const SizedBox(width: 16),
-
-                                      // Info section
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Distributor name
-                                            Text(
-                                              distributorName,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
-                                                color:
-                                                    theme.colorScheme.onSurface,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-
-                                            const SizedBox(height: 8),
-
-                                            // Products count
-                                            Row(
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: theme.colorScheme
-                                                        .secondaryContainer,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons
-                                                            .inventory_2_outlined,
-                                                        size: 14,
-                                                        color: theme.colorScheme
-                                                            .onSecondaryContainer,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '$totalQuantity Products',
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color: theme
-                                                              .colorScheme
-                                                              .onSecondaryContainer,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-
-                                            const SizedBox(height: 6),
-
-                                            // Distributor type
-                                            if (role != null)
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    role == 'company'
-                                                        ? Icons.business
-                                                        : Icons.person_outline,
-                                                    size: 15,
-                                                    color: theme
-                                                        .colorScheme.primary,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    role == 'company'
-                                                        ? 'Distribution compny '
-                                                        : 'Individual distributor ',
-                                                    style: TextStyle(
-                                                      color: theme
-                                                          .colorScheme.primary,
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // Arrow
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-
-              // Bottom action button
-              if (order.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
-                  child: SafeArea(
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('تم إرسال الطلب بنجاح!'),
-                              backgroundColor: theme.colorScheme.primary,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          );
-                          ref.read(orderProvider.notifier).clearOrder();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.send_outlined,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'إتمام وإرسال الطلب',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
-            ],
-          );
+                ],
+              );
         },
         loading: () => Center(
           child: CircularProgressIndicator(
@@ -457,6 +662,6 @@ class OrdersScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
+        ));
   }
 }

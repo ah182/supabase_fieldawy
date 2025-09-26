@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -18,12 +20,15 @@ class InvoicePreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasMultiplePages = imageBytesList.length > 1;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('معاينة الفاتورة'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save_alt_outlined),
+            icon: Icon(Icons.save_alt_outlined,
+                color: Theme.of(context).colorScheme.secondary),
             onPressed: () async {
               try {
                 int savedCount = 0;
@@ -33,25 +38,38 @@ class InvoicePreviewScreen extends StatelessWidget {
                   savedCount++;
                 }
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text('تم حفظ $savedCount صفحة بنجاح في معرض الصور'),
+                  final snackBar = SnackBar(
+                    elevation: 0,
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.transparent,
+                    content: AwesomeSnackbarContent(
+                      title: 'نجاح'.tr(),
+                      message: 'تم حفظ $savedCount صفحة بنجاح في معرض الصور',
+                      contentType: ContentType.success,
                     ),
                   );
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e')),
+                  final snackBar = SnackBar(
+                    elevation: 0,
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.transparent,
+                    content: AwesomeSnackbarContent(
+                      title: 'خطأ'.tr(),
+                      message: 'حدث خطأ أثناء الحفظ: $e',
+                      contentType: ContentType.failure,
+                    ),
                   );
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 }
               }
             },
           ),
           if (whatsappNumber != null && whatsappNumber!.isNotEmpty)
             IconButton(
-              icon: const Icon(FontAwesomeIcons.whatsapp),
+              icon: const Icon(FontAwesomeIcons.whatsapp, color: Colors.green),
               onPressed: () async {
                 if (context.mounted) {
                   showDialog(
@@ -60,8 +78,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                       return AlertDialog(
                         title: const Text('إرسال عبر واتساب'),
                         content: const Text(
-                          'سيتم فتح واتساب مع رسالة مكتوبة مسبقًا.\n'
-                          'بعد الفتح قم بإرفاق صورة الفاتورة يدويًا قبل الإرسال (يمكنك إرفاق أول صفحة).',
+                          'سيتم فتح واتساب الموزع.\nقم بإرفاق صورة الفاتورة يدويًا قبل الإرسال.',
                         ),
                         actions: [
                           TextButton(
@@ -82,22 +99,36 @@ class InvoicePreviewScreen extends StatelessWidget {
                                   await launchUrl(Uri.parse(whatsappUrl));
                                 } else {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('تعذر فتح واتساب.'),
+                                    final snackBar = SnackBar(
+                                      elevation: 0,
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.transparent,
+                                      content: AwesomeSnackbarContent(
+                                        title: 'خطأ'.tr(),
+                                        message:
+                                            'تعذر فتح واتساب. يرجى التأكد من تثبيت التطبيق.',
+                                        contentType: ContentType.failure,
                                       ),
                                     );
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(snackBar);
                                   }
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'حدث خطأ أثناء إرسال الرسالة: $e',
-                                      ),
+                                  final snackBar = SnackBar(
+                                    elevation: 0,
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.transparent,
+                                    content: AwesomeSnackbarContent(
+                                      title: 'خطأ'.tr(),
+                                      message:
+                                          'حدث خطأ أثناء محاولة فتح واتساب: $e',
+                                      contentType: ContentType.failure,
                                     ),
                                   );
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(snackBar);
                                 }
                               }
                             },
@@ -111,15 +142,13 @@ class InvoicePreviewScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: imageBytesList.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Column(
-              children: [
-                if (imageBytesList.length > 1)
-                  InteractiveViewer(
+      body: hasMultiplePages
+          ? ListView.builder(
+              itemCount: imageBytesList.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: InteractiveViewer(
                     minScale: 0.5,
                     maxScale: 5,
                     child: Image.memory(
@@ -128,11 +157,20 @@ class InvoicePreviewScreen extends StatelessWidget {
                       fit: BoxFit.contain,
                     ),
                   ),
-              ],
+                );
+              },
+            )
+          : Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 5,
+                child: Image.memory(
+                  imageBytesList.first,
+                  width: MediaQuery.of(context).size.width,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-          );
-        },
-      ),
     );
   }
 }

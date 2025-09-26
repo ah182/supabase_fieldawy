@@ -4,7 +4,7 @@ import 'package:fieldawy_store/core/theme/app_theme.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:awesome_dialog/awesome_dialog.dart';
+
 
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 
@@ -61,32 +61,47 @@ class SettingsScreen extends ConsumerWidget {
                   clipBehavior: Clip.antiAlias,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
-                  child: ListTile(
-                    leading: Icon(Icons.language,
-                        color: Theme.of(context).colorScheme.primary),
-                    title: Text(context.locale.languageCode == 'ar'
-                        ? 'العربية'
-                        : 'English'),
-                    trailing: const Icon(Icons.arrow_forward_ios,
-                        size: 16, color: Colors.grey),
-                    onTap: () {
-                      AwesomeDialog(
-                        context: context,
-                        dialogType: DialogType.question,
-                        animType: AnimType.scale,
-                        title: 'languageChangeConfirmationTitle'.tr(),
-                        desc: 'languageChangeConfirmationMessage'.tr(namedArgs: {'language': context.locale.languageCode == 'ar' ? 'English' : 'العربية'}),
-                        btnCancelOnPress: () {},
-                        btnOkOnPress: () async {
-                          // Change language directly after confirmation
-                          if (context.locale.languageCode == 'ar') {
-                            await context.setLocale(const Locale('en'));
-                          } else {
-                            await context.setLocale(const Locale('ar'));
-                          }
-                        },
-                      ).show();
+                  child: PopupMenuButton<String>(
+                    offset: const Offset(0, 60),
+                    onSelected: (String localeCode) async {
+                      await context.setLocale(Locale(localeCode));
                     },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'ar',
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('العربية'),
+                            if (context.locale.languageCode == 'ar')
+                              Icon(Icons.check,
+                                  color: Theme.of(context).colorScheme.primary),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'en',
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('English'),
+                            if (context.locale.languageCode == 'en')
+                              Icon(Icons.check,
+                                  color: Theme.of(context).colorScheme.primary),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: ListTile(
+                      leading: Icon(Icons.language,
+                          color: Theme.of(context).colorScheme.primary),
+                      title: Text(context.locale.languageCode == 'ar'
+                          ? 'العربية'
+                          : 'English'),
+                      trailing:
+                          const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

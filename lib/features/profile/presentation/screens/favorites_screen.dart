@@ -520,7 +520,7 @@ class FavoritesScreen extends HookConsumerWidget {
         searchFocusNode.unfocus();
       },
       child: MainScaffold(
-        selectedIndex: 2,
+        selectedIndex: 3,
         body: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(favoriteProductsProvider);
@@ -554,6 +554,14 @@ class FavoritesScreen extends HookConsumerWidget {
               ),
               switch (favoritesAsync) {
                 AsyncData(:final value) => () {
+                    // While revalidating, if there's no data, show a loader.
+                    // This prevents the "No Favorites" message from flashing.
+                    if (favoritesAsync.isLoading && value.isEmpty) {
+                      return const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
                     final filteredFavorites = debouncedSearchQuery.value.isEmpty
                         ? value
                         : value.where((product) {
