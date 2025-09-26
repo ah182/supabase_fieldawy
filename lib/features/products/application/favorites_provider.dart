@@ -60,16 +60,16 @@ final favoritesProvider = StateNotifierProvider<FavoritesNotifier, List<String>>
 
 final favoriteProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final favoriteIds = ref.watch(favoritesProvider);
-  final allProductsAsync = ref.watch(internalAllProductsProvider);
+  
+  if (favoriteIds.isEmpty) {
+    return [];
+  }
 
-  return allProductsAsync.when(
-    data: (products) {
-      return products.where((product) {
-        final key = '${product.id}_${product.distributorId}_${product.selectedPackage}';
-        return favoriteIds.contains(key);
-      }).toList();
-    },
-    loading: () => [],
-    error: (err, stack) => throw err,
-  );
+  // Use the correct, existing provider name: internalAllProductsProvider
+  final allProducts = await ref.watch(internalAllProductsProvider.future);
+
+  return allProducts.where((product) {
+    final key = '${product.id}_${product.distributorId}_${product.selectedPackage}';
+    return favoriteIds.contains(key);
+  }).toList();
 });

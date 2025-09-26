@@ -21,31 +21,35 @@ final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
   final supabase = Supabase.instance.client;
   final cache = ref.watch(cachingServiceProvider);
-  const cacheKey = 'distributors_edge'; // Use a new cache key
+  const cacheKey = 'distributors_edge';
 
-  // 1. Try to get data from local cache first
+  // Stale-While-Revalidate Logic
+  // 1. Start the network fetch immediately, but don't wait for it.
+  final networkFuture = supabase.functions.invoke('get-distributors').then((response) {
+    if (response.data == null) {
+      // If the network fails, we can choose to simply log it and rely on the old cache
+      // or throw an error to be caught elsewhere.
+      print('Failed to fetch fresh distributors');
+      // Silently fail to avoid breaking the UI if stale data is already shown
+      return <DistributorModel>[]; 
+    }
+    final List<dynamic> data = response.data;
+    // Update the cache for the next visit
+    cache.set(cacheKey, data, duration: const Duration(minutes: 5));
+    // Parse and return the fresh data
+    return data.map((d) => DistributorModel.fromMap(d as Map<String, dynamic>)).toList();
+  });
+
+  // 2. Check the local cache for stale data.
   final cached = cache.get<List<dynamic>>(cacheKey);
   if (cached != null) {
-    // If cache hit, parse and return
+    // If we have stale data, return it immediately.
+    // The networkFuture will continue in the background and update the cache for the next visit.
     return cached.map((data) => DistributorModel.fromMap(data as Map<String, dynamic>)).toList();
   }
 
-  // 2. If cache miss, invoke the Edge Function
-  final response = await supabase.functions.invoke('get-distributors');
-
-  if (response.data == null) {
-    throw 'Failed to fetch distributors from Edge Function.';
-  }
-
-  // 3. Parse the response data
-  final List<dynamic> data = response.data;
-  final result = data.map((d) => DistributorModel.fromMap(d as Map<String, dynamic>)).toList();
-
-  // 4. Save the raw data to the local cache for next time
-  // Using a shorter TTL as the server-side cache is the primary source of truth
-  cache.set(cacheKey, data, duration: const Duration(minutes: 5));
-
-  return result;
+  // 3. If there's no cached data, we have to wait for the network to complete.
+  return await networkFuture;
 });
 
 class DistributorsScreen extends HookConsumerWidget {

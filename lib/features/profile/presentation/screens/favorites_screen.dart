@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/application/favorites_provider.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
@@ -508,6 +509,11 @@ class FavoritesScreen extends HookConsumerWidget {
     final searchFocusNode = useFocusNode();
     final debouncedSearchQuery = useState<String>('');
 
+    // Get user role to determine the correct index for the Profile tab
+    final userRole = ref.watch(userDataProvider).asData?.value?.role ?? '';
+    final isDoctor = userRole == 'doctor';
+    final profileIndex = isDoctor ? 3 : 2;
+
     useEffect(() {
       final timer = Timer(const Duration(milliseconds: 500), () {
         debouncedSearchQuery.value = searchQuery.value;
@@ -520,7 +526,7 @@ class FavoritesScreen extends HookConsumerWidget {
         searchFocusNode.unfocus();
       },
       child: MainScaffold(
-        selectedIndex: 3,
+        selectedIndex: profileIndex, // Use the dynamic index here
         body: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(favoriteProductsProvider);

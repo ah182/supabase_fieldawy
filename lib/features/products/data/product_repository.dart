@@ -76,19 +76,14 @@ class ProductRepository {
     return orderedProducts;
   }
 
-  /// جلب كل المنتجات من الكتالوج الرئيسي
   Future<List<ProductModel>> getAllProducts() async {
     const cacheKey = 'all_products_catalog';
-
-    // 1. Try to get from local cache first (stale data is okay for a moment)
-    final cachedData = _cache.get<List<ProductModel>>(cacheKey);
+    final cachedData = _cache.get<List<dynamic>>(cacheKey);
     if (cachedData != null) {
-      // Stale-While-Revalidate: Return cached data immediately, then refresh in the background.
-      _refreshAllProductsInBackground(); 
-      return cachedData;
+      _refreshAllProductsInBackground();
+      // Manually cast from List<dynamic> to List<ProductModel>
+      return cachedData.map((item) => item as ProductModel).toList();
     }
-
-    // 2. If cache is empty, fetch from the server and wait for the result.
     return _fetchAllProductsFromServer();
   }
 
@@ -127,19 +122,14 @@ class ProductRepository {
     });
   }
 
-  /// Get all products from all distributors using a stale-while-revalidate strategy.
   Future<List<ProductModel>> getAllDistributorProducts() async {
     const cacheKey = 'all_distributor_products';
-
-    // 1. Try to get from local cache first
-    final cachedData = _cache.get<List<ProductModel>>(cacheKey);
+    final cachedData = _cache.get<List<dynamic>>(cacheKey);
     if (cachedData != null) {
-      // Return cached data immediately and refresh in the background.
       _refreshAllDistributorProductsInBackground();
-      return cachedData;
+      // Manually cast from List<dynamic> to List<ProductModel>
+      return cachedData.map((item) => item as ProductModel).toList();
     }
-
-    // 2. If cache is empty, fetch from the server and wait.
     return _fetchAllDistributorProductsFromServer();
   }
 
@@ -468,9 +458,10 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final timestampedCacheKey =
       '$cacheKey-${lastModified.microsecondsSinceEpoch}-$userId';
 
-  final cachedProducts = cache.get<List<ProductModel>>(timestampedCacheKey);
-  if (cachedProducts != null) {
-    return cachedProducts;
+  final cachedData = cache.get<List<dynamic>>(timestampedCacheKey);
+  if (cachedData != null) {
+    // Manually cast from List<dynamic> to List<ProductModel>
+    return cachedData.map((item) => item as ProductModel).toList();
   }
 
   final rows = await supabase
