@@ -35,64 +35,33 @@ final distributorProductsProvider =
         (ref, distributorId) async {
   final supabase = Supabase.instance.client;
   final cache = ref.watch(cachingServiceProvider);
-
-  // Create a cache key that includes the distributor ID and last modified timestamp
   final lastModified = ref.watch(productDataLastModifiedProvider);
-  final cacheKey = 'distributor_products_${distributorId}_$lastModified';
+  final cacheKey = 'distributor_products_edge_${distributorId}_$lastModified';
 
-  // Try to get data from cache first
-  final cachedProducts = cache.get<List<ProductModel>>(cacheKey);
-  if (cachedProducts != null) {
-    return cachedProducts;
+  // 1. Check local cache
+  final cached = cache.get<List<dynamic>>(cacheKey);
+  if (cached != null) {
+    return cached.map((data) => ProductModel.fromMap(data as Map<String, dynamic>)).toList();
   }
 
-  try {
-    // Fetch distributor products
-    final rows = await supabase
-        .from('distributor_products')
-        .select()
-        .eq('distributor_id', distributorId);
+  // 2. Invoke Edge Function with the distributorId
+  final response = await supabase.functions.invoke(
+    'get-distributor-products',
+    body: {'distributorId': distributorId},
+  );
 
-    if (rows.isEmpty) return [];
-
-    final productIds =
-        rows.map((row) => row['product_id'] as String).toSet().toList();
-
-    // Fetch product details
-    final productDocs =
-        await supabase.from('products').select().filter('id', 'in', productIds);
-
-    final productsMap = {
-      for (var doc in productDocs)
-        doc['id'].toString(): ProductModel.fromMap(doc)
-    };
-
-    final products = rows
-        .map((row) {
-          final productDetails = productsMap[row['product_id']];
-          if (productDetails != null) {
-            return productDetails.copyWith(
-              price: (row['price'] as num?)?.toDouble(),
-              selectedPackage: row['package'] as String?,
-              distributorId: row['distributor_name'] as String?,
-            );
-          }
-          return null;
-        })
-        .whereType<ProductModel>()
-        .toList();
-
-    // Cache the results for 10 minutes (TTL)
-    cache.set(cacheKey, products, duration: const Duration(minutes: 10));
-
-    return products;
-  } catch (e) {
-    // If fetching fails, return cached data if available
-    if (cachedProducts != null) {
-      return cachedProducts;
-    }
-    rethrow;
+  if (response.data == null) {
+    throw 'Failed to fetch products for distributor $distributorId';
   }
+
+  // 3. Parse and return
+  final List<dynamic> data = response.data;
+  final products = data.map((d) => ProductModel.fromMap(d as Map<String, dynamic>)).toList();
+
+  // 4. Save raw data to local cache
+  cache.set(cacheKey, data, duration: const Duration(minutes: 5));
+
+  return products;
 });
 
 /* -------------------------------------------------------------------------- */

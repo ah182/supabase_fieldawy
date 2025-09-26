@@ -88,8 +88,8 @@ class ProfileScreen extends ConsumerWidget {
                             alignment: Alignment.bottomRight,
                             children: [
                               Container(
-                                width: 100,
-                                height: 100,
+                                width: 80,
+                                height: 80,
                                 decoration: BoxDecoration(
                                   color: colorScheme.surfaceVariant,
                                   borderRadius: BorderRadius.circular(20),
@@ -134,31 +134,7 @@ class ProfileScreen extends ConsumerWidget {
                                           color: colorScheme.onSurfaceVariant,
                                         ),
                                 ),
-                              ),
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: colorScheme.surface,
-                                    width: 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
                                 ),
-                                child: const Icon(
-                                  Icons.edit_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 20),

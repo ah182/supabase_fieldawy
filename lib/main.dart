@@ -14,6 +14,8 @@ import 'features/authentication/data/storage_service.dart';
 import 'services/app_state_manager.dart';
 import 'core/supabase/supabase_init.dart';
 
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -36,8 +38,11 @@ Future<void> main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(OrderItemModelAdapter());
+  Hive.registerAdapter(CacheEntryAdapter()); // Register the new adapter
+  Hive.registerAdapter(UserModelAdapter()); // Register the UserModel adapter
   await Hive.openBox<OrderItemModel>('orders');
   await Hive.openBox<String>('favorites');
+  await Hive.openBox('api_cache'); // Open the new cache box
 
   runApp(const ConnectivityHandler());
 }

@@ -1,21 +1,43 @@
-// لم نعد بحاجة إلى cloud_firestore
-// import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'user_model.g.dart';
+
+@HiveType(typeId: 3)
 class UserModel {
-  // 1. تغيير uid إلى id ليتوافق مع Supabase
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String? displayName;
+
+  @HiveField(2)
   final String? email;
-  final String? photoUrl; // تم تغيير photoURL إلى photoUrl (camelCase)
+
+  @HiveField(3)
+  final String? photoUrl;
+
+  @HiveField(4)
   final String role;
+
+  @HiveField(5)
   final String accountStatus;
+
+  @HiveField(6)
   final bool isProfileComplete;
 
-  // 2. إضافة الحقول الجديدة لتكون متوافقة مع UserRepository
+  @HiveField(7)
   final String? documentUrl;
+
+  @HiveField(8)
   final String? whatsappNumber;
+
+  @HiveField(9)
   final List<String>? governorates;
+
+  @HiveField(10)
   final List<String>? centers;
+
+  @HiveField(11)
   final DateTime createdAt;
 
   UserModel({

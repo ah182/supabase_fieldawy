@@ -79,91 +79,100 @@ class ProductRepository {
   /// جلب كل المنتجات من الكتالوج الرئيسي
   Future<List<ProductModel>> getAllProducts() async {
     const cacheKey = 'all_products_catalog';
-    
-    // Try to get from cache first
+
+    // 1. Try to get from local cache first (stale data is okay for a moment)
     final cachedData = _cache.get<List<ProductModel>>(cacheKey);
     if (cachedData != null) {
+      // Stale-While-Revalidate: Return cached data immediately, then refresh in the background.
+      _refreshAllProductsInBackground(); 
       return cachedData;
     }
 
+    // 2. If cache is empty, fetch from the server and wait for the result.
+    return _fetchAllProductsFromServer();
+  }
+
+  /// Fetches all products from the server-side cached Edge Function and updates the local cache.
+  Future<List<ProductModel>> _fetchAllProductsFromServer() async {
+    const cacheKey = 'all_products_catalog';
     try {
-      final rows = await _supabase
-          .from('products')
-          .select()
-          .order('created_at', ascending: false);
+      // Invoke the server-side cached Edge Function
+      final response = await _supabase.functions.invoke('get-products');
       
-      final products = rows.map((row) => ProductModel.fromMap(row)).toList();
+      if (response.data == null) {
+        throw Exception('Function get-products returned null data');
+      }
+
+      final List<dynamic> responseData = response.data;
+      final products = responseData.map((row) => ProductModel.fromMap(row as Map<String, dynamic>)).toList();
       
-      // Cache for 1 year (catalog products don't change frequently)
+      // Cache for a long duration locally (e.g., 365 days). The server cache will handle frequent updates.
       _cache.set(cacheKey, products, duration: const Duration(days: 365));
       
       return products;
     } catch (e) {
-      // If fetching fails, return cached data if available
-      if (cachedData != null) {
-        return cachedData;
-      }
-      rethrow;
+      // If fetching fails, return an empty list or handle the error as needed.
+      print('Error fetching products from server: $e');
+      return []; // Or rethrow
     }
   }
 
-  /// Get all products from all distributors
+  /// A non-blocking method to refresh the products in the background.
+  void _refreshAllProductsInBackground() {
+    // No need to await this. It runs in the background.
+    _fetchAllProductsFromServer().catchError((e) {
+      // Log the error but don't interrupt the user.
+      print('Background product refresh failed: $e');
+      return <ProductModel>[]; // Return a typed empty list.
+    });
+  }
+
+  /// Get all products from all distributors using a stale-while-revalidate strategy.
   Future<List<ProductModel>> getAllDistributorProducts() async {
     const cacheKey = 'all_distributor_products';
-    
-    // Try to get from cache first
+
+    // 1. Try to get from local cache first
     final cachedData = _cache.get<List<ProductModel>>(cacheKey);
     if (cachedData != null) {
+      // Return cached data immediately and refresh in the background.
+      _refreshAllDistributorProductsInBackground();
       return cachedData;
     }
 
+    // 2. If cache is empty, fetch from the server and wait.
+    return _fetchAllDistributorProductsFromServer();
+  }
+
+  /// Fetches all distributor products from the server and updates the local cache.
+  Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
+    const cacheKey = 'all_distributor_products';
     try {
-      // Fetch all distributor products
-      final rows = await _supabase
-          .from('distributor_products')
-          .select()
-          .order('added_at', ascending: false);
+      // Invoke the server-side cached Edge Function
+      final response = await _supabase.functions.invoke('get-all-distributor-products');
 
-      if (rows.isEmpty) return [];
+      if (response.data == null) {
+        throw Exception('Function get-all-distributor-products returned null data');
+      }
 
-      // Get unique product IDs
-      final productIds = rows.map((row) => row['product_id'] as String).toSet().toList();
+      final List<dynamic> responseData = response.data;
+      final products = responseData.map((row) => ProductModel.fromMap(row as Map<String, dynamic>)).toList();
 
-      // Fetch product details
-      final productDocs = productIds.isNotEmpty
-          ? await _supabase.from('products').select().inFilter('id', productIds)
-          : [];
-
-      final productsMap = {
-        for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(doc)
-      };
-
-      final products = rows
-          .map((row) {
-            final productDetails = productsMap[row['product_id']];
-            if (productDetails != null) {
-              return productDetails.copyWith(
-                price: (row['price'] as num?)?.toDouble(),
-                selectedPackage: row['package'] as String?,
-                distributorId: row['distributor_name'] as String?,
-              );
-            }
-            return null;
-          })
-          .whereType<ProductModel>()
-          .toList();
-
-      // Cache for 10 minutes
-      _cache.set(cacheKey, products, duration: const Duration(minutes: 20));
+      // Cache for a shorter duration locally, as this data might change more often.
+      _cache.set(cacheKey, products, duration: const Duration(minutes: 30));
       
       return products;
     } catch (e) {
-      // If fetching fails, return cached data if available
-      if (cachedData != null) {
-        return cachedData;
-      }
-      rethrow;
+      print('Error fetching all distributor products from server: $e');
+      return []; // Or rethrow
     }
+  }
+
+  /// A non-blocking method to refresh the distributor products in the background.
+  void _refreshAllDistributorProductsInBackground() {
+    _fetchAllDistributorProductsFromServer().catchError((e) {
+      print('Background distributor product refresh failed: $e');
+      return <ProductModel>[]; // Return a typed empty list.
+    });
   }
 
   /// إضافة منتجات متعددة لكتالوج الموزع

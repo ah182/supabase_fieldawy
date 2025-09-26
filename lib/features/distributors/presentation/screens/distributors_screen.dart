@@ -21,44 +21,30 @@ final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
   final supabase = Supabase.instance.client;
   final cache = ref.watch(cachingServiceProvider);
-  const cacheKey = 'distributors';
+  const cacheKey = 'distributors_edge'; // Use a new cache key
 
-  final cached = cache.get<List<DistributorModel>>(cacheKey);
-  if (cached != null) return cached;
-
-  final users = await supabase
-      .from('users')
-      .select()
-      .or('role.eq.distributor,role.eq.company') // الشرط الأول OR
-      .or('account_status.eq.approved,account_status.eq.pending_review') // الشرط الثاني OR
-      .eq('is_profile_complete', true); // شرط AND
-
-  if (users.isEmpty) return [];
-
-  final distributorIds = users.map((u) => u['id'] as String).toList();
-
-  final inList = '(${distributorIds.map((e) => '"$e"').join(',')})';
-  final productRows = await supabase
-      .from('distributor_products')
-      .select('distributor_id')
-      .filter('distributor_id', 'in', inList);
-
-  final counts = <String, int>{};
-  for (final row in productRows) {
-    final id = row['distributor_id'] as String;
-    counts[id] = (counts[id] ?? 0) + 1;
+  // 1. Try to get data from local cache first
+  final cached = cache.get<List<dynamic>>(cacheKey);
+  if (cached != null) {
+    // If cache hit, parse and return
+    return cached.map((data) => DistributorModel.fromMap(data as Map<String, dynamic>)).toList();
   }
 
-  final result = users.map((u) {
-    final id = u['id'] as String;
-    return DistributorModel.fromMap({
-      ...u,
-      'productCount': counts[id] ?? 0,
-      'distributorType': u['role'],
-    });
-  }).toList();
+  // 2. If cache miss, invoke the Edge Function
+  final response = await supabase.functions.invoke('get-distributors');
 
-  cache.set(cacheKey, result);
+  if (response.data == null) {
+    throw 'Failed to fetch distributors from Edge Function.';
+  }
+
+  // 3. Parse the response data
+  final List<dynamic> data = response.data;
+  final result = data.map((d) => DistributorModel.fromMap(d as Map<String, dynamic>)).toList();
+
+  // 4. Save the raw data to the local cache for next time
+  // Using a shorter TTL as the server-side cache is the primary source of truth
+  cache.set(cacheKey, data, duration: const Duration(minutes: 5));
+
   return result;
 });
 

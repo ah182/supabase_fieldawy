@@ -2,6 +2,7 @@
     "Codegeex.SidebarUI.LanguagePreference": "English",
     "Codegeex.RepoIndex": true,
     "cmake.ignoreCMakeListsMissing": true,
-    "editor.inlineSuggest.enabled": false
+    "editor.inlineSuggest.enabled": false,
+    "deno.enable": true
 
 }
