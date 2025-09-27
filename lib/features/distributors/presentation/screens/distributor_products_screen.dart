@@ -41,7 +41,7 @@ final distributorProductsProvider =
   // 1. Check local cache
   final cached = cache.get<List<dynamic>>(cacheKey);
   if (cached != null) {
-    return cached.map((data) => ProductModel.fromMap(data as Map<String, dynamic>)).toList();
+    return cached.map((data) => ProductModel.fromMap(Map<String, dynamic>.from(data))).toList();
   }
 
   // 2. Invoke Edge Function with the distributorId
@@ -56,10 +56,10 @@ final distributorProductsProvider =
 
   // 3. Parse and return
   final List<dynamic> data = response.data;
-  final products = data.map((d) => ProductModel.fromMap(d as Map<String, dynamic>)).toList();
+  final products = data.map((d) => ProductModel.fromMap(Map<String, dynamic>.from(d))).toList();
 
   // 4. Save raw data to local cache
-  cache.set(cacheKey, data, duration: const Duration(minutes: 5));
+  cache.set(cacheKey, data, duration: const Duration(minutes: 30));
 
   return products;
 });

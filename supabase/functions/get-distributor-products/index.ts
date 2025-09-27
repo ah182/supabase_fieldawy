@@ -60,8 +60,8 @@ serve(async (req) => {
         return {
           ...productDetails,
           price: row.price,
-          selectedPackage: row.package,
-          distributorId: row.distributor_name,
+          selected_package: row.package,
+          distributor_id: row.distributor_name,
         };
       })
       .filter((p) => p !== null);
@@ -69,7 +69,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(products), {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=600, s-maxage=600",
+        "Cache-Control": "public, max-age=1800, s-maxage=1800",
         "Access-Control-Allow-Origin": "*",
       },
     });

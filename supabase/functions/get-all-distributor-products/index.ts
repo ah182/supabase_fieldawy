@@ -76,7 +76,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(products), {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=600, s-maxage=600", // Cache for 10 minutes
+        "Cache-Control": "public, max-age=1800, s-maxage=1800", // Cache for 30 minutes
         "Access-Control-Allow-Origin": "*",
       },
     });

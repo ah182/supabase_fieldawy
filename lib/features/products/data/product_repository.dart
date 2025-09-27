@@ -91,7 +91,6 @@ class ProductRepository {
   Future<List<ProductModel>> _fetchAllProductsFromServer() async {
     const cacheKey = 'all_products_catalog';
     try {
-      // Invoke the server-side cached Edge Function
       final response = await _supabase.functions.invoke('get-products');
       
       if (response.data == null) {
@@ -99,7 +98,7 @@ class ProductRepository {
       }
 
       final List<dynamic> responseData = response.data;
-      final products = responseData.map((row) => ProductModel.fromMap(row as Map<String, dynamic>)).toList();
+      final products = responseData.map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row))).toList();
       
       // Cache for a long duration locally (e.g., 365 days). The server cache will handle frequent updates.
       _cache.set(cacheKey, products, duration: const Duration(days: 365));
@@ -137,7 +136,6 @@ class ProductRepository {
   Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
     const cacheKey = 'all_distributor_products';
     try {
-      // Invoke the server-side cached Edge Function
       final response = await _supabase.functions.invoke('get-all-distributor-products');
 
       if (response.data == null) {
@@ -145,7 +143,7 @@ class ProductRepository {
       }
 
       final List<dynamic> responseData = response.data;
-      final products = responseData.map((row) => ProductModel.fromMap(row as Map<String, dynamic>)).toList();
+      final products = responseData.map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row))).toList();
 
       // Cache for a shorter duration locally, as this data might change more often.
       _cache.set(cacheKey, products, duration: const Duration(minutes: 30));
@@ -423,7 +421,7 @@ final internalAllProductsProvider =
       await supabase.from('products').select().inFilter('id', productIds);
 
   final productsMap = {
-    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(doc)
+    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
   final products = rows
@@ -481,7 +479,7 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
       await supabase.from('products').select().inFilter('id', productIds);
 
   final productsMap = {
-    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(doc)
+    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
   final products = rows

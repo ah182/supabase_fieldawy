@@ -35,9 +35,10 @@ final distributorsProvider =
     }
     final List<dynamic> data = response.data;
     // Update the cache for the next visit
-    cache.set(cacheKey, data, duration: const Duration(minutes: 5));
+    cache.set(cacheKey, data, duration: const Duration(minutes: 30));
     // Parse and return the fresh data
-    return data.map((d) => DistributorModel.fromMap(d as Map<String, dynamic>)).toList();
+    final result = data.map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d))).toList();
+    return result;
   });
 
   // 2. Check the local cache for stale data.
@@ -45,7 +46,7 @@ final distributorsProvider =
   if (cached != null) {
     // If we have stale data, return it immediately.
     // The networkFuture will continue in the background and update the cache for the next visit.
-    return cached.map((data) => DistributorModel.fromMap(data as Map<String, dynamic>)).toList();
+    return cached.map((data) => DistributorModel.fromMap(Map<String, dynamic>.from(data))).toList();
   }
 
   // 3. If there's no cached data, we have to wait for the network to complete.
