@@ -83,19 +83,24 @@ class ProfileScreen extends ConsumerWidget {
                       constraints: const BoxConstraints(maxWidth: 500),
                       child: Column(
                         children: [
-                          // --- User Info Header محسن ---
+                          // --- User Info Header مع صورة دائرية ---
                           Stack(
                             alignment: Alignment.bottomRight,
                             children: [
+                              // صورة البروفايل الدائرية
                               Container(
-                                width: 80,
-                                height: 80,
+                                width: 100,
+                                height: 100,
                                 decoration: BoxDecoration(
                                   color: colorScheme.surfaceVariant,
-                                  borderRadius: BorderRadius.circular(20),
+                                  shape: BoxShape.circle, // دائرية
+                                  border: Border.all(
+                                    color: colorScheme.outline.withOpacity(0.2),
+                                    width: 2,
+                                  ),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
+                                child: ClipOval(
+                                  // قص دائري
                                   child: userModel.photoUrl != null &&
                                           userModel.photoUrl!.isNotEmpty
                                       ? CachedNetworkImage(
@@ -105,8 +110,7 @@ class ProfileScreen extends ConsumerWidget {
                                               Container(
                                             decoration: BoxDecoration(
                                               color: colorScheme.surfaceVariant,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
+                                              shape: BoxShape.circle,
                                             ),
                                             child: const Center(
                                               child: ImageLoadingIndicator(
@@ -117,8 +121,7 @@ class ProfileScreen extends ConsumerWidget {
                                               Container(
                                             decoration: BoxDecoration(
                                               color: colorScheme.surfaceVariant,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
+                                              shape: BoxShape.circle,
                                             ),
                                             child: Icon(
                                               Icons.person_rounded,
@@ -134,7 +137,46 @@ class ProfileScreen extends ConsumerWidget {
                                           color: colorScheme.onSurfaceVariant,
                                         ),
                                 ),
+                              ),
+                              // زر التعديل
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => EditProfileScreen(
+                                            userModel: userModel),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary,
+                                      shape: BoxShape.circle, // دائري أيضاً
+                                      border: Border.all(
+                                        color: colorScheme.surface,
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
                                 ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),

@@ -1,28 +1,23 @@
+import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/products/application/favorites_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
-import 'package:fieldawy_store/widgets/product_card.dart';
+import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
 import 'package:fieldawy_store/main.dart';
+import 'package:fieldawy_store/widgets/product_card.dart';
+import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
-// ignore: unnecessary_import
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:fieldawy_store/features/products/domain/product_model.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:fieldawy_store/widgets/shimmer_loader.dart';
-// ignore: unused_import
-import 'dart:math';
-import 'dart:ui' as ui;
-import 'dart:async';
 
 import '../../application/user_data_provider.dart';
-import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
-import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
-import 'package:fieldawy_store/features/products/application/favorites_provider.dart';
-// ignore: duplicate_import
-import 'package:fieldawy_store/features/products/data/product_repository.dart';
 
 final allDistributorProductsForSearchProvider =
     FutureProvider<List<ProductModel>>((ref) async {
@@ -30,13 +25,110 @@ final allDistributorProductsForSearchProvider =
   return repository.getAllDistributorProducts();
 });
 
-class HomeScreen extends HookConsumerWidget {
+class _TabInfo {
+  const _TabInfo(this.icon, this.text);
+  final IconData icon;
+  final String text;
+}
+
+final _tabsInfo = [
+  _TabInfo(Icons.apps_rounded, 'Home'),
+  _TabInfo(Icons.trending_up_rounded, 'Price Action'),
+  _TabInfo(Icons.schedule_rounded, 'Expire Soon'),
+  _TabInfo(Icons.more_horiz_rounded, 'More'),
+];
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  // دالة مساعدة لحساب نقاط الأولوية في البحث
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TickerProviderStateMixin {
+  late final TabController _tabController;
+  final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
+  final _scrollController = ScrollController();
+
+  String _searchQuery = '';
+  String _debouncedSearchQuery = '';
+  bool _isRefreshButtonEnabled = true;
+  int _refreshButtonCountdown = 0;
+  Timer? _debounce;
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabsInfo.length, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        HapticFeedback.lightImpact();
+      }
+    });
+
+    _scrollController.addListener(() {
+      if (!_scrollController.hasClients) return;
+      final threshold = _scrollController.position.maxScrollExtent - 200;
+      final state = ref.read(paginatedProductsProvider);
+
+      if (_scrollController.position.pixels >= threshold &&
+          !state.isLoading &&
+          state.hasMore) {
+        ref.read(paginatedProductsProvider.notifier).fetchNextPage();
+      }
+    });
+
+    _searchController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _debouncedSearchQuery = _searchController.text;
+          });
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    _focusNode.dispose();
+    _scrollController.dispose();
+    _debounce?.cancel();
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRefreshCountdown() {
+    setState(() {
+      _isRefreshButtonEnabled = false;
+      _refreshButtonCountdown = 30;
+    });
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_refreshButtonCountdown > 0) {
+        if (mounted) {
+          setState(() {
+            _refreshButtonCountdown--;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isRefreshButtonEnabled = true;
+          });
+        }
+        timer.cancel();
+      }
+    });
+  }
+
   int _calculateSearchScore(ProductModel product, String query) {
     int score = 0;
-
     final productName = product.name.toLowerCase();
     final activePrinciple = (product.activePrinciple ?? '').toLowerCase();
     final distributorName = (product.distributorId ?? '').toLowerCase();
@@ -44,17 +136,12 @@ class HomeScreen extends HookConsumerWidget {
     final packageSize = (product.selectedPackage ?? '').toLowerCase();
     final description = (product.description ?? '').toLowerCase();
 
-    // نقاط عالية للمطابقات المهمة
     if (productName.contains(query)) score += 10;
     if (activePrinciple.contains(query)) score += 8;
     if (distributorName.contains(query)) score += 6;
-
-    // نقاط متوسطة للمطابقات الثانوية
     if (company.contains(query)) score += 4;
     if (packageSize.contains(query)) score += 2;
     if (description.contains(query)) score += 2;
-
-    // نقاط إضافية للمطابقة في بداية النص
     if (productName.startsWith(query)) score += 5;
     if (activePrinciple.startsWith(query)) score += 3;
     if (distributorName.startsWith(query)) score += 3;
@@ -62,7 +149,6 @@ class HomeScreen extends HookConsumerWidget {
     return score;
   }
 
-  // دالة لإظهار ديالوج تفاصيل المنتج مع أنيميشن احترافي
   void _showProductDetailDialog(
       BuildContext context, WidgetRef ref, ProductModel product) {
     showGeneralDialog(
@@ -97,7 +183,6 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-// بناء ديالوج تفاصيل المنتج - مع دعم الثيم الداكن والفاتح
   Widget _buildProductDetailDialog(
       BuildContext context, WidgetRef ref, ProductModel product) {
     final size = MediaQuery.of(context).size;
@@ -105,10 +190,8 @@ class HomeScreen extends HookConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // دالة لتصحيح ترتيب نص العبوة للغة العربية
     String formatPackageText(String package) {
       final currentLocale = Localizations.localeOf(context).languageCode;
-
       if (currentLocale == 'ar' &&
           package.toLowerCase().contains(' ml') &&
           package.toLowerCase().contains('vial')) {
@@ -123,7 +206,6 @@ class HomeScreen extends HookConsumerWidget {
           final container = parts.firstWhere(
               (part) => part.toLowerCase().contains('vial'),
               orElse: () => '');
-
           if (number.isNotEmpty && unit.isNotEmpty && container.isNotEmpty) {
             return '$number$unit $container';
           }
@@ -131,26 +213,6 @@ class HomeScreen extends HookConsumerWidget {
       }
       return package;
     }
-
-    // ألوان حسب الثيم
-    // ignore: unused_local_variable
-    final backgroundGradient = isDark
-        ? LinearGradient(
-            colors: const [
-              Color(0xFF1E1E2E),
-              Color(0xFF2A2A3A),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-        : LinearGradient(
-            colors: const [
-              Color(0xFFE3F2FD),
-              Color(0xFFF8FDFF),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          );
 
     final containerColor = isDark
         ? Colors.grey.shade800.withOpacity(0.5)
@@ -206,7 +268,6 @@ class HomeScreen extends HookConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // === Header مع badge الموزع ===
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -220,7 +281,6 @@ class HomeScreen extends HookConsumerWidget {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      // Badge اسم الموزع
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
@@ -246,10 +306,7 @@ class HomeScreen extends HookConsumerWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
-                  // === اسم الشركة ===
                   if (product.company != null && product.company!.isNotEmpty)
                     Text(
                       product.company!,
@@ -258,10 +315,7 @@ class HomeScreen extends HookConsumerWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
                   const SizedBox(height: 8),
-
-                  // === اسم المنتج ===
                   Text(
                     product.name,
                     style: theme.textTheme.headlineMedium?.copyWith(
@@ -270,10 +324,7 @@ class HomeScreen extends HookConsumerWidget {
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-
                   const SizedBox(height: 6),
-
-                  // === المادة الفعالة ===
                   if (product.activePrinciple != null &&
                       product.activePrinciple!.isNotEmpty)
                     Text(
@@ -282,10 +333,7 @@ class HomeScreen extends HookConsumerWidget {
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
-
                   const SizedBox(height: 16),
-
-                  // === السعر مع أيقونة القلب ===
                   Row(
                     children: [
                       Directionality(
@@ -348,10 +396,7 @@ class HomeScreen extends HookConsumerWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // === صورة المنتج ===
                   Center(
                     child: RepaintBoundary(
                       child: Container(
@@ -365,7 +410,6 @@ class HomeScreen extends HookConsumerWidget {
                         child: CachedNetworkImage(
                           imageUrl: product.imageUrl,
                           fit: BoxFit.contain,
-                          // تخفيف الحمل عند عرض الصورة كبيرة في الديالوج
                           memCacheWidth: 800,
                           memCacheHeight: 800,
                           placeholder: (context, url) => const Center(
@@ -380,10 +424,7 @@ class HomeScreen extends HookConsumerWidget {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // === وصف المنتج ===
                   Text(
                     'Active principle',
                     style: theme.textTheme.titleLarge?.copyWith(
@@ -392,9 +433,7 @@ class HomeScreen extends HookConsumerWidget {
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   RichText(
                     text: TextSpan(
                       children: [
@@ -415,10 +454,7 @@ class HomeScreen extends HookConsumerWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // === حجم العبوة مُصغر بدون كلمة Size ===
                   if (product.selectedPackage != null &&
                       product.selectedPackage!.isNotEmpty)
                     Align(
@@ -460,10 +496,7 @@ class HomeScreen extends HookConsumerWidget {
                         ),
                       ),
                     ),
-
                   const SizedBox(height: 30),
-
-                  // === رسالة التطبيق - مُكبرة ===
                   Center(
                     child: Container(
                       padding: const EdgeInsets.all(16),
@@ -578,531 +611,550 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-    @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  @override
+  Widget build(BuildContext context) {
     final paginatedState = ref.watch(paginatedProductsProvider);
     final products = paginatedState.products;
-
-    final searchQuery = useState<String>('');
-    final searchController = useTextEditingController();
-    final focusNode = useFocusNode();
-    final debouncedSearchQuery = useState<String>('');
-    final scrollController = useScrollController();
-    final isRefreshButtonEnabled = useState<bool>(true);
-    final refreshButtonCountdown = useState<int>(0);
-
-    final query = debouncedSearchQuery.value.toLowerCase().trim();
     final allDistributorProductsAsync =
         ref.watch(allDistributorProductsForSearchProvider);
-    final isLoading = allDistributorProductsAsync.isLoading;
-    final prevIsLoading = useState(isLoading);
+    final query = _debouncedSearchQuery.toLowerCase().trim();
 
-    useEffect(() {
-      if (prevIsLoading.value && !isLoading && query.isNotEmpty) {
-        // Loading has just finished, let's give focus back to search bar.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (focusNode.hasPrimaryFocus == false) {
-              focusNode.requestFocus();
-            }
-          });
-        });
-      }
-      prevIsLoading.value = isLoading;
-      return null;
-    }, [isLoading, focusNode, query]);
+    final allProductsForSearch =
+        allDistributorProductsAsync.asData?.value ?? [];
+    final List<ProductModel> productsToFilter =
+        query.isNotEmpty ? allProductsForSearch : products;
 
-    // Throttle/Lock عند الاقتراب من نهاية القائمة
-    useEffect(() {
-      bool isFetching = false;
+    final filteredProducts = () {
+      if (query.isEmpty) return productsToFilter;
 
-      void listener() {
-        if (!scrollController.hasClients) return;
-        final threshold = scrollController.position.maxScrollExtent - 200;
+      final list = productsToFilter.where((product) {
+        final productName = product.name.toLowerCase();
+        final distributorName = (product.distributorId ?? '').toLowerCase();
+        final activePrinciple = (product.activePrinciple ?? '').toLowerCase();
+        final packageSize = (product.selectedPackage ?? '').toLowerCase();
+        final company = (product.company ?? '').toLowerCase();
+        final description = (product.description ?? '').toLowerCase();
+        final action = (product.action ?? '').toLowerCase();
 
-        final state = ref.read(paginatedProductsProvider);
+        return productName.contains(query) ||
+            activePrinciple.contains(query) ||
+            distributorName.contains(query) ||
+            company.contains(query) ||
+            packageSize.contains(query) ||
+            description.contains(query) ||
+            action.contains(query);
+      }).toList();
 
-        if (scrollController.position.pixels >= threshold &&
-            !isFetching &&
-            state.hasMore &&
-            !state.isLoading) {
-          isFetching = true;
-          ref
-              .read(paginatedProductsProvider.notifier)
-              .fetchNextPage()
-              .whenComplete(() {
-            isFetching = false;
-          });
-        }
-      }
-
-      scrollController.addListener(listener);
-      return () => scrollController.removeListener(listener);
-    }, [scrollController, ref]);
-
-    // Countdown timer for refresh button
-    useEffect(() {
-      if (!isRefreshButtonEnabled.value && refreshButtonCountdown.value > 0) {
-        final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          refreshButtonCountdown.value--;
-          if (refreshButtonCountdown.value <= 0) {
-            isRefreshButtonEnabled.value = true;
-            timer.cancel();
-          }
-        });
-        return timer.cancel;
-      }
-      return () {};
-    }, [isRefreshButtonEnabled.value, refreshButtonCountdown.value]);
-
-    useEffect(() {
-      final timer = Timer(const Duration(milliseconds: 500), () {
-        debouncedSearchQuery.value = searchQuery.value;
+      list.sort((a, b) {
+        final scoreA = _calculateSearchScore(a, query);
+        final scoreB = _calculateSearchScore(b, query);
+        return scoreB.compareTo(scoreA);
       });
-      return timer.cancel;
-    }, [searchQuery.value]);
 
-    final sliverAppBar = SliverAppBar(
-      leading: IconButton(
-        icon: const Icon(Icons.menu),
-        onPressed: () => ZoomDrawer.of(context)!.toggle(),
-      ),
-      title: Text('homeScreen'.tr()),
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      forceElevated: false,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      pinned: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          color: isRefreshButtonEnabled.value
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-          onPressed: isRefreshButtonEnabled.value
-              ? () {
-                  ref.read(paginatedProductsProvider.notifier).refresh();
-                  isRefreshButtonEnabled.value = false;
-                  refreshButtonCountdown.value = 30;
-                }
-              : null,
-        ),
-        Consumer(
-          builder: (context, ref, child) {
-            final userDataAsync = ref.watch(userDataProvider);
-            return userDataAsync.when(
-              data: (user) {
-                if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18.0)
-                        .add(const EdgeInsets.only(top: 4.0)),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const ProfileScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.surface,
-                          child: ClipOval(
-                            child: CachedNetworkImage(
-                              imageUrl: user.photoUrl!,
-                              width: 29,
-                              height: 29,
-                              fit: BoxFit.contain,
-                              placeholder: (context, url) => Container(
-                                width: 29,
-                                height: 29,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.person,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.person,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          ),
+      return list;
+    }();
+
+    Widget homeTabContent = RefreshIndicator(
+      onRefresh: () => ref.read(paginatedProductsProvider.notifier).refresh(),
+      child: () {
+        if (products.isEmpty && !paginatedState.hasMore && query.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('لا توجد منتجات متاحة حاليًا.'),
+              ],
+            ),
+          );
+        }
+
+        if (paginatedState.isLoading && products.isEmpty) {
+          return GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+              childAspectRatio: 0.75,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) => const ProductCardShimmer(),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          );
+        }
+
+        if (query.isNotEmpty && allDistributorProductsAsync.isLoading) {
+          return GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+              childAspectRatio: 0.75,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) => const ProductCardShimmer(),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          );
+        }
+
+        if (filteredProducts.isEmpty && query.isNotEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.search_off_outlined,
+                    size: 60, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text('لا توجد نتائج للبحث عن "$_debouncedSearchQuery"'),
+              ],
+            ),
+          );
+        }
+
+        return CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverPadding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8.0,
+                  mainAxisSpacing: 8.0,
+                  childAspectRatio: 0.75,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final product = filteredProducts[index];
+                    return RepaintBoundary(
+                      child: _KeepAlive(
+                        child: ProductCard(
+                          product: product,
+                          searchQuery: _debouncedSearchQuery,
+                          onTap: () {
+                            _showProductDetailDialog(context, ref, product);
+                          },
                         ),
                       ),
-                    ),
-                  );
-                } else {
-                  return const SizedBox.shrink();
-                }
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (error, stack) => const SizedBox.shrink(),
-            );
-          },
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight + 15.0),
-        child: Column(
-          children: [
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(30.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: searchController,
-                  focusNode: focusNode,
-                  onChanged: (value) {
-                    searchQuery.value = value;
+                    );
                   },
-                  decoration: InputDecoration(
-                    hintText: 'ابحث عن دواء، مادة فعالة...',
-                    hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.5),
-                        ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 25,
-                    ),
-                    suffixIcon: searchQuery.value.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 20),
-                            onPressed: () {
-                              searchController.clear();
-                              searchQuery.value = '';
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                  ),
+                  childCount: filteredProducts.length,
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            if (paginatedState.isLoading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: ProductCardShimmer()),
+                ),
+              ),
           ],
-        ),
-      ),
+        );
+      }(),
     );
 
     return GestureDetector(
       onTap: () {
-        focusNode.unfocus();
+        _focusNode.unfocus();
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        body: RefreshIndicator(
-          onRefresh: () =>
-              ref.read(paginatedProductsProvider.notifier).refresh(),
-          child: () {
-            if (products.isEmpty && !paginatedState.hasMore) {
-              return CustomScrollView(
-                slivers: [
-                  sliverAppBar,
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 80,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'لا توجد منتجات متاحة حاليًا.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.7),
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                title: Text('homeScreen'.tr()),
+                pinned: true,
+                floating: true,
+                forceElevated: innerBoxIsScrolled,
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => ZoomDrawer.of(context)!.toggle(),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    color: _isRefreshButtonEnabled
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.3),
+                    onPressed: _isRefreshButtonEnabled
+                        ? () {
+                            ref
+                                .read(paginatedProductsProvider.notifier)
+                                .refresh();
+                            _startRefreshCountdown();
+                          }
+                        : null,
+                  ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final userDataAsync = ref.watch(userDataProvider);
+                      return userDataAsync.when(
+                        data: (user) {
+                          if (user?.photoUrl != null &&
+                              user!.photoUrl!.isNotEmpty) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 18.0)
+                                      .add(const EdgeInsets.only(top: 4.0)),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProfileScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.surface,
+                                    child: ClipOval(
+                                      child: CachedNetworkImage(
+                                        imageUrl: user.photoUrl!,
+                                        width: 29,
+                                        height: 29,
+                                        fit: BoxFit.contain,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                          width: 29,
+                                          height: 29,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            if (products.isEmpty && paginatedState.isLoading) {
-              return CustomScrollView(
-                slivers: [
-                  sliverAppBar,
-                  SliverList.builder(
-                    itemCount: 6,
-                    itemBuilder: (context, index) {
-                      return const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-                        child: ProductCardShimmer(),
-                      );
-                    },
-                  ),
-                ],
-              );
-            }
-
-            // === فلترة + ترتيب باستخدام useMemoized لعدم إعادة الحساب كل build ===
-            final List<ProductModel> productsToFilter = query.isNotEmpty
-                ? (allDistributorProductsAsync.value ?? [])
-                : products;
-
-            final filteredProducts = useMemoized(() {
-              if (query.isEmpty) return productsToFilter;
-
-              final list = productsToFilter.where((product) {
-                final productName = product.name.toLowerCase();
-                final distributorName =
-                    (product.distributorId ?? '').toLowerCase();
-                final activePrinciple =
-                    (product.activePrinciple ?? '').toLowerCase();
-                final packageSize =
-                    (product.selectedPackage ?? '').toLowerCase();
-                final company = (product.company ?? '').toLowerCase();
-                final description = (product.description ?? '').toLowerCase();
-                final action = (product.action ?? '').toLowerCase();
-
-                return productName.contains(query) ||
-                    activePrinciple.contains(query) ||
-                    distributorName.contains(query) ||
-                    company.contains(query) ||
-                    packageSize.contains(query) ||
-                    description.contains(query) ||
-                    action.contains(query);
-              }).toList();
-
-              list.sort((a, b) {
-                final scoreA = _calculateSearchScore(a, query);
-                final scoreB = _calculateSearchScore(b, query);
-                return scoreB.compareTo(scoreA);
-              });
-
-              return list;
-            }, [productsToFilter, query]);
-
-            if (query.isNotEmpty && (allDistributorProductsAsync.isLoading)) {
-              return CustomScrollView(
-                slivers: [
-                  sliverAppBar,
-                  SliverList.builder(
-                    itemCount: 6,
-                    itemBuilder: (context, index) {
-                      return const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-                        child: ProductCardShimmer(),
-                      );
-                    },
-                  ),
-                ],
-              );
-            }
-
-            return CustomScrollView(
-              controller: scrollController,
-              slivers: [
-                sliverAppBar,
-                SliverToBoxAdapter(
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(12),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: debouncedSearchQuery.value.isEmpty
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primaryContainer
-                              .withOpacity(0.3)
-                          : Theme.of(context)
-                              .colorScheme
-                              .secondaryContainer
-                              .withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: debouncedSearchQuery.value.isEmpty
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.2)
-                            : Theme.of(context)
-                                .colorScheme
-                                .secondary
-                                .withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          debouncedSearchQuery.value.isEmpty
-                              ? Icons.storefront_outlined
-                              : Icons.search_outlined,
-                          size: 16,
-                          color: debouncedSearchQuery.value.isEmpty
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.secondary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          debouncedSearchQuery.value.isEmpty
-                              ? 'عرض ${filteredProducts.length} منتج من أحدث العروض'
-                              : 'وُجد ${filteredProducts.length} منتج',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: debouncedSearchQuery.value.isEmpty
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.secondary,
-                                fontWeight: FontWeight.w600,
                               ),
+                            );
+                          } else {
+                            return const SizedBox.shrink();
+                          }
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stack) => const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(kToolbarHeight + 70.0),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 2.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(30.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context)
+                                    .shadowColor
+                                    .withOpacity(0.1),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _focusNode,
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'ابحث عن دواء، مادة فعالة...',
+                              hintStyle: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.5),
+                                  ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 25,
+                              ),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 20),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+
+                          /// Indicator بشكل أنيق مع Gradient + حواف ناعمة
+                          indicator: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.8),
+                                Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.8),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              )
+                            ],
+                          ),
+
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          indicatorPadding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 5),
+
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
+
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                          dividerColor: Colors.transparent,
+
+                          tabs: _tabsInfo.map((tab) {
+                            return Tab(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(tab.icon, size: 14),
+                                    const SizedBox(width: 3),
+                                    Text(tab.text),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
-                if (filteredProducts.isEmpty &&
-                    debouncedSearchQuery.value.isNotEmpty)
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off_outlined,
-                            size: 60,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}"',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.7),
-                                ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0, vertical: 1.0),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 8.0,
-                        mainAxisSpacing: 8.0,
-                        childAspectRatio: 0.75,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final product = filteredProducts[index];
-                          return RepaintBoundary(
-                            child: _KeepAlive(
-                              child: ProductCard(
-                                product: product,
-                                searchQuery: debouncedSearchQuery.value,
-                                onTap: () {
-                                  _showProductDetailDialog(
-                                      context, ref, product);
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        childCount: filteredProducts.length,
-                        addAutomaticKeepAlives: true,
-                      ),
-                    ),
-                  ),
-                if (paginatedState.isLoading)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(
-                        child: ProductCardShimmer(),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          }(),
+              ),
+            ];
+          },
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              homeTabContent,
+              PriceUpdateTab(searchQuery: _debouncedSearchQuery),
+              const Center(child: Text('Expire Soon')),
+              const Center(child: Text('More')),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ويدجت KeepAlive خفيفة لتثبيت عناصر الجريد
+class PriceUpdateTab extends ConsumerWidget {
+  const PriceUpdateTab({super.key, required this.searchQuery});
+
+  final String searchQuery;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final priceUpdatesAsync = ref.watch(priceUpdatesProvider);
+
+    return priceUpdatesAsync.when(
+      loading: () => GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8.0,
+          mainAxisSpacing: 8.0,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: 6,
+        itemBuilder: (context, index) => const ProductCardShimmer(),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      ),
+      error: (err, stack) => Center(
+        child: Text('Error: ${err.toString()}'),
+      ),
+      data: (products) {
+        final filteredProducts = searchQuery.isEmpty
+            ? products
+            : products.where((product) {
+                final query = searchQuery.toLowerCase();
+                return product.name.toLowerCase().contains(query) ||
+                    (product.activePrinciple ?? '')
+                        .toLowerCase()
+                        .contains(query) ||
+                    (product.company ?? '').toLowerCase().contains(query);
+              }).toList();
+
+        if (filteredProducts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  searchQuery.isEmpty
+                      ? Icons.update_disabled_outlined
+                      : Icons.search_off_outlined,
+                  size: 80,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  searchQuery.isEmpty
+                      ? 'لا توجد تحديثات في الأسعار حاليًا.'
+                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.refresh(priceUpdatesProvider.future),
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 8.0,
+              childAspectRatio: 0.75,
+            ),
+            itemCount: filteredProducts.length,
+            itemBuilder: (context, index) {
+              final product = filteredProducts[index];
+              return ProductCard(
+                product: product,
+                searchQuery: searchQuery,
+                showPriceChange: true,
+                onTap: () {
+                  // This is a bit of a workaround to access the dialog function
+                  // A better approach would be to extract the dialog to its own widget/function
+                  // that can be called from anywhere.
+                  (context as Element)
+                      .findAncestorStateOfType<_HomeScreenState>()
+                      ?._showProductDetailDialog(context, ref, product);
+                },
+              );
+            },
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _KeepAlive extends StatefulWidget {
   final Widget child;
   const _KeepAlive({required this.child});

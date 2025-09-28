@@ -202,29 +202,25 @@ class ProductCardShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     return ShimmerCard(
       borderRadius: 16.0,
+      padding: const EdgeInsets.all(8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image placeholder
           ShimmerImage(
-            height: 150,
+            height: 120,
             borderRadius: 12.0,
+            width: double.infinity,
           ),
-          const SizedBox(height: 12),
-          // Company name placeholder
-          ShimmerText(height: 16, width: 100),
           const SizedBox(height: 8),
           // Product name placeholder
-          ShimmerText(height: 20, width: double.infinity),
+          ShimmerText(height: 18, width: double.infinity),
           const SizedBox(height: 4),
-          // Active principle placeholder
-          ShimmerText(height: 14, width: 150),
-          const SizedBox(height: 12),
           // Price placeholder
-          ShimmerText(height: 20, width: 80),
-          const SizedBox(height: 16),
-          // Button placeholder
-          ShimmerButton(height: 40),
+          ShimmerText(height: 16, width: 60),
+          const SizedBox(height: 4),
+          // Distributor placeholder
+          ShimmerText(height: 10, width: 100),
         ],
       ),
     );

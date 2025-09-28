@@ -15,11 +15,13 @@ class ProductCard extends ConsumerWidget {
     required this.product,
     required this.searchQuery,
     required this.onTap,
+    this.showPriceChange = false,
   });
 
   final ProductModel product;
   final String searchQuery;
   final VoidCallback onTap;
+  final bool showPriceChange;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -171,25 +173,65 @@ class ProductCard extends ConsumerWidget {
                     const SizedBox(height: 2),
 
                     // === السعر ===
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                    if (showPriceChange &&
+                        product.oldPrice != null &&
+                        product.price != null &&
+                        product.oldPrice != 0 &&
+                        product.oldPrice != product.price)
+                      Wrap(
+                        spacing: 4.0,
+                        runSpacing: 4.0,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          // Old Price Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              ' ${product.oldPrice?.toStringAsFixed(0) ?? ''} ${'LE'.tr()}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ),
+                          // New Price Badge
+                          _PriceChangeBadge(
+                            oldPrice: product.oldPrice!,
+                            newPrice: product.price!,
+                          ),
+                        ],
+                      )
+                    else
+                      // Default price display
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${product.price?.toStringAsFixed(0) ?? '0'} ${'LE'.tr()}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
                       ),
-                      child: Text(
-                        '${product.price?.toStringAsFixed(0) ?? '0'} ${'LE'.tr()}',
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                    ),
 
                     const SizedBox(height: 2),
 
@@ -264,6 +306,50 @@ class ProductCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PriceChangeBadge extends StatelessWidget {
+  const _PriceChangeBadge({
+    required this.oldPrice,
+    required this.newPrice,
+  });
+
+  final double oldPrice;
+  final double newPrice;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool priceIncreased = newPrice > oldPrice;
+    final Color solidBadgeColor = priceIncreased ? Colors.green : Colors.red;
+    final IconData arrowIcon =
+        priceIncreased ? Icons.arrow_upward : Icons.arrow_downward;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: solidBadgeColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            arrowIcon,
+            color: solidBadgeColor,
+            size: 10,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            '${newPrice.toStringAsFixed(0)} ',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: solidBadgeColor,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
       ),
     );
   }

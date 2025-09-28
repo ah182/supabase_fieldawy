@@ -32,6 +32,8 @@ class ProductModel {
   final String? selectedPackage;
   @HiveField(13)
   late bool isFavorite;
+  final double? oldPrice;
+  final DateTime? priceUpdatedAt;
 
   ProductModel({
     required this.id,
@@ -48,6 +50,8 @@ class ProductModel {
     this.createdAt,
     this.selectedPackage,
     this.isFavorite = false,
+    this.oldPrice,
+    this.priceUpdatedAt,
   });
 
   // --- من Supabase (row) ---
@@ -71,9 +75,13 @@ class ProductModel {
       availablePackages: packages.isNotEmpty ? packages : [packageString],
       imageUrl: data['image_url'] ?? '',
       price: (data['price'] as num?)?.toDouble(),
+      oldPrice: (data['old_price'] as num?)?.toDouble(),
       distributorId: data['distributor_id'] as String?,
       createdAt: data['created_at'] != null
           ? DateTime.tryParse(data['created_at'].toString())
+          : null,
+      priceUpdatedAt: data['price_updated_at'] != null
+          ? DateTime.tryParse(data['price_updated_at'].toString())
           : null,
       selectedPackage: data['selected_package'] as String?,
     );
@@ -92,8 +100,10 @@ class ProductModel {
       'available_packages': availablePackages,
       'image_url': imageUrl,
       'price': price,
+      'old_price': oldPrice,
       'distributor_id': distributorId,
       'created_at': createdAt?.toIso8601String(),
+      'price_updated_at': priceUpdatedAt?.toIso8601String(),
       'selected_package': selectedPackage,
       'is_favorite': isFavorite,
     };
@@ -117,8 +127,10 @@ class ProductModel {
     List<String>? availablePackages,
     String? imageUrl,
     double? price,
+    double? oldPrice,
     String? distributorId,
     DateTime? createdAt,
+    DateTime? priceUpdatedAt,
     String? selectedPackage,
     bool? isFavorite,
   }) {
@@ -133,8 +145,10 @@ class ProductModel {
       availablePackages: availablePackages ?? this.availablePackages,
       imageUrl: imageUrl ?? this.imageUrl,
       price: price ?? this.price,
+      oldPrice: oldPrice ?? this.oldPrice,
       distributorId: distributorId ?? this.distributorId,
       createdAt: createdAt ?? this.createdAt,
+      priceUpdatedAt: priceUpdatedAt ?? this.priceUpdatedAt,
       selectedPackage: selectedPackage ?? this.selectedPackage,
       isFavorite: isFavorite ?? this.isFavorite,
     );

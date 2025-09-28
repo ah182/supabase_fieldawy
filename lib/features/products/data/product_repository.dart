@@ -39,7 +39,6 @@ class ProductRepository {
       return [];
     }
 
-    // Create a map for quick lookup of distributor product details by their ID
     final distributorProductDetailsMap = {
       for (var row in rows) row['id'].toString(): row
     };
@@ -50,22 +49,23 @@ class ProductRepository {
     final productDocs =
         await _supabase.from('products').select().inFilter('id', productIds);
 
-    // Create a map for quick lookup of main product details by their ID
     final productsMap = {
       for (var doc in productDocs)
         doc['id'].toString(): ProductModel.fromMap(doc)
     };
 
-    // Build the final list of products in the *shuffled order* of the input 'ids'
     final List<ProductModel> orderedProducts = [];
     for (final id in ids) {
-      // Iterate through the shuffled 'ids'
       final distributorProductRow = distributorProductDetailsMap[id];
       if (distributorProductRow != null) {
         final productDetails = productsMap[distributorProductRow['product_id']];
         if (productDetails != null) {
           orderedProducts.add(productDetails.copyWith(
             price: (distributorProductRow['price'] as num?)?.toDouble(),
+            oldPrice: (distributorProductRow['old_price'] as num?)?.toDouble(),
+            priceUpdatedAt: distributorProductRow['price_updated_at'] != null
+                ? DateTime.tryParse(distributorProductRow['price_updated_at'])
+                : null,
             selectedPackage: distributorProductRow['package'] as String?,
             distributorId: distributorProductRow['distributor_name'] as String?,
           ));
@@ -76,48 +76,84 @@ class ProductRepository {
     return orderedProducts;
   }
 
+  Future<List<ProductModel>> getProductsWithPriceUpdates() async {
+    final response = await _supabase
+        .from('distributor_products')
+        .select()
+        .not('old_price', 'is', null)
+        .order('price_updated_at', ascending: false);
+
+    if (response.isEmpty) {
+      return [];
+    }
+
+    final productIds =
+        response.map((row) => row['product_id'] as String).toSet().toList();
+
+    final productDocs =
+        await _supabase.from('products').select().inFilter('id', productIds);
+
+    final productsMap = {
+      for (var doc in productDocs)
+        doc['id'].toString(): ProductModel.fromMap(doc)
+    };
+
+    final products = response.map((row) {
+      final productDetails = productsMap[row['product_id']];
+      if (productDetails != null) {
+        return productDetails.copyWith(
+          price: (row['price'] as num?)?.toDouble(),
+          oldPrice: (row['old_price'] as num?)?.toDouble(),
+          priceUpdatedAt: row['price_updated_at'] != null
+              ? DateTime.tryParse(row['price_updated_at'])
+              : null,
+          selectedPackage: row['package'] as String?,
+          distributorId: row['distributor_name'] as String?,
+        );
+      }
+      return null;
+    }).whereType<ProductModel>().toList();
+
+    return products;
+  }
+
   Future<List<ProductModel>> getAllProducts() async {
     const cacheKey = 'all_products_catalog';
     final cachedData = _cache.get<List<dynamic>>(cacheKey);
     if (cachedData != null) {
       _refreshAllProductsInBackground();
-      // Manually cast from List<dynamic> to List<ProductModel>
       return cachedData.map((item) => item as ProductModel).toList();
     }
     return _fetchAllProductsFromServer();
   }
 
-  /// Fetches all products from the server-side cached Edge Function and updates the local cache.
   Future<List<ProductModel>> _fetchAllProductsFromServer() async {
     const cacheKey = 'all_products_catalog';
     try {
       final response = await _supabase.functions.invoke('get-products');
-      
+
       if (response.data == null) {
         throw Exception('Function get-products returned null data');
       }
 
       final List<dynamic> responseData = response.data;
-      final products = responseData.map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row))).toList();
-      
-      // Cache for a long duration locally (e.g., 365 days). The server cache will handle frequent updates.
+      final products = responseData
+          .map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row)))
+          .toList();
+
       _cache.set(cacheKey, products, duration: const Duration(days: 365));
-      
+
       return products;
     } catch (e) {
-      // If fetching fails, return an empty list or handle the error as needed.
       print('Error fetching products from server: $e');
-      return []; // Or rethrow
+      return [];
     }
   }
 
-  /// A non-blocking method to refresh the products in the background.
   void _refreshAllProductsInBackground() {
-    // No need to await this. It runs in the background.
     _fetchAllProductsFromServer().catchError((e) {
-      // Log the error but don't interrupt the user.
       print('Background product refresh failed: $e');
-      return <ProductModel>[]; // Return a typed empty list.
+      return <ProductModel>[];
     });
   }
 
@@ -126,44 +162,73 @@ class ProductRepository {
     final cachedData = _cache.get<List<dynamic>>(cacheKey);
     if (cachedData != null) {
       _refreshAllDistributorProductsInBackground();
-      // Manually cast from List<dynamic> to List<ProductModel>
       return cachedData.map((item) => item as ProductModel).toList();
     }
     return _fetchAllDistributorProductsFromServer();
   }
 
-  /// Fetches all distributor products from the server and updates the local cache.
   Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
     const cacheKey = 'all_distributor_products';
     try {
-      final response = await _supabase.functions.invoke('get-all-distributor-products');
+      // 1. Fetch all rows from distributor_products, explicitly selecting columns
+      final distProductsResponse = await _supabase
+          .from('distributor_products')
+          .select('product_id, price, old_price, price_updated_at, package, distributor_name');
 
-      if (response.data == null) {
-        throw Exception('Function get-all-distributor-products returned null data');
+      if (distProductsResponse.isEmpty) {
+        return [];
       }
 
-      final List<dynamic> responseData = response.data;
-      final products = responseData.map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row))).toList();
+      // 2. Get unique product IDs
+      final productIds = distProductsResponse
+          .map((row) => row['product_id'] as String)
+          .toSet()
+          .toList();
 
-      // Cache for a shorter duration locally, as this data might change more often.
+      // 3. Fetch the corresponding products from the main products table
+      final productDocs =
+          await _supabase.from('products').select().inFilter('id', productIds);
+
+      // 4. Create a lookup map for main product details
+      final productsMap = {
+        for (var doc in productDocs)
+          doc['id'].toString(): ProductModel.fromMap(doc)
+      };
+
+      // 5. Join the data
+      final products = distProductsResponse.map((row) {
+        final productDetails = productsMap[row['product_id']];
+        if (productDetails != null) {
+          return productDetails.copyWith(
+            // Overwrite with distributor-specific data
+            price: (row['price'] as num?)?.toDouble(),
+            oldPrice: (row['old_price'] as num?)?.toDouble(),
+            priceUpdatedAt: row['price_updated_at'] != null
+                ? DateTime.tryParse(row['price_updated_at'])
+                : null,
+            selectedPackage: row['package'] as String?,
+            distributorId: row['distributor_name'] as String?,
+          );
+        }
+        return null;
+      }).whereType<ProductModel>().toList();
+      
       _cache.set(cacheKey, products, duration: const Duration(minutes: 30));
       
       return products;
     } catch (e) {
       print('Error fetching all distributor products from server: $e');
-      return []; // Or rethrow
+      return [];
     }
   }
 
-  /// A non-blocking method to refresh the distributor products in the background.
   void _refreshAllDistributorProductsInBackground() {
     _fetchAllDistributorProductsFromServer().catchError((e) {
       print('Background distributor product refresh failed: $e');
-      return <ProductModel>[]; // Return a typed empty list.
+      return <ProductModel>[];
     });
   }
 
-  /// إضافة منتجات متعددة لكتالوج الموزع
   Future<void> addMultipleProductsToDistributorCatalog({
     required String distributorId,
     required String distributorName,
@@ -187,11 +252,9 @@ class ProductRepository {
 
     await _supabase.from('distributor_products').upsert(rows);
 
-    // Schedule cache invalidation
     _scheduleCacheInvalidation();
   }
 
-  /// إزالة منتج من كتالوج الموزع
   Future<void> removeProductFromDistributorCatalog({
     required String distributorId,
     required String productId,
@@ -200,7 +263,6 @@ class ProductRepository {
     final docId = '${distributorId}_${productId}_$package';
     await _supabase.from('distributor_products').delete().eq('id', docId);
 
-    // Schedule cache invalidation
     _scheduleCacheInvalidation();
   }
 
@@ -210,14 +272,14 @@ class ProductRepository {
   }) async {
     try {
       final List<String> docIdsToDelete = productIdsWithPackage.map((idWithPackage) {
-        // Assuming idWithPackage is in the format "productId_package"
-        // The actual docId in Supabase is "${distributorId}_${productId}_${package}"
         return "${distributorId}_$idWithPackage";
       }).toList();
 
-      await _supabase.from('distributor_products').delete().inFilter('id', docIdsToDelete);
+      await _supabase
+          .from('distributor_products')
+          .delete()
+          .inFilter('id', docIdsToDelete);
 
-      // Schedule cache invalidation
       _scheduleCacheInvalidation();
     } catch (e) {
       print('Error deleting multiple products from distributor catalog: $e');
@@ -225,19 +287,16 @@ class ProductRepository {
     }
   }
 
-  /// إضافة منتج جديد للكتالوج الرئيسي
   Future<String?> addProductToCatalog(ProductModel product) async {
     final response =
         await _supabase.from('products').insert(product.toMap()).select();
     if (response.isNotEmpty) {
-      // Schedule cache invalidation
       _scheduleCacheInvalidation();
       return response.first['id'].toString();
     }
     return null;
   }
 
-  /// إضافة منتج واحد لكتالوج الموزع
   Future<void> addProductToDistributorCatalog({
     required String distributorId,
     required String distributorName,
@@ -256,11 +315,9 @@ class ProductRepository {
       'added_at': DateTime.now().toIso8601String(),
     });
 
-    // Schedule cache invalidation
     _scheduleCacheInvalidation();
   }
 
-  /// تحديث سعر منتج في كتالوج الموزع
   Future<void> updateProductPriceInDistributorCatalog({
     required String distributorId,
     required String productId,
@@ -268,32 +325,36 @@ class ProductRepository {
     required double newPrice,
   }) async {
     final docId = '${distributorId}_${productId}_$package';
+
+    final response = await _supabase
+        .from('distributor_products')
+        .select('price')
+        .eq('id', docId)
+        .single();
+
+    final oldPrice = (response['price'] as num?)?.toDouble();
+
     await _supabase.from('distributor_products').update({
       'price': newPrice,
+      'old_price': oldPrice,
+      'price_updated_at': DateTime.now().toIso8601String(),
     }).eq('id', docId);
 
-    // Schedule cache invalidation
     _scheduleCacheInvalidation();
   }
 
-  /// Schedule cache invalidation with aggressive batching to prevent multiple rapid invalidations
   void _scheduleCacheInvalidation() {
-    // Update the last modified timestamp immediately
     final now = DateTime.now();
     _ref.read(productDataLastModifiedProvider.notifier).state = now;
 
-    // Cancel any existing timer
     _invalidationTimer?.cancel();
 
-    // Schedule cache invalidation with a 100ms delay to batch multiple operations
     _invalidationTimer = Timer(const Duration(milliseconds: 100), () {
       try {
-        // Invalidate all product-related caches at once
         _cache.invalidateWithPrefix('distributor_products_');
         _cache.invalidate('allDistributorProducts');
         _cache.invalidateWithPrefix('my_products_');
       } catch (e) {
-        // Log error but don't fail the operation
         print('Error during cache invalidation: $e');
       }
     });
@@ -306,7 +367,13 @@ final productRepositoryProvider = Provider<ProductRepository>((ref) {
   return ProductRepository(cache: cachingService, ref: ref);
 });
 
-/// جلب كل المنتجات
+final priceUpdatesProvider = FutureProvider<List<ProductModel>>((ref) {
+  // By watching this provider, this FutureProvider will automatically re-run
+  // whenever a product is added, removed, or updated.
+  ref.watch(productDataLastModifiedProvider);
+  return ref.watch(productRepositoryProvider).getProductsWithPriceUpdates();
+});
+
 final productsProvider = FutureProvider<List<ProductModel>>((ref) {
   return ref.watch(productRepositoryProvider).getAllProducts();
 });
@@ -338,7 +405,6 @@ class PaginatedProductsState extends Equatable {
   }
 }
 
-// --- Pagination Notifier ---
 class PaginatedProductsNotifier extends StateNotifier<PaginatedProductsState> {
   final ProductRepository _repository;
   List<String> _shuffledIds = [];
@@ -351,7 +417,6 @@ class PaginatedProductsNotifier extends StateNotifier<PaginatedProductsState> {
   }
 
   Future<void> fetchNextPage() async {
-    // Allow first page fetch during refresh, but prevent concurrent fetches for others.
     if ((state.isLoading && _page > 0) || !state.hasMore) return;
 
     state = state.copyWith(isLoading: true);
@@ -398,7 +463,6 @@ class PaginatedProductsNotifier extends StateNotifier<PaginatedProductsState> {
   }
 }
 
-// --- Paginated Products Provider --- //
 final paginatedProductsProvider =
     StateNotifierProvider<PaginatedProductsNotifier, PaginatedProductsState>(
         (ref) {
@@ -421,28 +485,25 @@ final internalAllProductsProvider =
       await supabase.from('products').select().inFilter('id', productIds);
 
   final productsMap = {
-    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+    for (var doc in productDocs)
+      doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
-  final products = rows
-      .map((row) {
-        final productDetails = productsMap[row['product_id']];
-        if (productDetails != null) {
-          return productDetails.copyWith(
-            price: (row['price'] as num?)?.toDouble(),
-            selectedPackage: row['package'] as String?,
-            distributorId: row['distributor_name'] as String?,
-          );
-        }
-        return null;
-      })
-      .whereType<ProductModel>()
-      .toList();
+  final products = rows.map((row) {
+    final productDetails = productsMap[row['product_id']];
+    if (productDetails != null) {
+      return productDetails.copyWith(
+        price: (row['price'] as num?)?.toDouble(),
+        selectedPackage: row['package'] as String?,
+        distributorId: row['distributor_name'] as String?,
+      );
+    }
+    return null;
+  }).whereType<ProductModel>().toList();
 
   return products;
 });
 
-/// جلب منتجات الموزع الحالي فقط
 final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final userId = ref.watch(authServiceProvider).currentUser?.id;
   if (userId == null) return [];
@@ -452,13 +513,11 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final lastModified = ref.watch(productDataLastModifiedProvider);
   final cacheKey = 'my_products_$userId';
 
-  // Calculate cache key with last modified timestamp for proper invalidation
   final timestampedCacheKey =
       '$cacheKey-${lastModified.microsecondsSinceEpoch}-$userId';
 
   final cachedData = cache.get<List<dynamic>>(timestampedCacheKey);
   if (cachedData != null) {
-    // Manually cast from List<dynamic> to List<ProductModel>
     return cachedData.map((item) => item as ProductModel).toList();
   }
 
@@ -479,23 +538,21 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
       await supabase.from('products').select().inFilter('id', productIds);
 
   final productsMap = {
-    for (var doc in productDocs) doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+    for (var doc in productDocs)
+      doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
-  final products = rows
-      .map((row) {
-        final productDetails = productsMap[row['product_id']];
-        if (productDetails != null) {
-          return productDetails.copyWith(
-            price: (row['price'] as num?)?.toDouble(),
-            selectedPackage: row['package'] as String?,
-            distributorId: row['distributor_name'] as String?,
-          );
-        }
-        return null;
-      })
-      .whereType<ProductModel>()
-      .toList();
+  final products = rows.map((row) {
+    final productDetails = productsMap[row['product_id']];
+    if (productDetails != null) {
+      return productDetails.copyWith(
+        price: (row['price'] as num?)?.toDouble(),
+        selectedPackage: row['package'] as String?,
+        distributorId: row['distributor_name'] as String?,
+      );
+    }
+    return null;
+  }).whereType<ProductModel>().toList();
 
   cache.set(timestampedCacheKey, products,
       duration: const Duration(minutes: 20));
