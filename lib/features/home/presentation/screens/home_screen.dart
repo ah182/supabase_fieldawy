@@ -19,11 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/user_data_provider.dart';
 
-final allDistributorProductsForSearchProvider =
-    FutureProvider<List<ProductModel>>((ref) async {
-  final repository = ref.watch(productRepositoryProvider);
-  return repository.getAllDistributorProducts();
-});
+
 
 class _TabInfo {
   const _TabInfo(this.icon, this.text);
@@ -616,7 +612,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final paginatedState = ref.watch(paginatedProductsProvider);
     final products = paginatedState.products;
     final allDistributorProductsAsync =
-        ref.watch(allDistributorProductsForSearchProvider);
+        ref.watch(allDistributorProductsProvider);
     final query = _debouncedSearchQuery.toLowerCase().trim();
 
     final allProductsForSearch =

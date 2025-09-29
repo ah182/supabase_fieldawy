@@ -151,6 +151,15 @@ class UserRepository {
       rethrow;
     }
   }
+  Future<int> getTotalUsersCount() async {
+    try {
+      final count = await _client.from('users').count(CountOption.exact);
+      return count;
+    } catch (e) {
+      print('Error counting users: $e');
+      return 0;
+    }
+  }
 } // Added this closing brace for UserRepository class
 
 // Provider المحدث ليعمل مع Supabase
@@ -158,4 +167,8 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   final supabaseClient = Supabase.instance.client;
   final cachingService = ref.watch(cachingServiceProvider);
   return UserRepository(client: supabaseClient, cache: cachingService);
+});
+
+final totalUsersProvider = FutureProvider<int>((ref) {
+  return ref.watch(userRepositoryProvider).getTotalUsersCount();
 });

@@ -157,12 +157,15 @@ class ProductRepository {
     });
   }
 
-  Future<List<ProductModel>> getAllDistributorProducts() async {
+  Future<List<ProductModel>> getAllDistributorProducts(
+      {bool bypassCache = false}) async {
     const cacheKey = 'all_distributor_products';
-    final cachedData = _cache.get<List<dynamic>>(cacheKey);
-    if (cachedData != null) {
-      _refreshAllDistributorProductsInBackground();
-      return cachedData.map((item) => item as ProductModel).toList();
+    if (!bypassCache) {
+      final cachedData = _cache.get<List<dynamic>>(cacheKey);
+      if (cachedData != null) {
+        _refreshAllDistributorProductsInBackground();
+        return cachedData.map((item) => item as ProductModel).toList();
+      }
     }
     return _fetchAllDistributorProductsFromServer();
   }
@@ -557,4 +560,21 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   cache.set(timestampedCacheKey, products,
       duration: const Duration(minutes: 20));
   return products;
+});
+
+final allDistributorProductsProvider =
+    FutureProvider<List<ProductModel>>((ref) {
+  // This provider is for the user-facing app and uses caching.
+  ref.watch(productDataLastModifiedProvider);
+  return ref.watch(productRepositoryProvider).getAllDistributorProducts();
+});
+
+final adminAllProductsProvider =
+    FutureProvider<List<ProductModel>>((ref) {
+  // This provider is for the admin panel and bypasses the cache to ensure
+  // data is always fresh.
+  ref.watch(productDataLastModifiedProvider);
+  return ref
+      .watch(productRepositoryProvider)
+      .getAllDistributorProducts(bypassCache: true);
 });

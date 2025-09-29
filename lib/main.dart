@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'features/admin_dashboard/presentation/screens/admin_login_screen.dart';
 
+import 'features/admin_dashboard/presentation/widgets/admin_scaffold.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -182,6 +184,11 @@ class NoInternetScreen extends StatelessWidget {
 }
 
 
+
+
+
+
+
 class FieldawyStoreApp extends ConsumerStatefulWidget {
   const FieldawyStoreApp({super.key});
 
@@ -223,6 +230,8 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
         '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const DrawerWrapper(),
+        '/admin/login': (context) => const AdminLoginScreen(),
+        '/admin/dashboard': (context) => const AdminScaffold(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(builder: (_) => const AuthGate());

@@ -16,7 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fieldawy_store/core/providers/connectivity_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
-import 'package:fieldawy_store/features/home/presentation/screens/home_screen.dart';
+
 
 class AuthGate extends HookConsumerWidget {
   const AuthGate({super.key});
@@ -42,7 +42,7 @@ class AuthGate extends HookConsumerWidget {
             if (wasError && hasData) {
               // We just recovered from an error. Let's refresh the home screen data.
               ref.invalidate(paginatedProductsProvider);
-              ref.invalidate(allDistributorProductsForSearchProvider);
+              ref.invalidate(allDistributorProductsProvider);
             }
           });
 
