@@ -180,6 +180,33 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // --- قسم الاختبار ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
+                  child: Text(
+                    'Testing Area',
+                    style: textTheme.titleSmall
+                        ?.copyWith(color: Colors.grey.shade600),
+                  ),
+                ),
+                Card(
+                  elevation: 1,
+                  shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: const Icon(Icons.crop),
+                    title: const Text('Test Image Cropper'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.pushNamed(context, '/image_cropper_test');
+                    },
+                  ),
+                ),
               ],
             ),
           ),

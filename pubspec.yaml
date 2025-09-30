@@ -59,6 +59,7 @@ dependencies:
   gal: ^2.3.2
   image: ^4.0.17
   collection: ^1.19.1
+  image_cropper: ^11.0.0
   
 
 dev_dependencies:
