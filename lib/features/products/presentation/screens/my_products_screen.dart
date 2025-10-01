@@ -568,6 +568,30 @@ class MyProductsScreen extends HookConsumerWidget {
     final mainTabSelectionMode = useState(false);
     final ocrTabSelectionMode = useState(false);
 
+    // إضافة مراقب للتابات مع تحسينات UX
+    final currentTabIndex = useState(tabController.index);
+    useEffect(() {
+      void tabListener() {
+        final newIndex = tabController.index;
+        if (currentTabIndex.value != newIndex) {
+          currentTabIndex.value = newIndex;
+          // إخفاء الكيبورد عند تغيير التاب
+          searchFocusNode.unfocus();
+
+          // إلغاء وضع التحديد عند الانتقال
+          if (newIndex == 0) {
+            ocrTabSelectionMode.value = false;
+            ocrTabSelection.value = {};
+          } else {
+            mainTabSelectionMode.value = false;
+            mainTabSelection.value = {};
+          }
+        }
+      }
+      tabController.addListener(tabListener);
+      return () => tabController.removeListener(tabListener);
+    }, [tabController]);
+
     useEffect(() {
       if (!hasShownHint.value &&
           !isSelectionMode.value &&
