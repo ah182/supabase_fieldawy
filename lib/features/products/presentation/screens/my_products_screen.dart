@@ -21,6 +21,184 @@ import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 
+// Widget to watch tab index changes and update the count accordingly
+class TabIndexWatcher extends HookConsumerWidget {
+  final TabController tabController;
+  final AsyncValue<List<ProductModel>> myProductsAsync;
+  final ValueNotifier<String> searchQuery;
+  final ValueNotifier<bool> isSelectionMode;
+  final ValueNotifier<Set<String>> selectedProducts;
+
+  const TabIndexWatcher({
+    Key? key,
+    required this.tabController,
+    required this.myProductsAsync,
+    required this.searchQuery,
+    required this.isSelectionMode,
+    required this.selectedProducts,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Use the tab index as a dependency to rebuild when tab changes
+    final tabIndex = useState(tabController.index);
+    
+    // Listen to tab changes
+    useEffect(() {
+      void listener() {
+        tabIndex.value = tabController.index;
+      }
+      
+      tabController.addListener(listener);
+      return () => tabController.removeListener(listener);
+    }, [tabController]);
+
+    // For Main tab (index 0)
+    if (tabIndex.value == 0) {
+      return myProductsAsync.when(
+        data: (products) {
+          if (isSelectionMode.value) {
+            return Text(
+              '${selectedProducts.value.length} من ${products.length} محدد',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(
+                    color:
+                        Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            );
+          } else {
+            final totalCount = products.length;
+            final filteredCount = searchQuery.value.isEmpty
+                ? totalCount
+                : products.where((product) {
+                    final query =
+                        searchQuery.value.toLowerCase();
+                    final productName =
+                        product.name.toLowerCase();
+                    final productCompany =
+                        product.company?.toLowerCase() ?? '';
+                    final productActivePrinciple = product
+                            .activePrinciple
+                            ?.toLowerCase() ??
+                        '';
+                    return productName.contains(query) ||
+                        productCompany.contains(query) ||
+                        productActivePrinciple.contains(query);
+                  }).length;
+
+            return Text(
+              searchQuery.value.isEmpty
+                  ? 'إجمالي المنتجات: $totalCount'
+                  : 'عرض $filteredCount من $totalCount منتج',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(
+                    color:
+                        Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            );
+          }
+        },
+        loading: () => Text(
+          'جارٍ العد...',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+        error: (_, __) => Text(
+          'خطأ في العد',
+          style:
+              Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w500,
+                  ),
+        ),
+      );
+    } 
+    // For OCR tab (index 1)
+    else {
+      final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
+      return myOcrProductsAsync.when(
+        data: (products) {
+          if (isSelectionMode.value) {
+            return Text(
+              '${selectedProducts.value.length} من ${products.length} محدد',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(
+                    color:
+                        Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            );
+          } else {
+            final totalCount = products.length;
+            final filteredCount = searchQuery.value.isEmpty
+                ? totalCount
+                : products.where((product) {
+                    final query =
+                        searchQuery.value.toLowerCase();
+                    final productName =
+                        product.name.toLowerCase();
+                    final productCompany =
+                        product.company?.toLowerCase() ?? '';
+                    final productActivePrinciple = product
+                            .activePrinciple
+                            ?.toLowerCase() ??
+                        '';
+                    return productName.contains(query) ||
+                        productCompany.contains(query) ||
+                        productActivePrinciple.contains(query);
+                  }).length;
+
+            return Text(
+              searchQuery.value.isEmpty
+                  ? 'إجمالي OCR: $totalCount'
+                  : 'عرض $filteredCount من $totalCount OCR',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(
+                    color:
+                        Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+            );
+          }
+        },
+        loading: () => Text(
+          'جارٍ العد...',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+        error: (_, __) => Text(
+          'خطأ في العد',
+          style:
+              Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w500,
+                  ),
+        ),
+      );
+    }
+  }
+}
+
 // Helper function to show the animated banner
 void _showAnimatedBanner(BuildContext context) {
   OverlayEntry? overlayEntry;
@@ -432,15 +610,17 @@ class MyProductsScreen extends HookConsumerWidget {
             // Determine which tab is currently active
             final currentTab = tabController.index;
             
+            // Check if the currently active tab is in selection mode
+            final isCurrentTabInSelectionMode = (currentTab == 0) 
+                ? mainTabSelectionMode.value 
+                : ocrTabSelectionMode.value;
+            
             // Get OCR products if needed for OCR tab
             final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
             
-            // Determine which tab's selection state to use
-            final currentTabSelection = currentTab == 0 ? mainTabSelection.value : ocrTabSelection.value;
-            final currentSelectionMode = currentTab == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value;
-            
-            if (currentSelectionMode) {
-              // For OCR tab
+            // Show selection FAB only if the currently active tab is in selection mode
+            if (isCurrentTabInSelectionMode) {
+              // If currently on OCR tab and it's in selection mode
               if (currentTab == 1) {
                 if (myOcrProductsAsync is AsyncData<List<ProductModel>>) {
                   return Padding(
@@ -451,17 +631,17 @@ class MyProductsScreen extends HookConsumerWidget {
                         FloatingActionButton(
                           heroTag: "btnDeleteAllOcr",
                           onPressed: () async {
-                            if (currentTabSelection.isNotEmpty) {
+                            if (ocrTabSelection.value.isNotEmpty) {
                               final confirmDelete = await _showDeleteConfirmationDialog(
                                   context,
-                                  '${currentTabSelection.length} selected products');
+                                  '${ocrTabSelection.value.length} selected products');
                               if (confirmDelete == true) {
                                 try {
                                   final userId =
                                       ref.read(authServiceProvider).currentUser?.id;
                                   if (userId != null) {
                                     // Extract OCR product IDs from the selection format
-                                    final ocrProductIds = currentTabSelection
+                                    final ocrProductIds = ocrTabSelection.value
                                         .map((idWithPackage) {
                                           // For OCR products, the format is likely just 'id' or 'id_package'
                                           // Split by '_' and take the first part which should be the OCR product ID
@@ -532,9 +712,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                       '${product.id}_${product.selectedPackage ?? ''}')
                                   .toSet();
 
-                              if (currentTabSelection.length ==
+                              if (ocrTabSelection.value.length ==
                                       allProductIds.length &&
-                                  currentTabSelection
+                                  ocrTabSelection.value
                                       .containsAll(allProductIds)) {
                                 ocrTabSelection.value = {};
                               } else {
@@ -544,8 +724,8 @@ class MyProductsScreen extends HookConsumerWidget {
                           },
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
-                          child: currentTabSelection.length > 0 &&
-                                  currentTabSelection.length ==
+                          child: ocrTabSelection.value.length > 0 &&
+                                  ocrTabSelection.value.length ==
                                       (ref.read(myOcrProductsProvider)
                                               is AsyncData<List<ProductModel>>
                                           ? (ref.read(myOcrProductsProvider)
@@ -565,6 +745,7 @@ class MyProductsScreen extends HookConsumerWidget {
               } 
               // For Main tab (current functionality)
               else {
+                // ignore: unused_local_variable
                 final myProductsAsync = ref.read(myProductsProvider);
                 return Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -574,10 +755,10 @@ class MyProductsScreen extends HookConsumerWidget {
                       FloatingActionButton(
                         heroTag: "btnDeleteAllMain",
                         onPressed: () async {
-                          if (currentTabSelection.isNotEmpty) {
+                          if (mainTabSelection.value.isNotEmpty) {
                             final confirmDelete = await _showDeleteConfirmationDialog(
                                 context,
-                                '${currentTabSelection.length} selected products');
+                                '${mainTabSelection.value.length} selected products');
                             if (confirmDelete == true) {
                               try {
                                 final userId =
@@ -588,7 +769,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                       .removeMultipleProductsFromDistributorCatalog(
                                         distributorId: userId,
                                         productIdsWithPackage:
-                                            currentTabSelection.toList(),
+                                            mainTabSelection.value.toList(),
                                       );
 
                                   ref
@@ -638,15 +819,16 @@ class MyProductsScreen extends HookConsumerWidget {
                       FloatingActionButton(
                         heroTag: "btnSelectAllMain",
                         onPressed: () async {
+                          final myProductsAsync = ref.read(myProductsProvider);
                           if (myProductsAsync is AsyncData<List<ProductModel>>) {
                             final allProductIds = myProductsAsync.value
                                 .map((product) =>
                                     '${product.id}_${product.selectedPackage ?? ''}')
                                 .toSet();
 
-                            if (currentTabSelection.length ==
+                            if (mainTabSelection.value.length ==
                                     allProductIds.length &&
-                                currentTabSelection
+                                mainTabSelection.value
                                     .containsAll(allProductIds)) {
                               mainTabSelection.value = {};
                             } else {
@@ -656,8 +838,8 @@ class MyProductsScreen extends HookConsumerWidget {
                         },
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
-                        child: currentTabSelection.length > 0 &&
-                                currentTabSelection.length ==
+                        child: mainTabSelection.value.length > 0 &&
+                                mainTabSelection.value.length ==
                                     (ref.read(myProductsProvider)
                                             is AsyncData<List<ProductModel>>
                                         ? (ref.read(myProductsProvider)
@@ -687,14 +869,14 @@ class MyProductsScreen extends HookConsumerWidget {
           },
         ),
         appBar: AppBar(
-          title: mainTabSelectionMode.value || ocrTabSelectionMode.value
+          title: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
               ? Text('${(tabController.index == 0 ? mainTabSelection.value : ocrTabSelection.value).length} محدد')
               : Text('myMedicines'.tr()),
-          leading: mainTabSelectionMode.value || ocrTabSelectionMode.value
+          leading: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
               ? IconButton(
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () {
-                    // Reset the appropriate tab's selection
+                    // Reset the current tab's selection
                     if (tabController.index == 0) {
                       mainTabSelectionMode.value = false;
                       mainTabSelection.value = {};
@@ -750,154 +932,13 @@ class MyProductsScreen extends HookConsumerWidget {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final currentTab = tabController.index;
-                          
-                          // For Main tab
-                          if (currentTab == 0) {
-                            return myProductsAsync.when(
-                              data: (products) {
-                                if (isSelectionMode.value) {
-                                  return Text(
-                                    '${selectedProducts.value.length} من ${products.length} محدد',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color:
-                                              Theme.of(context).colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  );
-                                } else {
-                                  final totalCount = products.length;
-                                  final filteredCount = searchQuery.value.isEmpty
-                                      ? totalCount
-                                      : products.where((product) {
-                                          final query =
-                                              searchQuery.value.toLowerCase();
-                                          final productName =
-                                              product.name.toLowerCase();
-                                          final productCompany =
-                                              product.company?.toLowerCase() ?? '';
-                                          final productActivePrinciple = product
-                                                  .activePrinciple
-                                                  ?.toLowerCase() ??
-                                              '';
-                                          return productName.contains(query) ||
-                                              productCompany.contains(query) ||
-                                              productActivePrinciple.contains(query);
-                                        }).length;
-
-                                  return Text(
-                                    searchQuery.value.isEmpty
-                                        ? 'إجمالي المنتجات: $totalCount'
-                                        : 'عرض $filteredCount من $totalCount منتج',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color:
-                                              Theme.of(context).colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  );
-                                }
-                              },
-                              loading: () => Text(
-                                'جارٍ العد...',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                              error: (_, __) => Text(
-                                'خطأ في العد',
-                                style:
-                                    Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context).colorScheme.error,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                              ),
-                            );
-                          } 
-                          // For OCR tab
-                          else {
-                            final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
-                            return myOcrProductsAsync.when(
-                              data: (products) {
-                                if (isSelectionMode.value) {
-                                  return Text(
-                                    '${selectedProducts.value.length} من ${products.length} محدد',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color:
-                                              Theme.of(context).colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  );
-                                } else {
-                                  final totalCount = products.length;
-                                  final filteredCount = searchQuery.value.isEmpty
-                                      ? totalCount
-                                      : products.where((product) {
-                                          final query =
-                                              searchQuery.value.toLowerCase();
-                                          final productName =
-                                              product.name.toLowerCase();
-                                          final productCompany =
-                                              product.company?.toLowerCase() ?? '';
-                                          final productActivePrinciple = product
-                                                  .activePrinciple
-                                                  ?.toLowerCase() ??
-                                              '';
-                                          return productName.contains(query) ||
-                                              productCompany.contains(query) ||
-                                              productActivePrinciple.contains(query);
-                                        }).length;
-
-                                  return Text(
-                                    searchQuery.value.isEmpty
-                                        ? 'إجمالي OCR: $totalCount'
-                                        : 'عرض $filteredCount من $totalCount OCR',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color:
-                                              Theme.of(context).colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  );
-                                }
-                              },
-                              loading: () => Text(
-                                'جارٍ العد...',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                              error: (_, __) => Text(
-                                'خطأ في العد',
-                                style:
-                                    Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context).colorScheme.error,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                              ),
-                            );
-                          }
-                        },
+                      // Count widget that rebuilds when tab changes
+                      TabIndexWatcher(
+                        tabController: tabController,
+                        myProductsAsync: myProductsAsync,
+                        searchQuery: searchQuery,
+                        isSelectionMode: isSelectionMode,
+                        selectedProducts: selectedProducts,
                       ),
                     ],
                   ),
@@ -980,8 +1021,8 @@ class MyProductsScreen extends HookConsumerWidget {
               ref,
               myProductsAsync,
               searchQuery,
-              isSelectionMode,
-              selectedProducts,
+              mainTabSelectionMode,
+              mainTabSelection,
               searchFocusNode,
             ),
             // OCR Tab - منتجات OCR الخاصة بالموزع
@@ -998,8 +1039,8 @@ class MyProductsScreen extends HookConsumerWidget {
     WidgetRef ref,
     AsyncValue<List<ProductModel>> myProductsAsync,
     ValueNotifier<String> searchQuery,
-    ValueNotifier<bool> isSelectionMode,
-    ValueNotifier<Set<String>> selectedProducts,
+    ValueNotifier<bool> mainTabSelectionMode,
+    ValueNotifier<Set<String>> mainTabSelection,
     FocusNode searchFocusNode,
   ) {
     return RefreshIndicator(
@@ -1117,7 +1158,7 @@ class MyProductsScreen extends HookConsumerWidget {
             itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
               final product = filteredProducts[index];
-              final isSelected = selectedProducts.value
+              final isSelected = mainTabSelection.value
                   .contains('${product.id}_${product.selectedPackage ?? ''}');
 
               return Container(
@@ -1144,30 +1185,30 @@ class MyProductsScreen extends HookConsumerWidget {
                       : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   child: InkWell(
-                    onTap: isSelectionMode.value
+                    onTap: mainTabSelectionMode.value
                         ? () {
                             final productIdWithPackage =
                                 '${product.id}_${product.selectedPackage ?? ''}';
-                            if (selectedProducts.value
+                            if (mainTabSelection.value
                                 .contains(productIdWithPackage)) {
-                              selectedProducts.value = Set.from(
-                                  selectedProducts.value
+                              mainTabSelection.value = Set.from(
+                                  mainTabSelection.value
                                     ..remove(productIdWithPackage));
                             } else {
-                              selectedProducts.value = Set.from(
-                                  selectedProducts.value
+                              mainTabSelection.value = Set.from(
+                                  mainTabSelection.value
                                     ..add(productIdWithPackage));
                             }
-                            if (selectedProducts.value.isEmpty) {
-                              isSelectionMode.value = false;
+                            if (mainTabSelection.value.isEmpty) {
+                              mainTabSelectionMode.value = false;
                             }
                           }
                         : null,
-                    onLongPress: isSelectionMode.value
+                    onLongPress: mainTabSelectionMode.value
                         ? null
                         : () {
-                            isSelectionMode.value = true;
-                            selectedProducts.value = {
+                            mainTabSelectionMode.value = true;
+                            mainTabSelection.value = {
                               '${product.id}_${product.selectedPackage ?? ''}'
                             };
                           },
@@ -1293,23 +1334,23 @@ class MyProductsScreen extends HookConsumerWidget {
                               ],
                             ),
                           ),
-                          if (isSelectionMode.value)
+                          if (mainTabSelectionMode.value)
                             Checkbox(
-                              value: selectedProducts.value.contains(
+                              value: mainTabSelection.value.contains(
                                   '${product.id}_${product.selectedPackage ?? ''}'),
                               onChanged: (bool? value) {
                                 final productIdWithPackage =
                                     '${product.id}_${product.selectedPackage ?? ''}';
                                 if (value == true) {
-                                  selectedProducts.value = Set.from(
-                                      selectedProducts.value
+                                  mainTabSelection.value = Set.from(
+                                      mainTabSelection.value
                                         ..add(productIdWithPackage));
                                 } else {
-                                  selectedProducts.value = Set.from(
-                                      selectedProducts.value
+                                  mainTabSelection.value = Set.from(
+                                      mainTabSelection.value
                                         ..remove(productIdWithPackage));
-                                  if (selectedProducts.value.isEmpty) {
-                                    isSelectionMode.value = false;
+                                  if (mainTabSelection.value.isEmpty) {
+                                    mainTabSelectionMode.value = false;
                                   }
                                 }
                               },
