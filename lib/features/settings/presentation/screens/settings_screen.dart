@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/theme/app_theme.dart';
+import 'package:fieldawy_store/features/image_cropper_test/image_cropper_test_screen.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
@@ -203,7 +204,12 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Test Image Cropper'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
-                      Navigator.pushNamed(context, '/image_cropper_test');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ImageCropperTestScreen(),
+                        ),
+                      );
                     },
                   ),
                 ),

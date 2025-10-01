@@ -1,20 +1,21 @@
 import 'dart:io';
-import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
+import 'dart:typed_data';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
-import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:http/http.dart' as http;
+import 'package:fieldawy_store/services/cloudinary_service.dart';
 
 class AddProductOcrScreen extends ConsumerStatefulWidget {
   const AddProductOcrScreen({super.key});
@@ -25,13 +26,12 @@ class AddProductOcrScreen extends ConsumerStatefulWidget {
 }
 
 class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
-  File? _selectedImage;
-  String? _previewUrl;
-  String? _finalImageUrl;
-  String? _tempPublicId; // ← لتخزين publicId للصورة المؤقتة
+  File? _originalImage;
+  Uint8List? _processedImageBytes;
+  File? _processedImageFile;
 
-  bool _isOCRProcessing = false;
-  bool _isUploadProcessing = false;
+  bool _isProcessing = false;
+  bool _isSaving = false;
   bool _isFormValid = false;
 
   final _picker = ImagePicker();
@@ -68,7 +68,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   }
 
   void _validateForm() {
-    final isValid = _previewUrl != null &&
+    final isValid = _processedImageBytes != null &&
         _nameController.text.isNotEmpty &&
         _companyController.text.isNotEmpty &&
         _activePrincipleController.text.isNotEmpty &&
@@ -91,14 +91,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _pickImage(ImageSource.camera);
+              _pickAndProcessImage(ImageSource.camera);
             },
             child: const Text('Camera'),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _pickImage(ImageSource.gallery);
+              _pickAndProcessImage(ImageSource.gallery);
             },
             child: const Text('Gallery'),
           ),
@@ -122,34 +122,89 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     return compressedFile != null ? File(compressedFile.path) : file;
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<File?> _cropImage(File imageFile) async {
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          toolbarColor: Colors.deepOrange,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: false,
+        ),
+        IOSUiSettings(
+          title: 'Crop Image',
+        ),
+      ],
+    );
+    return croppedFile != null ? File(croppedFile.path) : null;
+  }
+
+  Future<Uint8List?> _removeBackground(File imageFile) async {
+    try {
+      final url =
+          Uri.parse("https://ah3181997-my-rembg-space.hf.space/api/remove");
+      final request = http.MultipartRequest('POST', url);
+      request.files
+          .add(await http.MultipartFile.fromPath('file', imageFile.path));
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        return await response.stream.toBytes();
+      } else {
+        throw Exception('Failed to remove background: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to remove background: $e');
+    }
+  }
+
+  Future<void> _pickAndProcessImage(ImageSource source) async {
     final pickedFile = await _picker.pickImage(source: source);
     if (pickedFile == null) return;
 
     setState(() {
-      _isOCRProcessing = true;
-      _isUploadProcessing = false;
-      _previewUrl = null;
-      _selectedImage = null;
-      _finalImageUrl = null;
-      _tempPublicId = null;
+      _isProcessing = true;
+      _processedImageBytes = null;
+      _originalImage = null;
+      _processedImageFile = null;
     });
 
     try {
-      final compressed = await _compressImage(File(pickedFile.path));
-      setState(() => _selectedImage = compressed);
+      _originalImage = File(pickedFile.path);
 
-      await _processOCR(compressed);
+      // 1. Compress
+      final compressedImage = await _compressImage(_originalImage!);
 
-      // Upload temp image
-      final storageService = ref.read(storageServiceProvider);
-      final tempResult = await storageService.uploadTempImage(compressed);
-      if (tempResult != null) {
-        setState(() {
-          _previewUrl = storageService.buildPreviewUrl(tempResult.secureUrl);
-          _tempPublicId = tempResult.publicId; // ← حفظ publicId
-        });
+      // 2. Crop
+      final croppedImage = await _cropImage(compressedImage);
+      if (croppedImage == null) {
+        setState(() => _isProcessing = false);
+        return; // User cancelled cropping
       }
+
+      // 3. Remove Background & Process OCR in parallel
+      final results = await Future.wait([
+        _removeBackground(croppedImage),
+        _processOCR(croppedImage),
+      ]);
+
+      final bgRemovedBytes = results[0] as Uint8List?;
+      if (bgRemovedBytes == null) {
+        throw Exception("Background removal failed.");
+      }
+
+      // Save the processed image to a temporary file for later upload
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = p.join(tempDir.path, 'processed_product.png');
+      final tempFile = File(tempPath);
+      await tempFile.writeAsBytes(bgRemovedBytes);
+
+      setState(() {
+        _processedImageBytes = bgRemovedBytes;
+        _processedImageFile = tempFile;
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -165,7 +220,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       );
     } finally {
       setState(() {
-        _isOCRProcessing = false;
+        _isProcessing = false;
         _validateForm();
       });
     }
@@ -199,21 +254,17 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   }
 
   Future<void> _saveProduct() async {
-    if (!_isFormValid || _selectedImage == null) return;
+    if (!_isFormValid || _processedImageFile == null) return;
 
-    setState(() => _isUploadProcessing = true);
+    setState(() => _isSaving = true);
 
     try {
-      final storageService = ref.read(storageServiceProvider);
-      final finalUrl = await storageService.uploadFinalImage(_selectedImage!);
-      if (finalUrl == null) throw Exception('Failed to make image permanent');
-
-      setState(() => _finalImageUrl = finalUrl);
-
-      // ← حذف الصورة المؤقتة بعد رفع الصورة النهائية
-      if (_tempPublicId != null) {
-        await storageService.deleteTempImage(_tempPublicId!);
-      }
+      final cloudinaryService = ref.read(cloudinaryServiceProvider);
+      final finalUrl = await cloudinaryService.uploadImage(
+        imageFile: _processedImageFile!,
+        folder: 'ocr',
+      );
+      if (finalUrl == null) throw Exception('Failed to upload image');
 
       final name = _nameController.text;
       final company = _companyController.text;
@@ -229,31 +280,30 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         package = '${package.trim()} $_selectedPackageType'.trim();
       }
 
-      final newProduct = ProductModel(
-        id: '',
-        name: name,
-        company: company,
-        activePrinciple: activePrinciple,
-        imageUrl: finalUrl,
-        package: package,
-        availablePackages: [package],
-      );
-
       final productRepo = ref.read(productRepositoryProvider);
-      final newProductId = await productRepo.addProductToCatalog(newProduct);
-
       final userId = ref.read(authServiceProvider).currentUser?.id;
       final userData = await ref.read(userDataProvider.future);
       final distributorName = userData?.displayName ?? 'Unknown Distributor';
 
       if (userId != null) {
-        await productRepo.addProductToDistributorCatalog(
+        final ocrProductId = await productRepo.addOcrProduct(
           distributorId: userId,
           distributorName: distributorName,
-          productId: newProductId!,
+          productName: name,
+          productCompany: company,
+          activePrinciple: activePrinciple,
           package: package,
-          price: price,
+          imageUrl: finalUrl,
         );
+
+        if (ocrProductId != null) {
+          await productRepo.addDistributorOcrProduct(
+            distributorId: userId,
+            distributorName: distributorName,
+            ocrProductId: ocrProductId,
+            price: price,
+          );
+        }
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -270,6 +320,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       );
       Navigator.of(context).pop();
     } catch (e) {
+      print('Error saving product: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           elevation: 0,
@@ -283,7 +334,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         ),
       );
     } finally {
-      setState(() => _isUploadProcessing = false);
+      setState(() => _isSaving = false);
     }
   }
 
@@ -317,7 +368,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       width: double.infinity,
       padding: const EdgeInsets.only(top: 24.0),
       child: ElevatedButton(
-        onPressed: (_isFormValid && !_isOCRProcessing && !_isUploadProcessing)
+        onPressed: (_isFormValid && !_isProcessing && !_isSaving)
             ? _saveProduct
             : null,
         style: ElevatedButton.styleFrom(
@@ -327,7 +378,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           ),
           minimumSize: const Size(double.infinity, 54),
         ),
-        child: (_isOCRProcessing || _isUploadProcessing)
+        child: (_isProcessing || _isSaving)
             ? const ShimmerLoader(
                 width: 24,
                 height: 24,
@@ -390,10 +441,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            _previewUrl != null
+                            _processedImageBytes != null
                                 ? Icons.image
                                 : Icons.photo_camera,
-                            color: _previewUrl != null
+                            color: _processedImageBytes != null
                                 ? accentColor
                                 : theme.colorScheme.onSurface.withOpacity(0.6),
                             size: 24,
@@ -401,12 +452,12 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _previewUrl != null
-                                  ? 'Product Image Selected'
+                              _processedImageBytes != null
+                                  ? 'Product Image Processed'
                                   : 'Take product photo',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: _previewUrl != null
+                                color: _processedImageBytes != null
                                     ? theme.colorScheme.onSurface
                                     : theme.colorScheme.onSurface
                                         .withOpacity(0.6),
@@ -415,7 +466,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (_isOCRProcessing)
+                          if (_isProcessing)
                             Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: ShimmerLoader(
@@ -425,36 +476,15 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                                 baseColor: accentColor,
                               ),
                             ),
-                          if (_isUploadProcessing)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: const ShimmerLoader(
-                                width: 20,
-                                height: 20,
-                                isCircular: true,
-                                baseColor: Colors.orangeAccent,
-                              ),
-                            ),
                         ],
                       ),
                     ),
-                    if (_previewUrl != null)
+                    if (_processedImageBytes != null)
                       SizedBox(
                         height: 250,
-                        child: CachedNetworkImage(
-                          imageUrl: _finalImageUrl ?? _previewUrl!,
+                        child: Image.memory(
+                          _processedImageBytes!,
                           fit: BoxFit.contain,
-                          progressIndicatorBuilder: (context, url, progress) =>
-                              Center(
-                            child: CircularProgressIndicator(
-                              value: progress.progress,
-                              color: accentColor,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Icon(
-                            Icons.error_outline,
-                            color: theme.colorScheme.error,
-                          ),
                         ),
                       )
                     else
@@ -474,20 +504,20 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       child: ElevatedButton.icon(
-                        onPressed: (_isOCRProcessing || _isUploadProcessing)
+                        onPressed: (_isProcessing || _isSaving)
                             ? null
                             : _showImageSourceDialog,
                         icon: Icon(
-                          _isOCRProcessing || _isUploadProcessing
+                          _isProcessing
                               ? Icons.hourglass_bottom
                               : Icons.camera_alt,
                           color: Colors.white,
                         ),
                         label: Text(
-                          _isOCRProcessing
-                              ? 'Processing OCR...'
-                              : _isUploadProcessing
-                                  ? 'Uploading...'
+                          _isProcessing
+                              ? 'Processing Image...'
+                              : _isSaving
+                                  ? 'Saving...'
                                   : 'Scan Product',
                           style: const TextStyle(color: Colors.white),
                         ),

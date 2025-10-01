@@ -123,3 +123,64 @@ begin
     uid = auth.uid();
 end;
 $ language plpgsql;
+
+-- 🔹 OCR Products table
+create table if not exists public.ocr_products (
+  id uuid primary key default gen_random_uuid(),
+  distributor_id uuid null references public.users(uid),
+  distributor_name text null,
+  product_name text null,
+  product_company text null,
+  active_principle text null,
+  package text null,
+  created_at timestamp with time zone null default now(),
+  image_url text null
+);
+
+alter table public.ocr_products enable row level security;
+
+create policy "Enable read access for all users" on public.ocr_products
+as permissive for select
+to authenticated
+using (true);
+
+create policy "Enable insert for authenticated users only" on public.ocr_products
+as permissive for insert
+to authenticated
+with check (true);
+
+
+-- 🔹 Distributor OCR Products table
+create table if not exists public.distributor_ocr_products (
+  id uuid not null default gen_random_uuid (),
+  distributor_id uuid not null,
+  ocr_product_id uuid not null,
+  distributor_name text null,
+  price numeric null,
+  created_at timestamp with time zone null default now(),
+  constraint distributor_ocr_products_pkey primary key (id),
+  constraint distributor_ocr_products_ocr_product_id_fkey foreign KEY (ocr_product_id) references ocr_products (id) on delete CASCADE
+);
+
+alter table public.distributor_ocr_products enable row level security;
+
+create policy "Enable read access for all users" on public.distributor_ocr_products
+as permissive for select
+to authenticated
+using (true);
+
+create policy "Enable insert for users based on user_id" on public.distributor_ocr_products
+as permissive for insert
+to authenticated
+with check (auth.uid() = distributor_id);
+
+create policy "Enable update for users based on user_id" on public.distributor_ocr_products
+as permissive for update
+to authenticated
+using (auth.uid() = distributor_id)
+with check (auth.uid() = distributor_id);
+
+create policy "Enable delete for users based on user_id" on public.distributor_ocr_products
+as permissive for delete
+to authenticated
+using (auth.uid() = distributor_id);

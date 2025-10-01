@@ -7,6 +7,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:equatable/equatable.dart';
 
+
+
 // Provider to track when product data was last modified
 final productDataLastModifiedProvider = StateProvider<DateTime>((ref) {
   return DateTime.fromMicrosecondsSinceEpoch(0); // Initialize to epoch
@@ -289,6 +291,46 @@ class ProductRepository {
       rethrow;
     }
   }
+
+  Future<String?> addOcrProduct({
+    required String distributorId,
+    required String distributorName,
+    required String productName,
+    required String productCompany,
+    required String activePrinciple,
+    required String package,
+    required String imageUrl,
+  }) async {
+    final response = await _supabase.from('ocr_products').insert({
+      'distributor_id': distributorId,
+      'distributor_name': distributorName,
+      'product_name': productName,
+      'product_company': productCompany,
+      'active_principle': activePrinciple,
+      'package': package,
+      'image_url': imageUrl,
+    }).select();
+    if (response.isNotEmpty) {
+      return response.first['id'].toString();
+    }
+    return null;
+  }
+
+  Future<void> addDistributorOcrProduct({
+    required String distributorId,
+    required String distributorName,
+    required String ocrProductId,
+    required double price,
+  }) async {
+    await _supabase.from('distributor_ocr_products').insert({
+      'distributor_id': distributorId,
+      'distributor_name': distributorName,
+      'ocr_product_id': ocrProductId,
+      'price': price,
+    });
+  }
+
+ 
 
   Future<String?> addProductToCatalog(ProductModel product) async {
     final response =
