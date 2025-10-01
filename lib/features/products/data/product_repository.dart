@@ -330,6 +330,60 @@ class ProductRepository {
     });
   }
 
+  Future<List<ProductModel>> getOcrProducts() async {
+    try {
+      // Fetch all OCR products from the ocr_products table
+      final ocrProductsResponse = await _supabase
+          .from('ocr_products')
+          .select('*')
+          .order('created_at', ascending: false);
+
+      if (ocrProductsResponse.isEmpty) {
+        return [];
+      }
+
+      // Convert OCR products to ProductModel instances
+      final ocrProducts = ocrProductsResponse.map((row) {
+        // Map OCR product fields to ProductModel
+        String imageUrl = row['image_url']?.toString() ?? '';
+        
+        // Validate and fix image URL if needed
+        if (imageUrl.isNotEmpty) {
+          // Check if the URL starts with http/https
+          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            // If it's not a proper URL format, set as empty to use placeholder
+            imageUrl = '';
+          }
+        } else {
+          imageUrl = '';
+        }
+        
+        return ProductModel(
+          id: row['id']?.toString() ?? '',
+          name: row['product_name']?.toString() ?? '',
+          description: '', // OCR products don't have description in the schema
+          activePrinciple: row['active_principle']?.toString(),
+          company: row['product_company']?.toString(),
+          action: '', // OCR products don't have action in the schema
+          package: row['package']?.toString() ?? '',
+          imageUrl: imageUrl,
+          price: null, // OCR products don't have price in main table
+          distributorId: row['distributor_name']?.toString(),
+          createdAt: row['created_at'] != null 
+              ? DateTime.tryParse(row['created_at'].toString()) 
+              : null,
+          availablePackages: [row['package']?.toString() ?? ''], // Single package from OCR
+          selectedPackage: row['package']?.toString() ?? '',
+        );
+      }).toList();
+
+      return ocrProducts;
+    } catch (e) {
+      print('Error fetching OCR products: $e');
+      return [];
+    }
+  }
+
  
 
   Future<String?> addProductToCatalog(ProductModel product) async {
@@ -421,6 +475,10 @@ final priceUpdatesProvider = FutureProvider<List<ProductModel>>((ref) {
 
 final productsProvider = FutureProvider<List<ProductModel>>((ref) {
   return ref.watch(productRepositoryProvider).getAllProducts();
+});
+
+final ocrProductsProvider = FutureProvider<List<ProductModel>>((ref) {
+  return ref.watch(productRepositoryProvider).getOcrProducts();
 });
 
 class PaginatedProductsState extends Equatable {
