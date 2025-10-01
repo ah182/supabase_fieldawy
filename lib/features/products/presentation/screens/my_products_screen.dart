@@ -6,11 +6,9 @@ import 'package:fieldawy_store/features/products/presentation/screens/add_produc
 import 'package:flutter/material.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-// ignore: unnecessary_import
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // <= مهم علشان HookConsumerWidget
-// ignore: unused_import
-import 'dart:ui' as ui; // <= لتفادي أي تعارض مع TextDirection
-import 'dart:async'; // <= مهم علشان Completer
+
+import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -37,7 +35,7 @@ void _showAnimatedBanner(BuildContext context) {
   Overlay.of(context).insert(overlayEntry);
 }
 
-// The animated banner widget - محسن مع لون أوضح
+// The animated banner widget
 class _AnimatedTopBanner extends StatefulWidget {
   final String message;
   final VoidCallback onDismiss;
@@ -67,7 +65,6 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
 
     _controller.forward();
 
-    // Schedule dismissal
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
         _controller.reverse().then((_) {
@@ -99,12 +96,9 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
           color: Colors.transparent,
           child: Container(
             decoration: BoxDecoration(
-              // لون أوضح وأكثر تباينًا للسناك بار
               color: isDarkMode
-                  ? const Color.fromARGB(
-                      255, 55, 55, 60) // لون أفتح في الوضع المظلم
-                  : const Color.fromARGB(
-                      255, 240, 248, 255), // لون أزرق فاتح في الوضع العادي
+                  ? const Color.fromARGB(255, 55, 55, 60)
+                  : const Color.fromARGB(255, 240, 248, 255),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: theme.colorScheme.primary.withOpacity(0.3),
@@ -163,7 +157,7 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'حسناً',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
@@ -182,6 +176,7 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
   }
 }
 
+// تحويل MyProductsScreen إلى StatefulWidget لدعم TabController
 class MyProductsScreen extends HookConsumerWidget {
   const MyProductsScreen({super.key});
 
@@ -297,8 +292,8 @@ class MyProductsScreen extends HookConsumerWidget {
           const SizedBox(height: 16),
           TextField(
             controller: priceController,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
               labelText: 'السعر الجديد',
               suffixText: 'جنيه',
               border: OutlineInputBorder(),
@@ -386,6 +381,9 @@ class MyProductsScreen extends HookConsumerWidget {
     final selectedProducts = useState<Set<String>>({});
     final hasShownHint = useState(false);
 
+    // إضافة TabController
+    final tabController = useTabController(initialLength: 2);
+
     useEffect(() {
       if (!hasShownHint.value &&
           !isSelectionMode.value &&
@@ -415,9 +413,7 @@ class MyProductsScreen extends HookConsumerWidget {
 
     final searchQuery = useState<String>('');
 
-    ref.listen(myProductsProvider, (previous, next) {
-      // This will trigger data loading when the screen is first built
-    });
+    ref.listen(myProductsProvider, (previous, next) {});
 
     return GestureDetector(
       onTap: () {
@@ -431,7 +427,6 @@ class MyProductsScreen extends HookConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // زر الحذف المحسن
                     FloatingActionButton(
                       heroTag: "btnDeleteAll",
                       onPressed: () async {
@@ -496,7 +491,6 @@ class MyProductsScreen extends HookConsumerWidget {
                       child: const Icon(Icons.delete_rounded),
                     ),
                     const SizedBox(width: 12),
-                    // زر تحديد الكل المحسن
                     FloatingActionButton(
                       heroTag: "btnSelectAll",
                       onPressed: () async {
@@ -560,12 +554,10 @@ class MyProductsScreen extends HookConsumerWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
-          // تحسين تصميم شريط البحث والعداد
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight + 40.0),
+            preferredSize: const Size.fromHeight(kToolbarHeight + 100.0),
             child: Column(
               children: [
-                // شريط البحث المحسن
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16.0, vertical: 8.0),
@@ -580,7 +572,6 @@ class MyProductsScreen extends HookConsumerWidget {
                     hintText: 'ابحث عن منتج...',
                   ),
                 ),
-                // العداد المحسن
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16.0),
                   padding: const EdgeInsets.symmetric(
@@ -676,560 +667,681 @@ class MyProductsScreen extends HookConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+                // TabBar المحسن
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceVariant
+                        .withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: TabBar(
+                    controller: tabController,
+                    indicator: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorPadding: const EdgeInsets.all(2),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.grid_view_rounded, size: 14),
+                              SizedBox(width: 4),
+                              Text('Main'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Tab(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.camera_alt_rounded, size: 14),
+                              SizedBox(width: 4),
+                              Text('OCR'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 8),
               ],
             ),
           ),
         ),
-        body: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(myProductsProvider);
-            await Future.delayed(const Duration(milliseconds: 300));
-          },
-          child: myProductsAsync.when(
-            data: (products) {
-              List<ProductModel> filteredProducts;
-              if (searchQuery.value.isEmpty) {
-                filteredProducts = products;
-              } else {
-                filteredProducts = products.where((product) {
-                  final query = searchQuery.value.toLowerCase();
-                  final productName = product.name.toLowerCase();
-                  final productCompany = product.company?.toLowerCase() ?? '';
-                  final productActivePrinciple =
-                      product.activePrinciple?.toLowerCase() ?? '';
+        body: TabBarView(
+          controller: tabController,
+          children: [
+            // Main Tab - المحتوى الأصلي
+            _buildMainTabContent(
+              context,
+              ref,
+              myProductsAsync,
+              searchQuery,
+              isSelectionMode,
+              selectedProducts,
+              searchFocusNode,
+            ),
+            // OCR Tab - Placeholder
+            _buildOCRTabContent(context),
+          ],
+        ),
+      ),
+    );
+  }
 
-                  return productName.contains(query) ||
-                      productCompany.contains(query) ||
-                      productActivePrinciple.contains(query);
-                }).toList();
-              }
+  // محتوى التاب الرئيسي (Main)
+  Widget _buildMainTabContent(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<ProductModel>> myProductsAsync,
+    ValueNotifier<String> searchQuery,
+    ValueNotifier<bool> isSelectionMode,
+    ValueNotifier<Set<String>> selectedProducts,
+    FocusNode searchFocusNode,
+  ) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(myProductsProvider);
+        await Future.delayed(const Duration(milliseconds: 300));
+      },
+      child: myProductsAsync.when(
+        data: (products) {
+          List<ProductModel> filteredProducts;
+          if (searchQuery.value.isEmpty) {
+            filteredProducts = products;
+          } else {
+            filteredProducts = products.where((product) {
+              final query = searchQuery.value.toLowerCase();
+              final productName = product.name.toLowerCase();
+              final productCompany = product.company?.toLowerCase() ?? '';
+              final productActivePrinciple =
+                  product.activePrinciple?.toLowerCase() ?? '';
 
-              if (filteredProducts.isEmpty) {
-                if (searchQuery.value.isNotEmpty) {
-                  return LayoutBuilder(builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minHeight: constraints.maxHeight),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.search_off_rounded,
-                                size: 64,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.6),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'لا توجد نتائج للبحث.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                            ],
+              return productName.contains(query) ||
+                  productCompany.contains(query) ||
+                  productActivePrinciple.contains(query);
+            }).toList();
+          }
+
+          if (filteredProducts.isEmpty) {
+            if (searchQuery.value.isNotEmpty) {
+              return LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.6),
                           ),
-                        ),
-                      ),
-                    );
-                  });
-                } else {
-                  return LayoutBuilder(builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minHeight: constraints.maxHeight),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.medication_liquid_rounded,
-                                size: 64,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.6),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'You have not added any medicines yet.'.tr(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                              const SizedBox(height: 24),
-                              FilledButton.icon(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const AddFromCatalogScreen()),
-                                  );
-                                },
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text('addProduct'.tr()),
-                              ),
-                            ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'لا توجد نتائج للبحث.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
-                        ),
+                        ],
                       ),
-                    );
-                  });
-                }
-              }
-
-              // القائمة المحسنة مع التعديلات المطلوبة
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 80.0, top: 8.0),
-                itemCount: filteredProducts.length,
-                itemBuilder: (context, index) {
-                  final product = filteredProducts[index];
-                  final isSelected = selectedProducts.value.contains(
-                      '${product.id}_${product.selectedPackage ?? ''}');
-
-                  return Container(
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: isSelected
-                          ? Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 2,
-                            )
-                          : null,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
-                    child: Material(
-                      color: isSelected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.08)
-                          : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
-                        onTap: isSelectionMode.value
-                            ? () {
-                                final productIdWithPackage =
-                                    '${product.id}_${product.selectedPackage ?? ''}';
-                                if (selectedProducts.value
-                                    .contains(productIdWithPackage)) {
-                                  selectedProducts.value = Set.from(
-                                      selectedProducts.value
-                                        ..remove(productIdWithPackage));
-                                } else {
-                                  selectedProducts.value = Set.from(
-                                      selectedProducts.value
-                                        ..add(productIdWithPackage));
-                                }
-                                if (selectedProducts.value.isEmpty) {
-                                  isSelectionMode.value = false;
-                                }
-                              }
-                            : null,
-                        onLongPress: isSelectionMode.value
-                            ? null
-                            : () {
-                                isSelectionMode.value = true;
-                                selectedProducts.value = {
-                                  '${product.id}_${product.selectedPackage ?? ''}'
-                                };
-                              },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            children: [
-                              // صورة المنتج (نفس التصميم)
-                              GestureDetector(
-                                onTap: () {
-                                  _showProductDetailDialog(context, product);
-                                },
-                                child: Container(
-                                  width: 60,
-                                  height: 60,
+                  ),
+                );
+              });
+            } else {
+              return LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.medication_liquid_rounded,
+                            size: 64,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.6),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'You have not added any medicines yet.'.tr(),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                          const SizedBox(height: 24),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddFromCatalogScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text('addProduct'.tr()),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              });
+            }
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 80.0, top: 8.0),
+            itemCount: filteredProducts.length,
+            itemBuilder: (context, index) {
+              final product = filteredProducts[index];
+              final isSelected = selectedProducts.value
+                  .contains('${product.id}_${product.selectedPackage ?? ''}');
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: isSelected
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        )
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+                      : Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: isSelectionMode.value
+                        ? () {
+                            final productIdWithPackage =
+                                '${product.id}_${product.selectedPackage ?? ''}';
+                            if (selectedProducts.value
+                                .contains(productIdWithPackage)) {
+                              selectedProducts.value = Set.from(
+                                  selectedProducts.value
+                                    ..remove(productIdWithPackage));
+                            } else {
+                              selectedProducts.value = Set.from(
+                                  selectedProducts.value
+                                    ..add(productIdWithPackage));
+                            }
+                            if (selectedProducts.value.isEmpty) {
+                              isSelectionMode.value = false;
+                            }
+                          }
+                        : null,
+                    onLongPress: isSelectionMode.value
+                        ? null
+                        : () {
+                            isSelectionMode.value = true;
+                            selectedProducts.value = {
+                              '${product.id}_${product.selectedPackage ?? ''}'
+                            };
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              _showProductDetailDialog(context, product);
+                            },
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceVariant,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: product.imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceVariant,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Center(
+                                      child: ImageLoadingIndicator(size: 24),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceVariant,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.medication_rounded,
+                                      size: 28,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product.name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                if (product.selectedPackage != null &&
+                                    product.selectedPackage!.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      product.selectedPackage!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSecondaryContainer,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: Theme.of(context)
                                         .colorScheme
-                                        .surfaceVariant,
-                                    borderRadius: BorderRadius.circular(12),
+                                        .primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: CachedNetworkImage(
-                                      imageUrl: product.imageUrl,
-                                      fit: BoxFit.contain,
-                                      placeholder: (context, url) => Container(
-                                        decoration: BoxDecoration(
+                                  child: Text(
+                                    '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
                                           color: Theme.of(context)
                                               .colorScheme
-                                              .surfaceVariant,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                              .onPrimaryContainer,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        child: const Center(
-                                          child:
-                                              ImageLoadingIndicator(size: 24),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .surfaceVariant,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          Icons.medication_rounded,
-                                          size: 28,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              // معلومات المنتج مع اسم أصغر
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // اسم المنتج بحجم أصغر
-                                    Text(
-                                      product.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize:
-                                                15, // حجم أصغر من titleMedium
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    if (product.selectedPackage != null &&
-                                        product.selectedPackage!.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .secondaryContainer,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          product.selectedPackage!,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSecondaryContainer,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                      ),
-                                    const SizedBox(height: 6),
-                                    // السعر
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primaryContainer,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onPrimaryContainer,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // الأزرار أو Checkbox
-                              if (isSelectionMode.value)
-                                Checkbox(
-                                  value: selectedProducts.value.contains(
-                                      '${product.id}_${product.selectedPackage ?? ''}'),
-                                  onChanged: (bool? value) {
-                                    final productIdWithPackage =
-                                        '${product.id}_${product.selectedPackage ?? ''}';
-                                    if (value == true) {
-                                      selectedProducts.value = Set.from(
-                                          selectedProducts.value
-                                            ..add(productIdWithPackage));
-                                    } else {
-                                      selectedProducts.value = Set.from(
-                                          selectedProducts.value
-                                            ..remove(productIdWithPackage));
-                                      if (selectedProducts.value.isEmpty) {
-                                        isSelectionMode.value = false;
-                                      }
-                                    }
-                                  },
-                                )
-                              else
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // زر التعديل بأيقونة أصغر
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.edit_rounded,
-                                            size: 16), // أيقونة أصغر
-                                        color: Colors.blue[600],
-                                        onPressed: () async {
-                                          final newPrice =
-                                              await _showEditPriceDialog(
-                                                  context, product);
-                                          if (newPrice != null) {
-                                            try {
-                                              final userId = ref
-                                                  .read(authServiceProvider)
-                                                  .currentUser
-                                                  ?.id;
-                                              if (userId != null) {
-                                                await ref
-                                                    .read(
-                                                        productRepositoryProvider)
-                                                    .updateProductPriceInDistributorCatalog(
-                                                      distributorId: userId,
-                                                      productId: product.id,
-                                                      package: product
-                                                              .selectedPackage ??
-                                                          '',
-                                                      newPrice: newPrice,
-                                                    );
-
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    elevation: 0,
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    content:
-                                                        AwesomeSnackbarContent(
-                                                      title: 'Success',
-                                                      message:
-                                                          'Price updated successfully',
-                                                      contentType:
-                                                          ContentType.success,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  elevation: 0,
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  content:
-                                                      AwesomeSnackbarContent(
-                                                    title: 'Error',
-                                                    message:
-                                                        'Failed to update price. Please try again.',
-                                                    contentType:
-                                                        ContentType.failure,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32, // حجم أصغر
-                                          minHeight: 32, // حجم أصغر
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // زر الحذف بأيقونة أصغر
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.delete_rounded,
-                                            size: 16), // أيقونة أصغر
-                                        color: Colors.red[600],
-                                        onPressed: () async {
-                                          final confirmDelete =
-                                              await _showDeleteConfirmationDialog(
-                                                  context, product.name);
-                                          if (confirmDelete == true) {
-                                            try {
-                                              final userId = ref
-                                                  .read(authServiceProvider)
-                                                  .currentUser
-                                                  ?.id;
-                                              if (userId != null) {
-                                                await ref
-                                                    .read(
-                                                        productRepositoryProvider)
-                                                    .removeProductFromDistributorCatalog(
-                                                      distributorId: userId,
-                                                      productId: product.id,
-                                                      package: product
-                                                              .selectedPackage ??
-                                                          '',
-                                                    );
-
-                                                ref
-                                                    .read(
-                                                        cachingServiceProvider)
-                                                    .invalidateWithPrefix(
-                                                        'my_products_');
-                                                ref.invalidate(
-                                                    myProductsProvider);
-
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    elevation: 0,
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    content:
-                                                        AwesomeSnackbarContent(
-                                                      title: 'Success',
-                                                      message:
-                                                          'Product deleted successfully',
-                                                      contentType:
-                                                          ContentType.success,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  elevation: 0,
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  content:
-                                                      AwesomeSnackbarContent(
-                                                    title: 'Error',
-                                                    message:
-                                                        'Failed to delete product. Please try again.',
-                                                    contentType:
-                                                        ContentType.failure,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32, // حجم أصغر
-                                          minHeight: 32, // حجم أصغر
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                          if (isSelectionMode.value)
+                            Checkbox(
+                              value: selectedProducts.value.contains(
+                                  '${product.id}_${product.selectedPackage ?? ''}'),
+                              onChanged: (bool? value) {
+                                final productIdWithPackage =
+                                    '${product.id}_${product.selectedPackage ?? ''}';
+                                if (value == true) {
+                                  selectedProducts.value = Set.from(
+                                      selectedProducts.value
+                                        ..add(productIdWithPackage));
+                                } else {
+                                  selectedProducts.value = Set.from(
+                                      selectedProducts.value
+                                        ..remove(productIdWithPackage));
+                                  if (selectedProducts.value.isEmpty) {
+                                    isSelectionMode.value = false;
+                                  }
+                                }
+                              },
+                            )
+                          else
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit_rounded,
+                                        size: 16),
+                                    color: Colors.blue[600],
+                                    onPressed: () async {
+                                      final newPrice =
+                                          await _showEditPriceDialog(
+                                              context, product);
+                                      if (newPrice != null) {
+                                        try {
+                                          final userId = ref
+                                              .read(authServiceProvider)
+                                              .currentUser
+                                              ?.id;
+                                          if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .updateProductPriceInDistributorCatalog(
+                                                  distributorId: userId,
+                                                  productId: product.id,
+                                                  package:
+                                                      product.selectedPackage ??
+                                                          '',
+                                                  newPrice: newPrice,
+                                                );
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                elevation: 0,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                content: AwesomeSnackbarContent(
+                                                  title: 'Success',
+                                                  message:
+                                                      'Price updated successfully',
+                                                  contentType:
+                                                      ContentType.success,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'Error',
+                                                message:
+                                                    'Failed to update price. Please try again.',
+                                                contentType:
+                                                    ContentType.failure,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.delete_rounded,
+                                        size: 16),
+                                    color: Colors.red[600],
+                                    onPressed: () async {
+                                      final confirmDelete =
+                                          await _showDeleteConfirmationDialog(
+                                              context, product.name);
+                                      if (confirmDelete == true) {
+                                        try {
+                                          final userId = ref
+                                              .read(authServiceProvider)
+                                              .currentUser
+                                              ?.id;
+                                          if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .removeProductFromDistributorCatalog(
+                                                  distributorId: userId,
+                                                  productId: product.id,
+                                                  package:
+                                                      product.selectedPackage ??
+                                                          '',
+                                                );
+
+                                            ref
+                                                .read(cachingServiceProvider)
+                                                .invalidateWithPrefix(
+                                                    'my_products_');
+                                            ref.invalidate(myProductsProvider);
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                elevation: 0,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                content: AwesomeSnackbarContent(
+                                                  title: 'Success',
+                                                  message:
+                                                      'Product deleted successfully',
+                                                  contentType:
+                                                      ContentType.success,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'Error',
+                                                message:
+                                                    'Failed to delete product. Please try again.',
+                                                contentType:
+                                                    ContentType.failure,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
                       ),
-                    ),
-                  );
-                },
-              );
-            },
-            loading: () => ListView.builder(
-              itemCount: 6,
-              padding: const EdgeInsets.all(16.0),
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: ProductCardShimmer(),
-                );
-              },
-            ),
-            error: (error, stack) =>
-                LayoutBuilder(builder: (context, constraints) {
-              return SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 60,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '${'An error occurred:'.tr()} $error',
-                          style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
                     ),
                   ),
                 ),
               );
-            }),
-          ),
+            },
+          );
+        },
+        loading: () => ListView.builder(
+          itemCount: 6,
+          padding: const EdgeInsets.all(16.0),
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: ProductCardShimmer(),
+            );
+          },
         ),
+        error: (error, stack) => LayoutBuilder(builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 60,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '${'An error occurred:'.tr()} $error',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // محتوى تاب OCR (Placeholder)
+  Widget _buildOCRTabContent(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.camera_alt_rounded,
+            size: 80,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'OCR Feature',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
+              'قريباً: امسح صور المنتجات بالكاميرا واستخرج المعلومات تلقائياً',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () {
+              // سيتم تفعيلها لاحقاً
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('OCR feature coming soon!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.camera_alt_rounded),
+            label: const Text('Start Scanning'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+          ),
+        ],
       ),
     );
   }
