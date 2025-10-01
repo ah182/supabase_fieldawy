@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import 'dart:ui' as ui;
+
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -176,7 +176,6 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
   }
 }
 
-// تحويل MyProductsScreen إلى StatefulWidget لدعم TabController
 class MyProductsScreen extends HookConsumerWidget {
   const MyProductsScreen({super.key});
 
@@ -363,6 +362,7 @@ class MyProductsScreen extends HookConsumerWidget {
                         builder: (context) => const AddProductOcrScreen()),
                   );
                   ref.invalidate(myProductsProvider);
+                  ref.invalidate(myOcrProductsProvider);
                 },
               ),
             ],
@@ -383,6 +383,12 @@ class MyProductsScreen extends HookConsumerWidget {
 
     // إضافة TabController
     final tabController = useTabController(initialLength: 2);
+
+    // Selection states for each tab
+    final mainTabSelection = useState<Set<String>>({});
+    final ocrTabSelection = useState<Set<String>>({});
+    final mainTabSelectionMode = useState(false);
+    final ocrTabSelectionMode = useState(false);
 
     useEffect(() {
       if (!hasShownHint.value &&
@@ -421,114 +427,253 @@ class MyProductsScreen extends HookConsumerWidget {
       },
       child: MainScaffold(
         selectedIndex: 0,
-        floatingActionButton: isSelectionMode.value
-            ? Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FloatingActionButton(
-                      heroTag: "btnDeleteAll",
-                      onPressed: () async {
-                        if (selectedProducts.value.isNotEmpty) {
-                          final confirmDelete = await _showDeleteConfirmationDialog(
-                              context,
-                              '${selectedProducts.value.length} selected products');
-                          if (confirmDelete == true) {
-                            try {
-                              final userId =
-                                  ref.read(authServiceProvider).currentUser?.id;
-                              if (userId != null) {
-                                await ref
-                                    .read(productRepositoryProvider)
-                                    .removeMultipleProductsFromDistributorCatalog(
-                                      distributorId: userId,
-                                      productIdsWithPackage:
-                                          selectedProducts.value.toList(),
+        floatingActionButton: Builder(
+          builder: (context) {
+            // Determine which tab is currently active
+            final currentTab = tabController.index;
+            
+            // Get OCR products if needed for OCR tab
+            final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
+            
+            // Determine which tab's selection state to use
+            final currentTabSelection = currentTab == 0 ? mainTabSelection.value : ocrTabSelection.value;
+            final currentSelectionMode = currentTab == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value;
+            
+            if (currentSelectionMode) {
+              // For OCR tab
+              if (currentTab == 1) {
+                if (myOcrProductsAsync is AsyncData<List<ProductModel>>) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FloatingActionButton(
+                          heroTag: "btnDeleteAllOcr",
+                          onPressed: () async {
+                            if (currentTabSelection.isNotEmpty) {
+                              final confirmDelete = await _showDeleteConfirmationDialog(
+                                  context,
+                                  '${currentTabSelection.length} selected products');
+                              if (confirmDelete == true) {
+                                try {
+                                  final userId =
+                                      ref.read(authServiceProvider).currentUser?.id;
+                                  if (userId != null) {
+                                    // Extract OCR product IDs from the selection format
+                                    final ocrProductIds = currentTabSelection
+                                        .map((idWithPackage) {
+                                          // For OCR products, the format is likely just 'id' or 'id_package'
+                                          // Split by '_' and take the first part which should be the OCR product ID
+                                          final parts = idWithPackage.split('_');
+                                          return parts.first;
+                                        })
+                                        .toList();
+                                    
+                                    await ref
+                                        .read(productRepositoryProvider)
+                                        .removeMultipleOcrProductsFromDistributorCatalog(
+                                          distributorId: userId,
+                                          ocrProductIds: ocrProductIds,
+                                        );
+
+                                    ref
+                                        .read(cachingServiceProvider)
+                                        .invalidateWithPrefix('my_products_');
+                                    ref.invalidate(myOcrProductsProvider);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        elevation: 0,
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.transparent,
+                                        content: AwesomeSnackbarContent(
+                                          title: 'Success',
+                                          message:
+                                              'Selected products deleted successfully',
+                                          contentType: ContentType.success,
+                                        ),
+                                      ),
                                     );
+                                    // Reset OCR tab selection
+                                    ocrTabSelection.value = {};
+                                    ocrTabSelectionMode.value = false;
+                                  }
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      elevation: 0,
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.transparent,
+                                      content: AwesomeSnackbarContent(
+                                        title: 'Error',
+                                        message:
+                                            'Failed to delete products. Please try again.',
+                                        contentType: ContentType.failure,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          backgroundColor: Colors.red[400],
+                          foregroundColor: Colors.white,
+                          child: const Icon(Icons.delete_rounded),
+                        ),
+                        const SizedBox(width: 12),
+                        FloatingActionButton(
+                          heroTag: "btnSelectAllOcr",
+                          onPressed: () {
+                            final myOcrProductsAsync = ref.read(myOcrProductsProvider);
+                            if (myOcrProductsAsync is AsyncData<List<ProductModel>>) {
+                              final allProductIds = myOcrProductsAsync.value
+                                  .map((product) =>
+                                      '${product.id}_${product.selectedPackage ?? ''}')
+                                  .toSet();
 
-                                ref
-                                    .read(cachingServiceProvider)
-                                    .invalidateWithPrefix('my_products_');
-                                ref.invalidate(myProductsProvider);
+                              if (currentTabSelection.length ==
+                                      allProductIds.length &&
+                                  currentTabSelection
+                                      .containsAll(allProductIds)) {
+                                ocrTabSelection.value = {};
+                              } else {
+                                ocrTabSelection.value = allProductIds;
+                              }
+                            }
+                          },
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          child: currentTabSelection.length > 0 &&
+                                  currentTabSelection.length ==
+                                      (ref.read(myOcrProductsProvider)
+                                              is AsyncData<List<ProductModel>>
+                                          ? (ref.read(myOcrProductsProvider)
+                                                  as AsyncData<List<ProductModel>>)
+                                              .value
+                                              .length
+                                          : 0)
+                              ? const Icon(Icons.deselect)
+                              : const Icon(Icons.select_all_rounded),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  return const SizedBox.shrink();
+                }
+              } 
+              // For Main tab (current functionality)
+              else {
+                final myProductsAsync = ref.read(myProductsProvider);
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: "btnDeleteAllMain",
+                        onPressed: () async {
+                          if (currentTabSelection.isNotEmpty) {
+                            final confirmDelete = await _showDeleteConfirmationDialog(
+                                context,
+                                '${currentTabSelection.length} selected products');
+                            if (confirmDelete == true) {
+                              try {
+                                final userId =
+                                    ref.read(authServiceProvider).currentUser?.id;
+                                if (userId != null) {
+                                  await ref
+                                      .read(productRepositoryProvider)
+                                      .removeMultipleProductsFromDistributorCatalog(
+                                        distributorId: userId,
+                                        productIdsWithPackage:
+                                            currentTabSelection.toList(),
+                                      );
 
+                                  ref
+                                      .read(cachingServiceProvider)
+                                      .invalidateWithPrefix('my_products_');
+                                  ref.invalidate(myProductsProvider);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      elevation: 0,
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.transparent,
+                                      content: AwesomeSnackbarContent(
+                                        title: 'Success',
+                                        message:
+                                            'Selected products deleted successfully',
+                                        contentType: ContentType.success,
+                                      ),
+                                    ),
+                                  );
+                                  mainTabSelection.value = {};
+                                  mainTabSelectionMode.value = false;
+                                }
+                              } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     elevation: 0,
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: Colors.transparent,
                                     content: AwesomeSnackbarContent(
-                                      title: 'Success',
+                                      title: 'Error',
                                       message:
-                                          'Selected products deleted successfully',
-                                      contentType: ContentType.success,
+                                          'Failed to delete products. Please try again.',
+                                      contentType: ContentType.failure,
                                     ),
                                   ),
                                 );
-                                isSelectionMode.value = false;
-                                selectedProducts.value = {};
                               }
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  elevation: 0,
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.transparent,
-                                  content: AwesomeSnackbarContent(
-                                    title: 'Error',
-                                    message:
-                                        'Failed to delete products. Please try again.',
-                                    contentType: ContentType.failure,
-                                  ),
-                                ),
-                              );
                             }
                           }
-                        }
-                      },
-                      backgroundColor: Colors.red[400],
-                      foregroundColor: Colors.white,
-                      child: const Icon(Icons.delete_rounded),
-                    ),
-                    const SizedBox(width: 12),
-                    FloatingActionButton(
-                      heroTag: "btnSelectAll",
-                      onPressed: () async {
-                        final myProductsAsync = ref.read(myProductsProvider);
-                        if (myProductsAsync is AsyncData<List<ProductModel>>) {
-                          final allProductIds = myProductsAsync.value
-                              .map((product) =>
-                                  '${product.id}_${product.selectedPackage ?? ''}')
-                              .toSet();
+                        },
+                        backgroundColor: Colors.red[400],
+                        foregroundColor: Colors.white,
+                        child: const Icon(Icons.delete_rounded),
+                      ),
+                      const SizedBox(width: 12),
+                      FloatingActionButton(
+                        heroTag: "btnSelectAllMain",
+                        onPressed: () async {
+                          if (myProductsAsync is AsyncData<List<ProductModel>>) {
+                            final allProductIds = myProductsAsync.value
+                                .map((product) =>
+                                    '${product.id}_${product.selectedPackage ?? ''}')
+                                .toSet();
 
-                          if (selectedProducts.value.length ==
-                                  allProductIds.length &&
-                              selectedProducts.value
-                                  .containsAll(allProductIds)) {
-                            selectedProducts.value = {};
-                          } else {
-                            selectedProducts.value = allProductIds;
+                            if (currentTabSelection.length ==
+                                    allProductIds.length &&
+                                currentTabSelection
+                                    .containsAll(allProductIds)) {
+                              mainTabSelection.value = {};
+                            } else {
+                              mainTabSelection.value = allProductIds;
+                            }
                           }
-                        }
-                      },
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      child: selectedProducts.value.length > 0 &&
-                              selectedProducts.value.length ==
-                                  (ref.read(myProductsProvider)
-                                          is AsyncData<List<ProductModel>>
-                                      ? (ref.read(myProductsProvider)
-                                              as AsyncData<List<ProductModel>>)
-                                          .value
-                                          .length
-                                      : 0)
-                          ? const Icon(Icons.deselect)
-                          : const Icon(Icons.select_all_rounded),
-                    ),
-                  ],
-                ),
-              )
-            : FloatingActionButton.extended(
+                        },
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        child: currentTabSelection.length > 0 &&
+                                currentTabSelection.length ==
+                                    (ref.read(myProductsProvider)
+                                            is AsyncData<List<ProductModel>>
+                                        ? (ref.read(myProductsProvider)
+                                                as AsyncData<List<ProductModel>>)
+                                            .value
+                                            .length
+                                        : 0)
+                            ? const Icon(Icons.deselect)
+                            : const Icon(Icons.select_all_rounded),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            } else {
+              return FloatingActionButton.extended(
                 onPressed: () {
                   _showAddProductOptions(context, ref);
                 },
@@ -537,17 +682,26 @@ class MyProductsScreen extends HookConsumerWidget {
                 elevation: 2,
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-              ),
+              );
+            }
+          },
+        ),
         appBar: AppBar(
-          title: isSelectionMode.value
-              ? Text('${selectedProducts.value.length} محدد')
+          title: mainTabSelectionMode.value || ocrTabSelectionMode.value
+              ? Text('${(tabController.index == 0 ? mainTabSelection.value : ocrTabSelection.value).length} محدد')
               : Text('myMedicines'.tr()),
-          leading: isSelectionMode.value
+          leading: mainTabSelectionMode.value || ocrTabSelectionMode.value
               ? IconButton(
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () {
-                    isSelectionMode.value = false;
-                    selectedProducts.value = {};
+                    // Reset the appropriate tab's selection
+                    if (tabController.index == 0) {
+                      mainTabSelectionMode.value = false;
+                      mainTabSelection.value = {};
+                    } else {
+                      ocrTabSelectionMode.value = false;
+                      ocrTabSelection.value = {};
+                    }
                   },
                 )
               : null,
@@ -596,73 +750,154 @@ class MyProductsScreen extends HookConsumerWidget {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
-                      myProductsAsync.when(
-                        data: (products) {
-                          if (isSelectionMode.value) {
-                            return Text(
-                              '${selectedProducts.value.length} من ${products.length} محدد',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            );
-                          } else {
-                            final totalCount = products.length;
-                            final filteredCount = searchQuery.value.isEmpty
-                                ? totalCount
-                                : products.where((product) {
-                                    final query =
-                                        searchQuery.value.toLowerCase();
-                                    final productName =
-                                        product.name.toLowerCase();
-                                    final productCompany =
-                                        product.company?.toLowerCase() ?? '';
-                                    final productActivePrinciple = product
-                                            .activePrinciple
-                                            ?.toLowerCase() ??
-                                        '';
-                                    return productName.contains(query) ||
-                                        productCompany.contains(query) ||
-                                        productActivePrinciple.contains(query);
-                                  }).length;
+                      Builder(
+                        builder: (context) {
+                          final currentTab = tabController.index;
+                          
+                          // For Main tab
+                          if (currentTab == 0) {
+                            return myProductsAsync.when(
+                              data: (products) {
+                                if (isSelectionMode.value) {
+                                  return Text(
+                                    '${selectedProducts.value.length} من ${products.length} محدد',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color:
+                                              Theme.of(context).colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  );
+                                } else {
+                                  final totalCount = products.length;
+                                  final filteredCount = searchQuery.value.isEmpty
+                                      ? totalCount
+                                      : products.where((product) {
+                                          final query =
+                                              searchQuery.value.toLowerCase();
+                                          final productName =
+                                              product.name.toLowerCase();
+                                          final productCompany =
+                                              product.company?.toLowerCase() ?? '';
+                                          final productActivePrinciple = product
+                                                  .activePrinciple
+                                                  ?.toLowerCase() ??
+                                              '';
+                                          return productName.contains(query) ||
+                                              productCompany.contains(query) ||
+                                              productActivePrinciple.contains(query);
+                                        }).length;
 
-                            return Text(
-                              searchQuery.value.isEmpty
-                                  ? 'إجمالي المنتجات: $totalCount'
-                                  : 'عرض $filteredCount من $totalCount منتج',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  return Text(
+                                    searchQuery.value.isEmpty
+                                        ? 'إجمالي المنتجات: $totalCount'
+                                        : 'عرض $filteredCount من $totalCount منتج',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color:
+                                              Theme.of(context).colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  );
+                                }
+                              },
+                              loading: () => Text(
+                                'جارٍ العد...',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                              error: (_, __) => Text(
+                                'خطأ في العد',
+                                style:
+                                    Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(context).colorScheme.error,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                              ),
+                            );
+                          } 
+                          // For OCR tab
+                          else {
+                            final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
+                            return myOcrProductsAsync.when(
+                              data: (products) {
+                                if (isSelectionMode.value) {
+                                  return Text(
+                                    '${selectedProducts.value.length} من ${products.length} محدد',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color:
+                                              Theme.of(context).colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  );
+                                } else {
+                                  final totalCount = products.length;
+                                  final filteredCount = searchQuery.value.isEmpty
+                                      ? totalCount
+                                      : products.where((product) {
+                                          final query =
+                                              searchQuery.value.toLowerCase();
+                                          final productName =
+                                              product.name.toLowerCase();
+                                          final productCompany =
+                                              product.company?.toLowerCase() ?? '';
+                                          final productActivePrinciple = product
+                                                  .activePrinciple
+                                                  ?.toLowerCase() ??
+                                              '';
+                                          return productName.contains(query) ||
+                                              productCompany.contains(query) ||
+                                              productActivePrinciple.contains(query);
+                                        }).length;
+
+                                  return Text(
+                                    searchQuery.value.isEmpty
+                                        ? 'إجمالي OCR: $totalCount'
+                                        : 'عرض $filteredCount من $totalCount OCR',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color:
+                                              Theme.of(context).colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  );
+                                }
+                              },
+                              loading: () => Text(
+                                'جارٍ العد...',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                              error: (_, __) => Text(
+                                'خطأ في العد',
+                                style:
+                                    Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(context).colorScheme.error,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                              ),
                             );
                           }
                         },
-                        loading: () => Text(
-                          'جارٍ العد...',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                        error: (_, __) => Text(
-                          'خطأ في العد',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                        ),
                       ),
                     ],
                   ),
@@ -749,8 +984,8 @@ class MyProductsScreen extends HookConsumerWidget {
               selectedProducts,
               searchFocusNode,
             ),
-            // OCR Tab - Placeholder
-            _buildOCRTabContent(context),
+            // OCR Tab - منتجات OCR الخاصة بالموزع
+            _buildOCRTabContent(context, ref, searchQuery, ocrTabSelection, ocrTabSelectionMode),
           ],
         ),
       ),
@@ -1292,56 +1527,616 @@ class MyProductsScreen extends HookConsumerWidget {
     );
   }
 
-  // محتوى تاب OCR (Placeholder)
-  Widget _buildOCRTabContent(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.camera_alt_rounded,
-            size: 80,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'OCR Feature',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'قريباً: امسح صور المنتجات بالكاميرا واستخرج المعلومات تلقائياً',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6),
+  // محتوى تاب OCR - يعرض منتجات OCR الخاصة بالموزع
+  Widget _buildOCRTabContent(
+    BuildContext context,
+    WidgetRef ref,
+    ValueNotifier<String> searchQuery,
+    ValueNotifier<Set<String>> ocrTabSelection,
+    ValueNotifier<bool> ocrTabSelectionMode,
+  ) {
+    final myOcrProductsAsync = ref.watch(myOcrProductsProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(myOcrProductsProvider);
+        await Future.delayed(const Duration(milliseconds: 300));
+      },
+      child: myOcrProductsAsync.when(
+        data: (products) {
+          // Filter products based on search query
+          List<ProductModel> filteredProducts;
+          if (searchQuery.value.isEmpty) {
+            filteredProducts = products;
+          } else {
+            filteredProducts = products.where((product) {
+              final query = searchQuery.value.toLowerCase();
+              final productName = product.name.toLowerCase();
+              final productCompany = product.company?.toLowerCase() ?? '';
+              final productActivePrinciple =
+                  product.activePrinciple?.toLowerCase() ?? '';
+
+              return productName.contains(query) ||
+                  productCompany.contains(query) ||
+                  productActivePrinciple.contains(query);
+            }).toList();
+          }
+
+          if (filteredProducts.isEmpty) {
+            if (searchQuery.value.isNotEmpty) {
+              return LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.6),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'لا توجد نتائج للبحث.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () {
-              // سيتم تفعيلها لاحقاً
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('OCR feature coming soon!'),
-                  behavior: SnackBarBehavior.floating,
+                );
+              });
+            } else {
+              return LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt_rounded,
+                            size: 80,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.6),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'No OCR Products',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 32.0),
+                            child: Text(
+                              'لم تقم بإضافة أي منتجات عبر OCR بعد',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6),
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddProductOcrScreen()),
+                              );
+                              ref.invalidate(myOcrProductsProvider);
+                            },
+                            icon: const Icon(Icons.camera_alt_rounded),
+                            label: const Text('Scan Product'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 32, vertical: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              });
+            }
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 80.0, top: 8.0),
+            itemCount: filteredProducts.length,
+            itemBuilder: (context, index) {
+              final product = filteredProducts[index];
+              final isSelected = ocrTabSelection.value
+                  .contains('${product.id}_${product.selectedPackage ?? ''}');
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: isSelected
+                      ? Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        )
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+                      : Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: ocrTabSelectionMode.value
+                        ? () {
+                            final productIdWithPackage =
+                                '${product.id}_${product.selectedPackage ?? ''}';
+                            if (ocrTabSelection.value
+                                .contains(productIdWithPackage)) {
+                              ocrTabSelection.value = Set.from(
+                                  ocrTabSelection.value
+                                    ..remove(productIdWithPackage));
+                            } else {
+                              ocrTabSelection.value = Set.from(
+                                  ocrTabSelection.value
+                                    ..add(productIdWithPackage));
+                            }
+                            if (ocrTabSelection.value.isEmpty) {
+                              ocrTabSelectionMode.value = false;
+                            }
+                          }
+                        : () {
+                            _showProductDetailDialog(context, product);
+                          },
+                    onLongPress: ocrTabSelectionMode.value
+                        ? null
+                        : () {
+                            ocrTabSelectionMode.value = true;
+                            ocrTabSelection.value = {
+                              '${product.id}_${product.selectedPackage ?? ''}'
+                            };
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          // Product Image
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(context).colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: product.imageUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: product.imageUrl,
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, url) => Container(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Center(
+                                          child:
+                                              ImageLoadingIndicator(size: 24),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.camera_alt_rounded,
+                                          size: 28,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.camera_alt_rounded,
+                                      size: 28,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Product Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                               
+                                Row(
+                                  
+                                  children: [
+                                   
+                                    
+                                    Expanded(
+                                      child: Text(
+                                        product.name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    
+                                     Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      
+                                      child: Row(
+                                        
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          
+                                          Icon(
+                                            Icons.camera_alt_rounded,
+                                            size: 10,
+                                            color: Colors.orange[700],
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'OCR',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  
+                                ),
+                                
+                                
+                               
+                                const SizedBox(height: 8),
+                                if (product.selectedPackage != null &&
+                                    product.selectedPackage!.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      product.selectedPackage!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSecondaryContainer,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 8),
+                                if (product.price != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (ocrTabSelectionMode.value)
+                            Checkbox(
+                              value: ocrTabSelection.value.contains(
+                                  '${product.id}_${product.selectedPackage ?? ''}'),
+                              onChanged: (bool? value) {
+                                final productIdWithPackage =
+                                    '${product.id}_${product.selectedPackage ?? ''}';
+                                if (value == true) {
+                                  ocrTabSelection.value = Set.from(
+                                      ocrTabSelection.value
+                                        ..add(productIdWithPackage));
+                                } else {
+                                  ocrTabSelection.value = Set.from(
+                                      ocrTabSelection.value
+                                        ..remove(productIdWithPackage));
+                                  if (ocrTabSelection.value.isEmpty) {
+                                    ocrTabSelectionMode.value = false;
+                                  }
+                                }
+                              },
+                            )
+                          else
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit_rounded,
+                                        size: 16),
+                                    color: Colors.blue[600],
+                                    onPressed: () async {
+                                      final newPrice =
+                                          await _showEditPriceDialog(
+                                              context, product);
+                                      if (newPrice != null) {
+                                        try {
+                                          final userId = ref
+                                              .read(authServiceProvider)
+                                              .currentUser
+                                              ?.id;
+                                          if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .updateOcrProductPrice(
+                                                  distributorId: userId,
+                                                  ocrProductId: product.id,
+                                                  newPrice: newPrice,
+                                                );
+
+                                            ref
+                                                .read(cachingServiceProvider)
+                                                .invalidateWithPrefix(
+                                                    'my_products_');
+                                            ref.invalidate(myOcrProductsProvider);
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                elevation: 0,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                content: AwesomeSnackbarContent(
+                                                  title: 'Success',
+                                                  message:
+                                                      'Price updated successfully',
+                                                  contentType:
+                                                      ContentType.success,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'Error',
+                                                message:
+                                                    'Failed to update price. Please try again.',
+                                                contentType:
+                                                    ContentType.failure,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.delete_rounded,
+                                        size: 16),
+                                    color: Colors.red[600],
+                                    onPressed: () async {
+                                      final confirmDelete =
+                                          await _showDeleteConfirmationDialog(
+                                              context, product.name);
+                                      if (confirmDelete == true) {
+                                        try {
+                                          final userId = ref
+                                              .read(authServiceProvider)
+                                              .currentUser
+                                              ?.id;
+                                          if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .removeOcrProductFromDistributorCatalog(
+                                                  distributorId: userId,
+                                                  ocrProductId: product.id,
+                                                );
+
+                                            ref
+                                                .read(cachingServiceProvider)
+                                                .invalidateWithPrefix(
+                                                    'my_products_');
+                                            ref.invalidate(myOcrProductsProvider);
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                elevation: 0,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                content: AwesomeSnackbarContent(
+                                                  title: 'Success',
+                                                  message:
+                                                      'Product deleted successfully',
+                                                  contentType:
+                                                      ContentType.success,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'Error',
+                                                message:
+                                                    'Failed to delete product. Please try again.',
+                                                contentType:
+                                                    ContentType.failure,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
-            icon: const Icon(Icons.camera_alt_rounded),
-            label: const Text('Start Scanning'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          );
+        },
+        loading: () => ListView.builder(
+          itemCount: 6,
+          padding: const EdgeInsets.all(16.0),
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: ProductCardShimmer(),
+            );
+          },
+        ),
+        error: (error, stack) => LayoutBuilder(builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 60,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'An error occurred: $error',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }

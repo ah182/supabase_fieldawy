@@ -7,8 +7,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:equatable/equatable.dart';
 
-
-
 // Provider to track when product data was last modified
 final productDataLastModifiedProvider = StateProvider<DateTime>((ref) {
   return DateTime.fromMicrosecondsSinceEpoch(0); // Initialize to epoch
@@ -100,21 +98,24 @@ class ProductRepository {
         doc['id'].toString(): ProductModel.fromMap(doc)
     };
 
-    final products = response.map((row) {
-      final productDetails = productsMap[row['product_id']];
-      if (productDetails != null) {
-        return productDetails.copyWith(
-          price: (row['price'] as num?)?.toDouble(),
-          oldPrice: (row['old_price'] as num?)?.toDouble(),
-          priceUpdatedAt: row['price_updated_at'] != null
-              ? DateTime.tryParse(row['price_updated_at'])
-              : null,
-          selectedPackage: row['package'] as String?,
-          distributorId: row['distributor_name'] as String?,
-        );
-      }
-      return null;
-    }).whereType<ProductModel>().toList();
+    final products = response
+        .map((row) {
+          final productDetails = productsMap[row['product_id']];
+          if (productDetails != null) {
+            return productDetails.copyWith(
+              price: (row['price'] as num?)?.toDouble(),
+              oldPrice: (row['old_price'] as num?)?.toDouble(),
+              priceUpdatedAt: row['price_updated_at'] != null
+                  ? DateTime.tryParse(row['price_updated_at'])
+                  : null,
+              selectedPackage: row['package'] as String?,
+              distributorId: row['distributor_name'] as String?,
+            );
+          }
+          return null;
+        })
+        .whereType<ProductModel>()
+        .toList();
 
     return products;
   }
@@ -178,7 +179,8 @@ class ProductRepository {
       // 1. Fetch all rows from distributor_products, explicitly selecting columns
       final distProductsResponse = await _supabase
           .from('distributor_products')
-          .select('product_id, price, old_price, price_updated_at, package, distributor_name');
+          .select(
+              'product_id, price, old_price, price_updated_at, package, distributor_name');
 
       if (distProductsResponse.isEmpty) {
         return [];
@@ -201,25 +203,28 @@ class ProductRepository {
       };
 
       // 5. Join the data
-      final products = distProductsResponse.map((row) {
-        final productDetails = productsMap[row['product_id']];
-        if (productDetails != null) {
-          return productDetails.copyWith(
-            // Overwrite with distributor-specific data
-            price: (row['price'] as num?)?.toDouble(),
-            oldPrice: (row['old_price'] as num?)?.toDouble(),
-            priceUpdatedAt: row['price_updated_at'] != null
-                ? DateTime.tryParse(row['price_updated_at'])
-                : null,
-            selectedPackage: row['package'] as String?,
-            distributorId: row['distributor_name'] as String?,
-          );
-        }
-        return null;
-      }).whereType<ProductModel>().toList();
-      
+      final products = distProductsResponse
+          .map((row) {
+            final productDetails = productsMap[row['product_id']];
+            if (productDetails != null) {
+              return productDetails.copyWith(
+                // Overwrite with distributor-specific data
+                price: (row['price'] as num?)?.toDouble(),
+                oldPrice: (row['old_price'] as num?)?.toDouble(),
+                priceUpdatedAt: row['price_updated_at'] != null
+                    ? DateTime.tryParse(row['price_updated_at'])
+                    : null,
+                selectedPackage: row['package'] as String?,
+                distributorId: row['distributor_name'] as String?,
+              );
+            }
+            return null;
+          })
+          .whereType<ProductModel>()
+          .toList();
+
       _cache.set(cacheKey, products, duration: const Duration(minutes: 30));
-      
+
       return products;
     } catch (e) {
       print('Error fetching all distributor products from server: $e');
@@ -271,12 +276,25 @@ class ProductRepository {
     _scheduleCacheInvalidation();
   }
 
+  Future<void> removeOcrProductFromDistributorCatalog({
+    required String distributorId,
+    required String ocrProductId,
+  }) async {
+    await _supabase.from('distributor_ocr_products').delete().match({
+      'distributor_id': distributorId,
+      'ocr_product_id': ocrProductId,
+    });
+
+    _scheduleCacheInvalidation();
+  }
+
   Future<void> removeMultipleProductsFromDistributorCatalog({
     required String distributorId,
     required List<String> productIdsWithPackage,
   }) async {
     try {
-      final List<String> docIdsToDelete = productIdsWithPackage.map((idWithPackage) {
+      final List<String> docIdsToDelete =
+          productIdsWithPackage.map((idWithPackage) {
         return "${distributorId}_$idWithPackage";
       }).toList();
 
@@ -288,6 +306,24 @@ class ProductRepository {
       _scheduleCacheInvalidation();
     } catch (e) {
       print('Error deleting multiple products from distributor catalog: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removeMultipleOcrProductsFromDistributorCatalog({
+    required String distributorId,
+    required List<String> ocrProductIds,
+  }) async {
+    try {
+      await _supabase
+          .from('distributor_ocr_products')
+          .delete()
+          .match({'distributor_id': distributorId})
+          .inFilter('ocr_product_id', ocrProductIds);
+
+      _scheduleCacheInvalidation();
+    } catch (e) {
+      print('Error deleting multiple OCR products from distributor catalog: $e');
       rethrow;
     }
   }
@@ -346,18 +382,19 @@ class ProductRepository {
       final ocrProducts = ocrProductsResponse.map((row) {
         // Map OCR product fields to ProductModel
         String imageUrl = row['image_url']?.toString() ?? '';
-        
+
         // Validate and fix image URL if needed
         if (imageUrl.isNotEmpty) {
           // Check if the URL starts with http/https
-          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          if (!imageUrl.startsWith('http://') &&
+              !imageUrl.startsWith('https://')) {
             // If it's not a proper URL format, set as empty to use placeholder
             imageUrl = '';
           }
         } else {
           imageUrl = '';
         }
-        
+
         return ProductModel(
           id: row['id']?.toString() ?? '',
           name: row['product_name']?.toString() ?? '',
@@ -369,10 +406,12 @@ class ProductRepository {
           imageUrl: imageUrl,
           price: null, // OCR products don't have price in main table
           distributorId: row['distributor_name']?.toString(),
-          createdAt: row['created_at'] != null 
-              ? DateTime.tryParse(row['created_at'].toString()) 
+          createdAt: row['created_at'] != null
+              ? DateTime.tryParse(row['created_at'].toString())
               : null,
-          availablePackages: [row['package']?.toString() ?? ''], // Single package from OCR
+          availablePackages: [
+            row['package']?.toString() ?? ''
+          ], // Single package from OCR
           selectedPackage: row['package']?.toString() ?? '',
         );
       }).toList();
@@ -384,7 +423,83 @@ class ProductRepository {
     }
   }
 
- 
+  Future<List<ProductModel>> getMyOcrProducts(String distributorId) async {
+    try {
+      // Fetch distributor OCR products for this specific distributor
+      final distributorOcrResponse = await _supabase
+          .from('distributor_ocr_products')
+          .select('ocr_product_id, price, created_at')
+          .eq('distributor_id', distributorId)
+          .order('created_at', ascending: false);
+
+      if (distributorOcrResponse.isEmpty) {
+        return [];
+      }
+
+      // Get unique OCR product IDs
+      final ocrProductIds = distributorOcrResponse
+          .map((row) => row['ocr_product_id'] as String)
+          .toList();
+
+      // Fetch the corresponding OCR products
+      final ocrProductsResponse = await _supabase
+          .from('ocr_products')
+          .select('*')
+          .inFilter('id', ocrProductIds);
+
+      if (ocrProductsResponse.isEmpty) {
+        return [];
+      }
+
+      // Create a map of OCR products for quick lookup
+      final ocrProductsMap = {
+        for (var row in ocrProductsResponse) row['id'].toString(): row
+      };
+
+      // Join the data
+      final products = distributorOcrResponse
+          .map((distRow) {
+            final ocrProduct = ocrProductsMap[distRow['ocr_product_id']];
+            if (ocrProduct != null) {
+              String imageUrl = ocrProduct['image_url']?.toString() ?? '';
+
+              // Validate and fix image URL if needed
+              if (imageUrl.isNotEmpty) {
+                if (!imageUrl.startsWith('http://') &&
+                    !imageUrl.startsWith('https://')) {
+                  imageUrl = '';
+                }
+              }
+
+              return ProductModel(
+                id: ocrProduct['id']?.toString() ?? '',
+                name: ocrProduct['product_name']?.toString() ?? '',
+                description: '',
+                activePrinciple: ocrProduct['active_principle']?.toString(),
+                company: ocrProduct['product_company']?.toString(),
+                action: '',
+                package: ocrProduct['package']?.toString() ?? '',
+                imageUrl: imageUrl,
+                price: (distRow['price'] as num?)?.toDouble(),
+                distributorId: ocrProduct['distributor_name']?.toString(),
+                createdAt: distRow['created_at'] != null
+                    ? DateTime.tryParse(distRow['created_at'].toString())
+                    : null,
+                availablePackages: [ocrProduct['package']?.toString() ?? ''],
+                selectedPackage: ocrProduct['package']?.toString() ?? '',
+              );
+            }
+            return null;
+          })
+          .whereType<ProductModel>()
+          .toList();
+
+      return products;
+    } catch (e) {
+      print('Error fetching my OCR products: $e');
+      return [];
+    }
+  }
 
   Future<String?> addProductToCatalog(ProductModel product) async {
     final response =
@@ -442,6 +557,21 @@ class ProductRepository {
     _scheduleCacheInvalidation();
   }
 
+  Future<void> updateOcrProductPrice({
+    required String distributorId,
+    required String ocrProductId,
+    required double newPrice,
+  }) async {
+    await _supabase.from('distributor_ocr_products').update({
+      'price': newPrice,
+    }).match({
+      'distributor_id': distributorId,
+      'ocr_product_id': ocrProductId,
+    });
+
+    _scheduleCacheInvalidation();
+  }
+
   void _scheduleCacheInvalidation() {
     final now = DateTime.now();
     _ref.read(productDataLastModifiedProvider.notifier).state = now;
@@ -479,6 +609,13 @@ final productsProvider = FutureProvider<List<ProductModel>>((ref) {
 
 final ocrProductsProvider = FutureProvider<List<ProductModel>>((ref) {
   return ref.watch(productRepositoryProvider).getOcrProducts();
+});
+
+final myOcrProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
+  final userId = ref.watch(authServiceProvider).currentUser?.id;
+  if (userId == null) return [];
+
+  return ref.watch(productRepositoryProvider).getMyOcrProducts(userId);
 });
 
 class PaginatedProductsState extends Equatable {
@@ -592,17 +729,20 @@ final internalAllProductsProvider =
       doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
-  final products = rows.map((row) {
-    final productDetails = productsMap[row['product_id']];
-    if (productDetails != null) {
-      return productDetails.copyWith(
-        price: (row['price'] as num?)?.toDouble(),
-        selectedPackage: row['package'] as String?,
-        distributorId: row['distributor_name'] as String?,
-      );
-    }
-    return null;
-  }).whereType<ProductModel>().toList();
+  final products = rows
+      .map((row) {
+        final productDetails = productsMap[row['product_id']];
+        if (productDetails != null) {
+          return productDetails.copyWith(
+            price: (row['price'] as num?)?.toDouble(),
+            selectedPackage: row['package'] as String?,
+            distributorId: row['distributor_name'] as String?,
+          );
+        }
+        return null;
+      })
+      .whereType<ProductModel>()
+      .toList();
 
   return products;
 });
@@ -645,17 +785,20 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
       doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
   };
 
-  final products = rows.map((row) {
-    final productDetails = productsMap[row['product_id']];
-    if (productDetails != null) {
-      return productDetails.copyWith(
-        price: (row['price'] as num?)?.toDouble(),
-        selectedPackage: row['package'] as String?,
-        distributorId: row['distributor_name'] as String?,
-      );
-    }
-    return null;
-  }).whereType<ProductModel>().toList();
+  final products = rows
+      .map((row) {
+        final productDetails = productsMap[row['product_id']];
+        if (productDetails != null) {
+          return productDetails.copyWith(
+            price: (row['price'] as num?)?.toDouble(),
+            selectedPackage: row['package'] as String?,
+            distributorId: row['distributor_name'] as String?,
+          );
+        }
+        return null;
+      })
+      .whereType<ProductModel>()
+      .toList();
 
   cache.set(timestampedCacheKey, products,
       duration: const Duration(minutes: 20));
@@ -669,8 +812,7 @@ final allDistributorProductsProvider =
   return ref.watch(productRepositoryProvider).getAllDistributorProducts();
 });
 
-final adminAllProductsProvider =
-    FutureProvider<List<ProductModel>>((ref) {
+final adminAllProductsProvider = FutureProvider<List<ProductModel>>((ref) {
   // This provider is for the admin panel and bypasses the cache to ensure
   // data is always fresh.
   ref.watch(productDataLastModifiedProvider);
