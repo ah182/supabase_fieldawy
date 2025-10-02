@@ -82,6 +82,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   List<Map<String, dynamic>> _ocrCatalogShuffledDisplayItems = [];
   String? _lastShuffledQuery; // علشان نعرف نعيد الشفل لو البحث اتغير
   String? _lastOcrShuffledQuery; // For OCR catalog search
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -377,77 +378,113 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
           floatingActionButton: validSelections.isNotEmpty
               ? FloatingActionButton.extended(
                   onPressed: () async {
-                    // Check which tab is currently active
-                    if (_tabController?.index == 1) { // OCR Tab
-                      try {
-                        final userModel = await ref.read(userDataProvider.future);
-                        final distributorId = userModel?.id;
-                        final distributorName = userModel?.displayName ?? 'اسم غير معروف';
+                    FocusScope.of(context).unfocus();
+                    setState(() {
+                      _isSaving = true;
+                    });
+                    try {
+                      // Check which tab is currently active
+                      if (_tabController?.index == 1) {
+                        // OCR Tab
+                        try {
+                          final userModel =
+                              await ref.read(userDataProvider.future);
+                          final distributorId = userModel?.id;
+                          final distributorName =
+                              userModel?.displayName ?? 'اسم غير معروف';
 
-                        if (distributorId == null) {
-                          throw Exception('User not authenticated');
-                        }
-                        
-                        final List<Map<String, dynamic>> ocrProductsToAdd = [];
-                        final Set<String> keysToClear = {};
+                          if (distributorId == null) {
+                            throw Exception('User not authenticated');
+                          }
 
-                        for (var item in _ocrCatalogShuffledDisplayItems) {
-                          final ProductModel product = item['product'];
-                          final String package = item['package'];
-                          final String key = '${product.id}_$package';
-                          
-                          final isSelectedNow = ref.read(catalogSelectionControllerProvider).prices.containsKey(key);
-                              
-                          if (isSelectedNow) {
-                            final price = ref.read(catalogSelectionControllerProvider).prices[key] ?? 0.0;
-                            
-                            if (price > 0) {
-                              String? ocrProductId = await _checkOrCreateOcrProduct(
-                                ref,
-                                distributorId,
-                                distributorName,
-                                product,
-                                package,
-                              );
-                              
-                              if (ocrProductId != null) {
-                                ocrProductsToAdd.add({
-                                  'ocrProductId': ocrProductId,
-                                  'price': price,
-                                });
-                                keysToClear.add(key);
+                          final List<Map<String, dynamic>> ocrProductsToAdd = [];
+                          final Set<String> keysToClear = {};
+
+                          for (var item in _ocrCatalogShuffledDisplayItems) {
+                            final ProductModel product = item['product'];
+                            final String package = item['package'];
+                            final String key = '${product.id}_$package';
+
+                            final isSelectedNow = ref
+                                .read(catalogSelectionControllerProvider)
+                                .prices
+                                .containsKey(key);
+
+                            if (isSelectedNow) {
+                              final price = ref
+                                      .read(catalogSelectionControllerProvider)
+                                      .prices[key] ??
+                                  0.0;
+
+                              if (price > 0) {
+                                String? ocrProductId =
+                                    await _checkOrCreateOcrProduct(
+                                  ref,
+                                  distributorId,
+                                  distributorName,
+                                  product,
+                                  package,
+                                );
+
+                                if (ocrProductId != null) {
+                                  ocrProductsToAdd.add({
+                                    'ocrProductId': ocrProductId,
+                                    'price': price,
+                                  });
+                                  keysToClear.add(key);
+                                }
                               }
                             }
                           }
-                        }
-                        
-                        if (ocrProductsToAdd.isNotEmpty) {
-                          await ref
-                              .read(productRepositoryProvider)
-                              .addMultipleDistributorOcrProducts(
-                                distributorId: distributorId,
-                                distributorName: distributorName,
-                                ocrProducts: ocrProductsToAdd,
-                              );
 
-                          ref.read(catalogSelectionControllerProvider.notifier).clearSelections(keysToClear);
-                          
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                elevation: 0,
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.transparent,
-                                content: AwesomeSnackbarContent(
-                                  title: 'نجاح',
-                                  message: 'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
-                                  contentType: ContentType.success,
+                          if (ocrProductsToAdd.isNotEmpty) {
+                            await ref
+                                .read(productRepositoryProvider)
+                                .addMultipleDistributorOcrProducts(
+                                  distributorId: distributorId,
+                                  distributorName: distributorName,
+                                  ocrProducts: ocrProductsToAdd,
+                                );
+
+                            ref
+                                .read(
+                                    catalogSelectionControllerProvider.notifier)
+                                .clearSelections(keysToClear);
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  elevation: 0,
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.transparent,
+                                  content: AwesomeSnackbarContent(
+                                    title: 'نجاح',
+                                    message:
+                                        'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
+                                    contentType: ContentType.success,
+                                  ),
                                 ),
-                              ),
-                            );
-                            Navigator.of(context).pop();
+                              );
+                              Navigator.of(context).pop();
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  elevation: 0,
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.transparent,
+                                  content: AwesomeSnackbarContent(
+                                    title: 'تنبيه',
+                                    message:
+                                        'الرجاء تحديد منتجات بأسعار صحيحة',
+                                    contentType: ContentType.warning,
+                                  ),
+                                ),
+                              );
+                            }
                           }
-                        } else {
+                        } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -455,68 +492,63 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: Colors.transparent,
                                 content: AwesomeSnackbarContent(
-                                  title: 'تنبيه',
-                                  message: 'الرجاء تحديد منتجات بأسعار صحيحة',
-                                  contentType: ContentType.warning,
+                                  title: 'خطأ',
+                                  message:
+                                      'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
+                                  contentType: ContentType.failure,
                                 ),
                               ),
                             );
                           }
                         }
-                      } catch (e) {
-                        if (context.mounted) {
+                      } else {
+                        // Main Catalog Tab
+                        final mainCatalogKeys =
+                            _mainCatalogShuffledDisplayItems.map((item) {
+                          final ProductModel product = item['product'];
+                          final String package = item['package'];
+                          return '${product.id}_$package';
+                        }).toSet();
+
+                        final success = await ref
+                            .read(catalogSelectionControllerProvider.notifier)
+                            .saveSelections(keysToSave: mainCatalogKeys);
+
+                        if (success && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               elevation: 0,
                               behavior: SnackBarBehavior.floating,
                               backgroundColor: Colors.transparent,
                               content: AwesomeSnackbarContent(
-                                title: 'خطأ',
-                                message: 'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
-                                contentType: ContentType.failure,
+                                title: 'نجاح',
+                                message: 'تم حفظ المنتجات بنجاح',
+                                contentType: ContentType.success,
+                              ),
+                            ),
+                          );
+                          Navigator.of(context).pop();
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              elevation: 0,
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.transparent,
+                              content: AwesomeSnackbarContent(
+                                title: 'تنبيه',
+                                message:
+                                    'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
+                                contentType: ContentType.warning,
                               ),
                             ),
                           );
                         }
                       }
-                    } else { // Main Catalog Tab
-                      final mainCatalogKeys = _mainCatalogShuffledDisplayItems.map((item) {
-                        final ProductModel product = item['product'];
-                        final String package = item['package'];
-                        return '${product.id}_$package';
-                      }).toSet();
-
-                      final success = await ref
-                          .read(catalogSelectionControllerProvider.notifier)
-                          .saveSelections(keysToSave: mainCatalogKeys);
-
-                      if (success && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            elevation: 0,
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Colors.transparent,
-                            content: AwesomeSnackbarContent(
-                              title: 'نجاح',
-                              message: 'تم حفظ المنتجات بنجاح',
-                              contentType: ContentType.success,
-                            ),
-                          ),
-                        );
-                        Navigator.of(context).pop();
-                      } else if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            elevation: 0,
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Colors.transparent,
-                            content: AwesomeSnackbarContent(
-                              title: 'تنبيه',
-                              message: 'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
-                              contentType: ContentType.warning,
-                            ),
-                          ),
-                        );
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isSaving = false;
+                        });
                       }
                     }
                   },
@@ -531,259 +563,270 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   elevation: 2,
                 )
               : null,
-          body: TabBarView(
-            controller: _tabController,
+          body: Stack(
             children: [
-              allProductsAsync.when(
-                data: (products) {
-                  // === فلترة المنتجات حسب نص البحث (في الاسم، الشركة، والمادة الفعالة) ===
-                  List<ProductModel> filteredProducts;
-                  if (_searchQuery.isEmpty) {
-                    filteredProducts = products;
-                  } else {
-                    filteredProducts = products.where((product) {
-                      // تحويل النص للحروف صغيرة علشان المقارنة تكون case-insensitive
-                      final query = _searchQuery.toLowerCase();
-                      final productName = product.name.toLowerCase();
-                      // تأكد إن الخواص دي موجودة في ProductModel
-                      final productCompany =
-                          product.company?.toLowerCase() ?? '';
-                      final productActivePrinciple =
-                          product.activePrinciple?.toLowerCase() ?? '';
+              TabBarView(
+                controller: _tabController,
+                children: [
+                  allProductsAsync.when(
+                    data: (products) {
+                      // === فلترة المنتجات حسب نص البحث (في الاسم، الشركة، والمادة الفعالة) ===
+                      List<ProductModel> filteredProducts;
+                      if (_searchQuery.isEmpty) {
+                        filteredProducts = products;
+                      } else {
+                        filteredProducts = products.where((product) {
+                          // تحويل النص للحروف صغيرة علشان المقارنة تكون case-insensitive
+                          final query = _searchQuery.toLowerCase();
+                          final productName = product.name.toLowerCase();
+                          // تأكد إن الخواص دي موجودة في ProductModel
+                          final productCompany =
+                              product.company?.toLowerCase() ?? '';
+                          final productActivePrinciple =
+                              product.activePrinciple?.toLowerCase() ?? '';
 
-                      // بنشوف لو النص موجود في أي واحد من الثلاثة
-                      return productName.contains(query) ||
-                          productCompany.contains(query) ||
-                          productActivePrinciple.contains(query);
-                    }).toList();
-                  }
+                          // بنشوف لو النص موجود في أي واحد من الثلاثة
+                          return productName.contains(query) ||
+                              productCompany.contains(query) ||
+                              productActivePrinciple.contains(query);
+                        }).toList();
+                      }
 
-                  // === بني القائمة العشوائية إذا لسه ما اتعملتش أو البحث اتغير ===
-                  _buildMainCatalogShuffledDisplayItems(filteredProducts, _searchQuery);
+                      // === بني القائمة العشوائية إذا لسه ما اتعملتش أو البحث اتغير ===
+                      _buildMainCatalogShuffledDisplayItems(filteredProducts, _searchQuery);
 
-                  if (_mainCatalogShuffledDisplayItems.isEmpty) {
-                    // عرض رسالة مناسبة لو مفيش منتجات بعد الفلترة والشفل
-                    if (_searchQuery.isNotEmpty) {
-                      // لو في بحث ونتائج فاضية
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 64,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.6),
+                      if (_mainCatalogShuffledDisplayItems.isEmpty) {
+                        // عرض رسالة مناسبة لو مفيش منتجات بعد الفلترة والشفل
+                        if (_searchQuery.isNotEmpty) {
+                          // لو في بحث ونتائج فاضية
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off_rounded,
+                                  size: 64,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'لا توجد نتائج للبحث.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد نتائج للبحث.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                          );
+                        } else {
+                          // لو مفيش منتجات أصلاً
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_rounded,
+                                  size: 64,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'لا توجد منتجات في الكتالوج الرئيسي.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        }
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 90, top: 8),
+                        itemCount:
+                            _mainCatalogShuffledDisplayItems.length, // استخدم القائمة العشوائية
+                        itemBuilder: (context, index) {
+                          final item = _mainCatalogShuffledDisplayItems[
+                              index]; // استخدم العنصر من القائمة العشوائية
+                          final ProductModel product = item['product'];
+                          final String package = item['package'];
+                          return _ProductCatalogItem(
+                              product: product, package: package);
+                        },
                       );
-                    } else {
-                      // لو مفيش منتجات أصلاً
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_rounded,
-                              size: 64,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.6),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد منتجات في الكتالوج الرئيسي.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 90, top: 8),
-                    itemCount:
-                        _mainCatalogShuffledDisplayItems.length, // استخدم القائمة العشوائية
-                    itemBuilder: (context, index) {
-                      final item = _mainCatalogShuffledDisplayItems[
-                          index]; // استخدم العنصر من القائمة العشوائية
-                      final ProductModel product = item['product'];
-                      final String package = item['package'];
-                      return _ProductCatalogItem(
-                          product: product, package: package);
                     },
-                  );
-                },
-                loading: () => ListView.builder(
-                  itemCount: 6,
-                  padding: const EdgeInsets.all(16.0),
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: ProductCardShimmer(),
-                    );
-                  },
-                ),
-                error: (error, stack) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 60,
-                        color: Theme.of(context).colorScheme.error,
+                    loading: () => ListView.builder(
+                      itemCount: 6,
+                      padding: const EdgeInsets.all(16.0),
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: ProductCardShimmer(),
+                        );
+                      },
+                    ),
+                    error: (error, stack) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 60,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'حدث خطأ: $error',
+                            style: Theme.of(context).textTheme.titleMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'حدث خطأ: $error',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
+                    ),
+                  ),
+                  // Tab for OCR Catalog - fetch and display OCR products
+                  ref.watch(ocrProductsProvider).when(
+                    data: (ocrProducts) {
+                      // Filter OCR products based on search query
+                      List<ProductModel> filteredOcrProducts;
+                      if (_searchQuery.isEmpty) {
+                        filteredOcrProducts = ocrProducts;
+                      } else {
+                        filteredOcrProducts = ocrProducts.where((product) {
+                          final query = _searchQuery.toLowerCase();
+                          final productName = product.name.toLowerCase();
+                          final productCompany = product.company?.toLowerCase() ?? '';
+                          final productActivePrinciple = product.activePrinciple?.toLowerCase() ?? '';
+
+                          return productName.contains(query) ||
+                              productCompany.contains(query) ||
+                              productActivePrinciple.contains(query);
+                        }).toList();
+                      }
+
+                      // Build shuffled display items for OCR products
+                      _buildOcrCatalogShuffledDisplayItems(filteredOcrProducts, _searchQuery);
+
+                      if (_ocrCatalogShuffledDisplayItems.isEmpty) {
+                        // Show appropriate message if no OCR products
+                        if (_searchQuery.isNotEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off_rounded,
+                                  size: 64,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'لا توجد نتائج للبحث في OCR.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_rounded,
+                                  size: 64,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'لا توجد منتجات في OCR الكتالوج.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 90, top: 8),
+                        itemCount: _ocrCatalogShuffledDisplayItems.length,
+                        itemBuilder: (context, index) {
+                          final item = _ocrCatalogShuffledDisplayItems[index];
+                          final ProductModel product = item['product'];
+                          final String package = item['package'];
+                          return _ProductCatalogItem(
+                              product: product, package: package);
+                        },
+                      );
+                    },
+                    loading: () => ListView.builder(
+                      itemCount: 6,
+                      padding: const EdgeInsets.all(16.0),
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: ProductCardShimmer(),
+                        );
+                      },
+                    ),
+                    error: (error, stack) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 60,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'حدث خطأ في تحميل OCR: $error',
+                            style: Theme.of(context).textTheme.titleMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              if (_isSaving)
+                Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-              ),
-              // Tab for OCR Catalog - fetch and display OCR products
-              ref.watch(ocrProductsProvider).when(
-                data: (ocrProducts) {
-                  // Filter OCR products based on search query
-                  List<ProductModel> filteredOcrProducts;
-                  if (_searchQuery.isEmpty) {
-                    filteredOcrProducts = ocrProducts;
-                  } else {
-                    filteredOcrProducts = ocrProducts.where((product) {
-                      final query = _searchQuery.toLowerCase();
-                      final productName = product.name.toLowerCase();
-                      final productCompany = product.company?.toLowerCase() ?? '';
-                      final productActivePrinciple = product.activePrinciple?.toLowerCase() ?? '';
-
-                      return productName.contains(query) ||
-                          productCompany.contains(query) ||
-                          productActivePrinciple.contains(query);
-                    }).toList();
-                  }
-
-                  // Build shuffled display items for OCR products
-                  _buildOcrCatalogShuffledDisplayItems(filteredOcrProducts, _searchQuery);
-
-                  if (_ocrCatalogShuffledDisplayItems.isEmpty) {
-                    // Show appropriate message if no OCR products
-                    if (_searchQuery.isNotEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 64,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.6),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد نتائج للبحث في OCR.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_rounded,
-                              size: 64,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.6),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد منتجات في OCR الكتالوج.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 90, top: 8),
-                    itemCount: _ocrCatalogShuffledDisplayItems.length,
-                    itemBuilder: (context, index) {
-                      final item = _ocrCatalogShuffledDisplayItems[index];
-                      final ProductModel product = item['product'];
-                      final String package = item['package'];
-                      return _ProductCatalogItem(
-                          product: product, package: package);
-                    },
-                  );
-                },
-                loading: () => ListView.builder(
-                  itemCount: 6,
-                  padding: const EdgeInsets.all(16.0),
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: ProductCardShimmer(),
-                    );
-                  },
-                ),
-                error: (error, stack) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 60,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'حدث خطأ في تحميل OCR: $error',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),

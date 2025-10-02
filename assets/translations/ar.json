@@ -109,5 +109,14 @@
     "delete": "حذف",
     "An error occurred:": "حدث خطأ:",
     "select_governorates_and_centers": "اختر المحافظات والمراكز التي تغطيها",
-    "select_centers": "اختر المراكز"
+  "logout": "تسجيل الخروج",
+  "addProduct.title": "إضافة جديد",
+  "addProduct.expireSoon.title": "إضافة أدوية قريبة الانتهاء",
+  "addProduct.expireSoon.subtitle": "أضف الأدوية التي قاربت صلاحيتها على الانتهاء",
+  "addProduct.limitedOffer.title": "إضافة عرض مؤقت",
+  "addProduct.limitedOffer.subtitle": "أنشئ عروضاً بأسعار خاصة لفترة محدودة",
+  "addProduct.surgical.title": "إضافة مستلزمات جراحية وتشخيصية",
+  "addProduct.surgical.subtitle": "أضف أدوات ومستلزمات طبية متنوعة",
+  "addProduct.limitedAds.title": "إضافة إعلانات مؤقتة",
+  "addProduct.limitedAds.subtitle": "أنشئ إعلانات ترويجية تظهر للمستخدمين"
 }

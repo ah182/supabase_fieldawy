@@ -6,6 +6,7 @@ import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_screen.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +63,8 @@ class MenuScreen extends ConsumerWidget {
                     style: TextStyle(color: Colors.white)),
               ),
             ),
-            const Divider(color: Colors.white24, indent: 20, endIndent: 20),
+            
+            
             _buildMenuItem(
               icon: Icons.logout,
               title: 'signOut'.tr(),
@@ -108,6 +110,15 @@ class MenuScreen extends ConsumerWidget {
               Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => const MyProductsScreen()));
             }),
+             _buildMenuItem(
+            icon: Icons.production_quantity_limits_outlined,
+            title: 'Add Products'.tr(),
+             onTap: () {
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddProductScreen()));
+          },
+        ),
+
         _buildMenuItem(
             icon: Icons.category_outlined,
             title: 'category'.tr(),
@@ -158,7 +169,13 @@ class MenuScreen extends ConsumerWidget {
                   builder: (context) => const OrdersScreen()));
             }),
         _buildMenuItem(
-            icon: Icons.add_box_outlined, title: 'addDrug'.tr(), onTap: () {}),
+            icon: Icons.add_business_outlined,
+            title: 'Add Products'.tr(),  onTap: () {
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddProductScreen()));
+          },
+        ),
+
         _buildMenuItem(
             icon: Icons.category_outlined,
             title: 'category'.tr(),

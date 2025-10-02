@@ -114,5 +114,14 @@
   "continue": "Continue",
   "complete_your_profile": "Complete Your Profile",
   "select_governorates_and_centers": "Select Governorates and Centers You Cover",
-  "select_centers": "Select Centers"
+  "logout": "Logout",
+  "addProduct.title": "Add New",
+  "addProduct.expireSoon.title": "Add Expiring Drugs",
+  "addProduct.expireSoon.subtitle": "Add drugs that are nearing their expiration date",
+  "addProduct.limitedOffer.title": "Add Limited-Time Offer",
+  "addProduct.limitedOffer.subtitle": "Create special-priced offers for a limited time",
+  "addProduct.surgical.title": "Add Surgical & Diagnostic Instruments",
+  "addProduct.surgical.subtitle": "Add various medical tools and supplies",
+  "addProduct.limitedAds.title": "Add Limited-Time Ads",
+  "addProduct.limitedAds.subtitle": "Create promotional ads to be shown to users"
 }
