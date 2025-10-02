@@ -31,7 +31,8 @@ final _tabsInfo = [
   _TabInfo(Icons.apps_rounded, 'Home'),
   _TabInfo(Icons.trending_up_rounded, 'Price Action'),
   _TabInfo(Icons.schedule_rounded, 'Expire Soon'),
-  _TabInfo(Icons.more_horiz_rounded, 'More'),
+  _TabInfo(Icons.medical_services_outlined, 'Surgical and Diagnostic'),
+  _TabInfo(Icons.local_offer_outlined, 'Offers'),
 ];
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -1047,7 +1048,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               homeTabContent,
               PriceUpdateTab(searchQuery: _debouncedSearchQuery),
               const Center(child: Text('Expire Soon')),
-              const Center(child: Text('More')),
+              const Center(child: Text('Surgical & Diagnostic')),
+              const Center(child: Text('Offers')),
+             
             ],
           ),
         ),
