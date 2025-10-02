@@ -294,75 +294,71 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 8),
-                        allProductsAsync.when(
-                          data: (products) {
-                            // فلترة المنتجات حسب نص البحث
-                            List<ProductModel> filteredProducts;
-                            if (_searchQuery.isEmpty) {
-                              filteredProducts = products;
-                            } else {
-                              filteredProducts = products.where((product) {
-                                final query = _searchQuery.toLowerCase();
-                                final productName = product.name.toLowerCase();
-                                final productCompany =
-                                    product.company?.toLowerCase() ?? '';
-                                final productActivePrinciple =
-                                    product.activePrinciple?.toLowerCase() ??
-                                        '';
-
-                                return productName.contains(query) ||
-                                    productCompany.contains(query) ||
-                                    productActivePrinciple.contains(query);
-                              }).toList();
-                            }
-
-                            // حساب إجمالي العناصر (المنتجات × العبوات)
-                            int totalItems = 0;
-                            int filteredItems = 0;
-
-                            for (var product in products) {
-                              totalItems += product.availablePackages.length;
-                            }
-
-                            for (var product in filteredProducts) {
-                              filteredItems += product.availablePackages.length;
-                            }
-
-                            return Text(
-                              _searchQuery.isEmpty
-                                  ? 'إجمالي العناصر: $totalItems'
-                                  : 'عرض $filteredItems من $totalItems عنصر',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            );
-                          },
-                          loading: () => Text(
-                            'جارٍ العد...',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
-                          error: (_, __) => Text(
-                            'خطأ في العد',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
-                        ),
+                        Builder(builder: (context) {
+                          final isMainTab = _tabController?.index == 0;
+                          final provider =
+                              isMainTab ? productsProvider : ocrProductsProvider;
+                          final asyncValue = ref.watch(provider);
+                          return asyncValue.when(
+                            data: (products) {
+                              List<ProductModel> filteredProducts;
+                              if (_searchQuery.isEmpty) {
+                                filteredProducts = products;
+                              } else {
+                                filteredProducts = products.where((product) {
+                                  final query = _searchQuery.toLowerCase();
+                                  final productName = product.name.toLowerCase();
+                                  final productCompany =
+                                      product.company?.toLowerCase() ?? '';
+                                  final productActivePrinciple =
+                                      product.activePrinciple?.toLowerCase() ?? '';
+                                  return productName.contains(query) ||
+                                      productCompany.contains(query) ||
+                                      productActivePrinciple.contains(query);
+                                }).toList();
+                              }
+                              int totalItems = 0;
+                              for (var p in products) {
+                                totalItems += p.availablePackages.length;
+                              }
+                              int filteredItems = 0;
+                              for (var p in filteredProducts) {
+                                filteredItems += p.availablePackages.length;
+                              }
+                              return Text(
+                                _searchQuery.isEmpty
+                                    ? 'إجمالي العناصر: $totalItems'
+                                    : 'عرض $filteredItems من $totalItems عنصر',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              );
+                            },
+                            loading: () => Text('جارٍ العد...',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        fontWeight: FontWeight.w500)),
+                            error: (_, __) => Text('خطأ في العد',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                        color:
+                                            Theme.of(context).colorScheme.error,
+                                        fontWeight: FontWeight.w500)),
+                          );
+                        }),
                       ],
                     ),
                   ),
