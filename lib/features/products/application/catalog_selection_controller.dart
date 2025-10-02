@@ -57,14 +57,22 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
   }
 
   // دالة لحفظ كل المنتجات المختارة في Supabase
-  Future<bool> saveSelections() async {
+  Future<bool> saveSelections({Set<String>? keysToSave}) async {
     final distributor = _ref.read(userDataProvider).asData?.value;
     if (distributor == null || state.prices.isEmpty) {
       return false;
     }
 
-    // فلترة المنتجات التي لم يتم تسعيرها (سعرها صفر أو أقل)
-    final validSelections = Map<String, double>.from(state.prices)
+    // Start with all prices
+    var selectionsToSave = Map<String, double>.from(state.prices);
+
+    // If specific keys are provided, filter for them
+    if (keysToSave != null) {
+      selectionsToSave.removeWhere((key, value) => !keysToSave.contains(key));
+    }
+
+    // Filter for products that have a valid price
+    final validSelections = Map<String, double>.from(selectionsToSave)
       ..removeWhere((key, price) => price <= 0);
 
     if (validSelections.isEmpty) {
@@ -85,12 +93,22 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
       _ref.read(cachingServiceProvider).invalidateWithPrefix('my_products_');
       _ref.invalidate(myProductsProvider);
 
-      state = CatalogSelection(); // إفراغ القائمة بعد الحفظ
+      // Remove only the saved selections from the state
+      final newPrices = Map<String, double>.from(state.prices)
+        ..removeWhere((key, value) => validSelections.containsKey(key));
+      state = state.copyWith(prices: newPrices);
+      
       return true;
     } catch (e) {
       print('Failed to save selections: $e');
       return false;
     }
+  }
+
+  void clearSelections(Set<String> keysToClear) {
+    final newPrices = Map<String, double>.from(state.prices)
+      ..removeWhere((key, value) => keysToClear.contains(key));
+    state = state.copyWith(prices: newPrices);
   }
 }
 

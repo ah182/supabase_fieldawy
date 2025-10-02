@@ -154,3 +154,91 @@ class ProductModel {
     );
   }
 }
+
+// OCR Product Model - matches the ocr_products table structure
+@HiveType(typeId: 1)
+class OCRProductModel {
+  @HiveField(0)
+  final String id;
+  
+  @HiveField(1)
+  final String distributorId;
+  
+  @HiveField(2)
+  final String distributorName;
+  
+  @HiveField(3)
+  final String productName;
+  
+  @HiveField(4)
+  final String productCompany;
+  
+  @HiveField(5)
+  final String activePrinciple;
+  
+  @HiveField(6)
+  final String package;
+  
+  @HiveField(7)
+  final String imageUrl;
+  
+  @HiveField(8)
+  final DateTime? createdAt;
+
+  OCRProductModel({
+    required this.id,
+    required this.distributorId,
+    required this.distributorName,
+    required this.productName,
+    required this.productCompany,
+    required this.activePrinciple,
+    required this.package,
+    required this.imageUrl,
+    this.createdAt,
+  });
+
+  factory OCRProductModel.fromMap(Map<String, dynamic> map) {
+    return OCRProductModel(
+      id: map['id']?.toString() ?? '',
+      distributorId: map['distributor_id']?.toString() ?? '',
+      distributorName: map['distributor_name']?.toString() ?? '',
+      productName: map['product_name']?.toString() ?? '',
+      productCompany: map['product_company']?.toString() ?? '',
+      activePrinciple: map['active_principle']?.toString() ?? '',
+      package: map['package']?.toString() ?? '',
+      imageUrl: map['image_url']?.toString() ?? '',
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString())
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'distributor_id': distributorId,
+      'distributor_name': distributorName,
+      'product_name': productName,
+      'product_company': productCompany,
+      'active_principle': activePrinciple,
+      'package': package,
+      'image_url': imageUrl,
+      'created_at': createdAt?.toIso8601String(),
+    };
+  }
+
+  // Convert to ProductModel for compatibility
+  ProductModel toProductModel() {
+    return ProductModel(
+      id: id,
+      name: productName,
+      company: productCompany,
+      activePrinciple: activePrinciple,
+      package: package,
+      availablePackages: [package], // OCR products typically have a single package
+      imageUrl: imageUrl,
+      createdAt: createdAt,
+      selectedPackage: package,
+    );
+  }
+}

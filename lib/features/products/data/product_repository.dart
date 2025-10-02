@@ -335,7 +335,7 @@ class ProductRepository {
     required String productCompany,
     required String activePrinciple,
     required String package,
-    required String imageUrl,
+    String imageUrl = '',
   }) async {
     final response = await _supabase.from('ocr_products').insert({
       'distributor_id': distributorId,
@@ -364,6 +364,23 @@ class ProductRepository {
       'ocr_product_id': ocrProductId,
       'price': price,
     });
+  }
+
+  Future<void> addMultipleDistributorOcrProducts({
+    required String distributorId,
+    required String distributorName,
+    required List<Map<String, dynamic>> ocrProducts, // List of {ocrProductId: String, price: double}
+  }) async {
+    final rows = ocrProducts.map((product) {
+      return {
+        'distributor_id': distributorId,
+        'distributor_name': distributorName,
+        'ocr_product_id': product['ocrProductId'] as String,
+        'price': product['price'] as double,
+      };
+    }).toList();
+
+    await _supabase.from('distributor_ocr_products').upsert(rows, onConflict: 'distributor_id,ocr_product_id');
   }
 
   Future<List<ProductModel>> getOcrProducts() async {

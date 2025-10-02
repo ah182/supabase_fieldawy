@@ -1,4 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
+
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -85,6 +87,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController!.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
     _lastShuffledQuery = null; // مش اتعمل شفل لحد دلوقتي
     _lastOcrShuffledQuery = null; // OCR catalog
   }
@@ -134,15 +142,66 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     // لو `_lastOcrShuffledQuery == currentSearchQuery`، يفضل نستخدم نفس `_ocrCatalogShuffledDisplayItems`
   }
 
+  // Helper method to check if OCR product exists or create it
+  Future<String?> _checkOrCreateOcrProduct(
+    WidgetRef ref,
+    String distributorId,
+    String distributorName,
+    ProductModel product,
+    String package,
+  ) async {
+    try {
+      // Check if this specific product with package combination already exists in ocr_products
+      final existingOcrProducts = await ref.read(productRepositoryProvider).getOcrProducts();
+      final existingProduct = existingOcrProducts.firstWhere(
+        (p) => p.name == product.name && 
+               p.company == product.company && 
+               p.package == package,
+        orElse: () => ProductModel(id: '', name: '', availablePackages: [], imageUrl: ''), // Default if not found
+      );
+
+      if (existingProduct.id.isNotEmpty) {
+        // Product already exists, return its ID
+        return existingProduct.id;
+      } else {
+        // Product doesn't exist, create new one
+        final newOcrProductId = await ref.read(productRepositoryProvider).addOcrProduct(
+          distributorId: distributorId,
+          distributorName: distributorName,
+          productName: product.name,
+          productCompany: product.company ?? '',
+          activePrinciple: product.activePrinciple ?? '',
+          package: package,
+          imageUrl: product.imageUrl,
+        );
+        return newOcrProductId;
+      }
+    } catch (e) {
+      print('Error checking/creating OCR product: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    _tabController ??= TabController(length: 2, vsync: this);
     final allProductsAsync = ref.watch(productsProvider);
     final selection = ref.watch(catalogSelectionControllerProvider);
 
-    // فلترة المنتجات الجاهزة للحفظ (التي لها سعر أكبر من صفر)
+    // Determine which list of items to use based on the active tab
+    final currentItems = _tabController?.index == 0
+        ? _mainCatalogShuffledDisplayItems
+        : _ocrCatalogShuffledDisplayItems;
+
+    // Get the keys for the items in the current tab
+    final currentTabKeys = currentItems.map((item) {
+      final ProductModel product = item['product'];
+      final String package = item['package'];
+      return '${product.id}_$package';
+    }).toSet();
+
+    // Filter selection.prices to only include items from the current tab that have a valid price
     final validSelections = Map.from(selection.prices)
-      ..removeWhere((key, price) => price <= 0);
+      ..removeWhere((key, price) => !currentTabKeys.contains(key) || price <= 0);
 
     // === تحديد الألوان المطلوبة للعناصر المخصصة ===
     final Color customElementColor = const Color.fromARGB(255, 119, 186, 225);
@@ -322,36 +381,118 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
           floatingActionButton: validSelections.isNotEmpty
               ? FloatingActionButton.extended(
                   onPressed: () async {
-                    // === التحقق من إن كل المنتجات المختارة دلوقتي ليها سعر صحيح ومدخل فعلاً ===
-                    // علشان نعرف ندور على اسم الصنف
+                    // Check which tab is currently active
+                    if (_tabController?.index == 1) { // OCR Tab
+                      try {
+                        final userModel = await ref.read(userDataProvider.future);
+                        final distributorId = userModel?.id;
+                        final distributorName = userModel?.displayName ?? 'اسم غير معروف';
 
-                    // 1. نجيب قائمة بكل الـ Keys اللي المستخدم حددها دلوقتي
-                    final List<String> currentlySelectedKeys = [];
-                    // التكرار على القائمة المعروضة علشان ندور على العناصر اللي مختارينها دلوقتي
-                    // We need to use the active tab's items - check which tab is currently active
-                    final List<Map<String, dynamic>> currentDisplayItems = 
-                        _tabController?.index == 0 ? _mainCatalogShuffledDisplayItems : _ocrCatalogShuffledDisplayItems;
-                    
-                    for (var item in currentDisplayItems) {
-                      final ProductModel product = item['product'];
-                      final String package = item['package'];
-                      final String key = '${product.id}_$package';
-                      // التحقق من إن الـ Switch بتاع العنصر ده مفعل دلوقتي في الـ UI
-                      // ده هيعمله Riverpod لما يعيد الـ build
-                      final isSelectedNow = ref
-                          .read(catalogSelectionControllerProvider)
-                          .prices
-                          .containsKey(key);
-                      if (isSelectedNow) {
-                        currentlySelectedKeys.add(key);
+                        if (distributorId == null) {
+                          throw Exception('User not authenticated');
+                        }
+                        
+                        final List<Map<String, dynamic>> ocrProductsToAdd = [];
+                        final Set<String> keysToClear = {};
+
+                        for (var item in _ocrCatalogShuffledDisplayItems) {
+                          final ProductModel product = item['product'];
+                          final String package = item['package'];
+                          final String key = '${product.id}_$package';
+                          
+                          final isSelectedNow = ref.read(catalogSelectionControllerProvider).prices.containsKey(key);
+                              
+                          if (isSelectedNow) {
+                            final price = ref.read(catalogSelectionControllerProvider).prices[key] ?? 0.0;
+                            
+                            if (price > 0) {
+                              String? ocrProductId = await _checkOrCreateOcrProduct(
+                                ref,
+                                distributorId,
+                                distributorName,
+                                product,
+                                package,
+                              );
+                              
+                              if (ocrProductId != null) {
+                                ocrProductsToAdd.add({
+                                  'ocrProductId': ocrProductId,
+                                  'price': price,
+                                });
+                                keysToClear.add(key);
+                              }
+                            }
+                          }
+                        }
+                        
+                        if (ocrProductsToAdd.isNotEmpty) {
+                          await ref
+                              .read(productRepositoryProvider)
+                              .addMultipleDistributorOcrProducts(
+                                distributorId: distributorId,
+                                distributorName: distributorName,
+                                ocrProducts: ocrProductsToAdd,
+                              );
+
+                          ref.read(catalogSelectionControllerProvider.notifier).clearSelections(keysToClear);
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                elevation: 0,
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.transparent,
+                                content: AwesomeSnackbarContent(
+                                  title: 'نجاح',
+                                  message: 'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
+                                  contentType: ContentType.success,
+                                ),
+                              ),
+                            );
+                            Navigator.of(context).pop();
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                elevation: 0,
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.transparent,
+                                content: AwesomeSnackbarContent(
+                                  title: 'تنبيه',
+                                  message: 'الرجاء تحديد منتجات بأسعار صحيحة',
+                                  contentType: ContentType.warning,
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              elevation: 0,
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.transparent,
+                              content: AwesomeSnackbarContent(
+                                title: 'خطأ',
+                                message: 'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
+                                contentType: ContentType.failure,
+                              ),
+                            ),
+                          );
+                        }
                       }
-                    }
+                    } else { // Main Catalog Tab
+                      final mainCatalogKeys = _mainCatalogShuffledDisplayItems.map((item) {
+                        final ProductModel product = item['product'];
+                        final String package = item['package'];
+                        return '${product.id}_$package';
+                      }).toSet();
 
-                    {
-                      // === لو كل الأسعار صحيحة، نبدأ عملية الحفظ ===
                       final success = await ref
                           .read(catalogSelectionControllerProvider.notifier)
-                          .saveSelections();
+                          .saveSelections(keysToSave: mainCatalogKeys);
 
                       if (success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -375,7 +516,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                             backgroundColor: Colors.transparent,
                             content: AwesomeSnackbarContent(
                               title: 'تنبيه',
-                              message: 'حدث خطأ أثناء حفظ المنتجات',
+                              message: 'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
                               contentType: ContentType.warning,
                             ),
                           ),
@@ -814,8 +955,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
                               catalogSelectionControllerProvider.notifier);
 
                           if (value.trim().isEmpty) {
-                            // لو الحقل اتفضى → اشيل السعر من الاختيارات
-                            controller.removePrice(product.id, package);
+                            // لو الحقل اتفضى → نخلي السعر صفر لكن نسيب المنتج متحدد
+                            controller.setPrice(product.id, package, '0');
                           } else {
                             // لو في قيمة → ابعتها
                             controller.setPrice(product.id, package, value);
