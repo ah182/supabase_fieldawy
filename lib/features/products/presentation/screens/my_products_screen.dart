@@ -577,15 +577,6 @@ class MyProductsScreen extends HookConsumerWidget {
           currentTabIndex.value = newIndex;
           // إخفاء الكيبورد عند تغيير التاب
           searchFocusNode.unfocus();
-
-          // إلغاء وضع التحديد عند الانتقال
-          if (newIndex == 0) {
-            ocrTabSelectionMode.value = false;
-            ocrTabSelection.value = {};
-          } else {
-            mainTabSelectionMode.value = false;
-            mainTabSelection.value = {};
-          }
         }
       }
       tabController.addListener(tabListener);
