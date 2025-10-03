@@ -61,6 +61,7 @@ dependencies:
   collection: ^1.19.1
   image_cropper: ^11.0.0
   uuid: ^4.5.1
+  month_picker_dialog: ^6.5.0
   
 
 dev_dependencies:

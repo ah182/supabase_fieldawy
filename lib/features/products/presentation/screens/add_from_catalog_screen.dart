@@ -13,9 +13,11 @@ import 'package:fieldawy_store/widgets/custom_product_dialog.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'dart:ui' as ui;
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
-  const AddFromCatalogScreen({super.key});
+  final bool showExpirationDate;
+  const AddFromCatalogScreen({super.key, this.showExpirationDate = false});
 
   @override
   ConsumerState<AddFromCatalogScreen> createState() =>
@@ -415,6 +417,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                       .read(catalogSelectionControllerProvider)
                                       .prices[key] ??
                                   0.0;
+                              final expirationDate = ref
+                                  .read(catalogSelectionControllerProvider)
+                                  .expirationDates[key];
 
                               if (price > 0) {
                                 String? ocrProductId =
@@ -430,6 +435,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   ocrProductsToAdd.add({
                                     'ocrProductId': ocrProductId,
                                     'price': price,
+                                    'expiration_date':
+                                        expirationDate?.toIso8601String(),
                                   });
                                   keysToClear.add(key);
                                 }
@@ -512,7 +519,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
                         final success = await ref
                             .read(catalogSelectionControllerProvider.notifier)
-                            .saveSelections(keysToSave: mainCatalogKeys);
+                            .saveSelections(
+                                keysToSave: mainCatalogKeys,
+                                withExpiration: widget.showExpirationDate);
 
                         if (success && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -659,12 +668,13 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                         itemCount:
                             _mainCatalogShuffledDisplayItems.length, // استخدم القائمة العشوائية
                         itemBuilder: (context, index) {
-                          final item = _mainCatalogShuffledDisplayItems[
-                              index]; // استخدم العنصر من القائمة العشوائية
+                          final item = _mainCatalogShuffledDisplayItems[index];
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
-                              product: product, package: package);
+                              product: product,
+                              package: package,
+                              showExpirationDate: widget.showExpirationDate);
                         },
                       );
                     },
@@ -785,7 +795,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
-                              product: product, package: package);
+                                  product: product,
+                                  package: package,
+                                  showExpirationDate:
+                                      widget.showExpirationDate);
                         },
                       );
                     },
@@ -838,8 +851,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 class _ProductCatalogItem extends HookConsumerWidget {
   final ProductModel product;
   final String package;
+  final bool showExpirationDate;
 
-  const _ProductCatalogItem({required this.product, required this.package});
+  const _ProductCatalogItem(
+      {required this.product,
+      required this.package,
+      this.showExpirationDate = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -848,13 +865,16 @@ class _ProductCatalogItem extends HookConsumerWidget {
     final isSelected = selection.prices.containsKey(uniqueKey);
 
     final priceController = useTextEditingController();
+    final expirationDateController = useTextEditingController();
     final focusNode = useMemoized(() => FocusNode(), const []);
+    final expirationDateFocusNode = useMemoized(() => FocusNode(), const []);
 
     // === تحديث الـ Controller لما يتغير isSelected بس ===
     useEffect(() {
       // بس نسيب المسح لما يتشال التحديد
       if (!isSelected) {
         priceController.clear();
+        expirationDateController.clear();
       }
       return null;
     }, [isSelected]); // يشتغل بس لما يتغير isSelected
@@ -863,6 +883,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
     useEffect(() {
       return () {
         focusNode.dispose();
+        expirationDateFocusNode.dispose();
       };
     }, const []);
 
@@ -1062,6 +1083,56 @@ class _ProductCatalogItem extends HookConsumerWidget {
                         style: TextStyle(fontSize: 14),
                       ),
                     ),
+                    if (showExpirationDate) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 40,
+                        child: TextField(
+                          controller: expirationDateController,
+                          focusNode: expirationDateFocusNode,
+                          readOnly: true,
+                          onTap: () async {
+                            final DateTime now = DateTime.now();
+                            final DateTime? picked = await showMonthPicker(
+                              context: context,
+                              initialDate: now,
+                              firstDate: DateTime(now.month, now.year),
+                              lastDate: DateTime(2101, 12),
+                            );
+                            if (picked != null) {
+                              final formattedDate =
+                                  DateFormat('MM-yyyy').format(picked);
+                              expirationDateController.text = formattedDate;
+                              ref
+                                  .read(catalogSelectionControllerProvider
+                                      .notifier)
+                                  .setExpirationDate(
+                                      product.id, package, picked);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Expiration Date (YYYY-MM)',
+                            prefixIcon: Icon(Icons.calendar_today,
+                                color: Theme.of(context).colorScheme.primary),
+                            filled: true,
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceVariant
+                                .withOpacity(0.5),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withOpacity(0.3),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1083,6 +1154,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
                   } else {
                     // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
                     priceController.clear();
+                    expirationDateController.clear();
                     focusNode.unfocus();
                   }
                 },

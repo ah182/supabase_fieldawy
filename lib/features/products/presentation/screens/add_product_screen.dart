@@ -1,4 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/expire_drugs_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/limited_offer_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/surgical_tools_screen.dart';
 import 'package:flutter/material.dart';
 
 class AddProductScreen extends StatelessWidget {
@@ -20,7 +23,7 @@ class AddProductScreen extends StatelessWidget {
             title: 'addProduct.expireSoon.title'.tr(),
             subtitle: 'addProduct.expireSoon.subtitle'.tr(),
             onTap: () {
-              // TODO: Navigate to the correct screen
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ExpireDrugsScreen()));
             },
           ),
           const SizedBox(height: 16),
@@ -28,8 +31,9 @@ class AddProductScreen extends StatelessWidget {
             icon: Icons.local_offer_rounded,
             title: 'addProduct.limitedOffer.title'.tr(),
             subtitle: 'addProduct.limitedOffer.subtitle'.tr(),
-            onTap: () {
-              // TODO: Navigate to the correct screen
+           onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const LimitedOfferScreen()));
             },
           ),
           const SizedBox(height: 16),
@@ -38,7 +42,7 @@ class AddProductScreen extends StatelessWidget {
             title: 'addProduct.surgical.title'.tr(),
             subtitle: 'addProduct.surgical.subtitle'.tr(),
             onTap: () {
-              // TODO: Navigate to the correct screen
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SurgicalToolsScreen()));
             },
           ),
           const SizedBox(height: 16),

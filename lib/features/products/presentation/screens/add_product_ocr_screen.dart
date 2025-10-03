@@ -16,9 +16,12 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:http/http.dart' as http;
 import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:intl/intl.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class AddProductOcrScreen extends ConsumerStatefulWidget {
-  const AddProductOcrScreen({super.key});
+  final bool showExpirationDate;
+  const AddProductOcrScreen({super.key, this.showExpirationDate = true});
 
   @override
   ConsumerState<AddProductOcrScreen> createState() =>
@@ -42,6 +45,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   final _activePrincipleController = TextEditingController();
   final _priceController = TextEditingController();
   final _packageController = TextEditingController();
+  final _expirationDateController = TextEditingController();
 
   final List<String> _packageTypes = [
     'bottle',
@@ -65,16 +69,20 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _activePrincipleController.addListener(_validateForm);
     _priceController.addListener(_validateForm);
     _packageController.addListener(_validateForm);
+    _expirationDateController.addListener(_validateForm);
   }
 
   void _validateForm() {
-    final isValid = _processedImageBytes != null &&
+    var isValid = _processedImageBytes != null &&
         _nameController.text.isNotEmpty &&
         _companyController.text.isNotEmpty &&
         _activePrincipleController.text.isNotEmpty &&
         _priceController.text.isNotEmpty &&
         _packageController.text.isNotEmpty &&
-        _selectedPackageType != null;
+        _selectedPackageType != null &&
+        (widget.showExpirationDate
+            ? _expirationDateController.text.isNotEmpty
+            : true);
     if (_isFormValid != isValid) {
       setState(() {
         _isFormValid = isValid;
@@ -286,6 +294,11 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       final distributorName = userData?.displayName ?? 'Unknown Distributor';
 
       if (userId != null) {
+        final expirationDate = _expirationDateController.text.isNotEmpty
+            ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
+            : null;
+
+        // دائمًا الحفظ في جدول distributor_ocr_products فقط
         final ocrProductId = await productRepo.addOcrProduct(
           distributorId: userId,
           distributorName: distributorName,
@@ -295,14 +308,21 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           package: package,
           imageUrl: finalUrl,
         );
-
+        print('DEBUG: ocrProductId returned from addOcrProduct: '
+            '[33m$ocrProductId[0m');
         if (ocrProductId != null) {
           await productRepo.addDistributorOcrProduct(
             distributorId: userId,
             distributorName: distributorName,
             ocrProductId: ocrProductId,
             price: price,
+            expirationDate: expirationDate,
           );
+          print('DEBUG: addDistributorOcrProduct called with ocrProductId: '
+              '[32m$ocrProductId[0m');
+        } else {
+          print(
+              'DEBUG: ocrProductId is null, distributor_ocr_products will not be saved!');
         }
       }
 
@@ -346,6 +366,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _activePrincipleController.dispose();
     _packageController.dispose();
     _priceController.dispose();
+    _expirationDateController.dispose();
     super.dispose();
   }
 
@@ -627,6 +648,33 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         inputBorderColor,
                         priceColor,
                         keyboardType: TextInputType.number),
+                    const SizedBox(height: 16),
+                    if (widget.showExpirationDate)
+                      _buildTextField(
+                        'Expiration Date',
+                        Icons.calendar_today,
+                        _expirationDateController,
+                        inputBgColor,
+                        inputBorderColor,
+                        accentColor,
+                        readOnly: true,
+                        onTap: () async {
+                          final DateTime now = DateTime.now();
+                          final DateTime? picked = await showMonthPicker(
+                            context: context,
+                            initialDate: now,
+                            firstDate: DateTime(now.month, now.year),
+                            lastDate: DateTime(2101, 12),
+                          );
+                          if (picked != null) {
+                            final formattedDate =
+                                DateFormat('MM-yyyy').format(picked);
+                            _expirationDateController.text = formattedDate;
+
+                            _validateForm();
+                          }
+                        },
+                      ),
                     saveButton,
                   ],
                 ),
@@ -646,10 +694,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     Color borderColor,
     Color iconColor, {
     TextInputType? keyboardType,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType ?? TextInputType.text,
+      readOnly: readOnly,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: iconColor),

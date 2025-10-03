@@ -13,6 +13,49 @@ final productDataLastModifiedProvider = StateProvider<DateTime>((ref) {
 });
 
 class ProductRepository {
+  Future<void> updateProductExpirationAndPrice({
+    required String distributorId,
+    required String productId,
+    required String package,
+    required double newPrice,
+    required DateTime? expirationDate,
+  }) async {
+    // استخدم match بدلاً من id فقط لدعم product_id النصي أو أي قيمة
+    final Map<String, Object> matchMap = {
+      'distributor_id': distributorId,
+      'product_id': productId,
+      if (package.isNotEmpty) 'package': package,
+    };
+    final response = await _supabase
+        .from('distributor_products')
+        .select('price')
+        .match(matchMap)
+        .maybeSingle();
+    final oldPrice = (response != null && response['price'] != null) ? (response['price'] as num?)?.toDouble() : null;
+    await _supabase.from('distributor_products').update({
+      'price': newPrice,
+      'old_price': oldPrice,
+      'price_updated_at': DateTime.now().toIso8601String(),
+      'expiration_date': expirationDate?.toIso8601String(),
+    }).match(matchMap);
+    _scheduleCacheInvalidation();
+  }
+
+  Future<void> updateOcrProductExpirationAndPrice({
+    required String distributorId,
+    required String ocrProductId,
+    required double newPrice,
+    required DateTime? expirationDate,
+  }) async {
+    await _supabase.from('distributor_ocr_products').update({
+      'price': newPrice,
+      'expiration_date': expirationDate?.toIso8601String(),
+    }).match({
+      'distributor_id': distributorId,
+      'ocr_product_id': ocrProductId,
+    });
+    _scheduleCacheInvalidation();
+  }
   final SupabaseClient _supabase = Supabase.instance.client;
   final CachingService _cache;
   late final Ref _ref;
@@ -242,12 +285,13 @@ class ProductRepository {
   Future<void> addMultipleProductsToDistributorCatalog({
     required String distributorId,
     required String distributorName,
-    required Map<String, double> productsToAdd,
+    required Map<String, Map<String, dynamic>> productsToAdd,
   }) async {
     final rows = productsToAdd.entries.map((entry) {
       final parts = entry.key.split('_');
       final productId = parts[0];
       final package = parts.sublist(1).join('_');
+      final productData = entry.value;
 
       return {
         'id': '${distributorId}_${entry.key}',
@@ -255,7 +299,8 @@ class ProductRepository {
         'distributor_name': distributorName,
         'product_id': productId,
         'package': package,
-        'price': entry.value,
+        'price': productData['price'],
+        'expiration_date': productData['expiration_date'],
         'added_at': DateTime.now().toIso8601String(),
       };
     }).toList();
@@ -357,13 +402,17 @@ class ProductRepository {
     required String distributorName,
     required String ocrProductId,
     required double price,
+    DateTime? expirationDate,
   }) async {
-    await _supabase.from('distributor_ocr_products').insert({
+    final response = await _supabase.from('distributor_ocr_products').insert({
       'distributor_id': distributorId,
       'distributor_name': distributorName,
       'ocr_product_id': ocrProductId,
       'price': price,
-    });
+      'expiration_date': expirationDate?.toIso8601String(),
+    }).select();
+    print(
+        'DEBUG: distributor_ocr_products insert response: \u001b[36m$response\u001b[0m');
   }
 
   Future<void> addMultipleDistributorOcrProducts({
@@ -377,6 +426,7 @@ class ProductRepository {
         'distributor_name': distributorName,
         'ocr_product_id': product['ocrProductId'] as String,
         'price': product['price'] as double,
+        'expiration_date': product['expiration_date'],
       };
     }).toList();
 
@@ -632,7 +682,23 @@ final myOcrProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final userId = ref.watch(authServiceProvider).currentUser?.id;
   if (userId == null) return [];
 
-  return ref.watch(productRepositoryProvider).getMyOcrProducts(userId);
+  // جلب كل منتجات OCR الخاصة بالمستخدم
+  final allOcrProducts =
+      await ref.watch(productRepositoryProvider).getMyOcrProducts(userId);
+  // فلترة المنتجات التي ليس لها expiration_date فقط
+  final supabase = Supabase.instance.client;
+  final distributorOcrRows = await supabase
+      .from('distributor_ocr_products')
+      .select('ocr_product_id, expiration_date')
+      .eq('distributor_id', userId);
+  final Map<String, dynamic> ocrIdToExpiration = {
+    for (var row in distributorOcrRows)
+      row['ocr_product_id']: row['expiration_date']
+  };
+  return allOcrProducts.where((product) {
+    final exp = ocrIdToExpiration[product.id];
+    return exp == null || (exp is String && exp.isEmpty);
+  }).toList();
 });
 
 class PaginatedProductsState extends Equatable {
@@ -778,6 +844,8 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
 
   final cachedData = cache.get<List<dynamic>>(timestampedCacheKey);
   if (cachedData != null) {
+    // لا يمكن التأكد من expiration_date في الكاش مباشرة، لذا نعيد كل المنتجات
+    // (الفلترة ستتم عند جلب البيانات من Supabase)
     return cachedData.map((item) => item as ProductModel).toList();
   }
 
@@ -803,6 +871,7 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   };
 
   final products = rows
+      .where((row) => row['expiration_date'] == null)
       .map((row) {
         final productDetails = productsMap[row['product_id']];
         if (productDetails != null) {

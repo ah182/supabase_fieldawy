@@ -537,7 +537,8 @@ class MyProductsScreen extends HookConsumerWidget {
                   Navigator.of(context).pop();
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (context) => const AddProductOcrScreen()),
+                        builder: (context) => const AddProductOcrScreen(
+                            showExpirationDate: false)),
                   );
                   ref.invalidate(myProductsProvider);
                   ref.invalidate(myOcrProductsProvider);
@@ -1707,7 +1708,8 @@ class MyProductsScreen extends HookConsumerWidget {
                               await Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const AddProductOcrScreen()),
+                                        const AddProductOcrScreen(
+                                            showExpirationDate: false)),
                               );
                               ref.invalidate(myOcrProductsProvider);
                             },
