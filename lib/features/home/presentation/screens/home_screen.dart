@@ -31,7 +31,7 @@ final _tabsInfo = [
   _TabInfo(Icons.apps_rounded, 'Home'),
   _TabInfo(Icons.trending_up_rounded, 'Price Action'),
   _TabInfo(Icons.schedule_rounded, 'Expire Soon'),
-  _TabInfo(Icons.medical_services_outlined, 'Surgical and Diagnostic'),
+  _TabInfo(Icons.medical_services_outlined, 'Surgical & Diagnostic'),
   _TabInfo(Icons.local_offer_outlined, 'Offers'),
 ];
 

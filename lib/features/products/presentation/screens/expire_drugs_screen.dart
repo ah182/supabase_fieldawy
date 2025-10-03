@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
+import 'package:fieldawy_store/features/products/data/product_repository.dart';
 
 class ExpireDrugsScreen extends StatelessWidget {
   const ExpireDrugsScreen({super.key});
@@ -250,20 +251,25 @@ class ExpireDrugsScreen extends StatelessWidget {
                                           );
                                           if (confirm == true) {
                                             final userId = ref.read(authServiceProvider).currentUser?.id ?? '';
-                                            final supabase = Supabase.instance.client;
+                                            final repository = ref.read(
+                                                productRepositoryProvider);
                                             if (item.isOcr ?? false) {
-                                              // حذف من distributor_ocr_products
-                                              await supabase.from('distributor_ocr_products').delete().match({
-                                                'distributor_id': userId,
-                                                'ocr_product_id': product.id,
-                                              });
+                                              // حذف من distributor_ocr_products عبر الريبو
+                                              await repository
+                                                  .removeOcrProductFromDistributorCatalog(
+                                                distributorId: userId,
+                                                ocrProductId: product.id,
+                                              );
                                             } else {
-                                              // حذف من distributor_products
-                                              await supabase.from('distributor_products').delete().match({
-                                                'distributor_id': userId,
-                                                'product_id': int.parse(product.id),
-                                                'package': product.selectedPackage ?? '',
-                                              });
+                                              // حذف من distributor_products عبر الريبو
+                                              await repository
+                                                  .removeProductFromDistributorCatalog(
+                                                distributorId: userId,
+                                                productId: product.id,
+                                                package:
+                                                    product.selectedPackage ??
+                                                        '',
+                                              );
                                             }
                                             ref.invalidate(expireDrugsProvider);
                                           }
