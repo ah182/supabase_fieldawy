@@ -1,0 +1,158 @@
+// هذا هو المنطق المعدل للحفظ في add_from_catalog_screen
+
+// الحفظ في OCR Tab
+if (widget.isFromOfferScreen) {
+  // حفظ في جدول offers
+  final List<String> offerIds = [];
+  for (var item in ocrProductsToAdd) {
+    final offerId = await ref.read(productRepositoryProvider).addOffer(
+      productId: item['ocrProductId'],
+      isOcr: true,
+      userId: distributorId,
+      price: item['price'],
+      expirationDate: item['expiration_date'] != null 
+          ? DateTime.parse(item['expiration_date'])
+          : DateTime.now().add(const Duration(days: 365)),
+    );
+    if (offerId != null) {
+      offerIds.add(offerId);
+    }
+  }
+
+  ref.read(catalogSelectionControllerProvider.notifier).clearSelections(keysToClear);
+
+  if (context.mounted) {
+    if (offerIds.length == 1) {
+      // منتج واحد - نفتح صفحة offer_detail_screen
+      final firstProduct = _ocrCatalogShuffledDisplayItems.firstWhere(
+        (item) => '${item['product'].id}_${item['package']}' == keysToClear.first
+      );
+      final productName = firstProduct['product'].name;
+      final price = ocrProductsToAdd[0]['price'];
+      final expirationDate = ocrProductsToAdd[0]['expiration_date'] != null
+          ? DateTime.parse(ocrProductsToAdd[0]['expiration_date'])
+          : DateTime.now().add(const Duration(days: 365));
+
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => OfferDetailScreen(
+            offerId: offerIds[0],
+            productName: productName,
+            price: price,
+            expirationDate: expirationDate,
+          ),
+        ),
+      );
+    } else {
+      // أكثر من منتج - نظهر رسالة نجاح ونرجع
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'نجاح',
+            message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+            contentType: ContentType.success,
+          ),
+        ),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+} else {
+  // الحفظ العادي في distributor_ocr_products
+  await ref.read(productRepositoryProvider).addMultipleDistributorOcrProducts(
+    distributorId: distributorId,
+    distributorName: distributorName,
+    ocrProducts: ocrProductsToAdd,
+  );
+  // باقي الكود...
+}
+
+// الحفظ في Main Catalog Tab
+if (widget.isFromOfferScreen) {
+  // حفظ في جدول offers
+  final userModel = await ref.read(userDataProvider.future);
+  final userId = userModel?.id;
+  
+  if (userId != null) {
+    final selection = ref.read(catalogSelectionControllerProvider);
+    final List<String> offerIds = [];
+    
+    for (var item in _mainCatalogShuffledDisplayItems) {
+      final ProductModel product = item['product'];
+      final String package = item['package'];
+      final String key = '${product.id}_$package';
+      
+      if (selection.prices.containsKey(key)) {
+        final price = selection.prices[key] ?? 0.0;
+        final expirationDate = selection.expirationDates[key] ?? 
+            DateTime.now().add(const Duration(days: 365));
+        
+        if (price > 0) {
+          final offerId = await ref.read(productRepositoryProvider).addOffer(
+            productId: product.id,
+            isOcr: false,
+            userId: userId,
+            price: price,
+            expirationDate: expirationDate,
+          );
+          if (offerId != null) {
+            offerIds.add(offerId);
+          }
+        }
+      }
+    }
+    
+    ref.read(catalogSelectionControllerProvider.notifier).clearSelections(mainCatalogKeys);
+    
+    if (context.mounted) {
+      if (offerIds.length == 1) {
+        // منتج واحد - نفتح صفحة offer_detail_screen
+        final firstProduct = _mainCatalogShuffledDisplayItems.firstWhere(
+          (item) {
+            final key = '${item['product'].id}_${item['package']}';
+            return selection.prices.containsKey(key) && selection.prices[key]! > 0;
+          }
+        );
+        final productName = firstProduct['product'].name;
+        final key = '${firstProduct['product'].id}_${firstProduct['package']}';
+        final price = selection.prices[key]!;
+        final expirationDate = selection.expirationDates[key] ?? 
+            DateTime.now().add(const Duration(days: 365));
+
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => OfferDetailScreen(
+              offerId: offerIds[0],
+              productName: productName,
+              price: price,
+              expirationDate: expirationDate,
+            ),
+          ),
+        );
+      } else {
+        // أكثر من منتج - نظهر رسالة نجاح ونرجع
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.transparent,
+            content: AwesomeSnackbarContent(
+              title: 'نجاح',
+              message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+              contentType: ContentType.success,
+            ),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    }
+  }
+} else {
+  // الحفظ العادي في distributor_products
+  final success = await ref.read(catalogSelectionControllerProvider.notifier)
+      .saveSelections(keysToSave: mainCatalogKeys, withExpiration: widget.showExpirationDate);
+  // باقي الكود...
+}

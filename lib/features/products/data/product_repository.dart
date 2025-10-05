@@ -2,6 +2,8 @@ import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:fieldawy_store/features/products/domain/offer_model.dart';
+
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'dart:async';
 import 'dart:math';
@@ -655,6 +657,288 @@ class ProductRepository {
       }
     });
   }
+
+  // ========== Offers Methods ==========
+  
+  Future<String?> addOffer({
+    required String productId,
+    required bool isOcr,
+    required String userId,
+    required double price,
+    required DateTime expirationDate,
+    String? description,
+  }) async {
+    final response = await _supabase.from('offers').insert({
+      'product_id': productId,
+      'is_ocr': isOcr,
+      'user_id': userId,
+      'price': price,
+      'expiration_date': expirationDate.toIso8601String(),
+      'description': description,
+    }).select();
+    
+    if (response.isNotEmpty) {
+      return response.first['id'].toString();
+    }
+    return null;
+  }
+
+  Future<void> updateOfferDescription({
+    required String offerId,
+    required String description,
+  }) async {
+    await _supabase.from('offers').update({
+      'description': description,
+    }).eq('id', offerId);
+  }
+
+  Future<List<OfferModel>> getMyOffers(String userId) async {
+    try {
+      final response = await _supabase
+          .from('offers')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      return response.map((row) => OfferModel.fromMap(row)).toList();
+    } catch (e) {
+      print('Error fetching offers: $e');
+      return [];
+    }
+  }
+
+  Future<void> deleteOffer(String offerId) async {
+    await _supabase.from('offers').delete().eq('id', offerId);
+  }
+
+  Future<List<Map<String, dynamic>>> getMyOffersWithProducts(String userId) async {
+    try {
+      final offers = await _supabase
+          .from('offers')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> offersWithProducts = [];
+
+      for (var offer in offers) {
+        final isOcr = offer['is_ocr'] as bool;
+        final productId = offer['product_id'] as String;
+
+        Map<String, dynamic>? productData;
+
+        if (isOcr) {
+          // جلب من ocr_products
+          final ocrProduct = await _supabase
+              .from('ocr_products')
+              .select()
+              .eq('id', productId)
+              .maybeSingle();
+          
+          if (ocrProduct != null) {
+            productData = {
+              'id': ocrProduct['id'],
+              'name': ocrProduct['product_name'],
+              'company': ocrProduct['product_company'],
+              'package': ocrProduct['package'],
+              'imageUrl': ocrProduct['image_url'],
+            };
+          }
+        } else {
+          // جلب من products
+          final product = await _supabase
+              .from('products')
+              .select()
+              .eq('id', productId)
+              .maybeSingle();
+          
+          if (product != null) {
+            productData = {
+              'id': product['id'],
+              'name': product['name'],
+              'company': product['company'],
+              'package': '', // سنحتاج لجلبها من distributor_products إذا لزم الأمر
+              'imageUrl': product['image_url'],
+            };
+          }
+        }
+
+        if (productData != null) {
+          offersWithProducts.add({
+            'offer': offer,
+            'product': productData,
+          });
+        }
+      }
+
+      return offersWithProducts;
+    } catch (e) {
+      print('Error fetching offers with products: $e');
+      return [];
+    }
+  }
+
+  // ============================================
+  // Surgical Tools Methods
+  // ============================================
+
+  /// إضافة أداة جراحية جديدة للكتالوج العام
+  Future<String?> addSurgicalTool({
+    required String toolName,
+    String? company,
+    String? imageUrl,
+    required String createdBy,
+  }) async {
+    try {
+      final response = await _supabase.from('surgical_tools').insert({
+        'tool_name': toolName,
+        if (company != null && company.isNotEmpty) 'company': company,
+        if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
+        'created_by': createdBy,
+      }).select('id').single();
+
+      return response['id'] as String?;
+    } catch (e) {
+      print('Error adding surgical tool: $e');
+      return null;
+    }
+  }
+
+  /// ربط أداة جراحية بالموزع (مع السعر والوصف الخاص به)
+  Future<bool> addDistributorSurgicalTool({
+    required String distributorId,
+    required String distributorName,
+    required String surgicalToolId,
+    required String description,
+    required double price,
+  }) async {
+    try {
+      await _supabase.from('distributor_surgical_tools').insert({
+        'distributor_id': distributorId,
+        'distributor_name': distributorName,
+        'surgical_tool_id': surgicalToolId,
+        'description': description,
+        'price': price,
+      });
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error adding distributor surgical tool: $e');
+      return false;
+    }
+  }
+
+  /// جلب أدوات موزع معين
+  Future<List<Map<String, dynamic>>> getMySurgicalTools(String distributorId) async {
+    try {
+      final response = await _supabase
+          .from('distributor_surgical_tools')
+          .select('''
+            id,
+            description,
+            price,
+            created_at,
+            surgical_tools (
+              id,
+              tool_name,
+              company,
+              image_url
+            )
+          ''')
+          .eq('distributor_id', distributorId)
+          .order('created_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching my surgical tools: $e');
+      return [];
+    }
+  }
+
+  /// البحث في الأدوات الجراحية
+  Future<List<Map<String, dynamic>>> searchSurgicalTools(String searchQuery) async {
+    try {
+      final response = await _supabase.rpc('search_surgical_tools', params: {
+        'search_query': searchQuery,
+      });
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error searching surgical tools: $e');
+      return [];
+    }
+  }
+
+  /// تحديث أداة جراحية للموزع
+  Future<bool> updateDistributorSurgicalTool({
+    required String id,
+    String? description,
+    double? price,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (description != null) updates['description'] = description;
+      if (price != null) updates['price'] = price;
+
+      if (updates.isEmpty) return false;
+
+      await _supabase
+          .from('distributor_surgical_tools')
+          .update(updates)
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error updating distributor surgical tool: $e');
+      return false;
+    }
+  }
+
+  /// حذف أداة جراحية للموزع
+  Future<bool> deleteDistributorSurgicalTool(String id) async {
+    try {
+      await _supabase
+          .from('distributor_surgical_tools')
+          .delete()
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error deleting distributor surgical tool: $e');
+      return false;
+    }
+  }
+
+  /// جلب جميع الأدوات الجراحية من جميع الموزعين
+  Future<List<Map<String, dynamic>>> getAllSurgicalTools() async {
+    try {
+      final response = await _supabase
+          .from('distributor_surgical_tools')
+          .select('''
+            id,
+            description,
+            price,
+            distributor_name,
+            distributor_id,
+            created_at,
+            surgical_tools (
+              id,
+              tool_name,
+              company,
+              image_url
+            )
+          ''')
+          .order('created_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching all surgical tools: $e');
+      return [];
+    }
+  }
 }
 
 // --- Providers ---
@@ -905,4 +1189,11 @@ final adminAllProductsProvider = FutureProvider<List<ProductModel>>((ref) {
   return ref
       .watch(productRepositoryProvider)
       .getAllDistributorProducts(bypassCache: true);
+});
+
+final myOffersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final userId = ref.watch(authServiceProvider).currentUser?.id;
+  if (userId == null) return [];
+  
+  return ref.watch(productRepositoryProvider).getMyOffersWithProducts(userId);
 });

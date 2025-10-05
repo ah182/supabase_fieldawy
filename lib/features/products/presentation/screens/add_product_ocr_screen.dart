@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +22,14 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
-  const AddProductOcrScreen({super.key, this.showExpirationDate = true});
+  final bool isFromOfferScreen;
+  final bool isFromSurgicalTools;
+  const AddProductOcrScreen({
+    super.key,
+    this.showExpirationDate = true,
+    this.isFromOfferScreen = false,
+    this.isFromSurgicalTools = false,
+  });
 
   @override
   ConsumerState<AddProductOcrScreen> createState() =>
@@ -46,6 +54,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   final _priceController = TextEditingController();
   final _packageController = TextEditingController();
   final _expirationDateController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   final List<String> _packageTypes = [
     'bottle',
@@ -70,19 +79,32 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _priceController.addListener(_validateForm);
     _packageController.addListener(_validateForm);
     _expirationDateController.addListener(_validateForm);
+    _descriptionController.addListener(_validateForm);
   }
 
   void _validateForm() {
-    var isValid = _processedImageBytes != null &&
-        _nameController.text.isNotEmpty &&
-        _companyController.text.isNotEmpty &&
-        _activePrincipleController.text.isNotEmpty &&
-        _priceController.text.isNotEmpty &&
-        _packageController.text.isNotEmpty &&
-        _selectedPackageType != null &&
-        (widget.showExpirationDate
-            ? _expirationDateController.text.isNotEmpty
-            : true);
+    bool isValid;
+    
+    if (widget.isFromSurgicalTools) {
+      // للأدوات الجراحية: الاسم + السعر + الوصف إجباري
+      isValid = _processedImageBytes != null &&
+          _nameController.text.isNotEmpty &&
+          _priceController.text.isNotEmpty &&
+          _descriptionController.text.isNotEmpty;
+    } else {
+      // للمنتجات العادية
+      isValid = _processedImageBytes != null &&
+          _nameController.text.isNotEmpty &&
+          _companyController.text.isNotEmpty &&
+          _activePrincipleController.text.isNotEmpty &&
+          _priceController.text.isNotEmpty &&
+          _packageController.text.isNotEmpty &&
+          _selectedPackageType != null &&
+          (widget.showExpirationDate
+              ? _expirationDateController.text.isNotEmpty
+              : true);
+    }
+    
     if (_isFormValid != isValid) {
       setState(() {
         _isFormValid = isValid;
@@ -294,51 +316,136 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       final distributorName = userData?.displayName ?? 'Unknown Distributor';
 
       if (userId != null) {
-        final expirationDate = _expirationDateController.text.isNotEmpty
-            ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
-            : null;
+        // ============================================
+        // الأدوات الجراحية
+        // ============================================
+        if (widget.isFromSurgicalTools) {
+          final description = _descriptionController.text;
+          
+          // إضافة الأداة للكتالوج العام
+          final surgicalToolId = await productRepo.addSurgicalTool(
+            toolName: name,
+            company: company.isNotEmpty ? company : null,
+            imageUrl: finalUrl,
+            createdBy: userId,
+          );
 
-        // دائمًا الحفظ في جدول distributor_ocr_products فقط
-        final ocrProductId = await productRepo.addOcrProduct(
-          distributorId: userId,
-          distributorName: distributorName,
-          productName: name,
-          productCompany: company,
-          activePrinciple: activePrinciple,
-          package: package,
-          imageUrl: finalUrl,
-        );
-        print('DEBUG: ocrProductId returned from addOcrProduct: '
-            '[33m$ocrProductId[0m');
-        if (ocrProductId != null) {
-          await productRepo.addDistributorOcrProduct(
+          if (surgicalToolId != null) {
+            // ربط الأداة بالموزع مع السعر والوصف الخاص به
+            final success = await productRepo.addDistributorSurgicalTool(
+              distributorId: userId,
+              distributorName: distributorName,
+              surgicalToolId: surgicalToolId,
+              description: description,
+              price: price,
+            );
+
+            if (success && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  elevation: 0,
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.transparent,
+                  content: AwesomeSnackbarContent(
+                    title: 'نجاح',
+                    message: 'تم إضافة الأداة الجراحية بنجاح!',
+                    contentType: ContentType.success,
+                  ),
+                ),
+              );
+              Navigator.of(context).pop();
+              return;
+            }
+          }
+        }
+        
+        // ============================================
+        // المنتجات العادية (OCR)
+        // ============================================
+        else {
+          final expirationDate = _expirationDateController.text.isNotEmpty
+              ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
+              : DateTime.now().add(const Duration(days: 365));
+
+          final ocrProductId = await productRepo.addOcrProduct(
             distributorId: userId,
             distributorName: distributorName,
-            ocrProductId: ocrProductId,
-            price: price,
-            expirationDate: expirationDate,
+            productName: name,
+            productCompany: company,
+            activePrinciple: activePrinciple,
+            package: package,
+            imageUrl: finalUrl,
           );
-          print('DEBUG: addDistributorOcrProduct called with ocrProductId: '
-              '[32m$ocrProductId[0m');
-        } else {
-          print(
-              'DEBUG: ocrProductId is null, distributor_ocr_products will not be saved!');
+          
+          if (ocrProductId != null) {
+            if (widget.isFromOfferScreen) {
+              // حفظ في جدول offers فقط
+              final offerId = await productRepo.addOffer(
+                productId: ocrProductId,
+                isOcr: true,
+                userId: userId,
+                price: price,
+                expirationDate: expirationDate,
+              );
+
+              if (offerId != null && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    elevation: 0,
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.transparent,
+                    content: AwesomeSnackbarContent(
+                      title: 'نجاح',
+                      message: 'تم إضافة المنتج بنجاح',
+                      contentType: ContentType.success,
+                    ),
+                  ),
+                );
+
+                if (mounted) {
+                  await Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => OfferDetailScreen(
+                        offerId: offerId,
+                        productName: name,
+                        price: price,
+                        expirationDate: expirationDate,
+                      ),
+                    ),
+                  );
+                }
+                return;
+              }
+            } else {
+              // الحفظ العادي في distributor_ocr_products
+              await productRepo.addDistributorOcrProduct(
+                distributorId: userId,
+                distributorName: distributorName,
+                ocrProductId: ocrProductId,
+                price: price,
+                expirationDate: expirationDate,
+              );
+            }
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  elevation: 0,
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.transparent,
+                  content: AwesomeSnackbarContent(
+                    title: 'نجاح',
+                    message: 'Product added successfully!',
+                    contentType: ContentType.success,
+                  ),
+                ),
+              );
+              Navigator.of(context).pop();
+            }
+          }
         }
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          elevation: 0,
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.transparent,
-          content: AwesomeSnackbarContent(
-            title: 'نجاح',
-            message: 'Product added successfully!',
-            contentType: ContentType.success,
-          ),
-        ),
-      );
-      Navigator.of(context).pop();
     } catch (e) {
       print('Error saving product: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -367,6 +474,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _packageController.dispose();
     _priceController.dispose();
     _expirationDateController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -419,7 +527,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Add New Product',
+          widget.isFromSurgicalTools ? 'Add Surgical Tool' : 'Add New Product',
           style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -580,66 +688,107 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
+                    // الاسم - إجباري دائماً
                     _buildTextField(
-                        'Product Name',
+                        widget.isFromSurgicalTools ? 'Tool Name' : 'Product Name',
                         Icons.medical_services,
                         _nameController,
                         inputBgColor,
                         inputBorderColor,
                         accentColor),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                        'Company',
-                        Icons.business,
-                        _companyController,
-                        inputBgColor,
-                        inputBorderColor,
-                        accentColor),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                        'Active Principle',
-                        Icons.science,
-                        _activePrincipleController,
-                        inputBgColor,
-                        inputBorderColor,
-                        accentColor),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                        'Package Description',
-                        Icons.content_paste,
-                        _packageController,
-                        inputBgColor,
-                        inputBorderColor,
-                        accentColor),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedPackageType,
-                      decoration: InputDecoration(
-                        labelText: 'Package Type',
-                        prefixIcon: Icon(
-                          FontAwesomeIcons.boxesStacked,
-                          size: 20,
-                          color: accentColor,
+                    
+                    // الشركة - اختياري للأدوات الجراحية، إجباري للمنتجات
+                    if (!widget.isFromSurgicalTools) ...[
+                      _buildTextField(
+                          'Company',
+                          Icons.business,
+                          _companyController,
+                          inputBgColor,
+                          inputBorderColor,
+                          accentColor),
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      _buildTextField(
+                          'Company (Optional)',
+                          Icons.business,
+                          _companyController,
+                          inputBgColor,
+                          inputBorderColor,
+                          accentColor),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Active Principle - فقط للمنتجات
+                    if (!widget.isFromSurgicalTools) ...[
+                      _buildTextField(
+                          'Active Principle',
+                          Icons.science,
+                          _activePrincipleController,
+                          inputBgColor,
+                          inputBorderColor,
+                          accentColor),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Package Description - فقط للمنتجات
+                    if (!widget.isFromSurgicalTools) ...[
+                      _buildTextField(
+                          'Package Description',
+                          Icons.content_paste,
+                          _packageController,
+                          inputBgColor,
+                          inputBorderColor,
+                          accentColor),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Package Type - فقط للمنتجات
+                    if (!widget.isFromSurgicalTools) ...[
+                      DropdownButtonFormField<String>(
+                        value: _selectedPackageType,
+                        decoration: InputDecoration(
+                          labelText: 'Package Type',
+                          prefixIcon: Icon(
+                            FontAwesomeIcons.boxesStacked,
+                            size: 20,
+                            color: accentColor,
+                          ),
+                          filled: true,
+                          fillColor: inputBgColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: inputBorderColor),
+                          ),
                         ),
-                        filled: true,
-                        fillColor: inputBgColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorderColor),
-                        ),
+                        items: _packageTypes
+                            .map((type) => DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedPackageType = value);
+                          _validateForm();
+                        },
                       ),
-                      items: _packageTypes
-                          .map((type) => DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(type),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() => _selectedPackageType = value);
-                        _validateForm();
-                      },
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Description - فقط للأدوات الجراحية، إجباري
+                    if (widget.isFromSurgicalTools) ...[
+                      _buildTextField(
+                          'Description',
+                          Icons.description,
+                          _descriptionController,
+                          inputBgColor,
+                          inputBorderColor,
+                          accentColor,
+                          maxLines: 3),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // السعر - إجباري دائماً
                     _buildTextField(
                         'Price',
                         Icons.attach_money,
@@ -649,6 +798,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         priceColor,
                         keyboardType: TextInputType.number),
                     const SizedBox(height: 16),
+                    
+                    // Expiration Date - حسب showExpirationDate
                     if (widget.showExpirationDate)
                       _buildTextField(
                         'Expiration Date',
@@ -696,12 +847,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     TextInputType? keyboardType,
     bool readOnly = false,
     VoidCallback? onTap,
+    int maxLines = 1,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType ?? TextInputType.text,
       readOnly: readOnly,
       onTap: onTap,
+      maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: iconColor),

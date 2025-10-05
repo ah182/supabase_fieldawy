@@ -4,6 +4,7 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -17,7 +18,12 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
-  const AddFromCatalogScreen({super.key, this.showExpirationDate = false});
+  final bool isFromOfferScreen;
+  const AddFromCatalogScreen({
+    super.key,
+    this.showExpirationDate = false,
+    this.isFromOfferScreen = false,
+  });
 
   @override
   ConsumerState<AddFromCatalogScreen> createState() =>
@@ -240,7 +246,20 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         child: Scaffold(
           // === تعديل AppBar علشان يحتوي على SearchBar وعداد المنتجات ===
           appBar: AppBar(
-            title: const Text('إضافة من الكتالوج'),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('إضافة من الكتالوج'),
+                if (widget.isFromOfferScreen)
+                  Text(
+                    'اختر منتج واحد فقط',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+              ],
+            ),
             backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
             scrolledUnderElevation: 0,
@@ -445,34 +464,100 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           }
 
                           if (ocrProductsToAdd.isNotEmpty) {
-                            await ref
-                                .read(productRepositoryProvider)
-                                .addMultipleDistributorOcrProducts(
-                                  distributorId: distributorId,
-                                  distributorName: distributorName,
-                                  ocrProducts: ocrProductsToAdd,
+                            if (widget.isFromOfferScreen) {
+                              // حفظ في جدول offers
+                              final List<String> offerIds = [];
+                              final List<Map<String, dynamic>> offerDetails = [];
+                              
+                              for (var item in ocrProductsToAdd) {
+                                final offerId = await ref.read(productRepositoryProvider).addOffer(
+                                  productId: item['ocrProductId'],
+                                  isOcr: true,
+                                  userId: distributorId,
+                                  price: item['price'],
+                                  expirationDate: item['expiration_date'] != null 
+                                      ? DateTime.parse(item['expiration_date'])
+                                      : DateTime.now().add(const Duration(days: 365)),
                                 );
+                                if (offerId != null) {
+                                  offerIds.add(offerId);
+                                  offerDetails.add(item);
+                                }
+                              }
 
-                            ref
-                                .read(
-                                    catalogSelectionControllerProvider.notifier)
-                                .clearSelections(keysToClear);
+                              ref.read(catalogSelectionControllerProvider.notifier).clearSelections(keysToClear);
 
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  elevation: 0,
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.transparent,
-                                  content: AwesomeSnackbarContent(
-                                    title: 'نجاح',
-                                    message:
-                                        'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
-                                    contentType: ContentType.success,
+                              if (context.mounted) {
+                                if (offerIds.length == 1) {
+                                  // منتج واحد - نفتح صفحة offer_detail_screen
+                                  final firstKey = keysToClear.first;
+                                  final firstProduct = _ocrCatalogShuffledDisplayItems.firstWhere(
+                                    (item) => '${item['product'].id}_${item['package']}' == firstKey
+                                  );
+                                  final productName = firstProduct['product'].name;
+                                  final price = offerDetails[0]['price'];
+                                  final expirationDate = offerDetails[0]['expiration_date'] != null
+                                      ? DateTime.parse(offerDetails[0]['expiration_date'])
+                                      : DateTime.now().add(const Duration(days: 365));
+
+                                  await Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (context) => OfferDetailScreen(
+                                        offerId: offerIds[0],
+                                        productName: productName,
+                                        price: price,
+                                        expirationDate: expirationDate,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // أكثر من منتج - نظهر رسالة نجاح ونرجع
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      elevation: 0,
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.transparent,
+                                      content: AwesomeSnackbarContent(
+                                        title: 'نجاح',
+                                        message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+                                        contentType: ContentType.success,
+                                      ),
+                                    ),
+                                  );
+                                  Navigator.of(context).pop();
+                                }
+                              }
+                            } else {
+                              // الحفظ العادي في distributor_ocr_products
+                              await ref
+                                  .read(productRepositoryProvider)
+                                  .addMultipleDistributorOcrProducts(
+                                    distributorId: distributorId,
+                                    distributorName: distributorName,
+                                    ocrProducts: ocrProductsToAdd,
+                                  );
+
+                              ref
+                                  .read(
+                                      catalogSelectionControllerProvider.notifier)
+                                  .clearSelections(keysToClear);
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    elevation: 0,
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.transparent,
+                                    content: AwesomeSnackbarContent(
+                                      title: 'نجاح',
+                                      message:
+                                          'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
+                                      contentType: ContentType.success,
+                                    ),
                                   ),
-                                ),
-                              );
-                              Navigator.of(context).pop();
+                                );
+                                Navigator.of(context).pop();
+                              }
                             }
                           } else {
                             if (context.mounted) {
@@ -517,40 +602,116 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           return '${product.id}_$package';
                         }).toSet();
 
-                        final success = await ref
-                            .read(catalogSelectionControllerProvider.notifier)
-                            .saveSelections(
-                                keysToSave: mainCatalogKeys,
-                                withExpiration: widget.showExpirationDate);
+                        if (widget.isFromOfferScreen) {
+                          // حفظ في جدول offers
+                          final userModel = await ref.read(userDataProvider.future);
+                          final userId = userModel?.id;
+                          
+                          if (userId != null) {
+                            final selection = ref.read(catalogSelectionControllerProvider);
+                            final List<String> offerIds = [];
+                            final List<Map<String, dynamic>> offerDetails = [];
+                            
+                            for (var item in _mainCatalogShuffledDisplayItems) {
+                              final ProductModel product = item['product'];
+                              final String package = item['package'];
+                              final String key = '${product.id}_$package';
+                              
+                              if (selection.prices.containsKey(key)) {
+                                final price = selection.prices[key] ?? 0.0;
+                                final expirationDate = selection.expirationDates[key] ?? 
+                                    DateTime.now().add(const Duration(days: 365));
+                                
+                                if (price > 0) {
+                                  final offerId = await ref.read(productRepositoryProvider).addOffer(
+                                    productId: product.id,
+                                    isOcr: false,
+                                    userId: userId,
+                                    price: price,
+                                    expirationDate: expirationDate,
+                                  );
+                                  if (offerId != null) {
+                                    offerIds.add(offerId);
+                                    offerDetails.add({
+                                      'productName': product.name,
+                                      'price': price,
+                                      'expirationDate': expirationDate,
+                                    });
+                                  }
+                                }
+                              }
+                            }
+                            
+                            ref.read(catalogSelectionControllerProvider.notifier).clearSelections(mainCatalogKeys);
+                            
+                            if (context.mounted) {
+                              if (offerIds.length == 1) {
+                                // منتج واحد - نفتح صفحة offer_detail_screen
+                                await Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => OfferDetailScreen(
+                                      offerId: offerIds[0],
+                                      productName: offerDetails[0]['productName'],
+                                      price: offerDetails[0]['price'],
+                                      expirationDate: offerDetails[0]['expirationDate'],
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                // أكثر من منتج - نظهر رسالة نجاح ونرجع
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    elevation: 0,
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.transparent,
+                                    content: AwesomeSnackbarContent(
+                                      title: 'نجاح',
+                                      message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+                                      contentType: ContentType.success,
+                                    ),
+                                  ),
+                                );
+                                Navigator.of(context).pop();
+                              }
+                            }
+                          }
+                        } else {
+                          // الحفظ العادي في distributor_products
+                          final success = await ref
+                              .read(catalogSelectionControllerProvider.notifier)
+                              .saveSelections(
+                                  keysToSave: mainCatalogKeys,
+                                  withExpiration: widget.showExpirationDate);
 
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              elevation: 0,
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: Colors.transparent,
-                              content: AwesomeSnackbarContent(
-                                title: 'نجاح',
-                                message: 'تم حفظ المنتجات بنجاح',
-                                contentType: ContentType.success,
+                          if (success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                elevation: 0,
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.transparent,
+                                content: AwesomeSnackbarContent(
+                                  title: 'نجاح',
+                                  message: 'تم حفظ المنتجات بنجاح',
+                                  contentType: ContentType.success,
+                                ),
                               ),
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        } else if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              elevation: 0,
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: Colors.transparent,
-                              content: AwesomeSnackbarContent(
-                                title: 'تنبيه',
-                                message:
-                                    'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
-                                contentType: ContentType.warning,
+                            );
+                            Navigator.of(context).pop();
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                elevation: 0,
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.transparent,
+                                content: AwesomeSnackbarContent(
+                                  title: 'تنبيه',
+                                  message:
+                                      'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
+                                  contentType: ContentType.warning,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         }
                       }
                     } finally {
@@ -674,7 +835,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           return _ProductCatalogItem(
                               product: product,
                               package: package,
-                              showExpirationDate: widget.showExpirationDate);
+                              showExpirationDate: widget.showExpirationDate,
+                              singleSelection: widget.isFromOfferScreen);
                         },
                       );
                     },
@@ -798,7 +960,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   product: product,
                                   package: package,
                                   showExpirationDate:
-                                      widget.showExpirationDate);
+                                      widget.showExpirationDate,
+                                  singleSelection: widget.isFromOfferScreen);
                         },
                       );
                     },
@@ -852,11 +1015,14 @@ class _ProductCatalogItem extends HookConsumerWidget {
   final ProductModel product;
   final String package;
   final bool showExpirationDate;
+  final bool singleSelection;
 
-  const _ProductCatalogItem(
-      {required this.product,
-      required this.package,
-      this.showExpirationDate = false});
+  const _ProductCatalogItem({
+    required this.product,
+    required this.package,
+    this.showExpirationDate = false,
+    this.singleSelection = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1141,9 +1307,16 @@ class _ProductCatalogItem extends HookConsumerWidget {
               Switch.adaptive(
                 value: isSelected,
                 onChanged: (value) {
-                  ref
-                      .read(catalogSelectionControllerProvider.notifier)
-                      .toggleProduct(product.id, package, priceController.text);
+                  final controller = ref.read(catalogSelectionControllerProvider.notifier);
+                  
+                  // إذا كان singleSelection مفعل ونريد اختيار منتج جديد
+                  if (singleSelection && value) {
+                    // امسح كل الاختيارات السابقة أولاً
+                    final currentSelections = ref.read(catalogSelectionControllerProvider).prices.keys.toSet();
+                    controller.clearSelections(currentSelections);
+                  }
+                  
+                  controller.toggleProduct(product.id, package, priceController.text);
 
                   // لو المنتج بقى محدد، نركز على حقل السعر
                   if (value) {
