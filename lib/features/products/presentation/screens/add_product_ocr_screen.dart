@@ -69,6 +69,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     'drops',
   ];
   String? _selectedPackageType;
+  String _selectedStatus = 'جديد'; // للأدوات الجراحية
 
   @override
   void initState() {
@@ -338,6 +339,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               surgicalToolId: surgicalToolId,
               description: description,
               price: price,
+              status: _selectedStatus,
             );
 
             if (success && mounted) {
@@ -786,6 +788,46 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           inputBorderColor,
                           accentColor,
                           maxLines: 3),
+                      const SizedBox(height: 16),
+                      
+                      // حالة الأداة
+                      DropdownButtonFormField<String>(
+                        value: _selectedStatus,
+                        decoration: InputDecoration(
+                          labelText: 'Tool Status / حالة الأداة',
+                          prefixIcon: Icon(
+                            Icons.info_outline,
+                            color: accentColor,
+                          ),
+                          filled: true,
+                          fillColor: inputBgColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: inputBorderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: inputBorderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: accentColor, width: 2),
+                          ),
+                        ),
+                        items: ['جديد', 'مستعمل', 'كسر زيرو'].map((String status) {
+                          return DropdownMenuItem<String>(
+                            value: status,
+                            child: Text(status),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedStatus = newValue;
+                            });
+                          }
+                        },
+                      ),
                       const SizedBox(height: 16),
                     ],
                     

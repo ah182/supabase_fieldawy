@@ -853,6 +853,7 @@ class ProductRepository {
     required String surgicalToolId,
     required String description,
     required double price,
+    String status = 'جديد',
   }) async {
     try {
       await _supabase.from('distributor_surgical_tools').insert({
@@ -861,6 +862,7 @@ class ProductRepository {
         'surgical_tool_id': surgicalToolId,
         'description': description,
         'price': price,
+        'status': status,
       });
 
       _scheduleCacheInvalidation();
@@ -880,6 +882,7 @@ class ProductRepository {
             id,
             description,
             price,
+            status,
             created_at,
             surgical_tools (
               id,
@@ -917,11 +920,13 @@ class ProductRepository {
     required String id,
     String? description,
     double? price,
+    String? status,
   }) async {
     try {
       final updates = <String, dynamic>{};
       if (description != null) updates['description'] = description;
       if (price != null) updates['price'] = price;
+      if (status != null) updates['status'] = status;
 
       if (updates.isEmpty) return false;
 
@@ -963,6 +968,7 @@ class ProductRepository {
             id,
             description,
             price,
+            status,
             distributor_name,
             distributor_id,
             created_at,
@@ -979,6 +985,56 @@ class ProductRepository {
     } catch (e) {
       print('Error fetching all surgical tools: $e');
       return [];
+    }
+  }
+
+  /// جلب كتالوج الأدوات الجراحية (من جدول surgical_tools)
+  Future<List<Map<String, dynamic>>> getSurgicalToolsCatalog() async {
+    try {
+      final response = await _supabase
+          .from('surgical_tools')
+          .select('id, tool_name, company, image_url, created_at')
+          .order('created_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching surgical tools catalog: $e');
+      return [];
+    }
+  }
+
+  /// إضافة أداة جراحية من الكتالوج إلى مخزون الموزع
+  Future<void> addToolToInventory({
+    required String userId,
+    required String toolId,
+    required String description,
+    required double price,
+    required String status,
+  }) async {
+    try {
+      // جلب معلومات المستخدم للحصول على الاسم
+      final userResponse = await _supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final distributorName = userResponse?['display_name'] ?? 'Unknown';
+
+      await _supabase.from('distributor_surgical_tools').insert({
+        'distributor_id': userId,
+        'surgical_tool_id': toolId,
+        'description': description,
+        'price': price,
+        'status': status,
+        'distributor_name': distributorName,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      _scheduleCacheInvalidation();
+    } catch (e) {
+      print('Error adding tool to inventory: $e');
+      rethrow;
     }
   }
 }

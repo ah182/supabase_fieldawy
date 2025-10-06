@@ -1,4 +1,5 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide NumberFormat;
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
@@ -336,7 +337,7 @@ class _ModernOfferCard extends StatelessWidget {
       statusBgColor = Colors.green.shade100;
     }
 
-    final priceLabel = '${offer['price']} EGP';
+    final priceLabel = '${NumberFormat('#,##0.00', 'en_US').format((offer['price'] as num).toDouble())} EGP';
     final expirationLabel =
         '${expirationDate.month.toString().padLeft(2, '0')}/${expirationDate.year}';
 
