@@ -456,6 +456,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     'price': price,
                                     'expiration_date':
                                         expirationDate?.toIso8601String(),
+                                    'package': package,
                                   });
                                   keysToClear.add(key);
                                 }
@@ -478,6 +479,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   expirationDate: item['expiration_date'] != null 
                                       ? DateTime.parse(item['expiration_date'])
                                       : DateTime.now().add(const Duration(days: 365)),
+                                  package: item['package'],
                                 );
                                 if (offerId != null) {
                                   offerIds.add(offerId);
@@ -629,6 +631,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     userId: userId,
                                     price: price,
                                     expirationDate: expirationDate,
+                                    package: package,
                                   );
                                   if (offerId != null) {
                                     offerIds.add(offerId);

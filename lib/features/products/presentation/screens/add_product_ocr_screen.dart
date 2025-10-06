@@ -386,6 +386,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 userId: userId,
                 price: price,
                 expirationDate: expirationDate,
+                package: package,
               );
 
               if (offerId != null && mounted) {

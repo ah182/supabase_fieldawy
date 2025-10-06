@@ -6,8 +6,8 @@ import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
-import 'dart:ui';
+
+
 
 // ===================================================================
 // LimitedOfferScreen - شاشة العروض المحدودة المحسنة
@@ -18,57 +18,44 @@ class LimitedOfferScreen extends ConsumerWidget {
   void _showAddDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (BuildContext context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-          child: SafeArea(
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Handle bar
                 Container(
-                  width: 40,
+                  width: 36,
                   height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(2),
+                    color: Theme.of(context).hintColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'addProduct.limitedOffer.title'.tr(),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'addProduct.limitedOffer.title'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'اختر طريقة إضافة العرض',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6),
-                      ),
-                ),
-                const SizedBox(height: 32),
-                _ModernDialogOption(
-                  icon: Icons.collections_bookmark_rounded,
-                  title: 'Add from Catalog',
-                  subtitle: 'اختر من الكتالوج',
-                  gradientColors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primaryContainer,
-                  ],
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                    child: Icon(Icons.inventory_2_outlined,
+                        color: Theme.of(context).colorScheme.primary),
+                  ),
+                  title: const Text('Add from Catalog'),
+                  subtitle: const Text('اختر من الكتالوج'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(MaterialPageRoute(
@@ -79,15 +66,16 @@ class LimitedOfferScreen extends ConsumerWidget {
                     ));
                   },
                 ),
-                const SizedBox(height: 16),
-                _ModernDialogOption(
-                  icon: Icons.photo_library_rounded,
-                  title: 'Add from Gallery',
-                  subtitle: 'إضافة من المعرض',
-                  gradientColors: [
-                    Colors.orange.shade600,
-                    Colors.orange.shade300,
-                  ],
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.orange.withOpacity(0.12),
+                    child: Icon(Icons.photo_library_outlined,
+                        color: Colors.orange),
+                  ),
+                  title: const Text('Add from Gallery'),
+                  subtitle: const Text('إضافة من المعرض'),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(MaterialPageRoute(
@@ -98,7 +86,6 @@ class LimitedOfferScreen extends ConsumerWidget {
                     ));
                   },
                 ),
-                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -201,6 +188,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                                   price: (offer['price'] as num).toDouble(),
                                   expirationDate:
                                       DateTime.parse(offer['expiration_date']),
+                                  currentDescription: offer['description'],
                                 ),
                               ),
                             );
@@ -242,94 +230,7 @@ class LimitedOfferScreen extends ConsumerWidget {
   }
 }
 
-// ===================================================================
-// _ModernDialogOption - خيارات الإضافة المحسنة
-// ===================================================================
-class _ModernDialogOption extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final List<Color> gradientColors;
-  final VoidCallback onTap;
 
-  const _ModernDialogOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.gradientColors,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradientColors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: gradientColors[0].withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ===================================================================
 // _StatsCard - بطاقة الإحصائيات
@@ -344,57 +245,33 @@ class _StatsCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary.withOpacity(0.1),
-            theme.colorScheme.primaryContainer.withOpacity(0.3),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
-          width: 1.5,
-        ),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              color: theme.colorScheme.primary,
-              size: 32,
+          Icon(
+            Icons.local_offer_rounded,
+            color: theme.colorScheme.primary,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Active Offers :',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'إجمالي العروض النشطة',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$offersCount عرض',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
+          const SizedBox(width: 8),
+          Text(
+            '$offersCount',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: theme.colorScheme.primary,
             ),
           ),
         ],
@@ -422,31 +299,74 @@ class _ModernOfferCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final colorScheme = theme.colorScheme;
+    
+    final now = DateTime.now();
     final expirationDate = DateTime.parse(offer['expiration_date']);
-    final daysRemaining = expirationDate.difference(DateTime.now()).inDays;
-    final isExpiringSoon = daysRemaining <= 7 && daysRemaining >= 0;
-    final isExpired = daysRemaining < 0;
+    final createdAt = offer['created_at'] != null 
+        ? DateTime.parse(offer['created_at'])
+        : now;
+    
+    // حساب الأيام المتبقية قبل حذف العرض (7 أيام من تاريخ الإنشاء)
+    final deletionDate = createdAt.add(const Duration(days: 7));
+    final daysUntilDeletion = deletionDate.difference(now).inDays;
+    final isOfferExpired = daysUntilDeletion < 0;
 
+    // تحديد اللون والحالة بناءً على الأيام المتبقية للعرض
     Color statusColor;
     String statusText;
-    IconData statusIcon;
     Color statusBgColor;
 
-    if (isExpired) {
-      statusColor = theme.colorScheme.error;
-      statusText = 'منتهي';
-      statusIcon = Icons.cancel_rounded;
-      statusBgColor = theme.colorScheme.error.withOpacity(0.1);
-    } else if (isExpiringSoon) {
+    if (isOfferExpired || daysUntilDeletion == 0) {
+      statusColor = colorScheme.error;
+      statusText = daysUntilDeletion == 0 ? 'ينتهي اليوم' : 'منتهي';
+      statusBgColor = colorScheme.errorContainer;
+    } else if (daysUntilDeletion <= 2) {
+      statusColor = Colors.red.shade700;
+      statusText = 'ينتهي قريباً جداً';
+      statusBgColor = Colors.red.shade100;
+    } else if (daysUntilDeletion <= 4) {
       statusColor = Colors.orange.shade700;
       statusText = 'ينتهي قريباً';
-      statusIcon = Icons.access_time_rounded;
-      statusBgColor = Colors.orange.shade50;
+      statusBgColor = Colors.orange.shade100;
     } else {
       statusColor = Colors.green.shade600;
       statusText = 'ساري';
-      statusIcon = Icons.check_circle_rounded;
-      statusBgColor = Colors.green.shade50;
+      statusBgColor = Colors.green.shade100;
+    }
+
+    final priceLabel = '${offer['price']} EGP';
+    final expirationLabel =
+        '${expirationDate.month.toString().padLeft(2, '0')}/${expirationDate.year}';
+
+    Widget buildInfoChip({
+      required IconData icon,
+      required String label,
+      required Color background,
+      required Color foreground,
+    }) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: foreground),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: textTheme.labelMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return TweenAnimationBuilder(
@@ -455,7 +375,7 @@ class _ModernOfferCard extends StatelessWidget {
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, double value, child) {
         return Transform.translate(
-          offset: Offset(0, 50 * (1 - value)),
+          offset: Offset(0, 30 * (1 - value)),
           child: Opacity(
             opacity: value,
             child: child,
@@ -463,338 +383,190 @@ class _ModernOfferCard extends StatelessWidget {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.shadow.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
+          color: theme.cardColor,
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.15),
+          ),
+          boxShadow: theme.brightness == Brightness.light
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : [],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image Section with Status Badge
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      child: SizedBox(
-                        height: 180,
-                        width: double.infinity,
-                        child: CachedNetworkImage(
-                          imageUrl: product['imageUrl'] ?? '',
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  theme.colorScheme.surfaceVariant,
-                                  theme.colorScheme.surfaceVariant
-                                      .withOpacity(0.7),
-                                ],
-                              ),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  theme.colorScheme.surfaceVariant,
-                                  theme.colorScheme.surfaceVariant
-                                      .withOpacity(0.5),
-                                ],
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.medication_rounded,
-                                  size: 60,
-                                  color: theme.colorScheme.onSurfaceVariant
-                                      .withOpacity(0.5),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'لا توجد صورة',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant
-                                        .withOpacity(0.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Gradient overlay
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 180,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.3),
-                              Colors.transparent,
-                            ],
-                          ),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Status Badge
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusBgColor.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: statusColor.withOpacity(0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(statusIcon, color: statusColor, size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                // Content Section
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Product Name
-                      Text(
-                        product['name'] ?? 'Unknown Product',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      // Company
-                      if (product['company'] != null &&
-                          product['company'].toString().isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.business_rounded,
-                              size: 16,
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                product['company'],
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                      // صورة صغيرة على الجانب
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: 72,
+                          height: 72,
+                          child: CachedNetworkImage(
+                            imageUrl: product['imageUrl'] ?? '',
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => Container(
+                              color: colorScheme.surfaceVariant,
+                              child: const Center(
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-                      // Price and Package
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
+                            errorWidget: (context, url, error) => Container(
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    theme.colorScheme.primary.withOpacity(0.1),
-                                    theme.colorScheme.primaryContainer
-                                        .withOpacity(0.2),
-                                  ],
-                                ),
+                                color: colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.2),
-                                  width: 1.5,
-                                ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'السعر',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        '${offer['price']}',
-                                        style: theme.textTheme.headlineMedium
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'جنيه',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                              child: Icon(
+                                Icons.medication_outlined,
+                                color: colorScheme.onSurfaceVariant,
+                                size: 32,
                               ),
                             ),
                           ),
-                          if (product['package'] != null &&
-                              product['package'].toString().isNotEmpty) ...[
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // المحتوى
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product['name'] ?? 'Unknown Product',
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
                               ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.inventory_2_rounded,
-                                    size: 18,
-                                    color:
-                                        theme.colorScheme.onSecondaryContainer,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    product['package'],
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme
-                                          .colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.bold,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 6),
+                            // Package و Company
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (product['company'] != null &&
+                                    product['company'].toString().isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.tertiaryContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.business_rounded,
+                                          size: 12,
+                                          color: colorScheme.onTertiaryContainer,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          product['company'],
+                                          style: textTheme.labelMedium?.copyWith(
+                                            color: colorScheme.onTertiaryContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                if (product['package'] != null &&
+                                    product['package'].toString().isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.secondaryContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.inventory_2_rounded,
+                                          size: 12,
+                                          color: colorScheme.onSecondaryContainer,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          product['package'],
+                                          style: textTheme.labelMedium?.copyWith(
+                                            color: colorScheme.onSecondaryContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Expiration Date
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color:
-                              theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_rounded,
-                              size: 16,
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.6),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'ينتهي في: ${DateFormat('dd MMMM yyyy', 'ar').format(expirationDate)}',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.7),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (!isExpired)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                            const SizedBox(height: 8),
+                            // Chips للمعلومات
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                buildInfoChip(
+                                  icon: Icons.sell_outlined,
+                                  label: priceLabel,
+                                  background: Colors.green.shade100,
+                                  foreground: Colors.green.shade700,
                                 ),
+                                buildInfoChip(
+                                  icon: Icons.schedule_outlined,
+                                  label: expirationLabel,
+                                  background: colorScheme.primaryContainer,
+                                  foreground: colorScheme.onPrimaryContainer,
+                                ),
+                              ],
+                            ),
+                            // الوصف في حدود أنيقة
+                            if (offer['description'] != null &&
+                                offer['description'].toString().isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(top: 8),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: colorScheme.surfaceVariant.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: colorScheme.outline.withOpacity(0.1),
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Text(
-                                  '$daysRemaining ${daysRemaining == 1 ? 'يوم' : 'أيام'}',
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                                  offer['description'],
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface.withOpacity(0.7),
+                                    height: 1.4,
                                   ),
+                                  maxLines: 8,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                           ],
@@ -802,8 +574,229 @@ class _ModernOfferCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  // عرض المدة المتبقية مع زر الحذف
+                  Row(
+                    children: [
+                      // Status badge بناءً على الأيام المتبقية للعرض
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusBgColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isOfferExpired
+                                  ? Icons.cancel_rounded
+                                  : daysUntilDeletion <= 2
+                                      ? Icons.warning_rounded
+                                      : daysUntilDeletion <= 4
+                                          ? Icons.access_time_rounded
+                                          : Icons.check_circle_rounded,
+                              size: 14,
+                              color: statusColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              statusText,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      // زر الحذف
+                      IconButton(
+                        icon: const Icon(Icons.delete_rounded),
+                        iconSize: 18,
+                        color: Colors.red[600],
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              title: Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_rounded,
+                                    color: colorScheme.error,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('حذف العرض'),
+                                ],
+                              ),
+                              content: const Text(
+                                'هل أنت متأكد من حذف هذا العرض؟\nلن تتمكن من التراجع عن هذا الإجراء.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, false),
+                                  child: const Text('إلغاء'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colorScheme.error,
+                                    foregroundColor: colorScheme.onError,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () => Navigator.pop(dialogContext, true),
+                                  child: const Text('حذف'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              final ref = ProviderScope.containerOf(context).read(productRepositoryProvider);
+                              await ref.deleteOffer(offer['id'].toString());
+                              
+                              if (context.mounted) {
+                                ProviderScope.containerOf(context).invalidate(myOffersProvider);
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: colorScheme.errorContainer,
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          color: colorScheme.onErrorContainer,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'تم حذف العرض بنجاح',
+                                            style: TextStyle(
+                                              color: colorScheme.onErrorContainer,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: colorScheme.errorContainer,
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_rounded,
+                                          color: colorScheme.onErrorContainer,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'فشل حذف العرض',
+                                            style: TextStyle(
+                                              color: colorScheme.onErrorContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // عرض المدة المتبقية للعرض قبل الحذف
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: daysUntilDeletion <= 2
+                              ? Colors.red.shade50
+                              : daysUntilDeletion <= 4
+                                  ? Colors.orange.shade50
+                                  : colorScheme.surfaceVariant.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: daysUntilDeletion <= 2
+                                ? Colors.red.shade200
+                                : daysUntilDeletion <= 4
+                                    ? Colors.orange.shade200
+                                    : colorScheme.outline.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isOfferExpired
+                                  ? Icons.delete_sweep_outlined
+                                  : Icons.timer_outlined,
+                              size: 14,
+                              color: daysUntilDeletion <= 2
+                                  ? Colors.red.shade700
+                                  : daysUntilDeletion <= 4
+                                      ? Colors.orange.shade700
+                                      : colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isOfferExpired
+                                  ? 'تم الحذف'
+                                  : daysUntilDeletion == 0
+                                      ? 'يُحذف اليوم'
+                                      : 'باقي ${daysUntilDeletion > 0 ? daysUntilDeletion : 0} ${daysUntilDeletion == 1 ? 'يوم' : 'أيام'}',
+                              style: textTheme.labelSmall?.copyWith(
+                                color: daysUntilDeletion <= 2
+                                    ? Colors.red.shade700
+                                    : daysUntilDeletion <= 4
+                                        ? Colors.orange.shade700
+                                        : colorScheme.onSurface.withOpacity(0.7),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -858,7 +851,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'أضف عرضك الأول لجذب المزيد من العملاء\\nوزيادة مبيعاتك!',
+              'أضف عرضك الأول لجذب المزيد من العملاء\nوزيادة مبيعاتك',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),

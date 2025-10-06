@@ -667,6 +667,7 @@ class ProductRepository {
     required double price,
     required DateTime expirationDate,
     String? description,
+    String? package,
   }) async {
     final response = await _supabase.from('offers').insert({
       'product_id': productId,
@@ -675,6 +676,7 @@ class ProductRepository {
       'price': price,
       'expiration_date': expirationDate.toIso8601String(),
       'description': description,
+      'package': package,
     }).select();
     
     if (response.isNotEmpty) {
@@ -711,19 +713,40 @@ class ProductRepository {
     await _supabase.from('offers').delete().eq('id', offerId);
   }
 
+  // حذف العروض القديمة (أكثر من 7 أيام من تاريخ الإنشاء)
+  Future<void> deleteExpiredOffers() async {
+    try {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      await _supabase
+          .from('offers')
+          .delete()
+          .lt('created_at', sevenDaysAgo.toIso8601String());
+      print('Deleted offers created before: $sevenDaysAgo');
+    } catch (e) {
+      print('Error deleting expired offers: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getMyOffersWithProducts(String userId) async {
     try {
+      // حذف العروض المنتهية منذ أكثر من 7 أيام قبل جلب القائمة
+      await deleteExpiredOffers();
+      
       final offers = await _supabase
           .from('offers')
           .select()
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
+      print('📋 Found ${offers.length} offers for user: $userId');
+
       final List<Map<String, dynamic>> offersWithProducts = [];
 
       for (var offer in offers) {
         final isOcr = offer['is_ocr'] as bool;
         final productId = offer['product_id'] as String;
+        
+        print('🔍 Processing offer: id=${offer['id']}, is_ocr=$isOcr, product_id=$productId');
 
         Map<String, dynamic>? productData;
 
@@ -739,27 +762,42 @@ class ProductRepository {
             productData = {
               'id': ocrProduct['id'],
               'name': ocrProduct['product_name'],
-              'company': ocrProduct['product_company'],
-              'package': ocrProduct['package'],
-              'imageUrl': ocrProduct['image_url'],
+              'company': ocrProduct['product_company'] ?? '',
+              'package': ocrProduct['package'] ?? '',
+              'imageUrl': ocrProduct['image_url'] ?? '',
             };
+            
+            print('OCR Product Data: name=${ocrProduct['product_name']}, company=${ocrProduct['product_company']}, package=${ocrProduct['package']}');
           }
         } else {
-          // جلب من products
+          // جلب بيانات المنتج من products
+          print('🔎 Fetching from products table with id: $productId');
+          
           final product = await _supabase
               .from('products')
-              .select()
+              .select('id, name, company, image_url')
               .eq('id', productId)
               .maybeSingle();
           
+          print('📦 Product result: $product');
+          
           if (product != null) {
+            // جلب الباكدج من جدول offers نفسه (الباكدج التي اختارها المستخدم عند إنشاء العرض)
+            final packageName = (offer['package'] as String?) ?? '';
+            
+            print('📦 Package from offer: $packageName');
+            
             productData = {
               'id': product['id'],
-              'name': product['name'],
-              'company': product['company'],
-              'package': '', // سنحتاج لجلبها من distributor_products إذا لزم الأمر
-              'imageUrl': product['image_url'],
+              'name': product['name'] ?? '',
+              'company': product['company'] ?? '',
+              'package': packageName,
+              'imageUrl': product['image_url'] ?? '',
             };
+            
+            print('✅ Final Product Data: name=${product['name']}, company=${product['company']}, package=$packageName');
+          } else {
+            print('❌ Product not found in products table for id: $productId');
           }
         }
 
@@ -768,9 +806,13 @@ class ProductRepository {
             'offer': offer,
             'product': productData,
           });
+          print('✅ Added offer with product: ${productData['name']}');
+        } else {
+          print('⚠️ Skipping offer ${offer['id']} - product data is null');
         }
       }
 
+      print('📊 Total offers with products: ${offersWithProducts.length}');
       return offersWithProducts;
     } catch (e) {
       print('Error fetching offers with products: $e');

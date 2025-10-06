@@ -1895,15 +1895,8 @@ class MyProductsScreen extends HookConsumerWidget {
                                             size: 10,
                                             color: Colors.orange[700],
                                           ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'OCR',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.orange[700],
-                                            ),
-                                          ),
+                                          const SizedBox(width: 2),
+                                          
                                         ],
                                       ),
                                     ),

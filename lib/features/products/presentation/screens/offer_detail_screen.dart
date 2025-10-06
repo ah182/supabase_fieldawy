@@ -8,6 +8,7 @@ class OfferDetailScreen extends ConsumerStatefulWidget {
   final String productName;
   final double price;
   final DateTime expirationDate;
+  final String? currentDescription;
 
   const OfferDetailScreen({
     super.key,
@@ -15,6 +16,7 @@ class OfferDetailScreen extends ConsumerStatefulWidget {
     required this.productName,
     required this.price,
     required this.expirationDate,
+    this.currentDescription,
   });
 
   @override
@@ -22,8 +24,17 @@ class OfferDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
-  final _descriptionController = TextEditingController();
+  late final TextEditingController _descriptionController;
   bool _isSaving = false;
+  static const int _maxWords = 50;
+
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController(
+      text: widget.currentDescription ?? '',
+    );
+  }
 
   @override
   void dispose() {
@@ -31,8 +42,15 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
     super.dispose();
   }
 
+  int _countWords(String text) {
+    if (text.trim().isEmpty) return 0;
+    return text.trim().split(RegExp(r'\s+')).length;
+  }
+
   Future<void> _saveDescription() async {
-    if (_descriptionController.text.trim().isEmpty) {
+    final description = _descriptionController.text.trim();
+    
+    if (description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           elevation: 0,
@@ -41,6 +59,24 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           content: AwesomeSnackbarContent(
             title: 'تنبيه',
             message: 'الرجاء إضافة وصف للعرض',
+            contentType: ContentType.warning,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // التحقق من عدد الكلمات
+    final wordCount = _countWords(description);
+    if (wordCount > _maxWords) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'تنبيه',
+            message: 'الوصف يتجاوز الحد الأقصى ($_maxWords كلمة). عدد الكلمات الحالي: $wordCount',
             contentType: ContentType.warning,
           ),
         ),
@@ -158,39 +194,73 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'أضف وصفاً تفصيلياً للعرض الخاص بك',
+              'أضف وصفاً تفصيلياً للعرض الخاص بك (حد أقصى 50 كلمة)',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 6,
-              decoration: InputDecoration(
-                hintText: 'مثال: خصم 20% على جميع المنتجات الطبية...',
-                filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.3),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.3),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-              ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _descriptionController,
+              builder: (context, value, child) {
+                final wordCount = _countWords(value.text);
+                final isOverLimit = wordCount > _maxWords;
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 6,
+                      decoration: InputDecoration(
+                        hintText: 'مثال: خصم 20% على جميع المنتجات الطبية...',
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isOverLimit 
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isOverLimit 
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isOverLimit 
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '$wordCount / $_maxWords كلمة',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isOverLimit
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                            fontWeight: isOverLimit ? FontWeight.bold : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 32),
             SizedBox(
