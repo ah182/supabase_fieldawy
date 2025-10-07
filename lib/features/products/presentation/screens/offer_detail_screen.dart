@@ -25,6 +25,8 @@ class OfferDetailScreen extends ConsumerStatefulWidget {
 
 class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
   late final TextEditingController _descriptionController;
+  late final TextEditingController _priceController;
+  late DateTime _selectedExpirationDate;
   bool _isSaving = false;
   static const int _maxWords = 50;
 
@@ -34,11 +36,16 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
     _descriptionController = TextEditingController(
       text: widget.currentDescription ?? '',
     );
+    _priceController = TextEditingController(
+      text: widget.price.toStringAsFixed(2),
+    );
+    _selectedExpirationDate = widget.expirationDate;
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -47,7 +54,34 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
     return text.trim().split(RegExp(r'\s+')).length;
   }
 
-  Future<void> _saveDescription() async {
+  Future<void> _selectExpirationDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedExpirationDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            datePickerTheme: DatePickerThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedExpirationDate) {
+      setState(() {
+        _selectedExpirationDate = picked;
+      });
+    }
+  }
+
+  Future<void> _saveOffer() async {
     final description = _descriptionController.text.trim();
     
     if (description.isEmpty) {
@@ -84,12 +118,32 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
       return;
     }
 
+    // التحقق من السعر
+    final price = double.tryParse(_priceController.text.trim());
+    if (price == null || price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'تنبيه',
+            message: 'الرجاء إدخال سعر صحيح',
+            contentType: ContentType.warning,
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(productRepositoryProvider).updateOfferDescription(
+      await ref.read(productRepositoryProvider).updateOffer(
             offerId: widget.offerId,
-            description: _descriptionController.text.trim(),
+            description: description,
+            price: price,
+            expirationDate: _selectedExpirationDate,
           );
 
       if (mounted) {
@@ -100,7 +154,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
               title: 'نجاح',
-              message: 'تم حفظ وصف العرض بنجاح',
+              message: 'تم تحديث العرض بنجاح',
               contentType: ContentType.success,
             ),
           ),
@@ -116,7 +170,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
               title: 'خطأ',
-              message: 'فشل حفظ الوصف: ${e.toString()}',
+              message: 'فشل تحديث العرض: ${e.toString()}',
               contentType: ContentType.failure,
             ),
           ),
@@ -144,6 +198,75 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Product Name Badge - واضح ومميز
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.secondaryContainer,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.local_offer_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'المنتج',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.productName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -155,31 +278,90 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'معلومات المنتج',
+                      'تفاصيل العرض',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      icon: Icons.shopping_bag,
-                      label: 'المنتج',
-                      value: widget.productName,
-                      theme: theme,
+                    Text(
+                      'السعر',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(
-                      icon: Icons.attach_money,
-                      label: 'السعر',
-                      value: '${widget.price.toStringAsFixed(2)} EGP',
-                      theme: theme,
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.attach_money),
+                        suffixText: 'EGP',
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(
-                      icon: Icons.calendar_today,
-                      label: 'تاريخ الانتهاء',
-                      value: '${widget.expirationDate.day}/${widget.expirationDate.month}/${widget.expirationDate.year}',
-                      theme: theme,
+                    const SizedBox(height: 16),
+                    Text(
+                      'تاريخ الصلاحية',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: _selectExpirationDate,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${_selectedExpirationDate.day}/${_selectedExpirationDate.month}/${_selectedExpirationDate.year}',
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -266,7 +448,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveDescription,
+                onPressed: _isSaving ? null : _saveOffer,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -283,7 +465,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                         ),
                       )
                     : const Text(
-                        'حفظ الوصف',
+                        'حفظ التعديلات',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -316,37 +498,6 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    required ThemeData theme,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: theme.textTheme.bodyMedium,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -135,41 +135,31 @@ class ExpireDrugsScreen extends StatelessWidget {
                     );
                   }
 
-                  return Padding(
+                  return RefreshIndicator(
                     key: ValueKey('list_${items.length}'),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'addProduct.expireSoon.subtitle'.tr(),
-                          style: textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${'products'.tr()}: ${items.length}',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: textTheme.bodySmall?.color?.withOpacity(0.7),
+                    onRefresh: () async {
+                      ref.invalidate(expireDrugsProvider);
+                      await ref.read(expireDrugsProvider.future);
+                    },
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                            child: _StatsCard(
+                              itemsCount: items.length,
+                              theme: theme,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: RefreshIndicator(
-                            onRefresh: () async {
-                              ref.invalidate(expireDrugsProvider);
-                              await ref.read(expireDrugsProvider.future);
-                            },
-                            child: ListView.separated(
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: BouncingScrollPhysics(),
-                              ),
-                              padding: const EdgeInsets.only(bottom: 108),
-                              itemCount: items.length,
-                              separatorBuilder: (context, _) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
                                 final item = items[index];
                                 final product = item.product;
                                 final expirationDate = item.expirationDate;
@@ -402,27 +392,29 @@ class ExpireDrugsScreen extends StatelessWidget {
                                   }
                                 }
 
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: theme.cardColor,
-                                    border: Border.all(
-                                      color:
-                                          colorScheme.outline.withOpacity(0.15),
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      color: theme.cardColor,
+                                      border: Border.all(
+                                        color: colorScheme.outline
+                                            .withOpacity(0.15),
+                                      ),
+                                      boxShadow:
+                                          theme.brightness == Brightness.light
+                                              ? [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withOpacity(0.05),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 8),
+                                                  ),
+                                                ]
+                                              : [],
                                     ),
-                                    boxShadow:
-                                        theme.brightness == Brightness.light
-                                            ? [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.05),
-                                                  blurRadius: 18,
-                                                  offset: const Offset(0, 8),
-                                                ),
-                                              ]
-                                            : [],
-                                  ),
-                                  child: InkWell(
+                                    child: InkWell(
                                     borderRadius: BorderRadius.circular(20),
                                     onTap: () {},
                                     child: Padding(
@@ -444,7 +436,7 @@ class ExpireDrugsScreen extends StatelessWidget {
                                                         product.imageUrl,
                                                         width: 72,
                                                         height: 72,
-                                                        fit: BoxFit.cover,
+                                                        fit: BoxFit.contain,
                                                         errorBuilder:
                                                             (_, __, ___) =>
                                                                 Container(
@@ -597,8 +589,10 @@ class ExpireDrugsScreen extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                  ),
                                 );
                               },
+                              childCount: items.length,
                             ),
                           ),
                         ),
@@ -625,6 +619,119 @@ class ExpireDrugsScreen extends StatelessWidget {
   }
 }
 
+// ===================================================================
+// _StatsCard - بطاقة الإحصائيات
+// ===================================================================
+class _StatsCard extends StatelessWidget {
+  final int itemsCount;
+  final ThemeData theme;
+
+  const _StatsCard({
+    required this.itemsCount,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primaryContainer,
+            theme.colorScheme.primaryContainer.withOpacity(0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: theme.brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.inventory_2_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '  Expire soon drugs',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color:
+                        theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      ' $itemsCount',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                        height: 1.5,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Product',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer
+                            .withOpacity(0.7),
+                            
+                            fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                 
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ===================================================================
+// _EmptyState - حالة فارغة
+// ===================================================================
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.textTheme,
@@ -678,6 +785,9 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+// ===================================================================
+// _ErrorState - حالة الخطأ
+// ===================================================================
 class _ErrorState extends StatelessWidget {
   const _ErrorState({
     required this.message,

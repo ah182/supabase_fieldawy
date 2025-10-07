@@ -180,8 +180,8 @@ class LimitedOfferScreen extends ConsumerWidget {
                           offer: offer,
                           product: product,
                           index: index,
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            final result = await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => OfferDetailScreen(
                                   offerId: offer['id'].toString(),
@@ -193,6 +193,10 @@ class LimitedOfferScreen extends ConsumerWidget {
                                 ),
                               ),
                             );
+                            // إعادة تحميل العروض بعد التحديث
+                            if (result == true && context.mounted) {
+                              ref.invalidate(myOffersProvider);
+                            }
                           },
                         );
                       },

@@ -122,47 +122,137 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> getProductsWithPriceUpdates() async {
+    // جلب المنتجات العادية من الكتالوج
     final response = await _supabase
         .from('distributor_products')
         .select()
         .not('old_price', 'is', null)
         .order('price_updated_at', ascending: false);
 
-    if (response.isEmpty) {
-      return [];
-    }
-
     final productIds =
         response.map((row) => row['product_id'] as String).toSet().toList();
 
-    final productDocs =
-        await _supabase.from('products').select().inFilter('id', productIds);
+    List<ProductModel> catalogProducts = [];
+    if (productIds.isNotEmpty) {
+      final productDocs =
+          await _supabase.from('products').select().inFilter('id', productIds);
 
-    final productsMap = {
-      for (var doc in productDocs)
-        doc['id'].toString(): ProductModel.fromMap(doc)
-    };
+      final productsMap = {
+        for (var doc in productDocs)
+          doc['id'].toString(): ProductModel.fromMap(doc)
+      };
 
-    final products = response
-        .map((row) {
-          final productDetails = productsMap[row['product_id']];
-          if (productDetails != null) {
-            return productDetails.copyWith(
-              price: (row['price'] as num?)?.toDouble(),
-              oldPrice: (row['old_price'] as num?)?.toDouble(),
-              priceUpdatedAt: row['price_updated_at'] != null
-                  ? DateTime.tryParse(row['price_updated_at'])
-                  : null,
-              selectedPackage: row['package'] as String?,
-              distributorId: row['distributor_name'] as String?,
-            );
-          }
-          return null;
-        })
-        .whereType<ProductModel>()
+      catalogProducts = response
+          .map((row) {
+            final productDetails = productsMap[row['product_id']];
+            if (productDetails != null) {
+              return productDetails.copyWith(
+                price: (row['price'] as num?)?.toDouble(),
+                oldPrice: (row['old_price'] as num?)?.toDouble(),
+                priceUpdatedAt: row['price_updated_at'] != null
+                    ? DateTime.tryParse(row['price_updated_at'])
+                    : null,
+                selectedPackage: row['package'] as String?,
+                distributorId: row['distributor_name'] as String?,
+              );
+            }
+            return null;
+          })
+          .whereType<ProductModel>()
+          .toList();
+    }
+
+    // جلب منتجات OCR التي تغير سعرها
+    final ocrResponse = await _supabase
+        .from('distributor_ocr_products')
+        .select()
+        .not('old_price', 'is', null)
+        .order('price_updated_at', ascending: false);
+
+    final ocrProductIds = ocrResponse
+        .map((row) => row['ocr_product_id'] as String)
+        .toSet()
         .toList();
 
-    return products;
+    List<ProductModel> ocrProducts = [];
+    if (ocrProductIds.isNotEmpty) {
+      final ocrProductDocs = await _supabase
+          .from('ocr_products')
+          .select()
+          .inFilter('id', ocrProductIds);
+
+      final ocrProductsMap = <String, Map<String, dynamic>>{
+        for (var doc in ocrProductDocs) doc['id'].toString(): doc
+      };
+
+      // جلب أسماء الموزعين
+      final distributorIds = ocrResponse
+          .map((row) => row['distributor_id'] as String?)
+          .where((id) => id != null)
+          .toSet()
+          .toList();
+
+      Map<String, String> distributorNames = {};
+      if (distributorIds.isNotEmpty) {
+        final usersData = await _supabase
+            .from('users')
+            .select('id, display_name')
+            .inFilter('id', distributorIds);
+
+        for (final user in usersData) {
+          distributorNames[user['id'].toString()] =
+              user['display_name']?.toString() ?? 'موزع غير معروف';
+        }
+      }
+
+      ocrProducts = ocrResponse
+          .map((row) {
+            final ocrProductDoc = ocrProductsMap[row['ocr_product_id']];
+            if (ocrProductDoc != null) {
+              final distributorName =
+                  distributorNames[row['distributor_id']] ?? 'موزع غير معروف';
+              return ProductModel(
+                id: ocrProductDoc['id']?.toString() ?? '',
+                name: ocrProductDoc['product_name']?.toString() ?? '',
+                description: ocrProductDoc['description']?.toString(),
+                activePrinciple: ocrProductDoc['active_principle']?.toString(),
+                company: ocrProductDoc['product_company']?.toString(),
+                action: '',
+                package: ocrProductDoc['package']?.toString() ?? '',
+                imageUrl:
+                    (ocrProductDoc['image_url']?.toString() ?? '').startsWith('http')
+                        ? ocrProductDoc['image_url'].toString()
+                        : '',
+                price: (row['price'] as num?)?.toDouble(),
+                oldPrice: (row['old_price'] as num?)?.toDouble(),
+                priceUpdatedAt: row['price_updated_at'] != null
+                    ? DateTime.tryParse(row['price_updated_at'])
+                    : null,
+                distributorId: distributorName,
+                createdAt: row['created_at'] != null
+                    ? DateTime.tryParse(row['created_at'].toString())
+                    : null,
+                availablePackages: [ocrProductDoc['package']?.toString() ?? ''],
+                selectedPackage: ocrProductDoc['package']?.toString() ?? '',
+                isFavorite: false,
+              );
+            }
+            return null;
+          })
+          .whereType<ProductModel>()
+          .toList();
+    }
+
+    // دمج القائمتين وترتيبهم حسب تاريخ تحديث السعر
+    final allProducts = [...catalogProducts, ...ocrProducts];
+    allProducts.sort((a, b) {
+      if (a.priceUpdatedAt == null && b.priceUpdatedAt == null) return 0;
+      if (a.priceUpdatedAt == null) return 1;
+      if (b.priceUpdatedAt == null) return -1;
+      return b.priceUpdatedAt!.compareTo(a.priceUpdatedAt!);
+    });
+
+    return allProducts;
   }
 
   Future<List<ProductModel>> getAllProducts() async {
@@ -631,8 +721,23 @@ class ProductRepository {
     required String ocrProductId,
     required double newPrice,
   }) async {
+    // جلب السعر القديم أولاً
+    final response = await _supabase
+        .from('distributor_ocr_products')
+        .select('price')
+        .match({
+          'distributor_id': distributorId,
+          'ocr_product_id': ocrProductId,
+        })
+        .maybeSingle();
+
+    final oldPrice = (response?['price'] as num?)?.toDouble();
+
+    // تحديث السعر الجديد مع حفظ السعر القديم وتاريخ التحديث
     await _supabase.from('distributor_ocr_products').update({
       'price': newPrice,
+      'old_price': oldPrice,
+      'price_updated_at': DateTime.now().toIso8601String(),
     }).match({
       'distributor_id': distributorId,
       'ocr_product_id': ocrProductId,
@@ -691,6 +796,19 @@ class ProductRepository {
   }) async {
     await _supabase.from('offers').update({
       'description': description,
+    }).eq('id', offerId);
+  }
+
+  Future<void> updateOffer({
+    required String offerId,
+    required String description,
+    required double price,
+    required DateTime expirationDate,
+  }) async {
+    await _supabase.from('offers').update({
+      'description': description,
+      'price': price,
+      'expiration_date': expirationDate.toIso8601String(),
     }).eq('id', offerId);
   }
 

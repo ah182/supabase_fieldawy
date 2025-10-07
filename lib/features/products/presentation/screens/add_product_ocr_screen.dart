@@ -365,9 +365,17 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         // المنتجات العادية (OCR)
         // ============================================
         else {
-          final expirationDate = _expirationDateController.text.isNotEmpty
-              ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
-              : DateTime.now().add(const Duration(days: 365));
+          // إذا كان showExpirationDate = false (قادم من my_products)، لا نحفظ تاريخ الصلاحية
+          // إذا كان showExpirationDate = true (قادم من expire_drugs)، نحفظ التاريخ
+          DateTime? expirationDate;
+          if (widget.showExpirationDate) {
+            expirationDate = _expirationDateController.text.isNotEmpty
+                ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
+                : DateTime.now().add(const Duration(days: 365));
+          } else {
+            // لا نحفظ تاريخ الصلاحية (null) حتى لا يظهر في expire_drugs
+            expirationDate = null;
+          }
 
           final ocrProductId = await productRepo.addOcrProduct(
             distributorId: userId,
@@ -382,12 +390,17 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           if (ocrProductId != null) {
             if (widget.isFromOfferScreen) {
               // حفظ في جدول offers فقط
+              // للـ offers، التاريخ إجباري
+              final offerExpirationDate = _expirationDateController.text.isNotEmpty
+                  ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
+                  : DateTime.now().add(const Duration(days: 365));
+              
               final offerId = await productRepo.addOffer(
                 productId: ocrProductId,
                 isOcr: true,
                 userId: userId,
                 price: price,
-                expirationDate: expirationDate,
+                expirationDate: offerExpirationDate,
                 package: package,
               );
 
@@ -412,7 +425,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         offerId: offerId,
                         productName: name,
                         price: price,
-                        expirationDate: expirationDate,
+                        expirationDate: offerExpirationDate,
                       ),
                     ),
                   );
@@ -426,7 +439,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 distributorName: distributorName,
                 ocrProductId: ocrProductId,
                 price: price,
-                expirationDate: expirationDate,
+                expirationDate: expirationDate, // null إذا قادم من my_products
               );
             }
             

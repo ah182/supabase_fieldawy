@@ -16,12 +16,16 @@ class ProductCard extends ConsumerWidget {
     required this.searchQuery,
     required this.onTap,
     this.showPriceChange = false,
+    this.overlayBadge,
+    this.statusBadge,
   });
 
   final ProductModel product;
   final String searchQuery;
   final VoidCallback onTap;
   final bool showPriceChange;
+  final Widget? overlayBadge;
+  final Widget? statusBadge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -145,6 +149,8 @@ class ProductCard extends ConsumerWidget {
                         ),
                       ),
                     ),
+                  // === Badge إضافي (مثل تاريخ الصلاحية) ===
+                  if (overlayBadge != null) overlayBadge!,
                 ],
               ),
             ),
@@ -266,6 +272,13 @@ class ProductCard extends ConsumerWidget {
                         ),
                       ],
                     ),
+
+                    // === Badge الحالة (للأدوات الجراحية) ===
+                    if (statusBadge != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: statusBadge!,
+                      ),
 
                     // === حجم العبوة ===
                     if (product.selectedPackage != null &&

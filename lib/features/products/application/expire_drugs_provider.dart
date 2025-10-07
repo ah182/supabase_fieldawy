@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 
 class ExpireDrugItem {
   final ProductModel product;
@@ -10,23 +9,19 @@ class ExpireDrugItem {
   ExpireDrugItem({required this.product, required this.expirationDate, this.isOcr});
 }
 
-/// مزود يعرض فقط المنتجات التي لها تاريخ صلاحية (من distributor_products)
+/// مزود يعرض جميع المنتجات التي لها تاريخ صلاحية من جميع الموزعين
 final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
-  final userId = ref.watch(authServiceProvider).currentUser?.id;
-  if (userId == null) return [];
-
   final supabase = Supabase.instance.client;
-  // جلب من distributor_products
+  
+  // جلب جميع المنتجات من distributor_products
   final rows = await supabase
       .from('distributor_products')
-      .select()
-      .eq('distributor_id', userId);
+      .select();
 
-  // جلب من distributor_ocr_products
+  // جلب جميع المنتجات من distributor_ocr_products
   final ocrRows = await supabase
       .from('distributor_ocr_products')
-      .select()
-      .eq('distributor_id', userId);
+      .select();
 
   // جلب تفاصيل المنتجات العادية
   final productIds = rows.map((row) => row['product_id'].toString()).toSet().toList();

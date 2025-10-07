@@ -157,6 +157,9 @@ create table if not exists public.distributor_ocr_products (
   ocr_product_id uuid not null,
   distributor_name text null,
   price numeric null,
+  old_price numeric null,
+  price_updated_at timestamp with time zone null,
+  expiration_date timestamp with time zone null,
   created_at timestamp with time zone null default now(),
   constraint distributor_ocr_products_pkey primary key (id),
   constraint distributor_ocr_products_ocr_product_id_fkey foreign KEY (ocr_product_id) references ocr_products (id) on delete CASCADE

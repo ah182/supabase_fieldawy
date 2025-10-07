@@ -18,6 +18,7 @@ import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/user_data_provider.dart';
+import '../widgets/home_tabs_content.dart';
 
 
 
@@ -1047,9 +1048,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               homeTabContent,
               PriceUpdateTab(searchQuery: _debouncedSearchQuery),
-              const Center(child: Text('Expire Soon')),
-              const Center(child: Text('Surgical & Diagnostic')),
-              const Center(child: Text('Offers')),
+              ExpireSoonTab(searchQuery: _debouncedSearchQuery),
+              SurgicalDiagnosticTab(searchQuery: _debouncedSearchQuery),
+              OffersTab(searchQuery: _debouncedSearchQuery),
              
             ],
           ),

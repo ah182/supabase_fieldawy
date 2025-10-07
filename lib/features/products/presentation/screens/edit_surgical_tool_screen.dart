@@ -29,6 +29,33 @@ class EditSurgicalToolScreen extends ConsumerStatefulWidget {
 }
 
 class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen> {
+  void _showSnackBar(String message, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error : Icons.check_circle,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _descriptionController;
   late TextEditingController _priceController;
@@ -71,63 +98,15 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
           );
 
       setState(() => _isLoading = false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  success ? Icons.check_circle : Icons.error,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    success ? 'تم تحديث الأداة بنجاح' : 'فشل في تحديث الأداة',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-
-        if (success) {
-          Navigator.pop(context, true); // إرجاع true للإشارة إلى نجاح التحديث
-        }
+      if (success) {
+        _showSnackBar('تم تحديث الأداة بنجاح', isError: false);
+        Navigator.pop(context, true); // إرجاع true للإشارة إلى نجاح التحديث
+      } else {
+        _showSnackBar('فشل في تحديث الأداة', isError: true);
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'حدث خطأ: ${e.toString()}',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
+      _showSnackBar('حدث خطأ: ${e.toString()}', isError: true);
     }
   }
 
@@ -318,27 +297,32 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
               ),
               const SizedBox(height: 8),
               // عداد الكلمات
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'عدد الكلمات: ${_countWords(_descriptionController.text)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _countWords(_descriptionController.text) > 60
-                          ? colorScheme.error
-                          : colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                  Text(
-                    '60 / ${_countWords(_descriptionController.text)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _countWords(_descriptionController.text) > 60
-                          ? colorScheme.error
-                          : colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Builder(
+                builder: (context) {
+                  final wordCount = _countWords(_descriptionController.text);
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'عدد الكلمات: $wordCount',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: wordCount > 60
+                              ? colorScheme.error
+                              : colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                      Text(
+                        '$wordCount / 60',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: wordCount > 60
+                              ? colorScheme.error
+                              : colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
 
