@@ -1,6 +1,12 @@
 import admin from "firebase-admin";
 import { readFileSync } from "fs";
 import express from "express";
+import { createClient } from "@supabase/supabase-js";
+
+// 🔑 تهيئة Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL || "https://your-project.supabase.co";
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 🔑 تهيئة Firebase Admin
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
@@ -34,6 +40,8 @@ app.post("/api/notify/product-change", async (req, res) => {
     
     // تحديد اسم المنتج حسب الجدول
     let product_name = "منتج";
+    let distributor_name = "";
+    
     if (table === "products") {
       product_name = record.name || "منتج";
     } else if (table === "ocr_products") {
@@ -41,35 +49,205 @@ app.post("/api/notify/product-change", async (req, res) => {
     } else if (table === "surgical_tools") {
       product_name = record.tool_name || "أداة جراحية";
     } else if (table === "distributor_surgical_tools") {
-      product_name = record.description || "أداة جراحية";
+      // جلب اسم الأداة الحقيقي من جدول surgical_tools + الوصف
+      if (record.surgical_tool_id && supabaseUrl && supabaseKey) {
+        try {
+          const { data, error } = await supabase
+            .from('surgical_tools')
+            .select('tool_name')
+            .eq('id', record.surgical_tool_id)
+            .single();
+          
+          if (data && !error && data.tool_name) {
+            // اسم الأداة + الوصف
+            const description = record.description || "";
+            product_name = description ? `${data.tool_name} - ${description}` : data.tool_name;
+          } else {
+            product_name = record.description || "أداة جراحية";
+          }
+        } catch (err) {
+          console.error("خطأ في جلب اسم الأداة:", err);
+          product_name = record.description || "أداة جراحية";
+        }
+      } else {
+        product_name = record.description || "أداة جراحية";
+      }
+    } else if (table === "distributor_products") {
+      // جلب اسم المنتج من جدول products + اسم الموزع
+      if (record.product_id && supabaseUrl && supabaseKey) {
+        try {
+          // جلب اسم المنتج
+          const { data: productData, error: productError } = await supabase
+            .from('products')
+            .select('name')
+            .eq('id', record.product_id)
+            .single();
+          
+          // جلب اسم الموزع
+          let distributorName = "";
+          if (record.distributor_id) {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('full_name, username')
+              .eq('id', record.distributor_id)
+              .single();
+            
+            if (userData && !userError) {
+              distributorName = userData.full_name || userData.username || "";
+            }
+          }
+          
+          if (productData && !productError) {
+            // اسم المنتج + اسم الموزع
+            product_name = distributorName 
+              ? `${productData.name} - ${distributorName}`
+              : productData.name;
+          } else {
+            product_name = "منتج";
+          }
+        } catch (err) {
+          console.error("خطأ في جلب اسم المنتج:", err);
+          product_name = "منتج";
+        }
+      } else {
+        product_name = "منتج";
+      }
+    } else if (table === "distributor_ocr_products") {
+      // جلب اسم المنتج من جدول ocr_products + اسم الموزع
+      if (record.ocr_product_id && supabaseUrl && supabaseKey) {
+        try {
+          // جلب اسم المنتج
+          const { data: productData, error: productError } = await supabase
+            .from('ocr_products')
+            .select('product_name')
+            .eq('id', record.ocr_product_id)
+            .single();
+          
+          // جلب اسم الموزع
+          let distributorName = "";
+          if (record.distributor_id) {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('full_name, username')
+              .eq('id', record.distributor_id)
+              .single();
+            
+            if (userData && !userError) {
+              distributorName = userData.full_name || userData.username || "";
+            }
+          }
+          
+          if (productData && !productError) {
+            // اسم المنتج + اسم الموزع
+            product_name = distributorName 
+              ? `${productData.product_name} - ${distributorName}`
+              : productData.product_name;
+          } else {
+            product_name = "منتج OCR";
+          }
+        } catch (err) {
+          console.error("خطأ في جلب اسم منتج OCR:", err);
+          product_name = "منتج OCR";
+        }
+      } else {
+        product_name = "منتج OCR";
+      }
     } else if (table === "offers") {
-      product_name = record.description || "عرض";
+      // إذا INSERT بدون وصف، لا نرسل إشعار (ننتظر UPDATE مع الوصف)
+      if (operation === "INSERT" && !record.description) {
+        console.log("⏭️ تخطي الإشعار: عرض بدون وصف (سيتم الإرسال عند إضافة الوصف)");
+        return res.json({ success: true, message: "Skipped - waiting for description" });
+      }
+      
+      // جلب اسم المنتج + وصف العرض
+      if (record.product_id && supabaseUrl && supabaseKey) {
+        try {
+          const tableName = record.is_ocr ? 'ocr_products' : 'products';
+          const columnName = record.is_ocr ? 'product_name' : 'name';
+          
+          const { data, error } = await supabase
+            .from(tableName)
+            .select(columnName)
+            .eq('id', record.product_id)
+            .single();
+          
+          if (data && !error) {
+            const productName = data[columnName];
+            const description = record.description || "عرض";
+            // اسم المنتج - وصف العرض
+            product_name = `${productName} - ${description}`;
+          } else {
+            product_name = record.description || "عرض";
+          }
+        } catch (err) {
+          console.error("خطأ في جلب اسم المنتج للعرض:", err);
+          product_name = record.description || "عرض";
+        }
+      } else {
+        product_name = record.description || "عرض";
+      }
     }
     
     // تحديد tab_name حسب الجدول والعملية
     let tab_name = "home";
-    if (table === "surgical_tools" || table === "distributor_surgical_tools") {
-      tab_name = "surgical";
-    } else if (table === "offers") {
-      tab_name = "offers";
-    } else if (table === "distributor_products" || table === "distributor_ocr_products") {
-      // فحص تغيير السعر
-      if (operation === "UPDATE" && payload.old_record && payload.old_record.price !== record.price) {
-        tab_name = "price_action";
-      }
-      // فحص تاريخ الانتهاء
-      else if (record.expiration_date) {
+    let isPriceUpdate = false;
+    
+    if (table === "distributor_products" || table === "distributor_ocr_products") {
+      // فحص تاريخ الانتهاء أولاً
+      let isExpiringSoon = false;
+      if (record.expiration_date) {
         const expDate = new Date(record.expiration_date);
         const now = new Date();
         const days = (expDate - now) / (1000 * 60 * 60 * 24);
         if (days > 0 && days <= 60) {
-          tab_name = "expire_soon";
+          isExpiringSoon = true;
         }
+      }
+      
+      // فحص تغيير السعر
+      if (operation === "UPDATE" && payload.old_record && payload.old_record.price !== record.price) {
+        isPriceUpdate = true;
+        // إذا كان المنتج قارب على الانتهاء أيضاً
+        if (isExpiringSoon) {
+          tab_name = "expire_soon"; // حالة خاصة
+        } else {
+          tab_name = "price_action";
+        }
+      }
+      // إذا كان قارب على الانتهاء فقط (بدون تحديث سعر)
+      else if (isExpiringSoon) {
+        tab_name = "expire_soon";
+      }
+    } else if (table === "distributor_surgical_tools") {
+      // فحص تغيير سعر الأداة
+      if (operation === "UPDATE" && payload.old_record && payload.old_record.price !== record.price) {
+        tab_name = "price_action";
+        isPriceUpdate = true;
+      } else {
+        tab_name = "surgical";
+      }
+    } else if (table === "surgical_tools") {
+      tab_name = "surgical";
+    } else if (table === "offers") {
+      // فحص تغيير سعر العرض
+      if (operation === "UPDATE" && payload.old_record && payload.old_record.price !== record.price) {
+        tab_name = "price_action";
+        isPriceUpdate = true;
+      } else {
+        tab_name = "offers";
       }
     }
     
     console.log("   Product Name:", product_name);
     console.log("   Tab Name:", tab_name);
+    
+    // تخطي إشعار إضافة منتج عادي (home) - نرسل فقط expire_soon و price_action
+    if ((table === "distributor_products" || table === "distributor_ocr_products") && 
+        operation === "INSERT" && 
+        tab_name === "home") {
+      console.log("⏭️ تخطي الإشعار: إضافة منتج عادي (سيتم الإرسال فقط عند expire_soon أو price_action)");
+      return res.json({ success: true, message: "Skipped - regular product insert" });
+    }
 
     // تحديد نوع التغيير
     const isNew = operation === "INSERT";
@@ -90,20 +268,35 @@ app.post("/api/notify/product-change", async (req, res) => {
       tabKey = "offers";
       
     } else if (tab_name === "expire_soon") {
-      // حساب عدد الأيام المتبقية
-      let daysLeft = "";
-      if (record.expiration_date) {
-        const expDate = new Date(record.expiration_date);
-        const now = new Date();
-        const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
-        daysLeft = ` - ينتهي خلال ${days} يوم`;
+      // فحص إذا كان تحديث سعر أو إضافة
+      if (isPriceUpdate) {
+        // حالة خاصة: تحديث سعر منتج قارب على الانتهاء
+        title = "💰⚠️ تحديث سعر منتج على وشك انتهاء صلاحيته";
+        body = product_name;
+        tabKey = "price_action";
+      } else {
+        // إضافة منتج قارب على الانتهاء
+        let daysLeft = "";
+        if (record.expiration_date) {
+          const expDate = new Date(record.expiration_date);
+          const now = new Date();
+          const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+          daysLeft = ` - ينتهي خلال ${days} يوم`;
+        }
+        title = "⚠️ تم إضافة منتج قريب الصلاحية";
+        body = `${product_name}${daysLeft}`;
+        tabKey = "expire_soon";
       }
-      title = "⚠️ تنبيه انتهاء";
-      body = `${product_name}${daysLeft}`;
-      tabKey = "expire_soon";
       
     } else if (tab_name === "price_action") {
-      title = "💰 تحديث السعر";
+      // نصوص مخصصة حسب نوع الجدول
+      if (table === "distributor_surgical_tools") {
+        title = "💰 تم تحديث سعر أداة";
+      } else if (table === "offers") {
+        title = "💰 تم تحديث سعر عرض";
+      } else {
+        title = "💰 تم تحديث سعر منتج";
+      }
       body = product_name;
       tabKey = "price_action";
       
