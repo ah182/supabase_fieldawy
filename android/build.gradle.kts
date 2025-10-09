@@ -15,6 +15,7 @@ subprojects {
     
 }
 
+
 // نخلي الـ app دايمًا يتعمله evaluate قبل باقي الـ modules
 subprojects {
     project.evaluationDependsOn(":app")

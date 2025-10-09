@@ -7,6 +7,7 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 import 'package:fieldawy_store/features/profile/presentation/screens/favorites_screen.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
+import 'package:fieldawy_store/features/notifications/notification_preferences_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -284,7 +285,14 @@ class ProfileScreen extends ConsumerWidget {
                                 _buildProfileOption(
                                   icon: Icons.notifications_rounded,
                                   title: 'notifications'.tr(),
-                                  onTap: () {},
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const NotificationPreferencesScreen(),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 Divider(
                                   height: 1,

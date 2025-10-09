@@ -22,7 +22,7 @@
           }
         },
         {
-          "client_id": "665551059689-eknfiilhcmp2ugd5so346fodqri5smko.apps.googleusercontent.com",
+          "client_id": "665551059689-h6md8lhpskrquaje7ffhlth0vpqd1ph0.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -35,8 +35,15 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "665551059689-eknfiilhcmp2ugd5so346fodqri5smko.apps.googleusercontent.com",
+              "client_id": "665551059689-bb1albh5unnoh05erboo4s7piardjfsk.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "665551059689-l8f6ctcfbcennv0ksg2gqomg3k2pneou.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fieldawyStore"
+              }
             }
           ]
         }

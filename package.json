@@ -1,0 +1,28 @@
+{
+  "name": "fieldawy-store-notifications",
+  "version": "1.0.0",
+  "description": "Firebase Notifications Sender for Fieldawy Store",
+  "type": "module",
+  "main": "send_notification.js",
+  "scripts": {
+    "start": "node notification_webhook_server.js",
+    "dev": "nodemon notification_webhook_server.js",
+    "send:general": "node send_notification.js general",
+    "send:order": "node send_notification.js order",
+    "send:offer": "node send_notification.js offer",
+    "topic:general": "node send_notification_topics.js general",
+    "topic:order": "node send_notification_topics.js order",
+    "topic:offer": "node send_notification_topics.js offer",
+    "supabase:all:order": "node send_notification_supabase.js all order",
+    "supabase:all:offer": "node send_notification_supabase.js all offer",
+    "supabase:all:general": "node send_notification_supabase.js all general"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

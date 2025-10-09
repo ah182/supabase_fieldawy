@@ -195,26 +195,65 @@ app.post("/api/notify/product-change", async (req, res) => {
     if (table === "distributor_products" || table === "distributor_ocr_products") {
       // فحص تاريخ الانتهاء أولاً
       let isExpiringSoon = false;
-      if (record.expiration_date) {
-        const expDate = new Date(record.expiration_date);
-        const now = new Date();
-        const days = (expDate - now) / (1000 * 60 * 60 * 24);
-        if (days > 0 && days <= 60) {
-          isExpiringSoon = true;
+      let expirationDate = record.expiration_date;
+      
+      console.log("   Expiration Date in payload:", expirationDate);
+      
+      // إذا لم يكن expiration_date في payload، نجلبه من Supabase
+      if (!expirationDate && record.id && supabaseUrl && supabaseKey) {
+        console.log("   🔍 جلب expiration_date من Supabase...");
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select('expiration_date')
+            .eq('id', record.id)
+            .single();
+          
+          if (data && !error) {
+            expirationDate = data.expiration_date;
+            console.log("   ✅ تم جلب expiration_date:", expirationDate);
+          } else {
+            console.log("   ❌ خطأ في جلب expiration_date:", error);
+          }
+        } catch (err) {
+          console.error("   ❌ خطأ في جلب expiration_date:", err);
         }
       }
       
-      // فحص تغيير السعر
-      if (operation === "UPDATE" && payload.old_record && payload.old_record.price !== record.price) {
-        isPriceUpdate = true;
-        // إذا كان المنتج قارب على الانتهاء أيضاً
-        if (isExpiringSoon) {
-          tab_name = "expire_soon"; // حالة خاصة
+      // التحقق من قرب الانتهاء (خلال سنة)
+      if (expirationDate) {
+        const expDate = new Date(expirationDate);
+        const now = new Date();
+        const days = (expDate - now) / (1000 * 60 * 60 * 24);
+        console.log("   Days until expiration:", days);
+        if (days > 0 && days <= 365) {
+          isExpiringSoon = true;
+          console.log("   ✅ المنتج قارب على الانتهاء (خلال سنة)!");
         } else {
-          tab_name = "price_action";
+          console.log("   ℹ️ المنتج ليس قارب على الانتهاء (أكثر من سنة)");
+        }
+      } else {
+        console.log("   ℹ️ لا يوجد expiration_date");
+      }
+      
+      // فحص نوع التحديث
+      if (operation === "UPDATE") {
+        // فحص تغيير السعر
+        if (payload.old_record && payload.old_record.price !== record.price) {
+          isPriceUpdate = true;
+          // إذا كان المنتج قارب على الانتهاء أيضاً
+          if (isExpiringSoon) {
+            tab_name = "expire_soon_price"; // تحديث سعر منتج قارب انتهاء
+          } else {
+            tab_name = "price_action";
+          }
+        }
+        // تحديث آخر (غير السعر) لمنتج قارب انتهاء
+        else if (isExpiringSoon) {
+          tab_name = "expire_soon_update"; // تحديث منتج قارب انتهاء
         }
       }
-      // إذا كان قارب على الانتهاء فقط (بدون تحديث سعر)
+      // إذا كان INSERT وقارب على الانتهاء
       else if (isExpiringSoon) {
         tab_name = "expire_soon";
       }
@@ -267,26 +306,30 @@ app.post("/api/notify/product-change", async (req, res) => {
       body = product_name;
       tabKey = "offers";
       
+    } else if (tab_name === "expire_soon_price") {
+      // تحديث سعر منتج قارب على الانتهاء
+      title = "💰⚠️ تحديث سعر منتج على وشك انتهاء صلاحيته";
+      body = product_name;
+      tabKey = "price_action";
+      
+    } else if (tab_name === "expire_soon_update") {
+      // تحديث منتج قارب على الانتهاء (غير السعر)
+      title = "🔄⚠️ تم تحديث منتج تنتهي صلاحيته قريباً";
+      body = product_name;
+      tabKey = "expire_soon";
+      
     } else if (tab_name === "expire_soon") {
-      // فحص إذا كان تحديث سعر أو إضافة
-      if (isPriceUpdate) {
-        // حالة خاصة: تحديث سعر منتج قارب على الانتهاء
-        title = "💰⚠️ تحديث سعر منتج على وشك انتهاء صلاحيته";
-        body = product_name;
-        tabKey = "price_action";
-      } else {
-        // إضافة منتج قارب على الانتهاء
-        let daysLeft = "";
-        if (record.expiration_date) {
-          const expDate = new Date(record.expiration_date);
-          const now = new Date();
-          const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
-          daysLeft = ` - ينتهي خلال ${days} يوم`;
-        }
-        title = "⚠️ تم إضافة منتج قريب الصلاحية";
-        body = `${product_name}${daysLeft}`;
-        tabKey = "expire_soon";
+      // إضافة منتج قارب على الانتهاء
+      let daysLeft = "";
+      if (record.expiration_date) {
+        const expDate = new Date(record.expiration_date);
+        const now = new Date();
+        const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+        daysLeft = ` - ينتهي خلال ${days} يوم`;
       }
+      title = "⚠️ تم إضافة منتج قريب الصلاحية";
+      body = `${product_name}${daysLeft}`;
+      tabKey = "expire_soon";
       
     } else if (tab_name === "price_action") {
       // نصوص مخصصة حسب نوع الجدول
@@ -355,8 +398,8 @@ function isExpiringSoon(expiryDate) {
   const diffTime = expiry - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  // قرب الانتهاء = أقل من 60 يوم
-  return diffDays > 0 && diffDays <= 60;
+  // قرب الانتهاء = أقل من سنة (365 يوم)
+  return diffDays > 0 && diffDays <= 365;
 }
 
 // 🚀 تشغيل السيرفر

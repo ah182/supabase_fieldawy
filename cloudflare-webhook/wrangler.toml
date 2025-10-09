@@ -1,0 +1,9 @@
+name = "fieldawy-notifications"
+main = "src/index.js"
+compatibility_date = "2024-01-20"
+
+# Environment variables (secrets)
+# سيتم إضافتهم عبر wrangler secret put
+
+# [env.production]
+# vars = { }

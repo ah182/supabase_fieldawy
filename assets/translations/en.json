@@ -123,5 +123,16 @@
   "addProduct.surgical.title": "Add Surgical & Diagnostic Instruments",
   "addProduct.surgical.subtitle": "Add various medical tools and supplies",
   "addProduct.limitedAds.title": "Add Limited-Time Ads",
-  "addProduct.limitedAds.subtitle": "Create promotional ads to be shown to users"
+  "addProduct.limitedAds.subtitle": "Create promotional ads to be shown to users",
+  "notificationSettings": "Notification Settings",
+  "chooseNotificationTypes": "Choose which types of notifications you want to receive",
+  "priceUpdates": "Price Updates",
+  "receivePriceUpdateNotifications": "Receive notifications when product prices are updated",
+  "expiringProducts": "Expiring Products",
+  "receiveExpiringProductNotifications": "Receive notifications for products expiring within one year",
+  "offers": "Offers",
+  "receiveOffersNotifications": "Receive notifications for new offers and discounts",
+  "surgicalTools": "Surgical Tools",
+  "receiveSurgicalToolsNotifications": "Receive notifications for new surgical tools",
+  "notificationPreferencesInfo": "You can enable or disable specific types of notifications based on your interests. Changes are saved automatically."
 }

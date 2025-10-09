@@ -57,3 +57,18 @@ app.*.map.json
 *.cache
 *.log
 serviceAccountKey.json
+
+# Firebase Service Account (حساسة - لا تنشر!)
+fieldawy-store-app-*.json
+
+# FCM Token (خاص بجهازك)
+fcm_token.json
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.supabase

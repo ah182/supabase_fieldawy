@@ -118,5 +118,16 @@
   "addProduct.surgical.title": "إضافة مستلزمات جراحية وتشخيصية",
   "addProduct.surgical.subtitle": "أضف أدوات ومستلزمات طبية متنوعة",
   "addProduct.limitedAds.title": "إضافة إعلانات مؤقتة",
-  "addProduct.limitedAds.subtitle": "أنشئ إعلانات ترويجية تظهر للمستخدمين"
+  "addProduct.limitedAds.subtitle": "أنشئ إعلانات ترويجية تظهر للمستخدمين",
+  "notificationSettings": "إعدادات الإشعارات",
+  "chooseNotificationTypes": "اختر أنواع الإشعارات التي تريد استلامها",
+  "priceUpdates": "تحديثات الأسعار",
+  "receivePriceUpdateNotifications": "استقبل إشعارات عند تحديث أسعار المنتجات",
+  "expiringProducts": "منتجات قاربت على الانتهاء",
+  "receiveExpiringProductNotifications": "استقبل إشعارات للمنتجات التي تنتهي صلاحيتها خلال سنة",
+  "offers": "العروض",
+  "receiveOffersNotifications": "استقبل إشعارات العروض والخصومات الجديدة",
+  "surgicalTools": "الأدوات الجراحية",
+  "receiveSurgicalToolsNotifications": "استقبل إشعارات الأدوات الجراحية الجديدة",
+  "notificationPreferencesInfo": "يمكنك تفعيل أو تعطيل أنواع معينة من الإشعارات حسب اهتماماتك. التغييرات تُحفظ تلقائياً."
 }
