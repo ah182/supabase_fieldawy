@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+import 'package:fieldawy_store/services/distributor_subscription_service.dart';
 
 final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
@@ -259,172 +260,11 @@ final sliverAppBar = SliverAppBar(
   // كارت الموزع المحسن
   Widget _buildDistributorCard(
       BuildContext context, ThemeData theme, DistributorModel distributor) {
-    final isCompany = distributor.distributorType == 'company';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _showDistributorDetails(context, theme, distributor);
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Avatar محسن
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: distributor.photoURL != null &&
-                            distributor.photoURL!.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: distributor.photoURL!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: ImageLoadingIndicator(size: 24),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.person_rounded,
-                                size: 28,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.person_rounded,
-                              size: 28,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // معلومات الموزع
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // اسم الموزع بحجم أصغر
-                      Text(
-                        distributor.displayName,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      // نوع الموزع
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isCompany
-                                  ? Icons.business_rounded
-                                  : Icons.person_outline_rounded,
-                              size: 12,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              distributor.companyName ??
-                                  (isCompany
-                                      ? 'distributionCompany'.tr()
-                                      : 'individualDistributor'.tr()),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSecondaryContainer,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // عدد المنتجات
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_rounded,
-                              size: 12,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'productCount'.tr(
-                                  args: [distributor.productCount.toString()]),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // سهم التنقل
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withOpacity(0.4),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return _DistributorCard(
+      key: ValueKey(distributor.id),
+      distributor: distributor,
+      theme: theme,
+      onShowDetails: () => _showDistributorDetails(context, theme, distributor),
     );
   }
 
@@ -836,6 +676,264 @@ class DistributorCardShimmer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Widget منفصل للكارت مع state management محلي
+class _DistributorCard extends HookWidget {
+  final DistributorModel distributor;
+  final ThemeData theme;
+  final VoidCallback onShowDetails;
+
+  const _DistributorCard({
+    super.key,
+    required this.distributor,
+    required this.theme,
+    required this.onShowDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompany = distributor.distributorType == 'company';
+    final isSubscribed = useState<bool?>(null);
+    final isLoading = useState(false);
+
+    // Load initial subscription state
+    useEffect(() {
+      Future<void> loadSubscription() async {
+        final subscribed = await DistributorSubscriptionService.isSubscribed(distributor.id);
+        isSubscribed.value = subscribed;
+      }
+      loadSubscription();
+      return null;
+    }, []);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onShowDetails,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: distributor.photoURL != null &&
+                            distributor.photoURL!.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: distributor.photoURL!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: ImageLoadingIndicator(size: 24),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 28,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.person_rounded,
+                              size: 28,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // معلومات الموزع
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        distributor.displayName,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isCompany
+                                  ? Icons.business_rounded
+                                  : Icons.person_outline_rounded,
+                              size: 12,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              distributor.companyName ??
+                                  (isCompany
+                                      ? 'distributionCompany'.tr()
+                                      : 'individualDistributor'.tr()),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inventory_2_rounded,
+                              size: 12,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'productCount'.tr(
+                                  args: [distributor.productCount.toString()]),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // أيقونة الجرس للاشتراك
+                if (isSubscribed.value != null)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isSubscribed.value!
+                          ? theme.colorScheme.primary.withOpacity(0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isSubscribed.value!
+                          ? null
+                          : Border.all(
+                              color: theme.colorScheme.outline.withOpacity(0.3),
+                              width: 1,
+                            ),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        isSubscribed.value!
+                            ? Icons.notifications_active_rounded
+                            : Icons.notifications_off_outlined,
+                        size: 22,
+                        color: isSubscribed.value!
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                      onPressed: isLoading.value
+                          ? null
+                          : () async {
+                              isLoading.value = true;
+                              final success = await DistributorSubscriptionService
+                                  .toggleSubscription(distributor.id);
+
+                              if (success && context.mounted) {
+                                isSubscribed.value = !isSubscribed.value!;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isSubscribed.value!
+                                          ? 'تم الاشتراك في إشعارات ${distributor.displayName}'
+                                          : 'تم إلغاء الاشتراك في إشعارات ${distributor.displayName}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                              isLoading.value = false;
+                            },
+                      tooltip: isSubscribed.value!
+                          ? 'إلغاء الاشتراك في الإشعارات'
+                          : 'الاشتراك في الإشعارات',
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.primary.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withOpacity(0.4),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

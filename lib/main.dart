@@ -22,6 +22,8 @@ import 'features/authentication/data/storage_service.dart';
 import 'services/app_state_manager.dart';
 import 'services/fcm_token_service.dart';
 import 'services/notification_preferences_service.dart';
+import 'services/distributor_subscription_service.dart';
+import 'services/subscription_cache_service.dart';
 import 'core/supabase/supabase_init.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
@@ -58,6 +60,27 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize Hive for background operations (for subscription cache)
+  try {
+    await Hive.initFlutter();
+  } catch (e) {
+    print('Hive already initialized in background: $e');
+  }
+  
+  // Initialize subscription cache service
+  await SubscriptionCacheService.init();
+  
+  // Initialize Supabase for background operations
+  try {
+    await Supabase.initialize(
+      url: 'https://rkukzuwerbvmueuxadul.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrdWt6dXdlcmJ2bXVldXhhZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NTcwODcsImV4cCI6MjA3MzQzMzA4N30.Rs69KRvvB8u6A91ZXIzkmWebO_IyavZXJrO-SXa2_mc',
+    );
+  } catch (e) {
+    // Supabase already initialized
+    print('Supabase already initialized in background: $e');
+  }
   
   final data = message.data;
   
@@ -113,9 +136,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final String body = data['body'] ?? '';
   final String type = data['type'] ?? 'general';
   final String screen = data['screen'] ?? 'home';
+  final String? distributorId = data['distributor_id'];
+  
+  print('📋 Background notification check:');
+  print('   User ID: ${Supabase.instance.client.auth.currentUser?.id ?? "Not logged in"}');
+  print('   Distributor ID: ${distributorId ?? "None"}');
   
   // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
-  if (!await _shouldShowNotification(screen)) {
+  bool shouldShow = true;
+  try {
+    shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
+  } catch (e) {
+    print('⚠️ خطأ في فحص الإشعارات في الخلفية: $e');
+    // في حالة الخطأ، نعرض الإشعار
+    shouldShow = true;
+  }
+  
+  if (!shouldShow) {
     print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
     return;
   }
@@ -139,6 +176,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('   العنوان: $title');
   print('   المحتوى: $body');
   print('   النوع: $type');
+  print('   الموزع: ${distributorId ?? "عام"}');
 
   // عرض الإشعار المحلي مع شعار التطبيق
   await localNotifications.show(
@@ -175,8 +213,35 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 // ✅ دالة للتحقق من تفضيلات الإشعارات
-Future<bool> _shouldShowNotification(String screen) async {
+Future<bool> _shouldShowNotification(String screen, {String? distributorId}) async {
   try {
+    // أولاً: فحص إذا كان الإشعار من موزع معين
+    if (distributorId != null && distributorId.isNotEmpty) {
+      // Check if user is logged in
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      bool isSubscribedToDistributor;
+      if (userId != null) {
+        // User is logged in, check from Supabase
+        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
+      } else {
+        // User not logged in (background isolate), check from local cache
+        print('📦 Checking subscription from local cache (background mode)');
+        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
+      }
+      
+      if (isSubscribedToDistributor) {
+        // إذا كان مشترك في الموزع، يستقبل كل إشعاراته
+        print('✅ إشعار من موزع مشترك فيه - سيُعرض');
+        return true;
+      } else {
+        // إذا لم يكن مشترك في الموزع، لا يعرض الإشعار (افتراضياً مقفول)
+        print('⏭️ إشعار من موزع غير مشترك فيه - لن يُعرض');
+        return false;
+      }
+    }
+    
+    // ثانياً: إذا لم يكن من موزع معين (إشعار عام)، فحص الإعدادات العامة
     // تحديد نوع الإشعار من screen name
     String notificationType;
     
@@ -198,7 +263,7 @@ Future<bool> _shouldShowNotification(String screen) async {
         return true;
     }
     
-    // التحقق من تفضيلات المستخدم
+    // التحقق من تفضيلات المستخدم العامة
     final isEnabled = await NotificationPreferencesService.isNotificationEnabled(notificationType);
     return isEnabled;
   } catch (e) {
@@ -405,9 +470,10 @@ Future<void> main() async {
     final String body = data['body'] ?? '';
     final String type = data['type'] ?? 'general';
     final String screen = data['screen'] ?? 'home';
+    final String? distributorId = data['distributor_id'];
 
     // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
-    if (!await _shouldShowNotification(screen)) {
+    if (!await _shouldShowNotification(screen, distributorId: distributorId)) {
       print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
       return;
     }
@@ -430,6 +496,7 @@ Future<void> main() async {
     print('📩 إشعار جديد: $title');
     print('📝 المحتوى: $body');
     print('🏷️ النوع: $type');
+    print('👤 الموزع: ${distributorId ?? "عام"}');
 
     flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -478,6 +545,10 @@ Future<void> main() async {
   await Hive.openBox<OrderItemModel>('orders');
   await Hive.openBox<String>('favorites');
   await Hive.openBox('api_cache');
+  
+  // Initialize subscription cache for background notifications
+  await SubscriptionCacheService.init();
+  print('✅ Subscription cache initialized');
 
   runApp(const ConnectivityHandler());
 }
@@ -558,14 +629,26 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
     }
     
     // الاستماع لتغييرات حالة المصادقة
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       
       if (event == AuthChangeEvent.signedIn) {
         print('🔐 تم تسجيل الدخول - جاري حفظ FCM Token...');
         fcmService.getAndSaveToken();
+        
+        // Sync distributor subscriptions to local cache
+        print('📦 Syncing subscriptions to local cache...');
+        try {
+          final subscriptions = await DistributorSubscriptionService.getSubscribedDistributorIds();
+          print('✅ Synced ${subscriptions.length} subscriptions to cache');
+        } catch (e) {
+          print('⚠️ Error syncing subscriptions: $e');
+        }
       } else if (event == AuthChangeEvent.signedOut) {
         print('🚪 تم تسجيل الخروج');
+        // Clear subscription cache on logout
+        await SubscriptionCacheService.clearCache();
+        print('🗑️ Subscription cache cleared');
       }
     });
     

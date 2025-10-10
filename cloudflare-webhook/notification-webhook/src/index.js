@@ -1,0 +1,425 @@
+/**
+ * Cloudflare Worker for Fieldawy Store Notifications
+ * Receives webhooks from Supabase and sends FCM notifications
+ */
+
+export default {
+  async fetch(request, env) {
+    // CORS Headers
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    // Only accept POST requests
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { 
+        status: 405,
+        headers: corsHeaders 
+      });
+    }
+
+    try {
+      let payload;
+     try {
+       payload = await request.json();
+     } catch (e) {
+       return new Response('Invalid JSON', {
+         status: 400,
+         headers: corsHeaders
+       });
+     }
+      
+      console.log('📩 Received webhook from Supabase');
+      console.log('   Type:', payload.type);
+      console.log('   Table:', payload.table);
+
+      // Extract data
+      const { type: operation, table, record, old_record } = payload;
+      
+      if (!record) {
+        return new Response('No record in payload', { 
+          status: 400,
+          headers: corsHeaders 
+        });
+      }
+
+      // Get product name and details
+      let productName = 'منتج';
+      let tabName = 'home';
+      let isPriceUpdate = false;
+      let distributorId = null;
+      let distributorName = '';
+
+      // Helper function to get distributor name
+      const getDistributorName = async (distId) => {
+        if (!distId || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return '';
+        try {
+          const response = await fetch(
+            `${env.SUPABASE_URL}/rest/v1/users?id=eq.${distId}&select=display_name`,
+            {
+              headers: {
+                'apikey': env.SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+              }
+            }
+          );
+          const data = await response.json();
+          return (data && data[0] && data[0].display_name) || '';
+        } catch (err) {
+          console.error('Error fetching distributor name:', err);
+          return '';
+        }
+      };
+
+      // Process based on table
+      if (table === 'distributor_surgical_tools' || table === 'surgical_tools') {
+        productName = record.tool_name || record.description || 'أداة جراحية';
+        tabName = 'surgical';
+        distributorId = record.distributor_id || null;
+        
+        // Get distributor name
+        if (distributorId) {
+          distributorName = await getDistributorName(distributorId);
+        }
+        
+        if (operation === 'UPDATE' && old_record && old_record.price !== record.price) {
+          tabName = 'price_action';
+          isPriceUpdate = true;
+        }
+      } else if (table === 'offers') {
+        distributorId = record.distributor_id || null;
+        
+        // Get distributor name
+        if (distributorId) {
+          distributorName = await getDistributorName(distributorId);
+        }
+        
+        if (operation === 'INSERT' && !record.description) {
+          console.log('⏭️ Skipping offer without description');
+          return new Response('Skipped', { status: 200, headers: corsHeaders });
+        }
+
+        if (record.product_id && env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
+          try {
+            const tableName = record.is_ocr ? 'ocr_products' : 'products';
+            const columnName = record.is_ocr ? 'product_name' : 'name';
+            
+            const response = await fetch(
+              `${env.SUPABASE_URL}/rest/v1/${tableName}?id=eq.${record.product_id}&select=${columnName}`,
+              {
+                headers: {
+                  'apikey': env.SUPABASE_SERVICE_KEY,
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                }
+              }
+            );
+            
+            const data = await response.json();
+            if (data && data[0]) {
+              productName = `${data[0][columnName]} - ${record.description || 'عرض'}`;
+            } else {
+              productName = record.description || 'عرض';
+            }
+          } catch (err) {
+            productName = record.description || 'عرض';
+          }
+        } else {
+          productName = record.description || 'عرض';
+        }
+        
+        if (operation === 'UPDATE' && old_record && old_record.price !== record.price) {
+          tabName = 'price_action';
+          isPriceUpdate = true;
+        } else {
+          tabName = 'offers';
+        }
+      } else if (table === 'distributor_products' || table === 'distributor_ocr_products') {
+        distributorId = record.distributor_id || null;
+        
+        if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
+          try {
+            let prodName = 'منتج';
+            if (table === 'distributor_products' && record.product_id) {
+              const prodResponse = await fetch(
+                `${env.SUPABASE_URL}/rest/v1/products?id=eq.${record.product_id}&select=name`,
+                {
+                  headers: {
+                    'apikey': env.SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  }
+                }
+              );
+              const prodData = await prodResponse.json();
+              if (prodData && prodData[0]) prodName = prodData[0].name;
+            } else if (table === 'distributor_ocr_products' && record.ocr_product_id) {
+              const prodResponse = await fetch(
+                `${env.SUPABASE_URL}/rest/v1/ocr_products?id=eq.${record.ocr_product_id}&select=product_name`,
+                {
+                  headers: {
+                    'apikey': env.SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  }
+                }
+              );
+              const prodData = await prodResponse.json();
+              if (prodData && prodData[0]) prodName = prodData[0].product_name;
+            }
+            
+            // Get distributor name using helper function
+            if (record.distributor_id) {
+              distributorName = await getDistributorName(record.distributor_id);
+            }
+            
+            // Don't add distributor name to productName - it will be added to title instead
+            productName = prodName;
+          } catch (err) {
+            productName = 'منتج';
+          }
+        }
+        
+        let isExpiringSoon = false;
+        let expirationDate = record.expiration_date;
+        
+        if (!expirationDate && record.id && env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
+          try {
+            const response = await fetch(
+              `${env.SUPABASE_URL}/rest/v1/${table}?id=eq.${record.id}&select=expiration_date`,
+              {
+                headers: {
+                  'apikey': env.SUPABASE_SERVICE_KEY,
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                }
+              }
+            );
+            const data = await response.json();
+            if (data && data[0]) expirationDate = data[0].expiration_date;
+          } catch (err) {
+            console.error('Error fetching expiration_date:', err);
+          }
+        }
+        
+        if (expirationDate) {
+          const expDate = new Date(expirationDate);
+          const now = new Date();
+          const days = (expDate - now) / (1000 * 60 * 60 * 24);
+          if (days > 0 && days <= 365) {
+            isExpiringSoon = true;
+          }
+        }
+        
+        if (operation === 'UPDATE') {
+          if (old_record && old_record.price !== record.price) {
+            isPriceUpdate = true;
+            tabName = isExpiringSoon ? 'expire_soon_price' : 'price_action';
+          } else if (isExpiringSoon) {
+            tabName = 'expire_soon_update';
+          }
+        } else if (isExpiringSoon) {
+          tabName = 'expire_soon';
+        }
+        
+        // Skip regular product insert ONLY if it's not from a specific distributor
+        // If it has distributor_id, subscribers should receive the notification
+        if (operation === 'INSERT' && tabName === 'home' && !distributorId) {
+          console.log('⏭️ Skipping regular product insert (no distributor)');
+          return new Response('Skipped', { status: 200, headers: corsHeaders });
+        }
+      }
+
+      console.log('   Product Name:', productName);
+      console.log('   Tab Name:', tabName);
+      console.log('   Distributor ID:', distributorId || 'N/A');
+
+      // Build notification
+      const isNew = operation === 'INSERT';
+      let title = '';
+      let body = '';
+      let screen = '';
+
+      if (tabName === 'surgical') {
+        title = isNew ? '🔧 أداة جديدة' : '🔧 تحديث أداة';
+        body = productName;
+        screen = 'surgical';
+      } else if (tabName === 'offers') {
+        title = '🎁 عرض جديد';
+        body = productName;
+        screen = 'offers';
+      } else if (tabName === 'expire_soon') {
+        let daysLeft = '';
+        if (record.expiration_date) {
+          const expDate = new Date(record.expiration_date);
+          const now = new Date();
+          const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+          daysLeft = ` - ينتهي خلال ${days} يوم`;
+        }
+        title = '⚠️ تم إضافة منتج قريب الصلاحية';
+        body = `${productName}${daysLeft}`;
+        screen = 'expire_soon';
+      } else if (tabName === 'expire_soon_price') {
+        title = '💰⚠️ تحديث سعر منتج على وشك انتهاء صلاحيته';
+        body = productName;
+        screen = 'price_action';
+      } else if (tabName === 'expire_soon_update') {
+        title = '🔄⚠️ تم تحديث منتج تنتهي صلاحيته قريباً';
+        body = productName;
+        screen = 'expire_soon';
+      } else if (tabName === 'price_action') {
+        if (table === 'distributor_surgical_tools') {
+          title = '💰 تم تحديث سعر أداة';
+        } else if (table === 'offers') {
+          title = '💰 تم تحديث سعر عرض';
+        } else {
+          title = '💰 تم تحديث سعر منتج';
+        }
+        body = productName;
+        screen = 'price_action';
+      } else {
+        title = isNew ? '✅ منتج جديد' : '🔄 تحديث منتج';
+        body = productName;
+        screen = 'home';
+      }
+
+      // Add distributor name to title if this is from a specific distributor
+      if (distributorName) {
+        title = `${title}\n${distributorName}`;
+      }
+
+      // Send FCM notification
+      if (!env.FIREBASE_SERVICE_ACCOUNT) {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT not configured');
+      }
+
+      const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+      const accessToken = await getAccessToken(serviceAccount);
+
+      const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
+      
+      const notificationData = {
+        title: title,
+        body: body,
+        type: 'product_update',
+        screen: screen,
+      };
+      
+      // Add distributor_id if available
+      if (distributorId) {
+        notificationData.distributor_id = distributorId.toString();
+      }
+      
+      const message = {
+        message: {
+          topic: 'all_users',
+          data: notificationData,
+          android: {
+            priority: 'high',
+          },
+        }
+      };
+
+      const fcmResponse = await fetch(fcmUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (!fcmResponse.ok) {
+        const error = await fcmResponse.text();
+        throw new Error(`FCM Error: ${error}`);
+      }
+
+      console.log('✅ Notification sent!');
+      console.log('   Title:', title);
+
+      return new Response('Notification sent', {
+        status: 200,
+        headers: corsHeaders
+      });
+
+    } catch (error) {
+      console.error('❌ Error:', error);
+      return new Response(`Error: ${error.message}`, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+  },
+};
+
+// Get Firebase access token using JWT
+async function getAccessToken(serviceAccount) {
+  const now = Math.floor(Date.now() / 1000);
+  
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT'
+  };
+  
+  const claimSet = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+  
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedClaimSet = base64UrlEncode(JSON.stringify(claimSet));
+  const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
+  
+  const privateKey = await importPrivateKey(serviceAccount.private_key);
+  
+  const signature = await crypto.subtle.sign(
+    { name: 'RSASSA-PKCS1-v1_5' },
+    privateKey,
+    new TextEncoder().encode(signatureInput)
+  );
+  
+  const encodedSignature = base64UrlEncode(signature);
+  const jwt = `${signatureInput}.${encodedSignature}`;
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  
+  const data = await response.json();
+  return data.access_token;
+}
+
+async function importPrivateKey(pem) {
+  const pemContents = pem
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\s/g, '');
+  
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  
+  return await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+}
+
+function base64UrlEncode(data) {
+  if (data instanceof ArrayBuffer) {
+    data = String.fromCharCode(...new Uint8Array(data));
+  }
+  return btoa(data)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
