@@ -15,6 +15,8 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+import 'package:intl/intl.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/product_dialogs.dart';
 
 class FavoritesScreen extends HookConsumerWidget {
   const FavoritesScreen({super.key});
@@ -247,8 +249,8 @@ class FavoritesScreen extends HookConsumerWidget {
                       const Spacer(),
                       Consumer(
                         builder: (context, ref, child) {
-                          final favoriteIds = ref.watch(favoritesProvider);
-                          final isFavorite = favoriteIds.contains(
+                          final favoritesMap = ref.watch(favoritesProvider);
+                          final isFavorite = favoritesMap.containsKey(
                               '${product.id}_${product.distributorId}_${product.selectedPackage}');
                           return Container(
                             decoration: BoxDecoration(
@@ -570,7 +572,8 @@ class FavoritesScreen extends HookConsumerWidget {
 
                     final filteredFavorites = debouncedSearchQuery.value.isEmpty
                         ? value
-                        : value.where((product) {
+                        : value.where((favoriteItem) {
+                            final product = favoriteItem.product;
                             final query =
                                 debouncedSearchQuery.value.toLowerCase().trim();
                             final productName = product.name.toLowerCase();
@@ -603,8 +606,8 @@ class FavoritesScreen extends HookConsumerWidget {
                       ..sort((a, b) {
                         final query =
                             debouncedSearchQuery.value.toLowerCase().trim();
-                        int scoreA = _calculateSearchScore(a, query);
-                        int scoreB = _calculateSearchScore(b, query);
+                        int scoreA = _calculateSearchScore(a.product, query);
+                        int scoreB = _calculateSearchScore(b.product, query);
                         return scoreB.compareTo(scoreA);
                       });
 
@@ -641,17 +644,73 @@ class FavoritesScreen extends HookConsumerWidget {
                           crossAxisCount: 2,
                           crossAxisSpacing: 8.0,
                           mainAxisSpacing: 8.0,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.68, // زيادة الارتفاع للـ surgical badge
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            final product = filteredFavorites[index];
+                            final favoriteItem = filteredFavorites[index];
+                            final product = favoriteItem.product;
+                            
+                            // Build the appropriate widget based on type
+                            Widget? overlayBadge;
+                            Widget? statusBadge;
+                            bool showPriceChange = false;
+                            
+                            switch (favoriteItem.type) {
+                              case 'expire_soon':
+                                if (favoriteItem.expirationDate != null) {
+                                  overlayBadge = _buildExpirationBadge(context, favoriteItem.expirationDate!);
+                                }
+                                break;
+                              case 'surgical':
+                                if (favoriteItem.status != null) {
+                                  statusBadge = _buildStatusBadge(context, favoriteItem.status!);
+                                }
+                                break;
+                              case 'offers':
+                                overlayBadge = _buildOfferBadge(context);
+                                break;
+                              case 'price_action':
+                                showPriceChange = favoriteItem.showPriceChange;
+                                break;
+                            }
+                            
                             return ProductCard(
                               product: product,
                               searchQuery: debouncedSearchQuery.value,
+                              productType: favoriteItem.type,
+                              expirationDate: favoriteItem.expirationDate,
+                              status: favoriteItem.status,
+                              showPriceChange: showPriceChange,
                               onTap: () {
-                                _showProductDetailDialog(context, ref, product);
+                                // Show the appropriate dialog based on product type
+                                switch (favoriteItem.type) {
+                                  case 'expire_soon':
+                                    showProductDialog(
+                                      context,
+                                      product,
+                                      expirationDate: favoriteItem.expirationDate,
+                                    );
+                                    break;
+                                  case 'surgical':
+                                    showSurgicalToolDialog(context, product);
+                                    break;
+                                  case 'offers':
+                                    showOfferProductDialog(
+                                      context,
+                                      product,
+                                      expirationDate: favoriteItem.expirationDate,
+                                    );
+                                    break;
+                                  case 'price_action':
+                                  case 'home':
+                                  default:
+                                    _showProductDetailDialog(context, ref, product);
+                                    break;
+                                }
                               },
+                              overlayBadge: overlayBadge,
+                              statusBadge: statusBadge,
                             );
                           },
                           childCount: filteredFavorites.length,
@@ -671,6 +730,160 @@ class FavoritesScreen extends HookConsumerWidget {
                   ),
               }
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for building badges
+  Widget _buildExpirationBadge(BuildContext context, DateTime expirationDate) {
+    final now = DateTime.now();
+    final isExpired = expirationDate.isBefore(DateTime(now.year, now.month + 1));
+
+    return Positioned(
+      bottom: 4,
+      left: 4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isExpired ? Colors.red.shade700 : Colors.orange.shade700,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isExpired ? Icons.warning_rounded : Icons.schedule_rounded,
+              size: 12,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              DateFormat('MM/yyyy').format(expirationDate),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(BuildContext context, String status) {
+    Color getBadgeColor() {
+      switch (status) {
+        case 'جديد':
+          return Colors.green;
+        case 'مستعمل':
+          return Colors.orange;
+        case 'كسر زيرو':
+          return Colors.blue;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    IconData getBadgeIcon() {
+      switch (status) {
+        case 'جديد':
+          return Icons.new_releases_rounded;
+        case 'مستعمل':
+          return Icons.history_rounded;
+        case 'كسر زيرو':
+          return Icons.star_rounded;
+        default:
+          return Icons.info_rounded;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: getBadgeColor(),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            getBadgeIcon(),
+            size: 12,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            status,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfferBadge(BuildContext context) {
+    return Positioned(
+      top: 6,
+      left: -40,
+      child: Transform.rotate(
+        angle: -0.785398, // -45 degrees
+        child: Container(
+          width: 120,
+          height: 25,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFE53935), // Red dark
+                Color(0xFFEF5350), // Red light
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            'Offer',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              shadows: [
+                Shadow(
+                  color: Colors.black26,
+                  offset: Offset(0, 1),
+                  blurRadius: 2,
+                ),
+              ],
+              letterSpacing: 0.8,
+            ),
           ),
         ),
       ),

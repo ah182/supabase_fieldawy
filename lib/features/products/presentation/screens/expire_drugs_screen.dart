@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 
+// استخدام myExpireDrugsProvider بدل expireDrugsProvider في هذه الصفحة
+
 class ExpireDrugsScreen extends StatelessWidget {
   const ExpireDrugsScreen({super.key});
 
@@ -104,7 +106,7 @@ class ExpireDrugsScreen extends StatelessWidget {
       body: SafeArea(
         child: Consumer(
           builder: (context, ref, _) {
-            final expireDrugsAsync = ref.watch(expireDrugsProvider);
+            final expireDrugsAsync = ref.watch(myExpireDrugsProvider);
 
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -114,8 +116,8 @@ class ExpireDrugsScreen extends StatelessWidget {
                     return RefreshIndicator(
                       key: const ValueKey('empty_expire_drugs'),
                       onRefresh: () async {
-                        ref.invalidate(expireDrugsProvider);
-                        await ref.read(expireDrugsProvider.future);
+                        ref.invalidate(myExpireDrugsProvider);
+                        await ref.read(myExpireDrugsProvider.future);
                       },
                       child: CustomScrollView(
                         physics: const AlwaysScrollableScrollPhysics(
@@ -333,7 +335,7 @@ class ExpireDrugsScreen extends StatelessWidget {
                                             product.selectedPackage ?? '',
                                       });
                                     }
-                                    ref.invalidate(expireDrugsProvider);
+                                    ref.invalidate(myExpireDrugsProvider);
                                   }
                                 }
 
@@ -388,7 +390,7 @@ class ExpireDrugsScreen extends StatelessWidget {
                                         package: product.selectedPackage ?? '',
                                       );
                                     }
-                                    ref.invalidate(expireDrugsProvider);
+                                    ref.invalidate(myExpireDrugsProvider);
                                   }
                                 }
 
@@ -603,7 +605,7 @@ class ExpireDrugsScreen extends StatelessWidget {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _ErrorState(
                   message: e.toString(),
-                  onRetry: () => ref.invalidate(expireDrugsProvider),
+                  onRetry: () => ref.invalidate(myExpireDrugsProvider),
                 ),
               ),
             );

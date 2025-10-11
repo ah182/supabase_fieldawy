@@ -100,6 +100,8 @@ class ExpireSoonTab extends ConsumerWidget {
               return ProductCard(
                 product: item.product,
                 searchQuery: searchQuery,
+                productType: 'expire_soon',
+                expirationDate: item.expirationDate,
                 onTap: () {
                   showProductDialog(
                     context,
@@ -256,6 +258,8 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
               return ProductCard(
                 product: tool,
                 searchQuery: searchQuery,
+                productType: 'surgical',
+                status: tool.activePrinciple,
                 onTap: () {
                   showSurgicalToolDialog(context, tool);
                 },
@@ -430,6 +434,7 @@ class OffersTab extends ConsumerWidget {
               return ProductCard(
                 product: item.product,
                 searchQuery: searchQuery,
+                productType: 'offers',
                 onTap: () {
                   showOfferProductDialog(
                     context,

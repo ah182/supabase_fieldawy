@@ -19,6 +19,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/user_data_provider.dart';
 import '../widgets/home_tabs_content.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 
 
 
@@ -37,7 +39,14 @@ final _tabsInfo = [
 ];
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final int? initialTabIndex;
+  final String? distributorId;
+  
+  const HomeScreen({
+    super.key,
+    this.initialTabIndex,
+    this.distributorId,
+  });
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -52,6 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   String _searchQuery = '';
   String _debouncedSearchQuery = '';
+  bool _hasNavigatedToDistributor = false;
   bool _isRefreshButtonEnabled = true;
   int _refreshButtonCountdown = 0;
   Timer? _debounce;
@@ -60,12 +70,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabsInfo.length, vsync: this);
+    // استخدام initialTabIndex إذا تم توفيره من الإشعار
+    final initialIndex = widget.initialTabIndex ?? 0;
+    _tabController = TabController(
+      length: _tabsInfo.length, 
+      vsync: this,
+      initialIndex: initialIndex.clamp(0, _tabsInfo.length - 1),
+    );
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         HapticFeedback.lightImpact();
       }
     });
+    
+    // التنقل لصفحة الموزع إذا تم توفير distributorId من الإشعار
+    if (widget.distributorId != null && !_hasNavigatedToDistributor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToDistributor(widget.distributorId!);
+      });
+    }
 
     _scrollController.addListener(() {
       if (!_scrollController.hasClients) return;
@@ -89,6 +112,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         }
       });
     });
+  }
+
+  void _navigateToDistributor(String distributorId) async {
+    if (_hasNavigatedToDistributor) return;
+    _hasNavigatedToDistributor = true;
+    
+    print('📍 التنقل لصفحة الموزع: $distributorId');
+    
+    // التأكد من أن context متاح
+    if (!mounted) return;
+    
+    // الحصول على اسم الموزع من Supabase
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', distributorId)
+          .maybeSingle();
+      
+      final distributorName = response?['display_name'] ?? 'Distributor';
+      
+      if (!mounted) return;
+      
+      // فتح صفحة منتجات الموزع
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => DistributorProductsScreen(
+            distributorId: distributorId,
+            distributorName: distributorName,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('❌ خطأ في جلب بيانات الموزع: $e');
+    }
   }
 
   @override
@@ -348,8 +407,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       const Spacer(),
                       Consumer(
                         builder: (context, ref, child) {
-                          final favoriteIds = ref.watch(favoritesProvider);
-                          final isFavorite = favoriteIds.contains(
+                          final favoritesMap = ref.watch(favoritesProvider);
+                          final isFavorite = favoritesMap.containsKey(
                               '${product.id}_${product.distributorId}_${product.selectedPackage}');
                           return Container(
                             decoration: BoxDecoration(
@@ -733,6 +792,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         child: ProductCard(
                           product: product,
                           searchQuery: _debouncedSearchQuery,
+                          productType: 'home',
                           onTap: () {
                             _showProductDetailDialog(context, ref, product);
                           },
@@ -1135,6 +1195,7 @@ class PriceUpdateTab extends ConsumerWidget {
               return ProductCard(
                 product: product,
                 searchQuery: searchQuery,
+                productType: 'price_action',
                 showPriceChange: true,
                 onTap: () {
                   // This is a bit of a workaround to access the dialog function

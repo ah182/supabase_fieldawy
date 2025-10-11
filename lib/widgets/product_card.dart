@@ -18,6 +18,9 @@ class ProductCard extends ConsumerWidget {
     this.showPriceChange = false,
     this.overlayBadge,
     this.statusBadge,
+    this.productType = 'home',
+    this.expirationDate,
+    this.status,
   });
 
   final ProductModel product;
@@ -26,11 +29,14 @@ class ProductCard extends ConsumerWidget {
   final bool showPriceChange;
   final Widget? overlayBadge;
   final Widget? statusBadge;
+  final String productType; // 'home', 'expire_soon', 'surgical', 'offers', 'price_action'
+  final DateTime? expirationDate;
+  final String? status;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final favoriteIds = ref.watch(favoritesProvider);
-    final isFavorite = favoriteIds.contains(
+    final favoritesMap = ref.watch(favoritesProvider);
+    final isFavorite = favoritesMap.containsKey(
         '${product.id}_${product.distributorId}_${product.selectedPackage}');
 
     return Card(
@@ -109,7 +115,13 @@ class ProductCard extends ConsumerWidget {
                         onPressed: () {
                           ref
                               .read(favoritesProvider.notifier)
-                              .toggleFavorite(product);
+                              .toggleFavorite(
+                                product,
+                                type: productType,
+                                expirationDate: expirationDate,
+                                status: status,
+                                showPriceChange: showPriceChange,
+                              );
                           scaffoldMessengerKey.currentState?.showSnackBar(
                             SnackBar(
                               elevation: 0,

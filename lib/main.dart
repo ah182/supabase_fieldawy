@@ -54,12 +54,27 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 // GlobalKey للـ navigation
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// Store pending notification data when app is not ready
+String? _pendingNotificationScreen;
+String? _pendingNotificationDistributorId;
+
+// Getters for pending notification
+String? getPendingNotificationScreen() => _pendingNotificationScreen;
+String? getPendingNotificationDistributorId() => _pendingNotificationDistributorId;
+void clearPendingNotification() {
+  _pendingNotificationScreen = null;
+  _pendingNotificationDistributorId = null;
+}
+
 // ✅ handler للرسائل في الخلفية
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    print('🔵 === Background handler started ===');
+    
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   
   // Initialize Hive for background operations (for subscription cache)
   try {
@@ -138,14 +153,24 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final String screen = data['screen'] ?? 'home';
   final String? distributorId = data['distributor_id'];
   
+  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+  
   print('📋 Background notification check:');
-  print('   User ID: ${Supabase.instance.client.auth.currentUser?.id ?? "Not logged in"}');
+  print('   Current User ID: ${currentUserId ?? "Not logged in"}');
   print('   Distributor ID: ${distributorId ?? "None"}');
+  print('   Title: $title');
+  
+  // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (optional - يمكن تعطيله)
+  // if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
+  //   print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
+  //   return;
+  // }
   
   // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
   bool shouldShow = true;
   try {
     shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
+    print('   Should show: $shouldShow');
   } catch (e) {
     print('⚠️ خطأ في فحص الإشعارات في الخلفية: $e');
     // في حالة الخطأ، نعرض الإشعار
@@ -178,6 +203,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('   النوع: $type');
   print('   الموزع: ${distributorId ?? "عام"}');
 
+  // Build payload: "screen|distributor_id" or just "screen"
+  String payload = screen;
+  if (distributorId != null && distributorId.isNotEmpty) {
+    payload = '$screen|$distributorId';
+  }
+
   // عرض الإشعار المحلي مع شعار التطبيق
   await localNotifications.show(
     DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -208,42 +239,22 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         category: AndroidNotificationCategory.message,
       ),
     ),
-    payload: data['screen'] ?? 'home',
+    payload: payload,
   );
+  
+  print('🔵 === Background handler completed successfully ===');
+  } catch (e, stackTrace) {
+    print('❌❌❌ FATAL ERROR in background handler: $e');
+    print('Stack trace: $stackTrace');
+  }
 }
 
 // ✅ دالة للتحقق من تفضيلات الإشعارات
 Future<bool> _shouldShowNotification(String screen, {String? distributorId}) async {
+  print('🔍 _shouldShowNotification called: screen=$screen, distributor=$distributorId');
   try {
-    // أولاً: فحص إذا كان الإشعار من موزع معين
-    if (distributorId != null && distributorId.isNotEmpty) {
-      // Check if user is logged in
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      
-      bool isSubscribedToDistributor;
-      if (userId != null) {
-        // User is logged in, check from Supabase
-        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
-      } else {
-        // User not logged in (background isolate), check from local cache
-        print('📦 Checking subscription from local cache (background mode)');
-        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
-      }
-      
-      if (isSubscribedToDistributor) {
-        // إذا كان مشترك في الموزع، يستقبل كل إشعاراته
-        print('✅ إشعار من موزع مشترك فيه - سيُعرض');
-        return true;
-      } else {
-        // إذا لم يكن مشترك في الموزع، لا يعرض الإشعار (افتراضياً مقفول)
-        print('⏭️ إشعار من موزع غير مشترك فيه - لن يُعرض');
-        return false;
-      }
-    }
-    
-    // ثانياً: إذا لم يكن من موزع معين (إشعار عام)، فحص الإعدادات العامة
     // تحديد نوع الإشعار من screen name
-    String notificationType;
+    String? notificationType;
     
     switch (screen) {
       case 'price_action':
@@ -260,11 +271,42 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
         break;
       default:
         // أنواع أخرى (home, orders, إلخ) تُعرض دائماً
+        notificationType = null;
+    }
+    
+    // أولاً: فحص إذا كان الإشعار من موزع معين
+    if (distributorId != null && distributorId.isNotEmpty) {
+      // Check if user is logged in
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      bool isSubscribedToDistributor;
+      if (userId != null) {
+        // User is logged in, check from Supabase
+        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
+      } else {
+        // User not logged in (background isolate), check from local cache
+        print('📦 Checking subscription from local cache (background mode)');
+        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
+      }
+      
+      if (isSubscribedToDistributor) {
+        // إذا كان مشترك في الموزع، يستقبل كل إشعاراته (override للإعدادات العامة)
+        print('✅ إشعار من موزع مشترك فيه - سيُعرض');
         return true;
+      }
+      // إذا لم يكن مشترك، نكمل للإعدادات العامة
+      print('ℹ️ إشعار من موزع غير مشترك - نفحص الإعدادات العامة');
+    }
+    
+    // ثانياً: فحص الإعدادات العامة
+    if (notificationType == null) {
+      // أنواع أخرى تُعرض دائماً
+      return true;
     }
     
     // التحقق من تفضيلات المستخدم العامة
     final isEnabled = await NotificationPreferencesService.isNotificationEnabled(notificationType);
+    print('📋 فحص الإعدادات العامة لـ $notificationType: ${isEnabled ? "مفعل" : "معطل"}');
     return isEnabled;
   } catch (e) {
     print('⚠️ خطأ في فحص تفضيلات الإشعارات: $e');
@@ -274,39 +316,49 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
 }
 
 // دالة للتعامل مع النقر على الإشعارات
-void _handleNotificationTap(String screen) {
-  print('🔔 معالجة النقر على الإشعار: $screen');
+void _handleNotificationTap(String screen, {String? distributorId}) {
+  print('🔔 معالجة النقر على الإشعار: $screen, distributor: $distributorId');
   
-  // تأخير بسيط للتأكد من أن التطبيق جاهز
-  Future.delayed(const Duration(milliseconds: 500), () {
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      print('❌ NavigatorContext غير متاح');
-      return;
-    }
+  final context = navigatorKey.currentContext;
+  
+  if (context != null) {
+    // Context متاح، نفذ التنقل مباشرة
+    print('✅ NavigatorContext متاح - بدء التنقل');
+    _performNavigation(context, screen, distributorId);
+  } else {
+    // Context مش متاح، احفظ الـ notification للاستخدام لاحقاً
+    print('⏳ NavigatorContext غير متاح - حفظ الإشعار للمعالجة لاحقاً');
+    _pendingNotificationScreen = screen;
+    _pendingNotificationDistributorId = distributorId;
+  }
+}
 
-    // تحديد tab index بناءً على screen
-    // سيتم استخدامه عند تحديث DrawerWrapper لقبول initialTabIndex
-    final tabIndex = _getTabIndexFromScreen(screen);
-    
-    print('🔔 الانتقال إلى Tab: $tabIndex ($screen)');
-
-    // الانتقال إلى HomeScreen
-    // TODO: عند إضافة initialTabIndex لـ DrawerWrapper، استخدم:
-    // Navigator.of(context).pushAndRemoveUntil(
-    //   MaterialPageRoute(
-    //     builder: (context) => DrawerWrapper(initialTabIndex: tabIndex),
-    //   ),
-    //   (route) => false,
-    // );
-    
+// دالة منفصلة لتنفيذ التنقل
+void _performNavigation(BuildContext context, String screen, String? distributorId) {
+  // إذا كان هناك distributorId، افتح صفحة الموزع
+  if (distributorId != null && distributorId.isNotEmpty) {
+    print('🔔 الانتقال إلى صفحة الموزع: $distributorId');
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) => const DrawerWrapper(),
+        builder: (context) => DrawerWrapper(distributorId: distributorId),
       ),
       (route) => false,
     );
-  });
+    return;
+  }
+
+  // تحديد tab index بناءً على screen
+  final tabIndex = _getTabIndexFromScreen(screen);
+  
+  print('🔔 الانتقال إلى Tab: $tabIndex ($screen)');
+
+  // الانتقال إلى HomeScreen مع التاب المحدد
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(
+      builder: (context) => DrawerWrapper(initialTabIndex: tabIndex),
+    ),
+    (route) => false,
+  );
 }
 
 // دالة مساعدة لتحديد tab index من screen name
@@ -365,8 +417,17 @@ Future<void> main() async {
   print('═══════════════════════════════════════════════════════════');
 
   // ✅ الاشتراك في Topics تلقائياً
-  await FirebaseMessaging.instance.subscribeToTopic('all_users');
-  print('✅ تم الاشتراك في topic: all_users');
+  try {
+    await FirebaseMessaging.instance.subscribeToTopic('all_users');
+    print('✅ تم الاشتراك في topic: all_users بنجاح');
+  } catch (e) {
+    print('❌ خطأ في الاشتراك في topic: $e');
+  }
+  
+  // ✅ حفظ FCM Token في Supabase (للاختبار)
+  if (fcmToken != null) {
+    print('📤 محاولة حفظ FCM Token في Supabase...');
+  }
   
   // يمكنك إضافة topics أخرى حسب نوع المستخدم
   // await FirebaseMessaging.instance.subscribeToTopic('orders');
@@ -383,7 +444,8 @@ Future<void> main() async {
     if (message != null) {
       print('🔔 تم فتح التطبيق من الإشعار: ${message.data}');
       final screen = message.data['screen'] ?? 'home';
-      _handleNotificationTap(screen);
+      final distributorId = message.data['distributor_id'];
+      _handleNotificationTap(screen, distributorId: distributorId);
     }
   });
 
@@ -391,7 +453,8 @@ Future<void> main() async {
   FirebaseMessaging.onMessageOpenedApp.listen((message) {
     print('🔔 تم فتح الإشعار من الخلفية: ${message.data}');
     final screen = message.data['screen'] ?? 'home';
-    _handleNotificationTap(screen);
+    final distributorId = message.data['distributor_id'];
+    _handleNotificationTap(screen, distributorId: distributorId);
   });
 
   // ✅ إعدادات الإشعارات المحلية
@@ -456,24 +519,49 @@ Future<void> main() async {
     onDidReceiveNotificationResponse: (NotificationResponse response) {
       if (response.payload != null) {
         print('🔔 تم النقر على الإشعار: ${response.payload}');
-        _handleNotificationTap(response.payload!);
+        
+        // Parse payload - format: "screen|distributor_id" or just "screen"
+        final parts = response.payload!.split('|');
+        final screen = parts[0];
+        final distributorId = parts.length > 1 ? parts[1] : null;
+        
+        _handleNotificationTap(screen, distributorId: distributorId);
       }
     },
   );
 
   // ✅ listen للإشعارات أثناء فتح التطبيق (data-only messages)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    final data = message.data;
+    try {
+      print('🟢 === Foreground handler started ===');
+      
+      final data = message.data;
 
-    // استخراج البيانات من data payload
-    final String title = data['title'] ?? 'إشعار جديد';
-    final String body = data['body'] ?? '';
-    final String type = data['type'] ?? 'general';
-    final String screen = data['screen'] ?? 'home';
-    final String? distributorId = data['distributor_id'];
+      // استخراج البيانات من data payload
+      final String title = data['title'] ?? 'إشعار جديد';
+      final String body = data['body'] ?? '';
+      final String type = data['type'] ?? 'general';
+      final String screen = data['screen'] ?? 'home';
+      final String? distributorId = data['distributor_id'];
+
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    
+    print('📱 Foreground notification received:');
+    print('   Current User ID: ${currentUserId ?? "Not logged in"}');
+    print('   Distributor ID: ${distributorId ?? "None"}');
+    print('   Title: $title');
+    
+    // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (optional - يمكن تعطيله)
+    // if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
+    //   print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
+    //   return;
+    // }
 
     // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
-    if (!await _shouldShowNotification(screen, distributorId: distributorId)) {
+    final shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
+    print('   Should show: $shouldShow');
+    
+    if (!shouldShow) {
       print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
       return;
     }
@@ -498,6 +586,12 @@ Future<void> main() async {
     print('🏷️ النوع: $type');
     print('👤 الموزع: ${distributorId ?? "عام"}');
 
+    // Build payload: "screen|distributor_id" or just "screen"
+    String payload = screen;
+    if (distributorId != null && distributorId.isNotEmpty) {
+      payload = '$screen|$distributorId';
+    }
+    
     flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
@@ -529,8 +623,14 @@ Future<void> main() async {
           category: AndroidNotificationCategory.message,
         ),
       ),
-      payload: screen,
+      payload: payload,
     );
+    
+    print('🟢 === Foreground handler completed successfully ===');
+    } catch (e, stackTrace) {
+      print('❌❌❌ FATAL ERROR in foreground handler: $e');
+      print('Stack trace: $stackTrace');
+    }
   });
 
   pdfrxFlutterInitialize();
@@ -543,7 +643,7 @@ Future<void> main() async {
   Hive.registerAdapter(CacheEntryAdapter());
   Hive.registerAdapter(UserModelAdapter());
   await Hive.openBox<OrderItemModel>('orders');
-  await Hive.openBox<String>('favorites');
+  await Hive.openBox('favorites'); // Store as Map<String, Map<String, dynamic>>
   await Hive.openBox('api_cache');
   
   // Initialize subscription cache for background notifications

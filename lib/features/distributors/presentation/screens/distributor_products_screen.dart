@@ -54,9 +54,43 @@ final distributorProductsProvider =
     throw 'Failed to fetch products for distributor $distributorId';
   }
 
-  // 3. Parse and return
+  // 3. Parse and return (handle both regular and OCR products)
   final List<dynamic> data = response.data;
-  final products = data.map((d) => ProductModel.fromMap(Map<String, dynamic>.from(d))).toList();
+  final products = data.map((productData) {
+    try {
+      final d = Map<String, dynamic>.from(productData);
+      
+      // Check if this is an OCR product (has availablePackages field)
+      if (d.containsKey('availablePackages')) {
+        // OCR product - already in camelCase from Edge Function
+        return ProductModel(
+          id: d['id']?.toString() ?? '',
+          name: d['name']?.toString() ?? '',
+          company: d['company']?.toString() ?? '',
+          activePrinciple: d['activePrinciple']?.toString() ?? '',
+          imageUrl: d['imageUrl']?.toString() ?? '',
+          availablePackages: (d['availablePackages'] as List?)?.map((e) => e.toString()).toList() ?? [],
+          selectedPackage: d['selectedPackage']?.toString(),
+          price: (d['price'] as num?)?.toDouble(),
+          oldPrice: (d['oldPrice'] as num?)?.toDouble(),
+          priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
+          distributorId: d['distributorId']?.toString(),
+        );
+      } else {
+        // Regular product - use fromMap for snake_case fields
+        return ProductModel.fromMap(d).copyWith(
+          price: (d['price'] as num?)?.toDouble(),
+          oldPrice: (d['oldPrice'] as num?)?.toDouble(),
+          priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
+          selectedPackage: d['selectedPackage']?.toString(),
+          distributorId: d['distributorId']?.toString(),
+        );
+      }
+    } catch (e) {
+      print('Error parsing product: $e');
+      return null;
+    }
+  }).whereType<ProductModel>().toList();
 
   // 4. Save raw data to local cache
   cache.set(cacheKey, data, duration: const Duration(minutes: 30));
@@ -69,8 +103,20 @@ final distributorProductsProvider =
 /* -------------------------------------------------------------------------- */
 
 class DistributorProductsScreen extends HookConsumerWidget {
-  const DistributorProductsScreen({super.key, required this.distributor});
-  final DistributorModel distributor;
+  const DistributorProductsScreen({
+    super.key, 
+    this.distributor,
+    this.distributorId,
+    this.distributorName,
+  }) : assert(distributor != null || (distributorId != null && distributorName != null),
+             'Either distributor or both distributorId and distributorName must be provided');
+  
+  final DistributorModel? distributor;
+  final String? distributorId;
+  final String? distributorName;
+  
+  String get _distributorId => distributor?.id ?? distributorId!;
+  String get _distributorName => distributor?.displayName ?? distributorName!;
 
   // دالة مساعدة لحساب نقاط الأولوية في البحث
   int _calculateSearchScore(ProductModel product, String query) {
@@ -269,7 +315,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           ],
                         ),
                         child: Text(
-                          distributor.displayName,
+                          _distributorName,
                           style: TextStyle(
                             color: theme.colorScheme.onPrimary,
                             fontSize: 14,
@@ -335,8 +381,8 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       const Spacer(),
                       Consumer(
                         builder: (context, ref, child) {
-                          final favoriteIds = ref.watch(favoritesProvider);
-                          final isFavorite = favoriteIds.contains(
+                          final favoritesMap = ref.watch(favoritesProvider);
+                          final isFavorite = favoritesMap.containsKey(
                               '${product.id}_${product.distributorId}_${product.selectedPackage}');
                           return Container(
                             decoration: BoxDecoration(
@@ -593,7 +639,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
     @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync =
-        ref.watch(distributorProductsProvider(distributor.id));
+        ref.watch(distributorProductsProvider(_distributorId));
     final searchQuery = useState<String>('');
     final searchController = useTextEditingController();
     final searchFocusNode = useFocusNode();
@@ -607,7 +653,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('منتجات ${distributor.displayName}'),
+          title: Text('منتجات $_distributorName'),
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
@@ -637,7 +683,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
         ),
         body: RefreshIndicator(
           onRefresh: () =>
-              ref.refresh(distributorProductsProvider(distributor.id).future),
+              ref.refresh(distributorProductsProvider(_distributorId).future),
           child: productsAsync.when(
             data: (products) {
               if (products.isEmpty) {
@@ -805,7 +851,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                   final product = filteredProducts[index];
 
                                   return _buildProductCard(context, ref, product,
-                                      searchQuery.value, distributor.displayName);
+                                      searchQuery.value, _distributorName);
                                 },
                               ),
                   ),
@@ -838,7 +884,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () {
-                      ref.invalidate(distributorProductsProvider(distributor.id));
+                      ref.invalidate(distributorProductsProvider(_distributorId));
                     },
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('إعادة المحاولة'),
@@ -927,8 +973,8 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       ),
                       child: Consumer(
                         builder: (context, ref, child) {
-                          final favoriteIds = ref.watch(favoritesProvider);
-                          final isFavorite = favoriteIds.contains(
+                          final favoritesMap = ref.watch(favoritesProvider);
+                          final isFavorite = favoritesMap.containsKey(
                               '${product.id}_${product.distributorId}_${product.selectedPackage}');
                           return IconButton(
                             padding: EdgeInsets.zero,
