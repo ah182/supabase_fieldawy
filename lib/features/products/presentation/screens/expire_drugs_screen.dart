@@ -140,8 +140,8 @@ class ExpireDrugsScreen extends StatelessWidget {
                   return RefreshIndicator(
                     key: ValueKey('list_${items.length}'),
                     onRefresh: () async {
-                      ref.invalidate(expireDrugsProvider);
-                      await ref.read(expireDrugsProvider.future);
+                      ref.invalidate(myExpireDrugsProvider);
+                      await ref.read(myExpireDrugsProvider.future);
                     },
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(

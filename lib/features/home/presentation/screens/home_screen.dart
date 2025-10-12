@@ -116,7 +116,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _navigateToDistributor(String distributorId) async {
     if (_hasNavigatedToDistributor) return;
-    _hasNavigatedToDistributor = true;
     
     print('📍 التنقل لصفحة الموزع: $distributorId');
     
@@ -137,7 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (!mounted) return;
       
       // فتح صفحة منتجات الموزع
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => DistributorProductsScreen(
             distributorId: distributorId,
@@ -145,8 +144,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
       );
+      _hasNavigatedToDistributor = true;
     } catch (e) {
       print('❌ خطأ في جلب بيانات الموزع: $e');
+      _hasNavigatedToDistributor = false;
     }
   }
 

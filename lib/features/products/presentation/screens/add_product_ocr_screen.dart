@@ -24,11 +24,13 @@ class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
   final bool isFromOfferScreen;
   final bool isFromSurgicalTools;
+  final bool isFromReviewRequest;
   const AddProductOcrScreen({
     super.key,
     this.showExpirationDate = true,
     this.isFromOfferScreen = false,
     this.isFromSurgicalTools = false,
+    this.isFromReviewRequest = false,
   });
 
   @override
@@ -86,7 +88,13 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   void _validateForm() {
     bool isValid;
     
-    if (widget.isFromSurgicalTools) {
+    if (widget.isFromReviewRequest) {
+      // من صفحة التقييمات: الاسم + الشركة + المادة الفعالة فقط
+      isValid = _processedImageBytes != null &&
+          _nameController.text.isNotEmpty &&
+          _companyController.text.isNotEmpty &&
+          _activePrincipleController.text.isNotEmpty;
+    } else if (widget.isFromSurgicalTools) {
       // للأدوات الجراحية: الاسم + السعر + الوصف إجباري
       isValid = _processedImageBytes != null &&
           _nameController.text.isNotEmpty &&
@@ -301,6 +309,61 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       final company = _companyController.text;
       final activePrinciple = _activePrincipleController.text;
       String package = _packageController.text;
+      
+      // عند الاستخدام من صفحة التقييمات، نضيف المنتج للكتالوج ونرجع ID
+      if (widget.isFromReviewRequest) {
+        if (_selectedPackageType != null &&
+            !package
+                .toLowerCase()
+                .contains(_selectedPackageType!.toLowerCase())) {
+          package = '${package.trim()} $_selectedPackageType'.trim();
+        }
+
+        final productRepo = ref.read(productRepositoryProvider);
+        final userId = ref.read(authServiceProvider).currentUser?.id;
+        final userData = await ref.read(userDataProvider.future);
+        final distributorName = userData?.displayName ?? 'Unknown Distributor';
+
+        String? ocrProductId;  // تعريف المتغير خارج الـ if
+        
+        if (userId != null) {
+          ocrProductId = await productRepo.addOcrProduct(
+            distributorId: userId,
+            distributorName: distributorName,
+            productName: name,
+            productCompany: company,
+            activePrinciple: activePrinciple,
+            package: package,
+            imageUrl: finalUrl,
+          );
+
+          // Debug: طباعة القيمة المُرجعة
+          print('🔍 OCR Product ID returned: $ocrProductId');
+          print('🔍 OCR Product ID type: ${ocrProductId.runtimeType}');
+          
+          if (ocrProductId != null && ocrProductId.isNotEmpty && mounted) {
+            // التحقق من أن الـ ID صالح
+            if (ocrProductId.length < 10) {
+              print('⚠️ Invalid product ID: too short');
+              throw Exception('Invalid product ID format');
+            }
+            
+            print('✅ Returning product ID: $ocrProductId');
+            setState(() => _isSaving = false);
+            Navigator.pop(context, {
+              'product_id': ocrProductId,
+              'product_type': 'ocr_product',
+            });
+            return;
+          } else {
+            print('❌ OCR Product ID is null or empty!');
+          }
+        } else {
+          print('❌ User ID is null!');
+        }
+        throw Exception('Failed to add product: userId=${userId != null}, ocrProductId=$ocrProductId');
+      }
+      
       final price = double.tryParse(_priceController.text);
       if (price == null) throw Exception('Invalid price format');
 
@@ -531,7 +594,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 baseColor: Colors.white,
               )
             : Text(
-                'Save Product',
+                widget.isFromReviewRequest ? 'تأكيد الاختيار' : 'Save Product',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -844,16 +907,18 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       const SizedBox(height: 16),
                     ],
                     
-                    // السعر - إجباري دائماً
-                    _buildTextField(
-                        'Price',
-                        Icons.attach_money,
-                        _priceController,
-                        inputBgColor,
-                        inputBorderColor,
-                        priceColor,
-                        keyboardType: TextInputType.number),
-                    const SizedBox(height: 16),
+                    // السعر - إجباري دائماً (مخفي عند isFromReviewRequest)
+                    if (!widget.isFromReviewRequest) ...[
+                      _buildTextField(
+                          'Price',
+                          Icons.attach_money,
+                          _priceController,
+                          inputBgColor,
+                          inputBorderColor,
+                          priceColor,
+                          keyboardType: TextInputType.number),
+                      const SizedBox(height: 16),
+                    ],
                     
                     // Expiration Date - حسب showExpirationDate
                     if (widget.showExpirationDate)

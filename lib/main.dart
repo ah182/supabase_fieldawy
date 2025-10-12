@@ -148,10 +148,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // استخراج البيانات
   final String title = data['title'] ?? 'إشعار جديد';
-  final String body = data['body'] ?? '';
+  String body = data['body'] ?? '';
   final String type = data['type'] ?? 'general';
   final String screen = data['screen'] ?? 'home';
   final String? distributorId = data['distributor_id'];
+  final String? productName = data['product_name'];
+  final String? distributorName = data['distributor_name'];
   
   final currentUserId = Supabase.instance.client.auth.currentUser?.id;
   
@@ -160,17 +162,42 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('   Distributor ID: ${distributorId ?? "None"}');
   print('   Title: $title');
   
-  // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (optional - يمكن تعطيله)
-  // if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
-  //   print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
-  //   return;
-  // }
+  // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (لا يجب أن يستقبل إشعاراته الخاصة)
+  if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
+    print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
+    return;
+  }
   
-  // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
+  // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
+  // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
+  // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
   bool shouldShow = true;
+  bool isSubscribedToDistributor = false;
   try {
     shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
     print('   Should show: $shouldShow');
+    
+    // Check subscription status for price updates from distributors
+    if (shouldShow && (screen == 'price_action' || screen == 'expire_soon_price') && distributorId != null && distributorId.isNotEmpty) {
+      if (currentUserId != null) {
+        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
+      } else {
+        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
+      }
+      print('   Is subscribed to distributor: $isSubscribedToDistributor');
+      
+      // Customize body based on subscription status
+      if (!isSubscribedToDistributor && productName != null && productName.isNotEmpty) {
+        // User is NOT subscribed but has price notifications enabled
+        // Show product name only (without distributor name)
+        body = '\n$productName';
+        print('   Body customized (not subscribed): $body');
+      } else if (isSubscribedToDistributor && productName != null && distributorName != null) {
+        // User IS subscribed - show product with distributor name
+        body = '\n$productName - $distributorName';
+        print('   Body customized (subscribed): $body');
+      }
+    }
   } catch (e) {
     print('⚠️ خطأ في فحص الإشعارات في الخلفية: $e');
     // في حالة الخطأ، نعرض الإشعار
@@ -249,7 +276,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-// ✅ دالة للتحقق من تفضيلات الإشعارات
+// ✅ دالة للتحقق من تفضيلات الإشعارات للمستقبل فقط
+// هذه الدالة تفحص إعدادات استقبال الإشعارات للمستخدم الحالي (المستقبل)
+// ولا تتأثر بإعدادات المرسل - فالموزع يمكنه إرسال إشعارات حتى لو قافل استقباله
 Future<bool> _shouldShowNotification(String screen, {String? distributorId}) async {
   print('🔍 _shouldShowNotification called: screen=$screen, distributor=$distributorId');
   try {
@@ -539,10 +568,12 @@ Future<void> main() async {
 
       // استخراج البيانات من data payload
       final String title = data['title'] ?? 'إشعار جديد';
-      final String body = data['body'] ?? '';
+      String body = data['body'] ?? '';
       final String type = data['type'] ?? 'general';
       final String screen = data['screen'] ?? 'home';
       final String? distributorId = data['distributor_id'];
+      final String? productName = data['product_name'];
+      final String? distributorName = data['distributor_name'];
 
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     
@@ -551,15 +582,42 @@ Future<void> main() async {
     print('   Distributor ID: ${distributorId ?? "None"}');
     print('   Title: $title');
     
-    // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (optional - يمكن تعطيله)
-    // if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
-    //   print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
-    //   return;
-    // }
+    // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (لا يجب أن يستقبل إشعاراته الخاصة)
+    if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
+      print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
+      return;
+    }
 
-    // ✅ فلترة الإشعارات حسب تفضيلات المستخدم
-    final shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
-    print('   Should show: $shouldShow');
+    // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
+    // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
+    // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
+    bool shouldShow = true;
+    bool isSubscribedToDistributor = false;
+    try {
+      shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
+      print('   Should show: $shouldShow');
+      
+      // Check subscription status for price updates from distributors
+      if (shouldShow && (screen == 'price_action' || screen == 'expire_soon_price') && distributorId != null && distributorId.isNotEmpty) {
+        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
+        print('   Is subscribed to distributor: $isSubscribedToDistributor');
+        
+        // Customize body based on subscription status
+        if (!isSubscribedToDistributor && productName != null && productName.isNotEmpty) {
+          // User is NOT subscribed but has price notifications enabled
+          // Show product name only (without distributor name)
+          body = productName;
+          print('   Body customized (not subscribed): $body');
+        } else if (isSubscribedToDistributor && productName != null && distributorName != null) {
+          // User IS subscribed - show product with distributor name
+          body = '$productName - $distributorName';
+          print('   Body customized (subscribed): $body');
+        }
+      }
+    } catch (e) {
+      print('⚠️ خطأ في فحص الإشعارات: $e');
+      shouldShow = true;
+    }
     
     if (!shouldShow) {
       print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
@@ -791,6 +849,7 @@ class NoInternetScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: Center(
@@ -849,6 +908,7 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
     final themeMode = ref.watch(themeNotifierProvider);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       scaffoldMessengerKey: scaffoldMessengerKey,
       key: ValueKey(locale),
       debugShowCheckedModeBanner: false,

@@ -108,11 +108,13 @@ export default {
           tabName = 'offers';
         }
       } else if (table === 'distributor_products' || table === 'distributor_ocr_products') {
-        // Get product name and distributor name
+        // Get product name and distributor name separately for flexible notification
+        let prodName = 'منتج';
+        let distributorName = '';
+        
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
           try {
             // Fetch product name
-            let prodName = 'منتج';
             if (table === 'distributor_products' && record.product_id) {
               const prodResponse = await fetch(
                 `${env.SUPABASE_URL}/rest/v1/products?id=eq.${record.product_id}&select=name`,
@@ -144,7 +146,6 @@ export default {
             }
             
             // Fetch distributor name
-            let distributorName = '';
             if (record.distributor_id) {
               const userResponse = await fetch(
                 `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.distributor_id}&select=full_name,username`,
@@ -161,12 +162,17 @@ export default {
               }
             }
             
+            // For display: combine product name with distributor if available
             productName = distributorName ? `${prodName} - ${distributorName}` : prodName;
           } catch (err) {
             console.error('Error fetching product/distributor:', err);
             productName = 'منتج';
           }
         }
+        
+        // Store separately for flexible client-side handling
+        record._product_name_only = prodName;
+        record._distributor_name = distributorName;
         
         // Check expiration date
         let isExpiringSoon = false;
@@ -235,12 +241,12 @@ export default {
       let screen = '';
 
       if (tabName === 'surgical') {
-        title = isNew ? '🔧 أداة جديدة' : '🔧 تحديث أداة';
-        body = productName;
+        title = isNew ? '🩺 أداة طبية جديدة' : '🩺 تحديث أداة طبية';
+        body = `\n${productName}`;
         screen = 'surgical';
       } else if (tabName === 'offers') {
         title = '🎁 عرض جديد';
-        body = productName;
+        body = `\n${productName}`;
         screen = 'offers';
       } else if (tabName === 'expire_soon') {
         let daysLeft = '';
@@ -250,30 +256,30 @@ export default {
           const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
           daysLeft = ` - ينتهي خلال ${days} يوم`;
         }
-        title = '⚠️ تم إضافة منتج قريب الصلاحية';
-        body = `${productName}${daysLeft}`;
+        title = '⚠️ منتج قريب الصلاحية';
+        body = `\n${productName}${daysLeft}`;
         screen = 'expire_soon';
       } else if (tabName === 'expire_soon_price') {
-        title = '💰⚠️ تحديث سعر منتج على وشك انتهاء صلاحيته';
-        body = productName;
+        title = '💰⚠️ تحديث سعر منتج قريب الصلاحية';
+        body = `\n${productName}`;
         screen = 'price_action';
       } else if (tabName === 'expire_soon_update') {
-        title = '🔄⚠️ تم تحديث منتج تنتهي صلاحيته قريباً';
-        body = productName;
+        title = '🔄⚠️ تحديث منتج قريب الصلاحية';
+        body = `\n${productName}`;
         screen = 'expire_soon';
       } else if (tabName === 'price_action') {
         if (table === 'distributor_surgical_tools') {
-          title = '💰 تم تحديث سعر أداة';
+          title = '💰 تحديث سعر أداة طبية';
         } else if (table === 'offers') {
-          title = '💰 تم تحديث سعر عرض';
+          title = '💰 تحديث سعر عرض';
         } else {
-          title = '💰 تم تحديث سعر منتج';
+          title = '💰 تحديث سعر منتج';
         }
-        body = productName;
+        body = `\n${productName}`;
         screen = 'price_action';
       } else {
         title = isNew ? '✅ منتج جديد' : '🔄 تحديث منتج';
-        body = productName;
+        body = `\n${productName}`;
         screen = 'home';
       }
 
@@ -287,15 +293,31 @@ export default {
 
       const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
       
+      // Build data payload with flexible fields for client-side customization
+      const dataPayload = {
+        title: title,
+        body: body,
+        type: 'product_update',
+        screen: screen,
+      };
+      
+      // Add distributor info for price updates from distributor products
+      if (isPriceUpdate && record.distributor_id) {
+        dataPayload.distributor_id = record.distributor_id;
+        
+        // Add separated product and distributor names for flexible handling
+        if (record._product_name_only) {
+          dataPayload.product_name = record._product_name_only;
+        }
+        if (record._distributor_name) {
+          dataPayload.distributor_name = record._distributor_name;
+        }
+      }
+      
       const message = {
         message: {
           topic: 'all_users',
-          data: {
-            title: title,
-            body: body,
-            type: 'product_update',
-            screen: screen,
-          },
+          data: dataPayload,
           android: {
             priority: 'high',
           },

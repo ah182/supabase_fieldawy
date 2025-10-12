@@ -103,20 +103,38 @@ final distributorProductsProvider =
 /* -------------------------------------------------------------------------- */
 
 class DistributorProductsScreen extends HookConsumerWidget {
-  const DistributorProductsScreen({
-    super.key, 
+  DistributorProductsScreen({
+    super.key,
     this.distributor,
     this.distributorId,
     this.distributorName,
-  }) : assert(distributor != null || (distributorId != null && distributorName != null),
-             'Either distributor or both distributorId and distributorName must be provided');
+  }) {
+    if (distributor == null &&
+        (distributorId == null || distributorName == null)) {
+      throw StateError(
+          'Either distributor or both distributorId and distributorName must be provided');
+    }
+  }
   
   final DistributorModel? distributor;
   final String? distributorId;
   final String? distributorName;
   
-  String get _distributorId => distributor?.id ?? distributorId!;
-  String get _distributorName => distributor?.displayName ?? distributorName!;
+  String get _distributorId {
+    final id = distributor?.id ?? distributorId;
+    if (id == null) {
+      throw StateError('Distributor id is required but was not provided');
+    }
+    return id;
+  }
+
+  String get _distributorName {
+    final name = distributor?.displayName ?? distributorName;
+    if (name == null) {
+      throw StateError('Distributor name is required but was not provided');
+    }
+    return name;
+  }
 
   // دالة مساعدة لحساب نقاط الأولوية في البحث
   int _calculateSearchScore(ProductModel product, String query) {

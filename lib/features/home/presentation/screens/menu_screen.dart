@@ -16,6 +16,7 @@ import 'package:fieldawy_store/features/distributors/presentation/screens/distri
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
+import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -99,6 +100,14 @@ class MenuScreen extends ConsumerWidget {
             title: 'home'.tr(),
             onTap: () => ZoomDrawer.of(context)!.close()),
         _buildMenuItem(
+            icon: Icons.rate_review,
+            title: 'تقييمات المنتجات',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ProductsWithReviewsScreen()));
+            }),
+        _buildMenuItem(
             icon: Icons.dashboard_outlined,
             title: 'dashboard'.tr(),
             onTap: () {}),
@@ -152,6 +161,14 @@ class MenuScreen extends ConsumerWidget {
             icon: Icons.home_outlined,
             title: 'home'.tr(),
             onTap: () => ZoomDrawer.of(context)!.close()),
+        _buildMenuItem(
+            icon: Icons.rate_review,
+            title: 'تقييمات المنتجات',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ProductsWithReviewsScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.people_alt_outlined,
             title: 'distributors'.tr(),
@@ -209,6 +226,14 @@ class MenuScreen extends ConsumerWidget {
             icon: Icons.home_outlined,
             title: 'home'.tr(),
             onTap: () => ZoomDrawer.of(context)!.close()),
+        _buildMenuItem(
+            icon: Icons.rate_review,
+            title: 'تقييمات المنتجات',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ProductsWithReviewsScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.person_outline, title: 'profile'.tr(), onTap: () {}),
       ],

@@ -19,10 +19,12 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
   final bool isFromOfferScreen;
+  final bool isFromReviewRequest;
   const AddFromCatalogScreen({
     super.key,
     this.showExpirationDate = false,
     this.isFromOfferScreen = false,
+    this.isFromReviewRequest = false,
   });
 
   @override
@@ -398,7 +400,36 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
           ),
           floatingActionButton: validSelections.isNotEmpty
               ? FloatingActionButton.extended(
-                  onPressed: () async {
+                  onPressed: widget.isFromReviewRequest
+                      ? () {
+                          // عند الاستخدام من صفحة التقييمات، نرجع بيانات المنتج المختار
+                          final selection = ref.read(catalogSelectionControllerProvider);
+                          if (selection.prices.isEmpty) return;
+
+                          final selectedKey = selection.prices.keys.first;
+                          
+                          // Debug
+                          print('🔍 CATALOG: Selected Key: $selectedKey');
+                          
+                          // استخراج الـ product_id من الـ key
+                          // الـ key format: "product_id_package"
+                          // نحتاج آخر underscore لفصل الـ package
+                          final lastUnderscoreIndex = selectedKey.lastIndexOf('_');
+                          final productId = lastUnderscoreIndex > 0 
+                              ? selectedKey.substring(0, lastUnderscoreIndex)
+                              : selectedKey.split('_')[0];
+                          
+                          final productType = _tabController?.index == 0 ? 'product' : 'ocr_product';
+
+                          print('🔍 CATALOG: Extracted Product ID: $productId');
+                          print('🔍 CATALOG: Product Type: $productType');
+
+                          Navigator.pop(context, {
+                            'product_id': productId,
+                            'product_type': productType,
+                          });
+                        }
+                      : () async {
                     FocusScope.of(context).unfocus();
                     setState(() {
                       _isSaving = true;
@@ -726,9 +757,11 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                     }
                   },
                   label: Text(
-                    'add_items'.tr(
-                      namedArgs: {'count': validSelections.length.toString()},
-                    ),
+                    widget.isFromReviewRequest
+                        ? 'تأكيد الاختيار'
+                        : 'add_items'.tr(
+                            namedArgs: {'count': validSelections.length.toString()},
+                          ),
                   ),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
@@ -839,7 +872,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                               product: product,
                               package: package,
                               showExpirationDate: widget.showExpirationDate,
-                              singleSelection: widget.isFromOfferScreen);
+                              singleSelection: widget.isFromOfferScreen || widget.isFromReviewRequest,
+                              hidePrice: widget.isFromReviewRequest);
                         },
                       );
                     },
@@ -964,7 +998,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   package: package,
                                   showExpirationDate:
                                       widget.showExpirationDate,
-                                  singleSelection: widget.isFromOfferScreen);
+                                  singleSelection: widget.isFromOfferScreen || widget.isFromReviewRequest,
+                                  hidePrice: widget.isFromReviewRequest);
                         },
                       );
                     },
@@ -1019,12 +1054,14 @@ class _ProductCatalogItem extends HookConsumerWidget {
   final String package;
   final bool showExpirationDate;
   final bool singleSelection;
+  final bool hidePrice;
 
   const _ProductCatalogItem({
     required this.product,
     required this.package,
     this.showExpirationDate = false,
     this.singleSelection = false,
+    this.hidePrice = false,
   });
 
   @override
@@ -1173,28 +1210,29 @@ class _ProductCatalogItem extends HookConsumerWidget {
                       ),
                     const SizedBox(height: 8),
                     // === حقل السعر المحسن ===
-                    SizedBox(
-                      height: 40,
-                      child: TextField(
-                        controller: priceController,
-                        focusNode: focusNode,
-                        enabled: true,
-                        onChanged: (value) {
-                          final controller = ref.read(
-                              catalogSelectionControllerProvider.notifier);
+                    if (!hidePrice)
+                      SizedBox(
+                        height: 40,
+                        child: TextField(
+                          controller: priceController,
+                          focusNode: focusNode,
+                          enabled: true,
+                          onChanged: (value) {
+                            final controller = ref.read(
+                                catalogSelectionControllerProvider.notifier);
 
-                          if (value.trim().isEmpty) {
-                            // لو الحقل اتفضى → نخلي السعر صفر لكن نسيب المنتج متحدد
-                            controller.setPrice(product.id, package, '0');
-                          } else {
-                            // لو في قيمة → ابعتها
-                            controller.setPrice(product.id, package, value);
-                          }
-                        },
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'price'.tr(),
+                            if (value.trim().isEmpty) {
+                              // لو الحقل اتفضى → نخلي السعر صفر لكن نسيب المنتج متحدد
+                              controller.setPrice(product.id, package, '0');
+                            } else {
+                              // لو في قيمة → ابعتها
+                              controller.setPrice(product.id, package, value);
+                            }
+                          },
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: InputDecoration(
+                            labelText: 'price'.tr(),
                           prefixText: 'EGP ',
                           prefixStyle: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -1319,19 +1357,22 @@ class _ProductCatalogItem extends HookConsumerWidget {
                     controller.clearSelections(currentSelections);
                   }
                   
-                  controller.toggleProduct(product.id, package, priceController.text);
+                  // عند hidePrice، نستخدم قيمة افتراضية (1) بدلاً من قيمة حقل السعر
+                  controller.toggleProduct(product.id, package, hidePrice ? '1' : priceController.text);
 
-                  // لو المنتج بقى محدد، نركز على حقل السعر
-                  if (value) {
+                  // لو المنتج بقى محدد، نركز على حقل السعر (إلا إذا كان مخفي)
+                  if (value && !hidePrice) {
                     // استخدام Future.microtask علشان نتأكد إن الحقل اتشالّك قبل ما نركز عليه
                     Future.microtask(() {
                       focusNode.requestFocus();
                     });
-                  } else {
+                  } else if (!value) {
                     // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
-                    priceController.clear();
+                    if (!hidePrice) {
+                      priceController.clear();
+                      focusNode.unfocus();
+                    }
                     expirationDateController.clear();
-                    focusNode.unfocus();
                   }
                 },
               ),
