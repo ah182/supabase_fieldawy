@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,6 +8,8 @@ import 'package:fieldawy_store/features/authentication/presentation/screens/auth
 import 'package:fieldawy_store/features/authentication/presentation/screens/login_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
+import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
+import 'package:fieldawy_store/features/reviews/review_system.dart';
 
 import 'features/admin_dashboard/presentation/screens/admin_login_screen.dart';
 import 'features/admin_dashboard/presentation/widgets/admin_scaffold.dart';
@@ -155,6 +158,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final String? productName = data['product_name'];
   final String? distributorName = data['distributor_name'];
   
+  // ✅ تخطي الإشعارات الفارغة
+  if (body.trim().isEmpty && productName == null) {
+    print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
+    return;
+  }
+  
   final currentUserId = Supabase.instance.client.auth.currentUser?.id;
   
   print('📋 Background notification check:');
@@ -185,17 +194,19 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
       }
       print('   Is subscribed to distributor: $isSubscribedToDistributor');
+      print('   Product name: $productName');
+      print('   Distributor name: $distributorName');
       
       // Customize body based on subscription status
-      if (!isSubscribedToDistributor && productName != null && productName.isNotEmpty) {
-        // User is NOT subscribed but has price notifications enabled
-        // Show product name only (without distributor name)
-        body = '\n$productName';
-        print('   Body customized (not subscribed): $body');
-      } else if (isSubscribedToDistributor && productName != null && distributorName != null) {
-        // User IS subscribed - show product with distributor name
-        body = '\n$productName - $distributorName';
+      if (isSubscribedToDistributor && productName != null && distributorName != null && distributorName.isNotEmpty) {
+        // User IS subscribed - show distributor name first, then product name
+        body = '$distributorName\n$productName';
         print('   Body customized (subscribed): $body');
+      } else if (productName != null && productName.isNotEmpty) {
+        // User is NOT subscribed OR distributor name not available
+        // Show product name only
+        body = productName;
+        print('   Body customized (not subscribed or no distributor name): $body');
       }
     }
   } catch (e) {
@@ -209,6 +220,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
+  print('📩 إشعار في الخلفية:');
+  print('   العنوان: $title');
+  print('   المحتوى (قبل التخصيص): $body');
+  print('   النوع: $type');
+  print('   الموزع: ${distributorId ?? "عام"}');
+
+  // ✅ إشعارات التقييمات فيها notification payload من FCM - مش محتاجين نعرضها
+  // FCM بيعرضهم تلقائياً → لو عرضناهم هنا هيتكرروا!
+  if (type == 'new_product_review' || type == 'new_review_request') {
+    print('⏭️ Skipping review notification - FCM already shows it');
+    print('🔵 === Background handler completed successfully ===');
+    return;
+  }
+
+  // ✅ نعرض الإشعار مع التخصيص الكامل (نفس الـ foreground)
+  // باقي الإشعارات (منتجات، موزعين، إلخ) محتاجين نعرضها هنا
+  
   // تحديد القناة واللون
   String channelId = 'general_channel';
   String channelName = 'إشعارات عامة';
@@ -224,19 +252,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     color = const Color(0xFFFF9800);
   }
 
-  print('📩 إشعار في الخلفية:');
-  print('   العنوان: $title');
-  print('   المحتوى: $body');
-  print('   النوع: $type');
-  print('   الموزع: ${distributorId ?? "عام"}');
+  // Build payload: JSON string with all data
+  final payloadData = {
+    'screen': screen,
+    'distributor_id': distributorId,
+    'type': type,
+    'review_request_id': data['review_request_id'],
+    'product_id': data['product_id'],
+    'product_type': data['product_type'],
+  };
+  final payload = jsonEncode(payloadData);
 
-  // Build payload: "screen|distributor_id" or just "screen"
-  String payload = screen;
-  if (distributorId != null && distributorId.isNotEmpty) {
-    payload = '$screen|$distributorId';
-  }
-
-  // عرض الإشعار المحلي مع شعار التطبيق
+  print('   المحتوى النهائي: $body');
+  print('   Payload: $payload');
+  
+  // عرض الإشعار المخصص
   await localNotifications.show(
     DateTime.now().millisecondsSinceEpoch ~/ 1000,
     title,
@@ -264,6 +294,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         ticker: title,
         showWhen: true,
         category: AndroidNotificationCategory.message,
+        tag: 'fieldawy_${DateTime.now().millisecondsSinceEpoch}', // منع التكرار
       ),
     ),
     payload: payload,
@@ -345,15 +376,15 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
 }
 
 // دالة للتعامل مع النقر على الإشعارات
-void _handleNotificationTap(String screen, {String? distributorId}) {
-  print('🔔 معالجة النقر على الإشعار: $screen, distributor: $distributorId');
+void _handleNotificationTap(String screen, {String? distributorId, Map<String, dynamic>? data}) {
+  print('🔔 معالجة النقر على الإشعار: $screen, distributor: $distributorId, data: $data');
   
   final context = navigatorKey.currentContext;
   
   if (context != null) {
     // Context متاح، نفذ التنقل مباشرة
     print('✅ NavigatorContext متاح - بدء التنقل');
-    _performNavigation(context, screen, distributorId);
+    _performNavigation(context, screen, distributorId, data: data);
   } else {
     // Context مش متاح، احفظ الـ notification للاستخدام لاحقاً
     print('⏳ NavigatorContext غير متاح - حفظ الإشعار للمعالجة لاحقاً');
@@ -363,17 +394,83 @@ void _handleNotificationTap(String screen, {String? distributorId}) {
 }
 
 // دالة منفصلة لتنفيذ التنقل
-void _performNavigation(BuildContext context, String screen, String? distributorId) {
-  // إذا كان هناك distributorId، افتح صفحة الموزع
-  if (distributorId != null && distributorId.isNotEmpty) {
-    print('🔔 الانتقال إلى صفحة الموزع: $distributorId');
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => DrawerWrapper(distributorId: distributorId),
-      ),
-      (route) => false,
-    );
-    return;
+void _performNavigation(BuildContext context, String screen, String? distributorId, {Map<String, dynamic>? data}) async {
+  // ✅ معالجة إشعارات التقييمات
+  if (data != null && data['type'] != null) {
+    final type = data['type'];
+    
+    // إشعار طلب تقييم جديد → صفحة التقييمات العامة
+    if (type == 'new_review_request') {
+      print('🔔 الانتقال إلى صفحة التقييمات العامة');
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const ProductsWithReviewsScreen(),
+        ),
+      );
+      return; 
+    }
+    
+    // إشعار تعليق/تقييم جديد → صفحة تفاصيل التقييمات للمنتج
+    if (type == 'new_product_review') {
+      final reviewRequestId = data['review_request_id'];
+      if (reviewRequestId != null) {
+        print('🔔 الانتقال إلى صفحة تفاصيل التقييمات: $reviewRequestId');
+        
+        // جلب بيانات الـ request من Supabase
+        try {
+          final response = await Supabase.instance.client
+              .from('review_requests')
+              .select()
+              .eq('id', reviewRequestId)
+              .single();
+          
+          final request = ReviewRequestModel.fromJson(response);
+          
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ProductReviewDetailsScreen(request: request),
+            ),
+          );
+        } catch (e) {
+          print('❌ خطأ في جلب بيانات التقييم: $e');
+          // في حالة الخطأ، نروح للصفحة العامة
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ProductsWithReviewsScreen(),
+            ),
+          );
+        }
+        return;
+      }
+    }
+  }
+  
+  // ✅ فقط منتج جديد (home) + مشترك → صفحة الموزع
+  // باقي الحالات → التاب المناسب
+  if (distributorId != null && distributorId.isNotEmpty && screen == 'home') {
+    // فحص الاشتراك
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    bool isSubscribed = false;
+    
+    if (userId != null) {
+      isSubscribed = await DistributorSubscriptionService.isSubscribed(distributorId);
+    } else {
+      isSubscribed = await SubscriptionCacheService.isSubscribedCached(distributorId);
+    }
+    
+    if (isSubscribed) {
+      print('🔔 منتج جديد من موزع مشترك - الانتقال إلى صفحة الموزع: $distributorId');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => DrawerWrapper(distributorId: distributorId),
+        ),
+        (route) => false,
+      );
+      return;
+    } else {
+      print('🔔 منتج جديد من موزع غير مشترك - الانتقال إلى Home tab');
+      // هنكمل للكود العادي (home tab)
+    }
   }
 
   // تحديد tab index بناءً على screen
@@ -474,7 +571,7 @@ Future<void> main() async {
       print('🔔 تم فتح التطبيق من الإشعار: ${message.data}');
       final screen = message.data['screen'] ?? 'home';
       final distributorId = message.data['distributor_id'];
-      _handleNotificationTap(screen, distributorId: distributorId);
+      _handleNotificationTap(screen, distributorId: distributorId, data: message.data);
     }
   });
 
@@ -483,7 +580,7 @@ Future<void> main() async {
     print('🔔 تم فتح الإشعار من الخلفية: ${message.data}');
     final screen = message.data['screen'] ?? 'home';
     final distributorId = message.data['distributor_id'];
-    _handleNotificationTap(screen, distributorId: distributorId);
+    _handleNotificationTap(screen, distributorId: distributorId, data: message.data);
   });
 
   // ✅ إعدادات الإشعارات المحلية
@@ -549,12 +646,21 @@ Future<void> main() async {
       if (response.payload != null) {
         print('🔔 تم النقر على الإشعار: ${response.payload}');
         
-        // Parse payload - format: "screen|distributor_id" or just "screen"
-        final parts = response.payload!.split('|');
-        final screen = parts[0];
-        final distributorId = parts.length > 1 ? parts[1] : null;
-        
-        _handleNotificationTap(screen, distributorId: distributorId);
+        try {
+          // Parse JSON payload
+          final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+          final screen = data['screen'] ?? 'home';
+          final distributorId = data['distributor_id'];
+          
+          _handleNotificationTap(screen, distributorId: distributorId, data: data);
+        } catch (e) {
+          print('❌ خطأ في parse الـ payload: $e');
+          // Fallback: old format "screen|distributor_id"
+          final parts = response.payload!.split('|');
+          final screen = parts[0];
+          final distributorId = parts.length > 1 ? parts[1] : null;
+          _handleNotificationTap(screen, distributorId: distributorId);
+        }
       }
     },
   );
@@ -574,6 +680,12 @@ Future<void> main() async {
       final String? distributorId = data['distributor_id'];
       final String? productName = data['product_name'];
       final String? distributorName = data['distributor_name'];
+
+      // ✅ تخطي الإشعارات الفارغة
+      if (body.trim().isEmpty && productName == null) {
+        print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
+        return;
+      }
 
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     
@@ -601,17 +713,19 @@ Future<void> main() async {
       if (shouldShow && (screen == 'price_action' || screen == 'expire_soon_price') && distributorId != null && distributorId.isNotEmpty) {
         isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
         print('   Is subscribed to distributor: $isSubscribedToDistributor');
+        print('   Product name: $productName');
+        print('   Distributor name: $distributorName');
         
         // Customize body based on subscription status
-        if (!isSubscribedToDistributor && productName != null && productName.isNotEmpty) {
-          // User is NOT subscribed but has price notifications enabled
-          // Show product name only (without distributor name)
-          body = productName;
-          print('   Body customized (not subscribed): $body');
-        } else if (isSubscribedToDistributor && productName != null && distributorName != null) {
-          // User IS subscribed - show product with distributor name
-          body = '$productName - $distributorName';
+        if (isSubscribedToDistributor && productName != null && distributorName != null && distributorName.isNotEmpty) {
+          // User IS subscribed - show distributor name first, then product name
+          body = '$distributorName\n$productName';
           print('   Body customized (subscribed): $body');
+        } else if (productName != null && productName.isNotEmpty) {
+          // User is NOT subscribed OR distributor name not available
+          // Show product name only
+          body = productName;
+          print('   Body customized (not subscribed or no distributor name): $body');
         }
       }
     } catch (e) {
@@ -644,11 +758,16 @@ Future<void> main() async {
     print('🏷️ النوع: $type');
     print('👤 الموزع: ${distributorId ?? "عام"}');
 
-    // Build payload: "screen|distributor_id" or just "screen"
-    String payload = screen;
-    if (distributorId != null && distributorId.isNotEmpty) {
-      payload = '$screen|$distributorId';
-    }
+    // Build payload: JSON string with all data
+    final payloadData = {
+      'screen': screen,
+      'distributor_id': distributorId,
+      'type': type,
+      'review_request_id': data['review_request_id'],
+      'product_id': data['product_id'],
+      'product_type': data['product_type'],
+    };
+    final payload = jsonEncode(payloadData);
     
     flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,

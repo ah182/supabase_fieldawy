@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -724,15 +725,58 @@ class ProductReviewDetailsScreen extends ConsumerStatefulWidget {
 
 class _ProductReviewDetailsScreenState
     extends ConsumerState<ProductReviewDetailsScreen> {
+  Timer? _refreshTimer;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Auto refresh عند فتح الصفحة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(productReviewsProvider);
+      ref.invalidate(activeReviewRequestsProvider);
+    });
+    
+    // Auto refresh كل 30 ثانية للحصول على تحديثات من المستخدمين الآخرين
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        ref.invalidate(productReviewsProvider);
+        ref.invalidate(activeReviewRequestsProvider);
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
+    // مراقبة التقييمات للحصول على التحديثات الفورية
     final reviewsAsync = ref.watch(productReviewsProvider((
       productId: widget.request.productId,
       productType: widget.request.productType,
     )));
+    
+    // استخدام ref.watch للحصول على البيانات المحدثة مع key مختلف
+    final activeRequestsAsync = ref.watch(activeReviewRequestsProvider);
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    
+    // البحث عن الـ request المحدث من الـ provider
+    // إذا لم يتم العثور عليه، نستخدم widget.request
+    final updatedRequest = activeRequestsAsync.maybeWhen(
+      data: (requests) {
+        try {
+          return requests.firstWhere((r) => r.id == widget.request.id);
+        } catch (e) {
+          return widget.request;
+        }
+      },
+      orElse: () => widget.request,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -852,12 +896,13 @@ class _ProductReviewDetailsScreenState
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 18),
+                                const Icon(Icons.star, color: Colors.amber, size: 17),
                                 const SizedBox(width: 4),
                                 Text(
                                   widget.request.avgRating!.toStringAsFixed(1),
                                   style: textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 17
                                   ),
                                 ),
                               ],
@@ -876,21 +921,21 @@ class _ProductReviewDetailsScreenState
                     _buildCompactStatItem(
                       icon: Icons.rate_review,
                       label: 'تقييم',
-                      value: widget.request.totalReviewsCount,
+                      value: updatedRequest.totalReviewsCount,
                       color: colorScheme.primary,
                     ),
                     const SizedBox(width: 16),
                     _buildCompactStatItem(
                       icon: Icons.comment,
                       label: 'تعليق',
-                      value: widget.request.commentsCount,
+                      value: updatedRequest.commentsCount,
                       color: colorScheme.secondary,
                     ),
                   ],
                 ),
 
                 // حالة التعليقات
-                if (!widget.request.canAddComment) ...[
+                if (!updatedRequest.canAddComment) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding:
@@ -917,6 +962,33 @@ class _ProductReviewDetailsScreenState
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+
+          // رسالة تعريفية دائمة عن قاعدة الحذف التلقائي
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 54, 137, 225).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Color.fromARGB(255, 74, 105, 216), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'التعليقات التي تصل لـ 10 تقييمات "لا اتفق" يتم حذفها تلقائياً',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: const Color.fromARGB(255, 11, 129, 171),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -958,13 +1030,22 @@ class _ProductReviewDetailsScreenState
 
                 return RefreshIndicator(
                   onRefresh: () async {
+                    // Refresh كل البيانات
                     ref.invalidate(productReviewsProvider);
+                    ref.invalidate(activeReviewRequestsProvider);
+                    
+                    // انتظار التحديث
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: reviews.length,
                     itemBuilder: (context, index) {
-                      return ReviewDetailCard(review: reviews[index]);
+                      return ReviewDetailCard(
+                        review: reviews[index],
+                        productId: widget.request.productId,
+                        productType: widget.request.productType,
+                      );
                     },
                   ),
                 );
@@ -1027,6 +1108,11 @@ class _ProductReviewDetailsScreenState
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return null;
 
+    // منع صاحب الطلب من التقييم
+    if (currentUserId == widget.request.requestedBy) {
+      return null;
+    }
+
     final reviewsAsync = ref.watch(productReviewsProvider((
       productId: widget.request.productId,
       productType: widget.request.productType,
@@ -1051,11 +1137,13 @@ class _ProductReviewDetailsScreenState
   void _showAddReviewDialog(BuildContext context) {
     int rating = 0;
     final commentController = TextEditingController();
+    String? errorMessage;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
           left: 16,
@@ -1074,11 +1162,39 @@ class _ProductReviewDetailsScreenState
             const SizedBox(height: 24),
             Center(
               child: RatingInput(
-                onRatingChanged: (value) => rating = value,
+                onRatingChanged: (value) {
+                  rating = value;
+                  if (errorMessage != null) {
+                    setState(() => errorMessage = null);
+                  }
+                },
                 size: 40,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            // رسالة الخطأ
+            if (errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (!widget.request.isCommentsFull) ...[
               TextField(
                 controller: commentController,
@@ -1127,11 +1243,9 @@ class _ProductReviewDetailsScreenState
                   child: ElevatedButton(
                     onPressed: () async {
                       if (rating == 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('يجب اختيار التقييم بالنجوم'),
-                          ),
-                        );
+                        setState(() {
+                          errorMessage = '⭐ يجب اختيار التقييم بالنجوم أولاً';
+                        });
                         return;
                       }
 
@@ -1173,6 +1287,7 @@ class _ProductReviewDetailsScreenState
             const SizedBox(height: 16),
           ],
         ),
+        ),
       ),
     );
   }
@@ -1184,8 +1299,15 @@ class _ProductReviewDetailsScreenState
 
 class ReviewDetailCard extends ConsumerWidget {
   final ProductReviewModel review;
+  final String productId;
+  final String productType;
 
-  const ReviewDetailCard({super.key, required this.review});
+  const ReviewDetailCard({
+    super.key, 
+    required this.review,
+    required this.productId,
+    required this.productType,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1193,6 +1315,9 @@ class ReviewDetailCard extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isOwner = currentUserId == review.userId;
+    
+    // Debug
+    print('🎨 ReviewDetailCard: userName="${review.userName}", userId=${review.userId}');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1204,8 +1329,9 @@ class ReviewDetailCard extends ConsumerWidget {
             // Header: User info + Rating
             Row(
               children: [
+                // صورة المعلق
                 CircleAvatar(
-                  radius: 16,
+                  radius: 18,
                   backgroundImage: review.userPhoto != null
                       ? NetworkImage(review.userPhoto!)
                       : null,
@@ -1218,26 +1344,37 @@ class ReviewDetailCard extends ConsumerWidget {
                           style: TextStyle(
                             color: colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 14,
                           ),
                         )
                       : null,
                 ),
                 const SizedBox(width: 8),
+                // اسم المعلق والتاريخ
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        review.userName.isEmpty ? 'مستخدم' : review.userName,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           Text(
-                            review.userName,
-                            style: textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+                            _formatDate(review.createdAt),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 11,
                             ),
                           ),
                           if (review.isVerifiedPurchase) ...[
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             const Icon(
                               Icons.verified,
                               size: 14,
@@ -1246,27 +1383,11 @@ class ReviewDetailCard extends ConsumerWidget {
                           ],
                         ],
                       ),
-                      Text(
-                        _formatDate(review.createdAt),
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-                RatingStars(rating: review.rating.toDouble(), size: 14),
-                // زر الحذف (فقط لصاحب التعليق)
-                if (isOwner) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: Colors.red,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _confirmDeleteReview(context, ref),
-                  ),
-                ],
+                // النجوم
+                RatingStars(rating: review.rating.toDouble(), size: 16),
               ],
             ),
 
@@ -1286,27 +1407,148 @@ class ReviewDetailCard extends ConsumerWidget {
               ),
             ],
 
-            // Actions: Helpful button
+            // Actions: Helpful and Unhelpful buttons
             const SizedBox(height: 8),
             Row(
               children: [
+                // Like button
                 TextButton.icon(
                   onPressed: () async {
+                    print('👍 Voting helpful for review: ${review.id}');
+                    print('   Before: helpful=${review.helpfulCount}, unhelpful=${review.unhelpfulCount}');
+                    print('   Already voted: helpful=${review.currentUserVotedHelpful}, unhelpful=${review.currentUserVotedUnhelpful}');
+                    
                     final service = ref.read(reviewServiceProvider);
-                    await service.voteReviewHelpful(
+                    final result = await service.voteReviewHelpful(
                       reviewId: review.id,
                       isHelpful: true,
                     );
-                    ref.invalidate(productReviewsProvider);
+                    
+                    print('   API Result: $result');
+                    print('   New counts from API: helpful=${result['helpful_count']}, unhelpful=${result['unhelpful_count']}');
+                    
+                    if (result['success'] == true) {
+                      // Force refresh البيانات
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      final _ = ref.refresh(productReviewsProvider((
+                        productId: productId,
+                        productType: productType,
+                      )));
+                      
+                      // Refresh الـ header counts أيضاً
+                      ref.invalidate(activeReviewRequestsProvider);
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      // ignore: unused_result
+                      ref.refresh(activeReviewRequestsProvider);
+                      
+                      print('   Provider refreshed');
+                    }
                   },
                   icon: Icon(
                     review.currentUserVotedHelpful
                         ? Icons.thumb_up
                         : Icons.thumb_up_outlined,
                     size: 16,
+                    color: review.currentUserVotedHelpful ? Colors.green : null,
                   ),
-                  label: Text('مفيد (${review.helpfulCount})'),
+                  label: Text(
+                    'اتفق (${review.helpfulCount})',
+                    style: TextStyle(
+                      color: review.currentUserVotedHelpful ? Colors.green : null,
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
+                // Dislike button
+                TextButton.icon(
+                  onPressed: () async {
+                    print('👎 Voting unhelpful for review: ${review.id}');
+                    print('   Before: helpful=${review.helpfulCount}, unhelpful=${review.unhelpfulCount}');
+                    print('   Already voted: helpful=${review.currentUserVotedHelpful}, unhelpful=${review.currentUserVotedUnhelpful}');
+                    
+                    final service = ref.read(reviewServiceProvider);
+                    final result = await service.voteReviewHelpful(
+                      reviewId: review.id,
+                      isHelpful: false,
+                    );
+                    
+                    print('   API Result: $result');
+                    print('   New counts from API: helpful=${result['helpful_count']}, unhelpful=${result['unhelpful_count']}');
+                    
+                    if (result['success'] == true) {
+                      // التحقق من حذف التعليق (unhelpful >= 10)
+                      final unhelpfulCount = result['unhelpful_count'] ?? 0;
+                      final wasDeleted = unhelpfulCount >= 10;
+                      
+                      if (wasDeleted) {
+                        print('⚠️ Review was auto-deleted due to too many dislikes');
+                        // عرض رسالة في آخر الصفحة
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.delete_forever, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '🗑️ تم حذف التعليق تلقائياً بعد وصوله لـ 10 تقييمات "غير مفيد"',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 4),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                      
+                      // Force refresh البيانات (سواء اتحذف أو لا)
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      final _ = ref.refresh(productReviewsProvider((
+                        productId: productId,
+                        productType: productType,
+                      )));
+                      
+                      // Refresh الـ header counts أيضاً
+                      ref.invalidate(activeReviewRequestsProvider);
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      // ignore: unused_result
+                      ref.refresh(activeReviewRequestsProvider);
+                      
+                      print('   Provider refreshed');
+                    }
+                  },
+                  icon: Icon(
+                    review.currentUserVotedUnhelpful
+                        ? Icons.thumb_down
+                        : Icons.thumb_down_outlined,
+                    size: 16,
+                    color: review.currentUserVotedUnhelpful ? Colors.red : null,
+                  ),
+                  label: Text(
+                    ' لا اتفق (${review.unhelpfulCount})',
+                    style: TextStyle(
+                      color: review.currentUserVotedUnhelpful ? Colors.red : null,
+                    ),
+                  ),
+                ),
+                // زر الحذف (فقط لصاحب التعليق)
+                if (isOwner) ...[
+                  const SizedBox(width: 13),
+                  TextButton.icon(
+                    onPressed: () => _confirmDeleteReview(context, ref),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text(''),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -1357,8 +1599,13 @@ class ReviewDetailCard extends ConsumerWidget {
           backgroundColor: Colors.green,
         ),
       );
+      // Refresh كل البيانات المرتبطة فوراً
       ref.invalidate(productReviewsProvider);
       ref.invalidate(activeReviewRequestsProvider);
+      
+      // Force refresh مباشر
+      await Future.delayed(const Duration(milliseconds: 100));
+      final _ = ref.refresh(activeReviewRequestsProvider);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

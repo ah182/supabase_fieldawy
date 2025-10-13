@@ -106,7 +106,9 @@ class ProductReviewModel {
   final bool hasComment;
   final bool isVerifiedPurchase;
   final int helpfulCount;
+  final int unhelpfulCount;
   final bool currentUserVotedHelpful;
+  final bool currentUserVotedUnhelpful;
   final DateTime createdAt;
   final String? productName;
 
@@ -123,7 +125,9 @@ class ProductReviewModel {
     required this.hasComment,
     this.isVerifiedPurchase = false,
     this.helpfulCount = 0,
+    this.unhelpfulCount = 0,
     this.currentUserVotedHelpful = false,
+    this.currentUserVotedUnhelpful = false,
     required this.createdAt,
     this.productName,
   });
@@ -142,8 +146,11 @@ class ProductReviewModel {
       hasComment: json['has_comment'] as bool? ?? false,
       isVerifiedPurchase: json['is_verified_purchase'] as bool? ?? false,
       helpfulCount: json['helpful_count'] as int? ?? 0,
+      unhelpfulCount: json['unhelpful_count'] as int? ?? 0,
       currentUserVotedHelpful:
           json['current_user_voted_helpful'] as bool? ?? false,
+      currentUserVotedUnhelpful:
+          json['current_user_voted_unhelpful'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       productName: json['product_name'] as String?,
     );
@@ -370,9 +377,16 @@ class ReviewService {
         },
       );
 
-      return (response as List)
-          .map((json) => ProductReviewModel.fromJson(json))
+      final reviews = (response as List)
+          .map((json) {
+            print('📦 Review from DB: id=${json['id']}, helpful=${json['helpful_count']}, unhelpful=${json['unhelpful_count']}');
+            print('   👤 User: name=${json['user_name']}, photo=${json['user_photo']}');
+            return ProductReviewModel.fromJson(json);
+          })
           .toList();
+      
+      print('✅ Total reviews fetched: ${reviews.length}');
+      return reviews;
     } catch (e) {
       print('Error fetching product reviews: $e');
       return [];

@@ -48,6 +48,136 @@ export default {
       let tabName = 'home';
       let isPriceUpdate = false;
 
+      // Handle review requests
+      if (table === 'review_requests') {
+        // فقط للإضافات الجديدة (INSERT)
+        if (operation !== 'INSERT') {
+          console.log('⏭️ Skipping non-INSERT operation on review_requests');
+          return new Response('Skipped - not an INSERT', {
+            status: 200,
+            headers: corsHeaders
+          });
+        }
+        
+        let productName = record.product_name || 'منتج';
+        let requesterName = 'مستخدم';
+        
+        // جلب اسم صاحب الطلب من users
+        if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY && record.requested_by) {
+          try {
+            const userResponse = await fetch(
+              `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.requested_by}&select=display_name,email`,
+              {
+                headers: {
+                  'apikey': env.SUPABASE_SERVICE_KEY,
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                }
+              }
+            );
+            const userData = await userResponse.json();
+            if (userData && userData[0]) {
+              requesterName = userData[0].display_name || userData[0].email || 'مستخدم';
+            }
+          } catch (err) {
+            console.error('Error fetching requester data:', err);
+          }
+        }
+        
+        tabName = 'reviews';
+        
+        const title = '⭐ طلب تقييم جديد';
+        const body = `طلب ${requesterName} تقييم ${productName}`;
+        
+        return await sendFCMNotification(env, title, body, 'reviews', {
+          type: 'new_review_request',
+          review_request_id: record.id,
+          product_id: record.product_id,
+          product_type: record.product_type,
+        });
+      }
+      
+      // Handle product reviews (comments)
+      if (table === 'product_reviews') {
+        // فقط للإضافات الجديدة (INSERT)
+        if (operation !== 'INSERT') {
+          console.log('⏭️ Skipping non-INSERT operation on product_reviews');
+          return new Response('Skipped - not an INSERT', {
+            status: 200,
+            headers: corsHeaders
+          });
+        }
+        
+        // ✅ ✅ ✅ تجاهل التقييمات بدون تعليق!
+        const comment = record.comment || '';
+        if (!comment || comment.trim() === '') {
+          console.log('⏭️ Skipping - no comment (rating only)');
+          return new Response('Skipped - no comment', {
+            status: 200,
+            headers: corsHeaders
+          });
+        }
+        
+        let productName = 'منتج';
+        let reviewerName = 'مستخدم';
+        const rating = record.rating || 0;
+        
+        // جلب البيانات من Supabase
+        if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
+          try {
+            // جلب اسم المنتج من review_requests
+            if (record.review_request_id) {
+              const reqResponse = await fetch(
+                `${env.SUPABASE_URL}/rest/v1/review_requests?id=eq.${record.review_request_id}&select=product_name`,
+                {
+                  headers: {
+                    'apikey': env.SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  }
+                }
+              );
+              const reqData = await reqResponse.json();
+              if (reqData && reqData[0] && reqData[0].product_name) {
+                productName = reqData[0].product_name;
+              }
+            }
+            
+            // جلب اسم المراجع من users
+            if (record.user_id) {
+              const userResponse = await fetch(
+                `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.user_id}&select=display_name,email`,
+                {
+                  headers: {
+                    'apikey': env.SUPABASE_SERVICE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  }
+                }
+              );
+              const userData = await userResponse.json();
+              if (userData && userData[0]) {
+                reviewerName = userData[0].display_name || userData[0].email || 'مستخدم';
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching user/product data:', err);
+          }
+        }
+        
+        tabName = 'reviews';
+        
+        // رسالة واضحة عن التقييم
+        const title = `⭐ تم تقييم ${productName}`;
+        const body = `${reviewerName} (${rating}⭐): ${comment}`;
+        
+        return await sendFCMNotification(env, title, body, 'reviews', {
+          type: 'new_product_review',
+          review_id: record.id,
+          review_request_id: record.review_request_id,
+          product_id: record.product_id,
+          product_type: record.product_type,
+          rating: String(rating), // ✅ تحويل لـ string
+        });
+      }
+
       // Fetch product name based on table
       if (table === 'distributor_surgical_tools' || table === 'surgical_tools') {
         productName = record.tool_name || record.description || 'أداة جراحية';
@@ -148,7 +278,7 @@ export default {
             // Fetch distributor name
             if (record.distributor_id) {
               const userResponse = await fetch(
-                `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.distributor_id}&select=full_name,username`,
+                `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.distributor_id}&select=display_name,email`,
                 {
                   headers: {
                     'apikey': env.SUPABASE_SERVICE_KEY,
@@ -157,13 +287,16 @@ export default {
                 }
               );
               const userData = await userResponse.json();
+              console.log('   Fetched distributor data:', userData);
               if (userData && userData[0]) {
-                distributorName = userData[0].full_name || userData[0].username || '';
+                distributorName = userData[0].display_name || userData[0].email || '';
+                console.log('   Distributor name:', distributorName);
               }
             }
             
-            // For display: combine product name with distributor if available
-            productName = distributorName ? `${prodName} - ${distributorName}` : prodName;
+            // Keep product name clean (without distributor)
+            // Client will combine them based on subscription status
+            productName = prodName;
           } catch (err) {
             console.error('Error fetching product/distributor:', err);
             productName = 'منتج';
@@ -221,8 +354,10 @@ export default {
           tabName = 'expire_soon';
         }
         
-        // Skip regular product inserts
-        if (operation === 'INSERT' && tabName === 'home') {
+        // Skip regular product inserts (but NOT from distributors)
+        // Distributor products should trigger notifications for subscribers
+        if (operation === 'INSERT' && tabName === 'home' && 
+            table !== 'distributor_products' && table !== 'distributor_ocr_products') {
           console.log('⏭️ Skipping regular product insert');
           return new Response('Skipped - regular product insert', {
             status: 200,
@@ -242,11 +377,11 @@ export default {
 
       if (tabName === 'surgical') {
         title = isNew ? '🩺 أداة طبية جديدة' : '🩺 تحديث أداة طبية';
-        body = `\n${productName}`;
+        body = productName;
         screen = 'surgical';
       } else if (tabName === 'offers') {
         title = '🎁 عرض جديد';
-        body = `\n${productName}`;
+        body = productName;
         screen = 'offers';
       } else if (tabName === 'expire_soon') {
         let daysLeft = '';
@@ -257,29 +392,46 @@ export default {
           daysLeft = ` - ينتهي خلال ${days} يوم`;
         }
         title = '⚠️ منتج قريب الصلاحية';
-        body = `\n${productName}${daysLeft}`;
+        body = `${productName}${daysLeft}`;
         screen = 'expire_soon';
       } else if (tabName === 'expire_soon_price') {
         title = '💰⚠️ تحديث سعر منتج قريب الصلاحية';
-        body = `\n${productName}`;
-        screen = 'price_action';
+        body = productName;
+        screen = 'expire_soon';
       } else if (tabName === 'expire_soon_update') {
         title = '🔄⚠️ تحديث منتج قريب الصلاحية';
-        body = `\n${productName}`;
+        body = productName;
         screen = 'expire_soon';
       } else if (tabName === 'price_action') {
-        if (table === 'distributor_surgical_tools') {
-          title = '💰 تحديث سعر أداة طبية';
-        } else if (table === 'offers') {
-          title = '💰 تحديث سعر عرض';
+        // فحص: لو INSERT يبقى منتج جديد، مش تحديث سعر
+        if (isNew) {
+          if (table === 'distributor_surgical_tools') {
+            title = '🩺 أداة طبية جديدة';
+            screen = 'surgical';
+          } else if (table === 'distributor_products' || table === 'distributor_ocr_products') {
+            title = '✅ منتج جديد من موزع';
+            screen = 'home';
+          } else {
+            title = '✅ منتج جديد';
+            screen = 'home';
+          }
         } else {
-          title = '💰 تحديث سعر منتج';
+          // UPDATE - تحديث سعر
+          if (table === 'distributor_surgical_tools' || table === 'surgical_tools') {
+            title = '💰 تحديث سعر أداة طبية';
+            screen = 'surgical';
+          } else if (table === 'offers') {
+            title = '💰 تحديث سعر عرض';
+            screen = 'offers';
+          } else {
+            title = '💰 تحديث سعر منتج';
+            screen = 'price_action';
+          }
         }
-        body = `\n${productName}`;
-        screen = 'price_action';
+        body = productName;
       } else {
         title = isNew ? '✅ منتج جديد' : '🔄 تحديث منتج';
-        body = `\n${productName}`;
+        body = productName;
         screen = 'home';
       }
 
@@ -301,8 +453,8 @@ export default {
         screen: screen,
       };
       
-      // Add distributor info for price updates from distributor products
-      if (isPriceUpdate && record.distributor_id) {
+      // Add distributor info for all distributor products (new or price update)
+      if (record.distributor_id && (table === 'distributor_products' || table === 'distributor_ocr_products')) {
         dataPayload.distributor_id = record.distributor_id;
         
         // Add separated product and distributor names for flexible handling
@@ -317,6 +469,7 @@ export default {
       const message = {
         message: {
           topic: 'all_users',
+          // ✅ data only - background handler will show customized notification
           data: dataPayload,
           android: {
             priority: 'high',
@@ -355,6 +508,78 @@ export default {
     }
   },
 };
+
+// Helper function to send FCM notification
+async function sendFCMNotification(env, title, body, screen, extraData = {}) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  try {
+    if (!env.FIREBASE_SERVICE_ACCOUNT) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT not configured');
+    }
+
+    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(serviceAccount);
+
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
+    
+    const dataPayload = {
+      title: title,
+      body: body,
+      screen: screen,
+      ...extraData,
+    };
+    
+    const message = {
+      message: {
+        topic: 'all_users',
+        // ✅ notification: يظهر عندما التطبيق مقفول/background
+        notification: {
+          title: title,
+          body: body,
+        },
+        // ✅ data: للتعامل معه في التطبيق
+        data: dataPayload,
+        android: {
+          priority: 'high',
+        },
+      }
+    };
+
+    const fcmResponse = await fetch(fcmUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!fcmResponse.ok) {
+      const error = await fcmResponse.text();
+      throw new Error(`FCM Error: ${error}`);
+    }
+
+    console.log('✅ Notification sent successfully!');
+    console.log('   Title:', title);
+
+    return new Response('Notification sent', {
+      status: 200,
+      headers: corsHeaders
+    });
+
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return new Response(`Error: ${error.message}`, {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+}
 
 // Helper function to get Firebase access token
 async function getAccessToken(serviceAccount) {
