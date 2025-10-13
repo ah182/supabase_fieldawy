@@ -268,28 +268,233 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   Future<void> _processOCR(File image) async {
     final inputImage = InputImage.fromFilePath(image.path);
     final recognizedText = await _textRecognizer.processImage(inputImage);
-    _parseRecognizedText(recognizedText);
+    _parseRecognizedTextAI(recognizedText);
   }
 
-  void _parseRecognizedText(RecognizedText recognizedText) {
+  /// 🤖 AI-Powered Text Parsing
+  /// استخراج ذكي للبيانات من النص مع تصحيح الأخطاء
+  void _parseRecognizedTextAI(RecognizedText recognizedText) {
     final lines = recognizedText.blocks.expand((b) => b.lines).toList();
     if (lines.isEmpty) return;
 
-    _nameController.text = lines.first.text;
-    _companyController.text = lines.length > 1 ? lines.last.text : '';
-    _activePrincipleController.text = '';
-
-    String package = '';
-    String? price;
-    final lowerLines = lines.map((l) => l.text.toLowerCase());
-    for (var line in lowerLines) {
-      if (line.contains('ml') || line.contains('sachet')) package = line;
-      final match = RegExp(r'\b\d+(?:\.\d{1,2})?\b').firstMatch(line);
-      if (match != null) price = match.group(0);
+    // تجميع كل النصوص
+    final allText = lines.map((l) => l.text.trim()).where((t) => t.isNotEmpty).toList();
+    
+    print('🔍 OCR Extracted Lines:');
+    for (var i = 0; i < allText.length; i++) {
+      print('  Line $i: "${allText[i]}"');
     }
 
-    _packageController.text = package;
+    // ✅ 1. استخراج اسم المنتج (أول سطر كبير عادة)
+    _nameController.text = _extractProductName(allText);
+
+    // ✅ 2. استخراج اسم الشركة (آخر سطر أو سطر يحتوي على كلمات مفتاحية)
+    _companyController.text = _extractCompanyName(allText);
+
+    // ✅ 3. استخراج المادة الفعالة (سطر يحتوي على اسم كيميائي)
+    _activePrincipleController.text = _extractActivePrinciple(allText);
+
+    // ✅ 4. استخراج معلومات التعبئة (ml, mg, tab, vial, etc)
+    final packageInfo = _extractPackageInfo(allText);
+    _packageController.text = packageInfo['description'] ?? '';
+    _selectedPackageType = packageInfo['type'];
+
+    // ✅ 5. استخراج السعر
+    final price = _extractPrice(allText);
     if (price != null) _priceController.text = price;
+
+    print('✅ AI Parsing Results:');
+    print('  Name: ${_nameController.text}');
+    print('  Company: ${_companyController.text}');
+    print('  Active: ${_activePrincipleController.text}');
+    print('  Package: ${_packageController.text}');
+    print('  Type: $_selectedPackageType');
+    print('  Price: ${_priceController.text}');
+  }
+
+  /// استخراج اسم المنتج (أول سطر كبير أو أول سطر غير رقمي)
+  String _extractProductName(List<String> lines) {
+    if (lines.isEmpty) return '';
+    
+    // نبحث عن أول سطر يحتوي على حروف (مش أرقام فقط)
+    for (var line in lines) {
+      final cleaned = line.trim();
+      // تجاهل الأسطر القصيرة جداً أو الأرقام فقط
+      if (cleaned.length < 2 || RegExp(r'^\d+$').hasMatch(cleaned)) continue;
+      
+      // تنظيف من الرموز غير المرغوبة
+      final name = _cleanText(cleaned);
+      if (name.length >= 2) return name;
+    }
+    
+    return lines.first.trim();
+  }
+
+  /// استخراج اسم الشركة (عادة آخر سطر أو سطر يحتوي على كلمات مثل pharma, lab, co)
+  String _extractCompanyName(List<String> lines) {
+    if (lines.length < 2) return '';
+
+    // الكلمات المفتاحية للشركات
+    final companyKeywords = [
+      'pharma', 'pharmaceutical', 'lab', 'laboratories', 
+      'co', 'company', 'ltd', 'inc', 'egypt', 'international',
+      'health', 'medical', 'care', 'industries'
+    ];
+
+    // نبحث من الآخر للأول
+    for (var i = lines.length - 1; i >= 0; i--) {
+      final line = lines[i].toLowerCase();
+      
+      // لو السطر يحتوي على كلمة مفتاحية
+      if (companyKeywords.any((keyword) => line.contains(keyword))) {
+        return _cleanText(lines[i]);
+      }
+    }
+
+    // لو مفيش، نرجع آخر سطر
+    return _cleanText(lines.last);
+  }
+
+  /// استخراج المادة الفعالة (سطر يحتوي على اسم كيميائي معقد)
+  String _extractActivePrinciple(List<String> lines) {
+    // نبحث عن سطر يحتوي على حروف معقدة (اسم دواء)
+    // عادة يحتوي على حروف كبيرة صغيرة متداخلة
+    
+    for (var line in lines) {
+      final cleaned = line.trim();
+      
+      // تجاهل الأسطر القصيرة أو الأرقام
+      if (cleaned.length < 3) continue;
+      
+      // لو السطر يحتوي على حروف كبيرة وصغيرة ومعقد
+      if (_looksLikeChemicalName(cleaned)) {
+        return _cleanText(cleaned);
+      }
+    }
+
+    // لو مفيش، نحاول نجيب السطر الثاني أو الثالث
+    if (lines.length > 2) return _cleanText(lines[1]);
+    return '';
+  }
+
+  /// فحص لو النص يشبه اسم كيميائي
+  bool _looksLikeChemicalName(String text) {
+    // الأسماء الكيميائية عادة:
+    // 1. تحتوي على حروف كبيرة وصغيرة
+    // 2. طويلة نسبياً (أكثر من 5 حروف)
+    // 3. قد تحتوي على أرقام لكن مش أرقام فقط
+    
+    if (text.length < 4) return false;
+    
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(text);
+    final hasLower = RegExp(r'[a-z]').hasMatch(text);
+    final notOnlyNumbers = !RegExp(r'^\d+$').hasMatch(text);
+    
+    return hasUpper && hasLower && notOnlyNumbers;
+  }
+
+  /// استخراج معلومات التعبئة (ml, mg, tab, etc)
+  Map<String, String?> _extractPackageInfo(List<String> lines) {
+    final allText = lines.join(' ').toLowerCase();
+    
+    // أنواع التعبئة وكلماتها المفتاحية
+    final packagePatterns = {
+      'bottle': RegExp(r'(\d+\s*ml|bottle)', caseSensitive: false),
+      'vial': RegExp(r'(\d+\s*vial|vial)', caseSensitive: false),
+      'tab': RegExp(r'(\d+\s*tab|tablet|tabs)', caseSensitive: false),
+      'amp': RegExp(r'(\d+\s*amp|ampoule|ampule)', caseSensitive: false),
+      'sachet': RegExp(r'(\d+\s*sachet|sach)', caseSensitive: false),
+      'strip': RegExp(r'(\d+\s*strip)', caseSensitive: false),
+      'cream': RegExp(r'(cream|ointment)', caseSensitive: false),
+      'gel': RegExp(r'(gel)', caseSensitive: false),
+      'spray': RegExp(r'(spray)', caseSensitive: false),
+      'drops': RegExp(r'(drops|drop)', caseSensitive: false),
+    };
+
+    String? packageType;
+    String description = '';
+
+    // نبحث عن كل نوع
+    for (var entry in packagePatterns.entries) {
+      final match = entry.value.firstMatch(allText);
+      if (match != null) {
+        packageType = entry.key;
+        description = match.group(0) ?? '';
+        
+        // نحاول نجيب السطر الكامل اللي فيه المعلومة دي
+        for (var line in lines) {
+          if (line.toLowerCase().contains(description.toLowerCase())) {
+            description = _cleanText(line);
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    // لو مفيش نوع محدد، نبحث عن أي رقم + وحدة
+    if (packageType == null) {
+      final unitMatch = RegExp(
+        r'(\d+\s*(?:ml|mg|g|kg|l|tab|caps|cap|piece|pcs))',
+        caseSensitive: false,
+      ).firstMatch(allText);
+      
+      if (unitMatch != null) {
+        description = unitMatch.group(0) ?? '';
+      }
+    }
+
+    return {
+      'type': packageType,
+      'description': description,
+    };
+  }
+
+  /// استخراج السعر (رقم مع رموز عملة أو كلمات مثل price, egp)
+  String? _extractPrice(List<String> lines) {
+    final allText = lines.join(' ');
+
+    // نبحث عن أنماط السعر المختلفة
+    final pricePatterns = [
+      RegExp(r'(?:price|egp|le|£|جنيه)\s*:?\s*(\d+(?:\.\d{1,2})?)', caseSensitive: false),
+      RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:egp|le|£|جنيه)', caseSensitive: false),
+      RegExp(r'(?:^|\s)(\d{2,4}(?:\.\d{1,2})?)\s*(?:egp|le|$)', caseSensitive: false),
+    ];
+
+    for (var pattern in pricePatterns) {
+      final match = pattern.firstMatch(allText);
+      if (match != null) {
+        final price = match.group(1);
+        if (price != null) {
+          // تحقق إن السعر معقول (بين 1 و 99999)
+          final priceNum = double.tryParse(price);
+          if (priceNum != null && priceNum >= 1 && priceNum < 100000) {
+            return price;
+          }
+        }
+      }
+    }
+
+    // لو مفيش، نبحث عن أي رقم معقول
+    for (var line in lines) {
+      final numberMatch = RegExp(r'\b(\d{1,5}(?:\.\d{1,2})?)\b').allMatches(line);
+      for (var match in numberMatch) {
+        final num = double.tryParse(match.group(1) ?? '');
+        if (num != null && num >= 10 && num < 100000) {
+          return match.group(1);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /// تنظيف النص من الرموز غير المرغوبة
+  String _cleanText(String text) {
+    return text
+        .replaceAll(RegExp(r'[®™©]'), '') // إزالة رموز العلامات التجارية
+        .replaceAll(RegExp(r'\s+'), ' ') // توحيد المسافات
+        .trim();
   }
 
   Future<void> _saveProduct() async {
