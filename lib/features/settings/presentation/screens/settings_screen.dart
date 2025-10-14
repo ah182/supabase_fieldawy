@@ -20,7 +20,7 @@ class SettingsScreen extends ConsumerWidget {
     final userData = ref.watch(userDataProvider);
     final userRole = userData.asData?.value?.role ?? '';
     final isDoctor = userRole == 'doctor';
-    final selectedIndex = isDoctor ? 4 : 3;
+    final selectedIndex = isDoctor ? 4 : 4; // Settings is at index 4 for both
 
     // دالة مساعدة لتغيير الثيم لتجنب تكرار الكود
     void changeTheme(ThemeMode mode) {

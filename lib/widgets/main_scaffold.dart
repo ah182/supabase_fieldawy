@@ -3,9 +3,9 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
-import 'package:fieldawy_store/features/category/presentation/screens/category_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/my_products_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_screen.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
@@ -37,12 +37,15 @@ class MainScaffold extends ConsumerWidget {
           screen = const MyProductsScreen();
           break;
         case 1:
-          screen = const DashboardPage();
+          screen = const AddProductScreen();
           break;
         case 2:
-          screen = const ProfileScreen();
+          screen = const DashboardPage();
           break;
         case 3:
+          screen = const ProfileScreen();
+          break;
+        case 4:
           screen = const SettingsScreen();
           break;
         default:
@@ -54,7 +57,7 @@ class MainScaffold extends ConsumerWidget {
           screen = const DistributorsScreen();
           break;
         case 1:
-          screen = const CategoryScreen();
+          screen = const AddProductScreen();
           break;
         case 2:
           screen = const OrdersScreen();
@@ -113,16 +116,16 @@ class MainScaffold extends ConsumerWidget {
                   title: const Text("Distributors"),
                   selectedColor: Colors.orange,
                 ),
+              // Add Products for both
+              SalomonBottomBarItem(
+                icon: const Icon(Icons.add_box),
+                title: const Text("Add product"),
+                selectedColor: Colors.green,
+              ),
               if (isDistributor)
                 SalomonBottomBarItem(
                   icon: const Icon(Icons.dashboard),
                   title: const Text("Dashboard"),
-                  selectedColor: Colors.pink,
-                )
-              else
-                SalomonBottomBarItem(
-                  icon: const Icon(Icons.category),
-                  title: const Text("Categories"),
                   selectedColor: Colors.pink,
                 ),
               if (isDoctor)

@@ -17,6 +17,7 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
 import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
+import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -101,7 +102,7 @@ class MenuScreen extends ConsumerWidget {
             onTap: () => ZoomDrawer.of(context)!.close()),
         _buildMenuItem(
             icon: Icons.rate_review,
-            title: 'تقييمات المنتجات',
+            title: 'Product rating',
             onTap: () {
               ZoomDrawer.of(context)!.close();
               Navigator.of(context).push(MaterialPageRoute(
@@ -129,9 +130,17 @@ class MenuScreen extends ConsumerWidget {
         ),
 
         _buildMenuItem(
-            icon: Icons.category_outlined,
-            title: 'category'.tr(),
+            icon: Icons.inventory_2_outlined,
+            title: 'vetSupplies'.tr(),
             onTap: () {}),
+        _buildMenuItem(
+            icon: Icons.work_outline,
+            title: 'jobOffers'.tr(),
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const JobOffersScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.person_outline,
             title: 'profile'.tr(),
@@ -163,7 +172,7 @@ class MenuScreen extends ConsumerWidget {
             onTap: () => ZoomDrawer.of(context)!.close()),
         _buildMenuItem(
             icon: Icons.rate_review,
-            title: 'تقييمات المنتجات',
+            title: 'Product rating',
             onTap: () {
               ZoomDrawer.of(context)!.close();
               Navigator.of(context).push(MaterialPageRoute(
@@ -194,9 +203,17 @@ class MenuScreen extends ConsumerWidget {
         ),
 
         _buildMenuItem(
-            icon: Icons.category_outlined,
-            title: 'category'.tr(),
+            icon: Icons.inventory_2_outlined,
+            title: 'vetSupplies'.tr(),
             onTap: () {}),
+        _buildMenuItem(
+            icon: Icons.work_outline,
+            title: 'jobOffers'.tr(),
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const JobOffersScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.person_outline,
             title: 'profile'.tr(),
@@ -228,11 +245,19 @@ class MenuScreen extends ConsumerWidget {
             onTap: () => ZoomDrawer.of(context)!.close()),
         _buildMenuItem(
             icon: Icons.rate_review,
-            title: 'تقييمات المنتجات',
+            title: 'Product rating',
             onTap: () {
               ZoomDrawer.of(context)!.close();
               Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => const ProductsWithReviewsScreen()));
+            }),
+        _buildMenuItem(
+            icon: Icons.work_outline,
+            title: 'jobOffers'.tr(),
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const JobOffersScreen()));
             }),
         _buildMenuItem(
             icon: Icons.person_outline, title: 'profile'.tr(), onTap: () {}),

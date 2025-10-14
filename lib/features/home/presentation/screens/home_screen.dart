@@ -36,6 +36,8 @@ final _tabsInfo = [
   _TabInfo(Icons.schedule_rounded, 'Expire Soon'),
   _TabInfo(Icons.medical_services_outlined, 'Surgical & Diagnostic'),
   _TabInfo(Icons.local_offer_outlined, 'Offers'),
+  _TabInfo(Icons.school_rounded, 'Courses'),
+  _TabInfo(Icons.menu_book_rounded, 'Books'),
 ];
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -1112,7 +1114,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ExpireSoonTab(searchQuery: _debouncedSearchQuery),
               SurgicalDiagnosticTab(searchQuery: _debouncedSearchQuery),
               OffersTab(searchQuery: _debouncedSearchQuery),
-             
+              CoursesTab(searchQuery: _debouncedSearchQuery),
+              BooksTab(searchQuery: _debouncedSearchQuery),
             ],
           ),
         ),

@@ -7,7 +7,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MainScaffold(
-      selectedIndex: 1, // Dashboard is at index 1 for distributors
+      selectedIndex: 2, // Dashboard is at index 2 for distributors (after Add Products)
       body: Center(
         child: Text('Dashboard Page'),
       ),

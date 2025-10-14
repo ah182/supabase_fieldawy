@@ -53,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
 
     final userRole = userDataAsync.asData?.value?.role ?? '';
     final isDoctor = userRole == 'doctor';
-    final selectedIndex = isDoctor ? 3 : 2;
+    final selectedIndex = isDoctor ? 3 : 3; // Profile is at index 3 for both
 
     final sliverAppBar = SliverAppBar(
       title: Text('profile'.tr()),

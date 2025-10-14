@@ -67,6 +67,7 @@ dependencies:
   image_cropper: ^11.0.0
   uuid: ^4.5.1
   month_picker_dialog: ^6.5.0
+  intl_phone_field: ^3.2.0
   
 
 dev_dependencies:
