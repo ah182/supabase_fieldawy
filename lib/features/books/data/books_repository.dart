@@ -108,4 +108,65 @@ class BooksRepository {
       print('Failed to increment book views: $e');
     }
   }
+
+  // ===================================================================
+  // ADMIN METHODS
+  // ===================================================================
+  
+  /// Admin: Get all books (for admin dashboard)
+  Future<List<Book>> adminGetAllBooks() async {
+    try {
+      final response = await _supabase
+          .from('vet_books')
+          .select()
+          .order('created_at', ascending: false);
+      
+      return (response as List<dynamic>)
+          .map((json) => Book.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load all books: $e');
+    }
+  }
+
+  /// Admin: Delete any book
+  Future<bool> adminDeleteBook(String bookId) async {
+    try {
+      await _supabase
+          .from('vet_books')
+          .delete()
+          .eq('id', bookId);
+      
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete book: $e');
+    }
+  }
+
+  /// Admin: Update any book
+  Future<bool> adminUpdateBook({
+    required String bookId,
+    required String name,
+    required String author,
+    required double price,
+    required String phone,
+    required String description,
+  }) async {
+    try {
+      await _supabase
+          .from('vet_books')
+          .update({
+            'name': name,
+            'author': author,
+            'price': price,
+            'phone': phone,
+            'description': description,
+          })
+          .eq('id', bookId);
+      
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update book: $e');
+    }
+  }
 }

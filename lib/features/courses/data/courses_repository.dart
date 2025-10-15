@@ -104,4 +104,59 @@ class CoursesRepository {
       print('Failed to increment course views: $e');
     }
   }
+  
+  // ===================================================================
+  // ADMIN METHODS
+  // ===================================================================
+  
+  /// Admin: Get all courses
+  Future<List<Course>> adminGetAllCourses() async {
+    try {
+      final response = await _supabase
+          .from('vet_courses')
+          .select()
+          .order('created_at', ascending: false);
+      
+      return (response as List<dynamic>)
+          .map((json) => Course.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load all courses: $e');
+    }
+  }
+
+  /// Admin: Delete any course
+  Future<bool> adminDeleteCourse(String courseId) async {
+    try {
+      await _supabase.from('vet_courses').delete().eq('id', courseId);
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete course: $e');
+    }
+  }
+
+  /// Admin: Update any course
+  Future<bool> adminUpdateCourse({
+    required String courseId,
+    required String title,
+    required double price,
+    required String phone,
+    required String description,
+  }) async {
+    try {
+      await _supabase
+          .from('vet_courses')
+          .update({
+            'title': title,
+            'price': price,
+            'phone': phone,
+            'description': description,
+          })
+          .eq('id', courseId);
+      
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update course: $e');
+    }
+  }
 }

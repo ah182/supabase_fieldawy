@@ -18,6 +18,7 @@ import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
 import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
 import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
+import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -132,7 +133,11 @@ class MenuScreen extends ConsumerWidget {
         _buildMenuItem(
             icon: Icons.inventory_2_outlined,
             title: 'vetSupplies'.tr(),
-            onTap: () {}),
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const VetSuppliesScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.work_outline,
             title: 'jobOffers'.tr(),
@@ -205,7 +210,11 @@ class MenuScreen extends ConsumerWidget {
         _buildMenuItem(
             icon: Icons.inventory_2_outlined,
             title: 'vetSupplies'.tr(),
-            onTap: () {}),
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const VetSuppliesScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.work_outline,
             title: 'jobOffers'.tr(),

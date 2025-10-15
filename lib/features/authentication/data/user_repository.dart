@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_type_check
+
 import 'package:fieldawy_store/core/caching/caching_service.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
@@ -160,6 +162,133 @@ class UserRepository {
       return 0;
     }
   }
+
+  // ===================================================================
+  // Admin Functions for User Management
+  // ===================================================================
+
+  // Get count by role
+  Future<int> getUsersCountByRole(String role) async {
+    try {
+      final count = await _client
+          .from('users')
+          .count(CountOption.exact)
+          .eq('role', role);
+      return count;
+    } catch (e) {
+      print('Error counting users by role: $e');
+      return 0;
+    }
+  }
+
+  // Get all users with specific role
+  Future<List<UserModel>> getUsersByRole(String role) async {
+    try {
+      final response = await _client
+          .from('users')
+          .select()
+          .eq('role', role)
+          .order('created_at', ascending: false);
+      
+      return (response as List)
+          .map((json) => UserModel.fromMap(json))
+          .toList();
+    } catch (e) {
+      print('Error fetching users by role: $e');
+      return [];
+    }
+  }
+
+  // Get all users
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      final response = await _client
+          .from('users')
+          .select()
+          .order('created_at', ascending: false);
+      
+      return (response as List)
+          .map((json) => UserModel.fromMap(json))
+          .toList();
+    } catch (e) {
+      print('Error fetching all users: $e');
+      return [];
+    }
+  }
+
+  // Delete user (admin only)
+  Future<bool> deleteUser(String userId) async {
+    try {
+      await _client.from('users').delete().eq('id', userId);
+      _cache.invalidate('user_$userId');
+      _cache.invalidate('distributors');
+      return true;
+    } catch (e) {
+      print('Error deleting user: $e');
+      return false;
+    }
+  }
+
+  // Update user role (admin only)
+  Future<bool> updateUserRole(String userId, String newRole) async {
+    try {
+      await _client.from('users').update({
+        'role': newRole,
+      }).eq('id', userId);
+      _cache.invalidate('user_$userId');
+      _cache.invalidate('distributors');
+      return true;
+    } catch (e) {
+      print('Error updating user role: $e');
+      return false;
+    }
+  }
+
+  // Update user status (admin only)
+  Future<bool> updateUserStatus(String userId, String newStatus) async {
+    try {
+      print('📝 Attempting to update user $userId to status: $newStatus');
+      print('🔑 Current auth user: ${_client.auth.currentUser?.id}');
+      
+      // Try without RLS first (direct update)
+      final response = await _client
+          .from('users')
+          .update({
+            'account_status': newStatus,
+          })
+          .eq('id', userId)
+          .select();
+      
+      print('📦 Response from Supabase: $response');
+      print('📊 Response type: ${response.runtimeType}');
+     
+      
+      // Invalidate all relevant caches
+      _cache.invalidate('user_$userId');
+      _cache.invalidate('distributors');
+      _cache.invalidate('doctors');
+      _cache.invalidate('all_users');
+      
+      // ignore: unnecessary_null_comparison
+      final success = response != null && (response is List && response.isNotEmpty);
+      print(success ? '✅ Status updated successfully' : '❌ Update failed - empty response');
+      
+      if (!success) {
+        print('🔍 Debug: Checking if RLS is blocking the update...');
+        // Try to fetch the user to see if we can read
+        final readTest = await _client.from('users').select().eq('id', userId).single();
+        // ignore: unnecessary_null_comparison
+        print('🔍 Can read user: ${readTest != null}');
+      }
+      
+      return success;
+    } catch (e, stackTrace) {
+      print('❌❌ Error updating user status: $e');
+      print('📚 Error type: ${e.runtimeType}');
+      print('Stack trace: $stackTrace');
+      return false;
+    }
+  }
 } // Added this closing brace for UserRepository class
 
 // Provider المحدث ليعمل مع Supabase
@@ -171,4 +300,25 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 
 final totalUsersProvider = FutureProvider<int>((ref) {
   return ref.watch(userRepositoryProvider).getTotalUsersCount();
+});
+
+// Admin Providers
+final doctorsCountProvider = FutureProvider<int>((ref) {
+  return ref.watch(userRepositoryProvider).getUsersCountByRole('doctor');
+});
+
+final distributorsCountProvider = FutureProvider<int>((ref) {
+  return ref.watch(userRepositoryProvider).getUsersCountByRole('distributor');
+});
+
+final allDoctorsProvider = FutureProvider<List<UserModel>>((ref) {
+  return ref.watch(userRepositoryProvider).getUsersByRole('doctor');
+});
+
+final allDistributorsProvider = FutureProvider<List<UserModel>>((ref) {
+  return ref.watch(userRepositoryProvider).getUsersByRole('distributor');
+});
+
+final allUsersListProvider = FutureProvider<List<UserModel>>((ref) {
+  return ref.watch(userRepositoryProvider).getAllUsers();
 });

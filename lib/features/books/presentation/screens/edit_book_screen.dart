@@ -11,30 +11,47 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:cached_network_image/cached_network_image.dart';
 
-class AddBookScreen extends ConsumerStatefulWidget {
-  const AddBookScreen({super.key});
+class EditBookScreen extends ConsumerStatefulWidget {
+  final dynamic book;
+
+  const EditBookScreen({super.key, required this.book});
 
   @override
-  ConsumerState<AddBookScreen> createState() => _AddBookScreenState();
+  ConsumerState<EditBookScreen> createState() => _EditBookScreenState();
 }
 
-class _AddBookScreenState extends ConsumerState<AddBookScreen> {
+class _EditBookScreenState extends ConsumerState<EditBookScreen> {
   File? _originalImage;
   Uint8List? _processedImageBytes;
   File? _processedImageFile;
   bool _isProcessing = false;
   bool _isSaving = false;
+  bool _imageChanged = false;
 
   final _picker = ImagePicker();
   final _formKey = GlobalKey<FormState>();
 
-  final _bookNameController = TextEditingController();
-  final _authorController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _phoneController = TextEditingController();
-  String _completePhoneNumber = '';
+  late final TextEditingController _bookNameController;
+  late final TextEditingController _authorController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _phoneController;
+  late String _completePhoneNumber;
+  late String _currentImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _bookNameController = TextEditingController(text: widget.book.name);
+    _authorController = TextEditingController(text: widget.book.author);
+    _descriptionController = TextEditingController(text: widget.book.description);
+    _priceController = TextEditingController(text: widget.book.price.toString());
+    _phoneController = TextEditingController();
+    _completePhoneNumber = widget.book.phone;
+    _currentImageUrl = widget.book.imageUrl;
+  }
 
   @override
   void dispose() {
@@ -76,6 +93,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       setState(() {
         _processedImageBytes = imageBytes;
         _processedImageFile = croppedImage;
+        _imageChanged = true;
       });
     } catch (e) {
       if (mounted) {
@@ -159,33 +177,25 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       return;
     }
 
-    if (_processedImageBytes == null || _processedImageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى إضافة صورة الكتاب'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     setState(() => _isSaving = true);
 
     try {
-      // 1. Upload image to Cloudinary
-      final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final imageUrl = await cloudinaryService.uploadImage(
-        imageFile: _processedImageFile!,
-        folder: 'vet_books',
-      );
+      String imageUrl = _currentImageUrl;
 
-      if (imageUrl == null) {
-        throw Exception('فشل رفع الصورة');
+      // 1. Upload new image if changed
+      if (_imageChanged && _processedImageFile != null) {
+        final cloudinaryService = ref.read(cloudinaryServiceProvider);
+        final uploadedUrl = await cloudinaryService.uploadImage(
+          imageFile: _processedImageFile!,
+          folder: 'vet_books',
+        );
+
+        if (uploadedUrl == null) {
+          throw Exception('فشل رفع الصورة');
+        }
+        imageUrl = uploadedUrl;
       }
 
-      // 2. Save book data to Supabase
-      final repository = ref.read(booksRepositoryProvider);
-      
       // Clean and validate phone number format (E.164)
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
       
@@ -198,7 +208,9 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
         throw Exception('رقم الهاتف يجب أن يكون بتنسيق دولي صحيح (مثال: +201234567890)');
       }
 
-      await repository.createBook(
+      // 2. Update book data in Supabase
+      final success = await ref.read(myBooksNotifierProvider.notifier).updateBook(
+        bookId: widget.book.id,
         name: _bookNameController.text.trim(),
         author: _authorController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -206,21 +218,22 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
         phone: cleanPhone,
         imageUrl: imageUrl,
       );
-      
-      // Refresh books list
-      ref.invalidate(myBooksNotifierProvider);
 
       if (mounted) {
         setState(() => _isSaving = false);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إضافة الكتاب بنجاح'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        Navigator.of(context).pop(true);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم تحديث الكتاب بنجاح'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          Navigator.of(context).pop(true);
+        } else {
+          throw Exception('فشل تحديث الكتاب');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -240,7 +253,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إضافة كتاب بيطري'),
+        title: const Text('تعديل كتاب'),
         elevation: 0,
       ),
       body: Form(
@@ -282,55 +295,73 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                           ],
                         ),
                       )
-                    : _processedImageBytes == null
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.menu_book_rounded,
-                                size: 80,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'اضغط لإضافة صورة الكتاب',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'من الكاميرا أو المعرض',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                    : _processedImageBytes != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _processedImageBytes!,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                            ),
                           )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.memory(
-                          _processedImageBytes!,
-                          fit: BoxFit.contain,
-                          width: double.infinity,
-                        ),
-                      ),
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Stack(
+                              children: [
+                                CachedNetworkImage(
+                                  imageUrl: _currentImageUrl,
+                                  fit: BoxFit.contain,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.orange[100],
+                                    child: const Center(
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) => Container(
+                                    color: Colors.orange[100],
+                                    child: const Icon(
+                                      Icons.menu_book_rounded,
+                                      color: Colors.orange,
+                                      size: 60,
+                                    ),
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.edit,
+                                            size: 40,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'اضغط لتغيير الصورة',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
               ),
             ),
-            if (_processedImageBytes != null && !_isProcessing) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _showImageSourceDialog,
-                icon: const Icon(Icons.edit),
-                label: const Text('تغيير الصورة'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ],
             const SizedBox(height: 24),
 
             // Book Name
@@ -338,7 +369,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               controller: _bookNameController,
               decoration: InputDecoration(
                 labelText: 'اسم الكتاب *',
-                hintText: 'مثال: الطب الباطني البيطري',
                 prefixIcon: const Icon(Icons.book),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -360,7 +390,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               controller: _authorController,
               decoration: InputDecoration(
                 labelText: 'اسم المؤلف *',
-                hintText: 'مثال: د. أحمد محمد',
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -384,7 +413,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               maxLength: 500,
               decoration: InputDecoration(
                 labelText: 'وصف الكتاب *',
-                hintText: 'اكتب وصفاً تفصيلياً عن محتوى الكتاب...',
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 80),
                   child: Icon(Icons.description),
@@ -412,7 +440,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'السعر (جنيه) *',
-                hintText: 'مثال: 250',
                 prefixIcon: const Icon(Icons.attach_money),
                 suffixText: 'LE',
                 border: OutlineInputBorder(
@@ -447,6 +474,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               initialCountryCode: 'EG',
               languageCode: context.locale.languageCode,
               disableLengthCheck: false,
+              initialValue: _completePhoneNumber.replaceFirst('+', ''),
               onChanged: (phone) {
                 setState(() {
                   _completePhoneNumber = phone.completeNumber;
@@ -456,7 +484,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                 if (phone == null || phone.number.isEmpty) {
                   return 'phoneNumberRequired'.tr();
                 }
-                // Update the complete phone number in validator as well
                 _completePhoneNumber = phone.completeNumber;
                 return null;
               },
@@ -484,7 +511,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'جارٍ الحفظ...' : 'حفظ الكتاب',
+                  _isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

@@ -10,6 +10,8 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(adminAllProductsProvider);
     final usersCountAsync = ref.watch(totalUsersProvider);
+    final doctorsCountAsync = ref.watch(doctorsCountProvider);
+    final distributorsCountAsync = ref.watch(distributorsCountProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -28,26 +30,6 @@ class AdminDashboardScreen extends ConsumerWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              productsAsync.when(
-                loading: () => const _StatCard(
-                  title: 'Total Products',
-                  value: '...',
-                  icon: Icons.inventory_2,
-                  color: Colors.orange,
-                ),
-                error: (err, stack) => const _StatCard(
-                  title: 'Total Products',
-                  value: 'Error',
-                  icon: Icons.error_outline,
-                  color: Colors.red,
-                ),
-                data: (products) => _StatCard(
-                  title: 'Total Products',
-                  value: products.length.toString(),
-                  icon: Icons.inventory_2,
-                  color: Colors.orange,
-                ),
-              ),
               usersCountAsync.when(
                 loading: () => const _StatCard(
                   title: 'Total Users',
@@ -68,17 +50,65 @@ class AdminDashboardScreen extends ConsumerWidget {
                   color: Colors.blue,
                 ),
               ),
-              const _StatCard(
-                title: 'Pending Orders',
-                value: '89', // Placeholder
-                icon: Icons.pending_actions,
-                color: Colors.red,
+              doctorsCountAsync.when(
+                loading: () => const _StatCard(
+                  title: 'Doctors',
+                  value: '...',
+                  icon: Icons.medical_services,
+                  color: Colors.green,
+                ),
+                error: (err, stack) => const _StatCard(
+                  title: 'Doctors',
+                  value: 'Error',
+                  icon: Icons.error_outline,
+                  color: Colors.red,
+                ),
+                data: (count) => _StatCard(
+                  title: 'Doctors',
+                  value: count.toString(),
+                  icon: Icons.medical_services,
+                  color: Colors.green,
+                ),
               ),
-              const _StatCard(
-                title: 'Revenue (Today)',
-                value: 'EGP 5,400', // Placeholder
-                icon: Icons.monetization_on,
-                color: Colors.green,
+              distributorsCountAsync.when(
+                loading: () => const _StatCard(
+                  title: 'Distributors',
+                  value: '...',
+                  icon: Icons.local_shipping,
+                  color: Colors.purple,
+                ),
+                error: (err, stack) => const _StatCard(
+                  title: 'Distributors',
+                  value: 'Error',
+                  icon: Icons.error_outline,
+                  color: Colors.red,
+                ),
+                data: (count) => _StatCard(
+                  title: 'Distributors',
+                  value: count.toString(),
+                  icon: Icons.local_shipping,
+                  color: Colors.purple,
+                ),
+              ),
+              productsAsync.when(
+                loading: () => const _StatCard(
+                  title: 'Total Products',
+                  value: '...',
+                  icon: Icons.inventory_2,
+                  color: Colors.orange,
+                ),
+                error: (err, stack) => const _StatCard(
+                  title: 'Total Products',
+                  value: 'Error',
+                  icon: Icons.error_outline,
+                  color: Colors.red,
+                ),
+                data: (products) => _StatCard(
+                  title: 'Total Products',
+                  value: products.length.toString(),
+                  icon: Icons.inventory_2,
+                  color: Colors.orange,
+                ),
               ),
             ],
           ),

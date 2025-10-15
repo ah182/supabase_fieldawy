@@ -101,85 +101,159 @@ class CoursesTab extends ConsumerWidget {
   }
 
   static void _showCourseDialog(BuildContext context, WidgetRef ref, dynamic course) {
+    final theme = Theme.of(context);
+    
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: CachedNetworkImage(
-                  imageUrl: course.imageUrl,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.75,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
                   children: [
-                    Text(
-                      course.title,
-                      style: const TextStyle(
-                        fontSize: 20,
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      child: CachedNetworkImage(
+                        imageUrl: course.imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.5),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        course.title,
+                      style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
                     Text(
                       course.description,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('السعر:', style: TextStyle(fontSize: 16)),
-                          Text(
-                            '${course.price.toStringAsFixed(0)} جنيه',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 24),
+                    // --- Stats Section ---
+                    Row(
+                      children: [
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.price_change,
+                          label: 'السعر',
+                          value: '${course.price.toStringAsFixed(0)} ج.م',
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.visibility,
+                          label: 'مشاهدات',
+                          value: '${course.views}',
+                          color: theme.colorScheme.primary,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 32),
+                    // --- Action Button ---
                     SizedBox(
                       width: double.infinity,
+                      height: 50,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
                           Navigator.pop(context);
                           _openWhatsApp(context, course.phone);
                         },
-                        icon: const Icon(Icons.phone),
-                        label: const Text('اتصل بمقدم الكورس'),
+                        icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
+                        label: const Text(
+                          'تواصل مع مقدم الكورس',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -305,90 +379,172 @@ class BooksTab extends ConsumerWidget {
   }
 
   static void _showBookDialog(BuildContext context, WidgetRef ref, dynamic book) {
+    final theme = Theme.of(context);
+    
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: CachedNetworkImage(
-                  imageUrl: book.imageUrl,
-                  height: 250,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.75,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
                   children: [
-                    Text(
-                      book.name,
-                      style: const TextStyle(
-                        fontSize: 20,
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      child: CachedNetworkImage(
+                        imageUrl: book.imageUrl,
+                        height: 250,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.5),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        book.name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'المؤلف: ${book.author}',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                    Row(
+                      children: [
+                        Icon(Icons.person_outline, size: 18, color: theme.textTheme.bodySmall?.color),
+                        const SizedBox(width: 8),
+                        Text(
+                          book.author,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 16),
+                    const Divider(),
                     const SizedBox(height: 16),
                     Text(
                       book.description,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('السعر:', style: TextStyle(fontSize: 16)),
-                          Text(
-                            '${book.price.toStringAsFixed(0)} جنيه',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 24),
+                    // --- Stats Section ---
+                    Row(
+                      children: [
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.price_change,
+                          label: 'السعر',
+                          value: '${book.price.toStringAsFixed(0)} ج.م',
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.visibility,
+                          label: 'مشاهدات',
+                          value: '${book.views}',
+                          color: theme.colorScheme.primary,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 32),
+                    // --- Action Button ---
                     SizedBox(
                       width: double.infinity,
+                      height: 50,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
                           Navigator.pop(context);
                           _openWhatsApp(context, book.phone);
                         },
-                        icon: const Icon(Icons.phone),
-                        label: const Text('اتصل بالبائع'),
+                        icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
+                        label: const Text(
+                          'تواصل مع البائع',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -936,7 +1092,7 @@ class _BookCard extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: book.imageUrl,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   placeholder: (context, url) => Container(
                     color: Colors.orange[100],
                     child: const Center(
@@ -1153,7 +1309,7 @@ class _CourseCardHorizontal extends StatelessWidget {
                   imageUrl: course.imageUrl,
                   width: 120,
                   height: double.infinity,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   placeholder: (context, url) => Container(
                     color: Colors.blue[100],
                     child: const Center(
@@ -1279,117 +1435,4 @@ class _CourseCardHorizontal extends StatelessWidget {
   }
 }
 
-// ===================================================================
-// Course Card Widget (vertical - kept for reference)
-// ===================================================================
-class _CourseCard extends StatelessWidget {
-  final dynamic course;
-  final String searchQuery;
-  final VoidCallback onTap;
 
-  const _CourseCard({
-    required this.course,
-    required this.searchQuery,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Course Poster Image
-            Expanded(
-              flex: 2,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: CachedNetworkImage(
-                  imageUrl: course.imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.blue[100],
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.blue[100],
-                    child: const Icon(
-                      Icons.school_rounded,
-                      color: Colors.blue,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Course Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      course.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      course.description,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 11,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${course.price.toStringAsFixed(0)} LE',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.remove_red_eye_outlined, size: 12, color: Colors.grey[600]),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${course.views}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

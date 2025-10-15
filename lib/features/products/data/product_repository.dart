@@ -1365,6 +1365,207 @@ class ProductRepository {
       rethrow;
     }
   }
+
+  // ===================================================================
+  // Admin Functions for Product Management
+  // ===================================================================
+
+  // Delete a product (for admin)
+  Future<bool> deleteProduct(String productId) async {
+    try {
+      await _supabase
+          .from('distributor_products')
+          .delete()
+          .eq('id', productId);
+      
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error deleting product: $e');
+      return false;
+    }
+  }
+
+  // Update a product price (for admin)
+  Future<bool> updateProduct({
+    required String id,
+    required double price,
+  }) async {
+    try {
+      await _supabase
+          .from('distributor_products')
+          .update({'price': price})
+          .eq('id', id);
+      
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error updating product: $e');
+      return false;
+    }
+  }
+
+  // ===== ADMIN METHODS FOR DISTRIBUTOR_OCR_PRODUCTS =====
+
+  // Admin: Get all distributor OCR products
+  Future<List<Map<String, dynamic>>> adminGetAllDistributorOcrProducts() async {
+    try {
+      final response = await _supabase
+          .from('distributor_ocr_products')
+          .select('''
+            id,
+            distributor_id,
+            ocr_product_id,
+            distributor_name,
+            price,
+            old_price,
+            price_updated_at,
+            expiration_date,
+            created_at
+          ''')
+          .order('created_at', ascending: false);
+
+      if (response == null) {
+        return [];
+      }
+
+      return (response as List<dynamic>).cast<Map<String, dynamic>>();
+    } catch (e) {
+      throw Exception('Failed to fetch distributor OCR products: $e');
+    }
+  }
+
+  // Admin: Delete distributor OCR product
+  Future<bool> adminDeleteDistributorOcrProduct(String id) async {
+    try {
+      await _supabase
+          .from('distributor_ocr_products')
+          .delete()
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete distributor OCR product: $e');
+    }
+  }
+
+  // Admin: Update distributor OCR product
+  Future<bool> adminUpdateDistributorOcrProduct({
+    required String id,
+    required double price,
+    DateTime? expirationDate,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{
+        'price': price,
+      };
+      
+      if (expirationDate != null) {
+        updateData['expiration_date'] = expirationDate.toIso8601String();
+      }
+
+      await _supabase
+          .from('distributor_ocr_products')
+          .update(updateData)
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update distributor OCR product: $e');
+    }
+  }
+
+  // Admin: Update catalog product (products table)
+  Future<bool> adminUpdateProduct({
+    required String id,
+    required String name,
+    required String company,
+    String? activePrinciple,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{
+        'name': name,
+        'company': company,
+      };
+      
+      if (activePrinciple != null && activePrinciple.isNotEmpty) {
+        updateData['active_principle'] = activePrinciple;
+      }
+
+      await _supabase
+          .from('products')
+          .update(updateData)
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update product: $e');
+    }
+  }
+
+  // Admin: Delete catalog product
+  Future<bool> adminDeleteProduct(String id) async {
+    try {
+      await _supabase
+          .from('products')
+          .delete()
+          .eq('id', id);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete product: $e');
+    }
+  }
+
+  // Admin: Update distributor product
+  Future<bool> adminUpdateDistributorProduct({
+    required String distributorId,
+    required String productId,
+    required String package,
+    required double price,
+  }) async {
+    try {
+      await _supabase
+          .from('distributor_products')
+          .update({
+            'price': price,
+            'package': package,
+          })
+          .eq('distributor_id', distributorId)
+          .eq('product_id', productId)
+          .eq('package', package);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update distributor product: $e');
+    }
+  }
+
+  // Admin: Delete distributor product
+  Future<bool> adminDeleteDistributorProduct({
+    required String distributorId,
+    required String productId,
+    required String package,
+  }) async {
+    try {
+      await _supabase
+          .from('distributor_products')
+          .delete()
+          .eq('distributor_id', distributorId)
+          .eq('product_id', productId)
+          .eq('package', package);
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete distributor product: $e');
+    }
+  }
 }
 
 // --- Providers ---
@@ -1622,4 +1823,11 @@ final myOffersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async 
   if (userId == null) return [];
   
   return ref.watch(productRepositoryProvider).getMyOffersWithProducts(userId);
+});
+
+// ===== ADMIN PROVIDER FOR OCR PRODUCTS =====
+
+final adminAllDistributorOcrProductsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.adminGetAllDistributorOcrProducts();
 });

@@ -117,3 +117,13 @@ final myCoursesNotifierProvider = StateNotifierProvider<CoursesNotifier, AsyncVa
   final repository = ref.read(coursesRepositoryProvider);
   return CoursesNotifier(repository, isMyCourses: true);
 });
+
+// ===================================================================
+// ADMIN PROVIDERS
+// ===================================================================
+
+// Admin: All Courses Provider
+final adminAllCoursesProvider = FutureProvider<List<Course>>((ref) async {
+  final repository = ref.read(coursesRepositoryProvider);
+  return repository.adminGetAllCourses();
+});

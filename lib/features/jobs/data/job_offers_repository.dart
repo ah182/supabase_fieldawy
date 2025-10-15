@@ -108,4 +108,55 @@ class JobOffersRepository {
       throw Exception('Failed to close job offer: $e');
     }
   }
+  
+  // ===================================================================
+  // ADMIN METHODS
+  // ===================================================================
+  
+  /// Admin: Get all job offers
+  Future<List<JobOffer>> adminGetAllJobOffers() async {
+    try {
+      final response = await _supabase
+          .from('job_offers')
+          .select()
+          .order('created_at', ascending: false);
+      
+      return (response as List<dynamic>)
+          .map((json) => JobOffer.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load all job offers: $e');
+    }
+  }
+
+  /// Admin: Delete any job offer
+  Future<bool> adminDeleteJobOffer(String jobId) async {
+    try {
+      await _supabase.from('job_offers').delete().eq('id', jobId);
+      return true;
+    } catch (e) {
+      throw Exception('Failed to delete job offer: $e');
+    }
+  }
+   Future<bool> adminUpdateJobOffer({
+    required String jobId,
+    required String title,
+    required String phone,
+    required String description,
+    required String status,
+  }) async {
+    try {
+      await _supabase.from('job_offers').update({
+        'title': title,
+        'phone': phone,
+        'description': description,
+        'status': status,
+      }).eq('id', jobId);
+
+      return true;
+    } catch (e) {
+      throw Exception('Failed to update job offer: $e');
+    }
+  }
+
 }

@@ -89,3 +89,13 @@ final myJobOffersNotifierProvider = StateNotifierProvider<MyJobOffersNotifier, A
   final repository = ref.watch(jobOffersRepositoryProvider);
   return MyJobOffersNotifier(repository);
 });
+
+// ===================================================================
+// ADMIN PROVIDERS
+// ===================================================================
+
+// Admin: All Job Offers Provider
+final adminAllJobOffersProvider = FutureProvider<List<JobOffer>>((ref) async {
+  final repository = ref.read(jobOffersRepositoryProvider);
+  return repository.adminGetAllJobOffers();
+});

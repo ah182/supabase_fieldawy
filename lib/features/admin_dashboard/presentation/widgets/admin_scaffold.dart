@@ -1,5 +1,6 @@
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/product_management_screen.dart';
+import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/users_management_screen.dart';
 import 'package:flutter/material.dart';
 
 class AdminScaffold extends StatefulWidget {
@@ -32,14 +33,14 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                 label: Text('Dashboard'),
               ),
               NavigationRailDestination(
+                icon: Icon(Icons.people_outlined),
+                selectedIcon: Icon(Icons.people),
+                label: Text('Users'),
+              ),
+              NavigationRailDestination(
                 icon: Icon(Icons.inventory_2_outlined),
                 selectedIcon: Icon(Icons.inventory_2),
                 label: Text('Products'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: Text('Orders'),
               ),
             ],
           ),
@@ -51,10 +52,10 @@ class _AdminScaffoldState extends State<AdminScaffold> {
               children: [
                 // Dashboard Screen
                 const AdminDashboardScreen(), 
+                // Users Screen
+                const UsersManagementScreen(),
                 // Products Screen
                 const ProductManagementScreen(),
-                // Orders Screen (Placeholder)
-                const Center(child: Text('Orders Management')),
               ],
             ),
           ),

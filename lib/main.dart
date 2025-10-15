@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -11,7 +12,9 @@ import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper
 import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
 import 'package:fieldawy_store/features/reviews/review_system.dart';
 
+// ignore: unused_import
 import 'features/admin_dashboard/presentation/screens/admin_login_screen.dart';
+import 'features/admin_dashboard/presentation/screens/admin_login_real.dart';
 import 'features/admin_dashboard/presentation/widgets/admin_scaffold.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -513,22 +516,25 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ إعداد handler للخلفية
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // ✅ تعطيل Firebase Messaging على الويب (للـ Admin Dashboard)
+  // فقط للموبايل
+  if (!kIsWeb) {
+    // ✅ إعداد handler للخلفية
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // ✅ طلب إذن من المستخدم
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    announcement: false,
-    badge: true,
-    carPlay: false,
-    criticalAlert: false,
-    provisional: false,
-    sound: true,
-  );
+    // ✅ طلب إذن من المستخدم
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
 
-  // ✅ الحصول على FCM Token وحفظه في Supabase (سيتم بعد تسجيل الدخول)
-  String? fcmToken = await FirebaseMessaging.instance.getToken();
+    // ✅ الحصول على FCM Token وحفظه في Supabase (سيتم بعد تسجيل الدخول)
+    String? fcmToken = await FirebaseMessaging.instance.getToken();
   print('═══════════════════════════════════════════════════════════');
   print('🔑 FCM TOKEN للاختبار:');
   print('═══════════════════════════════════════════════════════════');
@@ -665,8 +671,8 @@ Future<void> main() async {
     },
   );
 
-  // ✅ listen للإشعارات أثناء فتح التطبيق (data-only messages)
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    // ✅ listen للإشعارات أثناء فتح التطبيق (data-only messages)
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     try {
       print('🟢 === Foreground handler started ===');
       
@@ -803,12 +809,13 @@ Future<void> main() async {
       payload: payload,
     );
     
-    print('🟢 === Foreground handler completed successfully ===');
+      print('🟢 === Foreground handler completed successfully ===');
     } catch (e, stackTrace) {
       print('❌❌❌ FATAL ERROR in foreground handler: $e');
       print('Stack trace: $stackTrace');
     }
-  });
+    });
+  } // End of if (!kIsWeb) for Firebase Messaging
 
   pdfrxFlutterInitialize();
   await EasyLocalization.ensureInitialized();
@@ -1040,17 +1047,30 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       themeMode: themeMode,
       themeAnimationDuration: const Duration(milliseconds: 200),
       themeAnimationCurve: Curves.easeOutCubic,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const AuthGate(),
-        '/splash': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const DrawerWrapper(),
-        '/admin/login': (context) => const AdminLoginScreen(),
-        '/admin/dashboard': (context) => const AdminScaffold(),
-      },
-      onUnknownRoute: (settings) {
-        return MaterialPageRoute(builder: (_) => const AuthGate());
+      onGenerateRoute: (settings) {
+        // Check if it's an admin route
+        if (settings.name != null && settings.name!.startsWith('/admin')) {
+          if (settings.name == '/admin/login') {
+            return MaterialPageRoute(builder: (_) => const AdminLoginRealScreen());
+          }
+          if (settings.name == '/admin/dashboard') {
+            return MaterialPageRoute(builder: (_) => const AdminScaffold());
+          }
+        }
+        
+        // Handle regular routes
+        switch (settings.name) {
+          case '/':
+            return MaterialPageRoute(builder: (_) => const AuthGate());
+          case '/splash':
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
+          case '/login':
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
+          case '/home':
+            return MaterialPageRoute(builder: (_) => const DrawerWrapper());
+          default:
+            return MaterialPageRoute(builder: (_) => const AuthGate());
+        }
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/add_book_screen.dart';
+import 'package:fieldawy_store/features/books/presentation/screens/edit_book_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,14 +12,23 @@ class BooksScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booksAsync = ref.watch(myBooksNotifierProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('كتبي'),
+        title: Text(
+          'كتبي',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: theme.iconTheme.color),
             onPressed: () {
               ref.invalidate(myBooksNotifierProvider);
             },
@@ -26,52 +36,35 @@ class BooksScreen extends ConsumerWidget {
         ],
       ),
       body: booksAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              Text(
-                'حدث خطأ: ${error.toString()}',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(myBooksNotifierProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'),
-              ),
-            ],
-          ),
-        ),
+        loading: () => Center(
+            child: CircularProgressIndicator(color: colorScheme.primary)),
+        error: (error, stack) => _buildErrorState(context, ref, error),
         data: (books) {
           if (books.isEmpty) {
             return _buildEmptyState(context);
           }
-
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(myBooksNotifierProvider);
               await Future.delayed(const Duration(milliseconds: 500));
             },
+            color: colorScheme.primary,
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: books.length,
               itemBuilder: (context, index) {
                 final book = books[index];
                 return _BookCard(
                   book: book,
                   onDelete: () => _deleteBook(context, ref, book.id, book.name),
+                  onEdit: () => _editBook(context, ref, book),
                 );
               },
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(
@@ -80,41 +73,82 @@ class BooksScreen extends ConsumerWidget {
           );
           ref.invalidate(myBooksNotifierProvider);
         },
-        icon: const Icon(Icons.add),
-        label: const Text('إضافة كتاب'),
-        backgroundColor: Colors.orange,
+        tooltip: 'إضافة كتاب',
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.menu_book_rounded,
+            Icons.menu_book_outlined,
             size: 100,
-            color: Colors.grey[300],
+            color: theme.disabledColor,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
-            'لا توجد كتب حالياً',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+            'لا توجد كتب بعد',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'اضغط على زر + لإضافة كتاب جديد',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+            'اضغط على زر + في الأسفل لإضافة أول كتاب لك',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodySmall?.color,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_off, size: 80, color: colorScheme.error.withOpacity(0.5)),
+            const SizedBox(height: 20),
+            Text(
+              'حدث خطأ في الاتصال',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => ref.invalidate(myBooksNotifierProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -173,149 +207,155 @@ class BooksScreen extends ConsumerWidget {
       }
     }
   }
+
+  static Future<void> _editBook(BuildContext context, WidgetRef ref, dynamic book) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditBookScreen(book: book),
+      ),
+    );
+    
+    if (result == true) {
+      // Refresh the list
+      ref.invalidate(myBooksNotifierProvider);
+    }
+  }
 }
 
 class _BookCard extends StatelessWidget {
   final dynamic book;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
-  const _BookCard({required this.book, required this.onDelete});
+  const _BookCard({required this.book, required this.onDelete, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shadowColor: colorScheme.primary.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showBookDetails(context),
+        onTap: () => _showBookDetailsSheet(context),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12.0),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Book Cover
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: book.imageUrl,
-                  width: 70,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.orange[100],
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.orange[100],
-                    child: const Icon(
-                      Icons.menu_book_rounded,
-                      color: Colors.orange,
-                      size: 30,
+              // --- Book Image ---
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Hero(
+                  tag: 'book_image_${book.id}',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: book.imageUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) =>
+                          Container(color: Colors.grey[200]),
+                      errorWidget: (context, url, error) => Container(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        child: Icon(Icons.menu_book,
+                            color: colorScheme.primary, size: 40),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Book Info
+              const SizedBox(width: 16),
+              // --- Book Info ---
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       book.name,
-                      style: const TextStyle(
+                      style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                        Icon(Icons.person_outline,
+                            size: 14, color: theme.textTheme.bodySmall?.color),
                         const SizedBox(width: 4),
-                        Expanded(
+                        Flexible(
                           child: Text(
                             book.author,
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 13,
-                            ),
+                            style: theme.textTheme.bodySmall,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${book.price.toStringAsFixed(0)} جنيه',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
+                        Text(
+                          '${book.price.toStringAsFixed(0)} ج.م',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Spacer(),
-                        Icon(Icons.remove_red_eye_outlined, size: 14, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${book.views}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        Row(
+                          children: [
+                            Icon(Icons.visibility_outlined,
+                                size: 16, color: theme.textTheme.bodySmall?.color),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${book.views}',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              // Actions Menu
-              PopupMenuButton(
-                icon: const Icon(Icons.more_vert),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'whatsapp',
-                    child: Row(
-                      children: [
-                        Icon(Icons.phone, size: 20, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text('اتصل'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 20, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('حذف', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
+              // --- Actions Menu ---
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: theme.iconTheme.color),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 onSelected: (value) {
-                  if (value == 'whatsapp') {
-                    _openWhatsApp(context, book.phone);
+                  if (value == 'edit') {
+                    onEdit();
                   } else if (value == 'delete') {
                     onDelete();
                   }
                 },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(children: [
+                      Icon(Icons.edit_outlined, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text('تعديل'),
+                    ]),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline, color: colorScheme.error),
+                      const SizedBox(width: 8),
+                      const Text('حذف'),
+                    ]),
+                  ),
+                ],
               ),
             ],
           ),
@@ -324,90 +364,25 @@ class _BookCard extends StatelessWidget {
     );
   }
 
-  void _showBookDetails(BuildContext context) {
+  void _showBookDetailsSheet(BuildContext context) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: CachedNetworkImage(
-                  imageUrl: book.imageUrl,
-                  height: 250,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      book.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'المؤلف: ${book.author}',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      book.description,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('السعر:', style: TextStyle(fontSize: 16)),
-                          Text(
-                            '${book.price.toStringAsFixed(0)} جنيه',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _openWhatsApp(context, book.phone);
-                        },
-                        icon: const Icon(Icons.phone),
-                        label: const Text('اتصل بالبائع'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.75,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
           ),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: _BookDetailsContent(book: book),
         ),
       ),
     );
@@ -427,5 +402,170 @@ class _BookCard extends StatelessWidget {
         );
       }
     }
+  }
+}
+
+// --- New Widget for the Bottom Sheet Content ---
+
+class _BookDetailsContent extends StatelessWidget {
+  final dynamic book;
+
+  const _BookDetailsContent({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return ListView(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      children: [
+        Stack(
+          children: [
+            Hero(
+              tag: 'book_image_${book.id}',
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: CachedNetworkImage(
+                  imageUrl: book.imageUrl,
+                  height: 250,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black.withOpacity(0.5),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        // --- Content ---
+        Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                book.name,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 18, color: theme.textTheme.bodySmall?.color),
+                  const SizedBox(width: 8),
+                  Text(
+                    book.author,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                book.description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // --- Stats Section ---
+              Row(
+                children: [
+                  _buildStatChip(
+                    context: context,
+                    icon: Icons.price_change,
+                    label: 'السعر',
+                    value: '${book.price.toStringAsFixed(0)} ج.م',
+                    color: Colors.green,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildStatChip(
+                    context: context,
+                    icon: Icons.visibility,
+                    label: 'مشاهدات',
+                    value: '${book.views}',
+                    color: colorScheme.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              // --- Action Button ---
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _BookCard._openWhatsApp(context, book.phone);
+                  },
+                  icon: const Icon(Icons.phone_in_talk_outlined,
+                      color: Colors.white),
+                  label: const Text(
+                    'تواصل مع البائع',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(label,
+                style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(value,
+                style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      ),
+    );
   }
 }

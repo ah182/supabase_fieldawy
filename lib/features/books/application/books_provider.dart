@@ -121,3 +121,13 @@ final myBooksNotifierProvider = StateNotifierProvider<BooksNotifier, AsyncValue<
   final repository = ref.read(booksRepositoryProvider);
   return BooksNotifier(repository, isMyBooks: true);
 });
+
+// ===================================================================
+// ADMIN PROVIDERS
+// ===================================================================
+
+// Admin: All Books Provider
+final adminAllBooksProvider = FutureProvider<List<Book>>((ref) async {
+  final repository = ref.read(booksRepositoryProvider);
+  return repository.adminGetAllBooks();
+});
