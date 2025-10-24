@@ -138,10 +138,6 @@ class VetSuppliesRepository {
           ''')
           .order('created_at', ascending: false);
 
-      if (response == null) {
-        return [];
-      }
-
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) {
         final map = json as Map<String, dynamic>;

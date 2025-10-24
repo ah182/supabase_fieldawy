@@ -244,6 +244,40 @@ class UserRepository {
     }
   }
 
+  // Update user location
+  Future<bool> updateUserLocation({
+    required String userId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      print('📍 Updating location for user $userId: ($latitude, $longitude)');
+      
+      // Call the Supabase function
+      await _client.rpc('update_user_location', params: {
+        'p_user_id': userId,
+        'p_latitude': latitude,
+        'p_longitude': longitude,
+      });
+      
+      // Invalidate cache
+      _cache.invalidate('user_$userId');
+      
+      print('✅ Location updated successfully');
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.message.contains('wait 30 seconds')) {
+        print('⏰ Rate limit: Please wait before updating again');
+      } else {
+        print('❌ Error updating user location: ${e.message}');
+      }
+      return false;
+    } catch (e) {
+      print('❌ Error updating user location: $e');
+      return false;
+    }
+  }
+
   // Update user status (admin only)
   Future<bool> updateUserStatus(String userId, String newStatus) async {
     try {
@@ -269,8 +303,7 @@ class UserRepository {
       _cache.invalidate('doctors');
       _cache.invalidate('all_users');
       
-      // ignore: unnecessary_null_comparison
-      final success = response != null && (response is List && response.isNotEmpty);
+      final success = response is List && response.isNotEmpty;
       print(success ? '✅ Status updated successfully' : '❌ Update failed - empty response');
       
       if (!success) {
@@ -309,6 +342,9 @@ final doctorsCountProvider = FutureProvider<int>((ref) {
 
 final distributorsCountProvider = FutureProvider<int>((ref) {
   return ref.watch(userRepositoryProvider).getUsersCountByRole('distributor');
+});
+final companiesCountProvider = FutureProvider<int>((ref) {
+  return ref.watch(userRepositoryProvider).getUsersCountByRole('company');
 });
 
 final allDoctorsProvider = FutureProvider<List<UserModel>>((ref) {

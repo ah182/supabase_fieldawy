@@ -29,13 +29,16 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       governorates: (fields[9] as List?)?.cast<String>(),
       centers: (fields[10] as List?)?.cast<String>(),
       createdAt: fields[11] as DateTime,
+      lastLatitude: fields[12] as double?,
+      lastLongitude: fields[13] as double?,
+      lastLocationUpdate: fields[14] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +62,13 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       ..writeByte(10)
       ..write(obj.centers)
       ..writeByte(11)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(12)
+      ..write(obj.lastLatitude)
+      ..writeByte(13)
+      ..write(obj.lastLongitude)
+      ..writeByte(14)
+      ..write(obj.lastLocationUpdate);
   }
 
   @override

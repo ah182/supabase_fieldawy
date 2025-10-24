@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/core/localization/language_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Admin Login Screen with Real Supabase Authentication
 /// صفحة تسجيل دخول حقيقية للمدير
-class AdminLoginRealScreen extends StatefulWidget {
+class AdminLoginRealScreen extends ConsumerStatefulWidget {
   const AdminLoginRealScreen({super.key});
 
   @override
-  State<AdminLoginRealScreen> createState() => _AdminLoginRealScreenState();
+  ConsumerState<AdminLoginRealScreen> createState() => _AdminLoginRealScreenState();
 }
 
-class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
+class _AdminLoginRealScreenState extends ConsumerState<AdminLoginRealScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -75,8 +77,36 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
+    final locale = ref.watch(languageProvider);
+    final isArabic = locale.languageCode == 'ar';
+    
+    return Directionality(
+      textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(isArabic ? 'تسجيل دخول المدير' : 'Admin Login'),
+          actions: [
+            // Language Toggle
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'ar',
+                  label: Text('ع'),
+                ),
+                ButtonSegment(
+                  value: 'en',
+                  label: Text('EN'),
+                ),
+              ],
+              selected: {locale.languageCode},
+              onSelectionChanged: (Set<String> newSelection) {
+                ref.read(languageProvider.notifier).setLocale(Locale(newSelection.first));
+              },
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
+        body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
           padding: const EdgeInsets.all(32),
@@ -94,7 +124,7 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Admin Login',
+                  isArabic ? 'تسجيل دخول المدير' : 'Admin Login',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -102,7 +132,7 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in with your admin credentials',
+                  isArabic ? 'سجل دخول ببيانات المدير' : 'Sign in with your admin credentials',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[600],
                       ),
@@ -113,18 +143,18 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
                 // Email Field
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: isArabic ? 'البريد الإلكتروني' : 'Email',
+                    prefixIcon: const Icon(Icons.email),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter email';
+                      return isArabic ? 'الرجاء إدخال البريد الإلكتروني' : 'Please enter email';
                     }
                     if (!value.contains('@')) {
-                      return 'Please enter valid email';
+                      return isArabic ? 'الرجاء إدخال بريد إلكتروني صحيح' : 'Please enter valid email';
                     }
                     return null;
                   },
@@ -134,15 +164,15 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
                 // Password Field
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: isArabic ? 'كلمة المرور' : 'Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
                   ),
                   obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter password';
+                      return isArabic ? 'الرجاء إدخال كلمة المرور' : 'Please enter password';
                     }
                     return null;
                   },
@@ -185,12 +215,13 @@ class _AdminLoginRealScreenState extends State<AdminLoginRealScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Login'),
+                      : Text(isArabic ? 'تسجيل الدخول' : 'Login'),
                 ),
               ],
             ),
           ),
         ),
+      ),
       ),
     );
   }

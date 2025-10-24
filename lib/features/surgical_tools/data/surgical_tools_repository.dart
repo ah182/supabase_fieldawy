@@ -20,10 +20,6 @@ class SurgicalToolsRepository {
           ''')
           .order('created_at', ascending: false);
 
-      if (response == null) {
-        return [];
-      }
-
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) => SurgicalTool.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
@@ -52,10 +48,6 @@ class SurgicalToolsRepository {
             )
           ''')
           .order('created_at', ascending: false);
-
-      if (response == null) {
-        return [];
-      }
 
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) {

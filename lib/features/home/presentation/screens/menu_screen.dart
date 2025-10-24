@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
 // ignore: unused_import
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -97,10 +98,15 @@ class MenuScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       children: [
+        
         _buildMenuItem(
-            icon: Icons.home_outlined,
-            title: 'home'.tr(),
-            onTap: () => ZoomDrawer.of(context)!.close()),
+            icon: Icons.map_outlined, // New map icon
+            title: 'Clinics Map',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ClinicsMapScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.rate_review,
             title: 'Product rating',
@@ -171,10 +177,15 @@ class MenuScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       children: [
+       
         _buildMenuItem(
-            icon: Icons.home_outlined,
-            title: 'home'.tr(),
-            onTap: () => ZoomDrawer.of(context)!.close()),
+            icon: Icons.map_outlined, // New map icon
+            title: 'Clinics Map',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ClinicsMapScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.rate_review,
             title: 'Product rating',
@@ -248,10 +259,15 @@ class MenuScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       children: [
+      
         _buildMenuItem(
-            icon: Icons.home_outlined,
-            title: 'home'.tr(),
-            onTap: () => ZoomDrawer.of(context)!.close()),
+            icon: Icons.map_outlined, // New map icon
+            title: 'Clinics Map',
+            onTap: () {
+              ZoomDrawer.of(context)!.close();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const ClinicsMapScreen()));
+            }),
         _buildMenuItem(
             icon: Icons.rate_review,
             title: 'Product rating',

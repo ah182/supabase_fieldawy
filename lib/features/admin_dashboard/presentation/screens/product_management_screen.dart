@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fieldawy_store/core/localization/language_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
@@ -42,45 +45,51 @@ class _ProductManagementScreenState extends ConsumerState<ProductManagementScree
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Management'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.inventory), text: 'Catalog'),
-            Tab(icon: Icon(Icons.local_shipping), text: 'Distributor'),
-            Tab(icon: Icon(Icons.menu_book), text: 'Books'),
-            Tab(icon: Icon(Icons.school), text: 'Courses'),
-            Tab(icon: Icon(Icons.work), text: 'Jobs'),
-            Tab(icon: Icon(Icons.medical_services), text: 'Vet Supplies'),
-            Tab(icon: Icon(Icons.local_offer), text: 'Offers'),
-            Tab(icon: Icon(Icons.healing), text: 'Surgical Tools'),
-            Tab(icon: Icon(Icons.qr_code_scanner), text: 'OCR Products'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(adminAllProductsProvider);
-            },
+    final locale = ref.watch(languageProvider);
+    final isArabic = locale.languageCode == 'ar';
+    final direction = isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr;
+    
+    return Directionality(
+      textDirection: direction,
+      child: Column(
+        children: [
+          // TabBar only (no AppBar - AdminScaffold has it)
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            elevation: 4,
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabs: const [
+                Tab(icon: Icon(Icons.inventory), text: 'Catalog'),
+                Tab(icon: Icon(Icons.local_shipping), text: 'Distributor'),
+                Tab(icon: Icon(Icons.menu_book), text: 'Books'),
+                Tab(icon: Icon(Icons.school), text: 'Courses'),
+                Tab(icon: Icon(Icons.work), text: 'Jobs'),
+                Tab(icon: Icon(Icons.medical_services), text: 'Vet Supplies'),
+                Tab(icon: Icon(Icons.local_offer), text: 'Offers'),
+                Tab(icon: Icon(Icons.healing), text: 'Surgical Tools'),
+                Tab(icon: Icon(Icons.qr_code_scanner), text: 'OCR Products'),
+              ],
+            ),
           ),
-        ],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _CatalogProductsTab(),
-          _DistributorProductsTab(),
-          _BooksTab(),
-          _CoursesTab(),
-          _JobsTab(),
-          _VetSuppliesTab(),
-          _OffersTab(),
-          _SurgicalToolsTab(),
-          _OcrProductsTab(),
+          // TabBarView
+          Expanded(
+            child: TabBarView(
+          controller: _tabController,
+          children: const [
+            _CatalogProductsTab(),
+            _DistributorProductsTab(),
+            _BooksTab(),
+            _CoursesTab(),
+            _JobsTab(),
+            _VetSuppliesTab(),
+            _OffersTab(),
+            _SurgicalToolsTab(),
+            _OcrProductsTab(),
+          ],
+            ),
+          ),
         ],
       ),
     );
@@ -90,11 +99,18 @@ class _ProductManagementScreenState extends ConsumerState<ProductManagementScree
 // ===================================================================
 // Catalog Products Tab (products without distributor_id)
 // ===================================================================
-class _CatalogProductsTab extends ConsumerWidget {
+class _CatalogProductsTab extends ConsumerStatefulWidget {
   const _CatalogProductsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CatalogProductsTab> createState() => _CatalogProductsTabState();
+}
+
+class _CatalogProductsTabState extends ConsumerState<_CatalogProductsTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final productsAsync = ref.watch(adminAllProductsProvider);
 
     return productsAsync.when(
@@ -102,40 +118,88 @@ class _CatalogProductsTab extends ConsumerWidget {
       error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
       data: (products) {
         // Filter catalog products (no distributor_id)
-        final catalogProducts = products.where((p) => 
+        var catalogProducts = products.where((p) => 
           p.distributorId == null || p.distributorId!.isEmpty
         ).toList();
 
-        if (catalogProducts.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inventory, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No catalog products found'),
-              ],
-            ),
-          );
+        // Apply search filter
+        if (_searchQuery.isNotEmpty) {
+          catalogProducts = catalogProducts.where((p) {
+            final query = _searchQuery.toLowerCase();
+            return p.name.toLowerCase().contains(query) ||
+                   (p.company?.toLowerCase().contains(query) ?? false) ||
+                   (p.activePrinciple?.toLowerCase().contains(query) ?? false);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Catalog Products (${catalogProducts.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Image')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Action')),
-                DataColumn(label: Text('Company')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _CatalogProductDataSource(catalogProducts, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name, company, or active principle...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
             ),
-          ),
+            if (catalogProducts.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _searchQuery.isNotEmpty ? Icons.search_off : Icons.inventory,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No products found' : 'No catalog products found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Catalog Products (${catalogProducts.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Image')),
+                        DataColumn(label: Text('Name')),
+                        DataColumn(label: Text('Action')),
+                        DataColumn(label: Text('Company')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _CatalogProductDataSource(catalogProducts, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -143,55 +207,93 @@ class _CatalogProductsTab extends ConsumerWidget {
 }
 
 // ===================================================================
-// Distributor Products Tab (products with distributor_id)
+// Distributor Products Tab (products with distributor_id - excluding OCR)
 // ===================================================================
-class _DistributorProductsTab extends ConsumerWidget {
+class _DistributorProductsTab extends ConsumerStatefulWidget {
   const _DistributorProductsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final productsAsync = ref.watch(adminAllProductsProvider);
+  ConsumerState<_DistributorProductsTab> createState() => _DistributorProductsTabState();
+}
+
+class _DistributorProductsTabState extends ConsumerState<_DistributorProductsTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final productsAsync = ref.watch(adminOnlyDistributorProductsProvider);
 
     return productsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
       data: (products) {
-        // Filter distributor products (has distributor_id)
-        final distributorProducts = products.where((p) => 
-          p.distributorId != null && p.distributorId!.isNotEmpty
-        ).toList();
+        var distributorProducts = products;
 
-        if (distributorProducts.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.local_shipping, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No distributor products found'),
-              ],
-            ),
-          );
+        // Apply search filter
+        if (_searchQuery.isNotEmpty) {
+          distributorProducts = distributorProducts.where((p) {
+            final query = _searchQuery.toLowerCase();
+            return p.name.toLowerCase().contains(query) ||
+                   (p.distributorId?.toLowerCase().contains(query) ?? false) ||
+                   (p.company?.toLowerCase().contains(query) ?? false);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Distributor Products (${distributorProducts.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Image')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Distributor')),
-                DataColumn(label: Text('Package')),
-                DataColumn(label: Text('Price (EGP)')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _DistributorProductDataSource(distributorProducts, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name, distributor, or company...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchQuery = ''),
+                        )
+                      : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
             ),
-          ),
+            if (distributorProducts.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.local_shipping, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No products found' : 'No distributor products found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Distributor Products (${distributorProducts.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Image')),
+                        DataColumn(label: Text('Name')),
+                        DataColumn(label: Text('Distributor')),
+                        DataColumn(label: Text('Package')),
+                        DataColumn(label: Text('Price (EGP)')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _DistributorProductDataSource(distributorProducts, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -243,13 +345,154 @@ class _CatalogProductDataSource extends DataTableSource {
         ),
         // Actions
         DataCell(
-          IconButton(
-            icon: const Icon(Icons.visibility, size: 20),
-            tooltip: 'View Details',
-            onPressed: () => _showProductDetails(product),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.visibility, size: 20),
+                tooltip: 'View Details',
+                onPressed: () => _showProductDetails(product),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                tooltip: 'Edit',
+                onPressed: () => _showCatalogEditDialog(product),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                tooltip: 'Delete',
+                onPressed: () => _confirmCatalogDelete(product),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+  
+  void _showCatalogEditDialog(ProductModel product) {
+    final nameController = TextEditingController(text: product.name);
+    final companyController = TextEditingController(text: product.company);
+    final activePrincipleController = TextEditingController(text: product.activePrinciple ?? '');
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit Catalog Product'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Product Name'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: companyController,
+                  decoration: const InputDecoration(labelText: 'Company'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: activePrincipleController,
+                  decoration: const InputDecoration(labelText: 'Active Principle (Optional)'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final company = companyController.text.trim();
+              final activePrinciple = activePrincipleController.text.trim();
+
+              if (name.isEmpty || company.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill Name and Company')),
+                );
+                return;
+              }
+
+              try {
+                Navigator.pop(context);
+                final success = await ref.read(productRepositoryProvider).adminUpdateProduct(
+                  id: product.id,
+                  name: name,
+                  company: company,
+                  activePrinciple: activePrinciple.isEmpty ? null : activePrinciple,
+                );
+
+                if (success) {
+                  ref.invalidate(adminAllProductsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ Product updated successfully'), backgroundColor: Colors.green),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('❌ Update failed'), backgroundColor: Colors.red),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _confirmCatalogDelete(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text('Are you sure you want to delete "${product.name}"?\n\nThis will permanently remove it from the catalog.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                Navigator.pop(context);
+                final success = await ref.read(productRepositoryProvider).adminDeleteProduct(product.id);
+
+                if (success) {
+                  ref.invalidate(adminAllProductsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ Product deleted successfully'), backgroundColor: Colors.green),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('❌ Delete failed'), backgroundColor: Colors.red),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -423,14 +666,65 @@ class _DistributorProductDataSource extends DataTableSource {
                 onPressed: () => _showProductDetails(product),
               ),
               IconButton(
-                icon: const Icon(Icons.edit, size: 20),
+                icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
                 tooltip: 'Edit Price',
                 onPressed: () => _showEditPriceDialog(product),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                tooltip: 'Delete',
+                onPressed: () => _confirmDistributorDelete(product),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+  
+  void _confirmDistributorDelete(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Distributor Product'),
+        content: Text('Are you sure you want to delete "${product.name}" from distributor "${product.distributorId}"?\n\nPackage: ${product.selectedPackage}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                Navigator.pop(context);
+                final success = await ref.read(productRepositoryProvider).adminDeleteDistributorProduct(
+                  distributorId: product.distributorId!,
+                  productId: product.id,
+                  package: product.selectedPackage ?? '',
+                );
+
+                if (success) {
+                  ref.invalidate(adminAllProductsProvider);
+                  ref.invalidate(adminOnlyDistributorProductsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ Product deleted successfully'), backgroundColor: Colors.green),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('❌ Delete failed'), backgroundColor: Colors.red),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -591,19 +885,51 @@ class _DistributorProductDataSource extends DataTableSource {
 // ===================================================================
 // Books Tab
 // ===================================================================
-class _BooksTab extends ConsumerWidget {
+class _BooksTab extends ConsumerStatefulWidget {
   const _BooksTab();
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BooksTab> createState() => _BooksTabState();
+}
+
+class _BooksTabState extends ConsumerState<_BooksTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final booksAsync = ref.watch(adminAllBooksProvider);
     return booksAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (books) {
-        if (books.isEmpty) {
-          return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.menu_book, size: 64, color: Colors.grey), SizedBox(height: 16), Text('No books found')]));
+      data: (allBooks) {
+        var books = allBooks;
+        if (_searchQuery.isNotEmpty) {
+          books = books.where((b) {
+            final q = _searchQuery.toLowerCase();
+            return b.name.toLowerCase().contains(q) ||
+                   b.author.toLowerCase().contains(q) ||
+                   b.phone.toLowerCase().contains(q);
+          }).toList();
         }
-        return SingleChildScrollView(padding: const EdgeInsets.all(16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Books (${books.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Image')), DataColumn(label: Text('Name')), DataColumn(label: Text('Author')), DataColumn(label: Text('Price')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Actions'))], source: _BooksDataSource(books, context, ref))));
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name, author, or phone...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
+            ),
+            if (books.isEmpty)
+              Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.menu_book, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(_searchQuery.isNotEmpty ? 'No books found' : 'No books found')])))
+            else
+              Expanded(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Books (${books.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Image')), DataColumn(label: Text('Name')), DataColumn(label: Text('Author')), DataColumn(label: Text('Price')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Actions'))], source: _BooksDataSource(books, context, ref))))),
+          ],
+        );
       },
     );
   }
@@ -618,8 +944,88 @@ class _BooksDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= books.length) return null;
     final book = books[index];
-    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(book.imageUrl)), DataCell(SizedBox(width: 200, child: Text(book.name, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(book.author)), DataCell(Text(book.price.toStringAsFixed(2))), DataCell(Text(book.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(book)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(book))]))]);
+    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(book.imageUrl)), DataCell(SizedBox(width: 200, child: Text(book.name, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(book.author)), DataCell(Text(book.price.toStringAsFixed(2))), DataCell(Text(book.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(book)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(book)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(book))]))]);
   }
+  
+  void _showEditDialog(Book book) {
+    final nameController = TextEditingController(text: book.name);
+    final authorController = TextEditingController(text: book.author);
+    final priceController = TextEditingController(text: book.price.toString());
+    final phoneController = TextEditingController(text: book.phone);
+    final descController = TextEditingController(text: book.description);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit Book'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+                const SizedBox(height: 8),
+                TextField(controller: authorController, decoration: const InputDecoration(labelText: 'Author')),
+                const SizedBox(height: 8),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (EGP)'), keyboardType: TextInputType.number),
+                const SizedBox(height: 8),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 8),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final author = authorController.text.trim();
+              final priceText = priceController.text.trim();
+              final phone = phoneController.text.trim();
+              final desc = descController.text.trim();
+              
+              if (name.isEmpty || author.isEmpty || priceText.isEmpty || phone.isEmpty || desc.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                return;
+              }
+              
+              final price = double.tryParse(priceText);
+              if (price == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid price')));
+                return;
+              }
+              
+              try {
+                Navigator.pop(context);
+                final success = await ref.read(booksRepositoryProvider).adminUpdateBook(
+                  bookId: book.id,
+                  name: name,
+                  author: author,
+                  price: price,
+                  phone: phone,
+                  description: desc,
+                );
+                
+                if (success) {
+                  ref.invalidate(adminAllBooksProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Updated successfully'), backgroundColor: Colors.green));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Update failed'), backgroundColor: Colors.red));
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildImage(String url) {
     if (url.isEmpty) return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.menu_book, size: 24));
     return ClipRRect(borderRadius: BorderRadius.circular(4), child: CachedNetworkImage(imageUrl: url, width: 50, height: 50, fit: BoxFit.cover, placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]), errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image))));
@@ -638,19 +1044,51 @@ class _BooksDataSource extends DataTableSource {
 // ===================================================================
 // Courses Tab  
 // ===================================================================
-class _CoursesTab extends ConsumerWidget {
+class _CoursesTab extends ConsumerStatefulWidget {
   const _CoursesTab();
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CoursesTab> createState() => _CoursesTabState();
+}
+
+class _CoursesTabState extends ConsumerState<_CoursesTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final coursesAsync = ref.watch(adminAllCoursesProvider);
     return coursesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (courses) {
-        if (courses.isEmpty) {
-          return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.school, size: 64, color: Colors.grey), SizedBox(height: 16), Text('No courses found')]));
+      data: (allCourses) {
+        var courses = allCourses;
+        if (_searchQuery.isNotEmpty) {
+          courses = courses.where((c) {
+            final q = _searchQuery.toLowerCase();
+            return c.title.toLowerCase().contains(q) ||
+                   c.phone.toLowerCase().contains(q) ||
+                   c.description.toLowerCase().contains(q);
+          }).toList();
         }
-        return SingleChildScrollView(padding: const EdgeInsets.all(16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Courses (${courses.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Image')), DataColumn(label: Text('Title')), DataColumn(label: Text('Price')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Actions'))], source: _CoursesDataSource(courses, context, ref))));
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by title, phone, or description...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
+            ),
+            if (courses.isEmpty)
+              Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.school, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(_searchQuery.isNotEmpty ? 'No courses found' : 'No courses found')])))
+            else
+              Expanded(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Courses (${courses.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Image')), DataColumn(label: Text('Title')), DataColumn(label: Text('Price')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Actions'))], source: _CoursesDataSource(courses, context, ref))))),
+          ],
+        );
       },
     );
   }
@@ -665,8 +1103,83 @@ class _CoursesDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= courses.length) return null;
     final course = courses[index];
-    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(course.imageUrl)), DataCell(SizedBox(width: 250, child: Text(course.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(course.price.toStringAsFixed(2))), DataCell(Text(course.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(course)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(course))]))]);
+    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(course.imageUrl)), DataCell(SizedBox(width: 250, child: Text(course.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(course.price.toStringAsFixed(2))), DataCell(Text(course.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(course)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(course)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(course))]))]);
   }
+  
+  void _showEditDialog(Course course) {
+    final titleController = TextEditingController(text: course.title);
+    final priceController = TextEditingController(text: course.price.toString());
+    final phoneController = TextEditingController(text: course.phone);
+    final descController = TextEditingController(text: course.description);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit Course'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+                const SizedBox(height: 8),
+                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (EGP)'), keyboardType: TextInputType.number),
+                const SizedBox(height: 8),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 8),
+                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final title = titleController.text.trim();
+              final priceText = priceController.text.trim();
+              final phone = phoneController.text.trim();
+              final desc = descController.text.trim();
+              
+              if (title.isEmpty || priceText.isEmpty || phone.isEmpty || desc.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                return;
+              }
+              
+              final price = double.tryParse(priceText);
+              if (price == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid price')));
+                return;
+              }
+              
+              try {
+                Navigator.pop(context);
+                final success = await ref.read(coursesRepositoryProvider).adminUpdateCourse(
+                  courseId: course.id,
+                  title: title,
+                  price: price,
+                  phone: phone,
+                  description: desc,
+                );
+                
+                if (success) {
+                  ref.invalidate(adminAllCoursesProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Updated successfully'), backgroundColor: Colors.green));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Update failed'), backgroundColor: Colors.red));
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildImage(String url) {
     if (url.isEmpty) return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.school, size: 24));
     return ClipRRect(borderRadius: BorderRadius.circular(4), child: CachedNetworkImage(imageUrl: url, width: 50, height: 50, fit: BoxFit.cover, placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]), errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image))));
@@ -685,19 +1198,51 @@ class _CoursesDataSource extends DataTableSource {
 // ===================================================================
 // Jobs Tab
 // ===================================================================
-class _JobsTab extends ConsumerWidget {
+class _JobsTab extends ConsumerStatefulWidget {
   const _JobsTab();
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_JobsTab> createState() => _JobsTabState();
+}
+
+class _JobsTabState extends ConsumerState<_JobsTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final jobsAsync = ref.watch(adminAllJobOffersProvider);
     return jobsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (jobs) {
-        if (jobs.isEmpty) {
-          return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.work, size: 64, color: Colors.grey), SizedBox(height: 16), Text('No jobs found')]));
+      data: (allJobs) {
+        var jobs = allJobs;
+        if (_searchQuery.isNotEmpty) {
+          jobs = jobs.where((j) {
+            final q = _searchQuery.toLowerCase();
+            return j.title.toLowerCase().contains(q) ||
+                   j.phone.toLowerCase().contains(q) ||
+                   j.description.toLowerCase().contains(q);
+          }).toList();
         }
-        return SingleChildScrollView(padding: const EdgeInsets.all(16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Job Offers (${jobs.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Title')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Status')), DataColumn(label: Text('Views')), DataColumn(label: Text('Actions'))], source: _JobsDataSource(jobs, context, ref))));
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by title, phone, or description...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
+            ),
+            if (jobs.isEmpty)
+              Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.work, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(_searchQuery.isNotEmpty ? 'No jobs found' : 'No jobs found')])))
+            else
+              Expanded(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: SizedBox(width: double.infinity, child: PaginatedDataTable(header: Text('Job Offers (${jobs.length})'), rowsPerPage: 10, columns: const [DataColumn(label: Text('Title')), DataColumn(label: Text('Phone')), DataColumn(label: Text('Status')), DataColumn(label: Text('Views')), DataColumn(label: Text('Actions'))], source: _JobsDataSource(jobs, context, ref))))),
+          ],
+        );
       },
     );
   }
@@ -712,8 +1257,92 @@ class _JobsDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= jobs.length) return null;
     final job = jobs[index];
-    return DataRow.byIndex(index: index, cells: [DataCell(SizedBox(width: 300, child: Text(job.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(job.phone)), DataCell(Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: (job.status == 'closed' ? Colors.red.shade100 : Colors.green.shade100), borderRadius: BorderRadius.circular(4)), child: Text((job.status == 'closed' ? 'Closed' : 'Open'), style: TextStyle(color: (job.status == 'closed' ? Colors.red.shade900 : Colors.green.shade900), fontWeight: FontWeight.bold)))), DataCell(Text(job.viewsCount.toString())), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(job)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(job))]))]);
+    return DataRow.byIndex(index: index, cells: [DataCell(SizedBox(width: 300, child: Text(job.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(job.phone)), DataCell(Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: (job.status == 'closed' ? Colors.red.shade100 : Colors.green.shade100), borderRadius: BorderRadius.circular(4)), child: Text((job.status == 'closed' ? 'Closed' : 'Open'), style: TextStyle(color: (job.status == 'closed' ? Colors.red.shade900 : Colors.green.shade900), fontWeight: FontWeight.bold)))), DataCell(Text(job.viewsCount.toString())), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(job)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(job)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(job))]))]);
   }
+  
+  void _showEditDialog(JobOffer job) {
+    final titleController = TextEditingController(text: job.title);
+    final phoneController = TextEditingController(text: job.phone);
+    final descController = TextEditingController(text: job.description);
+    String selectedStatus = job.status;
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Edit Job Offer'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title'), maxLines: 2),
+                  const SizedBox(height: 8),
+                  TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                  const SizedBox(height: 8),
+                  TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 4),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedStatus,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const [
+                      DropdownMenuItem(value: 'active', child: Text('Open')),
+                      DropdownMenuItem(value: 'closed', child: Text('Closed')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedStatus = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final phone = phoneController.text.trim();
+                final desc = descController.text.trim();
+                
+                if (title.isEmpty || phone.isEmpty || desc.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                  return;
+                }
+                
+                try {
+                  Navigator.pop(context);
+                  final success = await ref.read(jobOffersRepositoryProvider).adminUpdateJobOffer(
+                    jobId: job.id,
+                    title: title,
+                    phone: phone,
+                    description: desc,
+                    status: selectedStatus,
+                  );
+                  
+                  if (success) {
+                    ref.invalidate(adminAllJobOffersProvider);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Updated successfully'), backgroundColor: Colors.green));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Update failed'), backgroundColor: Colors.red));
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: ${e.toString()}'), backgroundColor: Colors.red));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
   void _showDetails(JobOffer job) {
     showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Job Details'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Title: ${job.title}', style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text('Phone: ${job.phone}'), Text('Views: ${0}'), Text('Status: ${(job.status == "closed" ? "Closed" : "Open")}'), const SizedBox(height: 8), Text('Description: ${job.description}')])), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))]));
   }
@@ -728,49 +1357,85 @@ class _JobsDataSource extends DataTableSource {
 // ===================================================================
 // Vet Supplies Tab
 // ===================================================================
-class _VetSuppliesTab extends ConsumerWidget {
+class _VetSuppliesTab extends ConsumerStatefulWidget {
   const _VetSuppliesTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_VetSuppliesTab> createState() => _VetSuppliesTabState();
+}
+
+class _VetSuppliesTabState extends ConsumerState<_VetSuppliesTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final suppliesAsync = ref.watch(adminAllVetSuppliesProvider);
 
     return suppliesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (supplies) {
-        if (supplies.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.medical_services, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No vet supplies found'),
-              ],
-            ),
-          );
+      data: (allSupplies) {
+        var supplies = allSupplies;
+        if (_searchQuery.isNotEmpty) {
+          supplies = supplies.where((s) {
+            final q = _searchQuery.toLowerCase();
+            return s.name.toLowerCase().contains(q) ||
+                   s.phone.toLowerCase().contains(q) ||
+                   s.description.toLowerCase().contains(q);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Vet Supplies (${supplies.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Image')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Price (EGP)')),
-                DataColumn(label: Text('Phone')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Views')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _VetSuppliesDataSource(supplies, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name, phone, or description...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
             ),
-          ),
+            if (supplies.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.medical_services, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No vet supplies found' : 'No vet supplies found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Vet Supplies (${supplies.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Image')),
+                        DataColumn(label: Text('Name')),
+                        DataColumn(label: Text('Price (EGP)')),
+                        DataColumn(label: Text('Phone')),
+                        DataColumn(label: Text('Status')),
+                        DataColumn(label: Text('Views')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _VetSuppliesDataSource(supplies, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1067,49 +1732,83 @@ class _VetSuppliesDataSource extends DataTableSource {
 // ===================================================================
 // Offers Tab
 // ===================================================================
-class _OffersTab extends ConsumerWidget {
+class _OffersTab extends ConsumerStatefulWidget {
   const _OffersTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_OffersTab> createState() => _OffersTabState();
+}
+
+class _OffersTabState extends ConsumerState<_OffersTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final offersAsync = ref.watch(adminAllOffersProvider);
 
     return offersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (offers) {
-        if (offers.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.local_offer, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No offers found'),
-              ],
-            ),
-          );
+      data: (allOffers) {
+        var offers = allOffers;
+        if (_searchQuery.isNotEmpty) {
+          offers = offers.where((o) {
+            final q = _searchQuery.toLowerCase();
+            return o.productId.toLowerCase().contains(q);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Offers (${offers.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Product ID')),
-                DataColumn(label: Text('Type')),
-                DataColumn(label: Text('Price (EGP)')),
-                DataColumn(label: Text('Package')),
-                DataColumn(label: Text('Expiration')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _OffersDataSource(offers, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by product ID...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
             ),
-          ),
+            if (offers.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.local_offer, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No offers found' : 'No offers found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Offers (${offers.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Product ID')),
+                        DataColumn(label: Text('Type')),
+                        DataColumn(label: Text('Price (EGP)')),
+                        DataColumn(label: Text('Package')),
+                        DataColumn(label: Text('Expiration')),
+                        DataColumn(label: Text('Status')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _OffersDataSource(offers, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1336,48 +2035,84 @@ class _OffersDataSource extends DataTableSource {
 // ===================================================================
 // Surgical Tools Tab
 // ===================================================================
-class _SurgicalToolsTab extends ConsumerWidget {
+class _SurgicalToolsTab extends ConsumerStatefulWidget {
   const _SurgicalToolsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SurgicalToolsTab> createState() => _SurgicalToolsTabState();
+}
+
+class _SurgicalToolsTabState extends ConsumerState<_SurgicalToolsTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final toolsAsync = ref.watch(adminAllDistributorSurgicalToolsProvider);
 
     return toolsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (tools) {
-        if (tools.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.healing, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No surgical tools found'),
-              ],
-            ),
-          );
+      data: (allTools) {
+        var tools = allTools;
+        if (_searchQuery.isNotEmpty) {
+          tools = tools.where((t) {
+            final q = _searchQuery.toLowerCase();
+            return (t.toolName ?? '').toLowerCase().contains(q) ||
+                   (t.company ?? '').toLowerCase().contains(q) ||
+                   t.distributorName.toLowerCase().contains(q);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Distributor Surgical Tools (${tools.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Image')),
-                DataColumn(label: Text('Tool Name')),
-                DataColumn(label: Text('Company')),
-                DataColumn(label: Text('Distributor')),
-                DataColumn(label: Text('Price (EGP)')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _SurgicalToolsDataSource(tools, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by tool name, company, or distributor...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
             ),
-          ),
+            if (tools.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.healing, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No surgical tools found' : 'No surgical tools found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Distributor Surgical Tools (${tools.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Image')),
+                        DataColumn(label: Text('Tool Name')),
+                        DataColumn(label: Text('Company')),
+                        DataColumn(label: Text('Distributor')),
+                        DataColumn(label: Text('Price (EGP)')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _SurgicalToolsDataSource(tools, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1575,48 +2310,84 @@ class _SurgicalToolsDataSource extends DataTableSource {
 // ===================================================================
 // OCR Products Tab
 // ===================================================================
-class _OcrProductsTab extends ConsumerWidget {
+class _OcrProductsTab extends ConsumerStatefulWidget {
   const _OcrProductsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_OcrProductsTab> createState() => _OcrProductsTabState();
+}
+
+class _OcrProductsTabState extends ConsumerState<_OcrProductsTab> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final ocrProductsAsync = ref.watch(adminAllDistributorOcrProductsProvider);
 
     return ocrProductsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (ocrProducts) {
-        if (ocrProducts.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.qr_code_scanner, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No OCR products found'),
-              ],
-            ),
-          );
+      data: (allOcrProducts) {
+        var ocrProducts = allOcrProducts;
+        if (_searchQuery.isNotEmpty) {
+          ocrProducts = ocrProducts.where((p) {
+            final q = _searchQuery.toLowerCase();
+            return (p['ocr_product_id'] ?? '').toString().toLowerCase().contains(q) ||
+                   (p['distributor_name'] ?? '').toString().toLowerCase().contains(q);
+          }).toList();
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: Text('Distributor OCR Products (${ocrProducts.length})'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('OCR Product ID')),
-                DataColumn(label: Text('Distributor')),
-                DataColumn(label: Text('Price (EGP)')),
-                DataColumn(label: Text('Old Price')),
-                DataColumn(label: Text('Expiration')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _OcrProductsDataSource(ocrProducts, context, ref),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by OCR product ID or distributor...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () => setState(() => _searchQuery = '')) : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
             ),
-          ),
+            if (ocrProducts.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_searchQuery.isNotEmpty ? Icons.search_off : Icons.qr_code_scanner, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(_searchQuery.isNotEmpty ? 'No OCR products found' : 'No OCR products found'),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PaginatedDataTable(
+                      header: Text('Distributor OCR Products (${ocrProducts.length})'),
+                      rowsPerPage: 10,
+                      columns: const [
+                        DataColumn(label: Text('Image')),
+                        DataColumn(label: Text('OCR Product ID')),
+                        DataColumn(label: Text('Distributor')),
+                        DataColumn(label: Text('Price (EGP)')),
+                        DataColumn(label: Text('Old Price')),
+                        DataColumn(label: Text('Expiration')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      source: _OcrProductsDataSource(ocrProducts, context, ref),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1637,6 +2408,7 @@ class _OcrProductsDataSource extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: [
+        DataCell(_buildImage(product['image_url']?.toString() ?? '')),
         DataCell(SizedBox(width: 150, child: Text(product['ocr_product_id'] ?? 'N/A', overflow: TextOverflow.ellipsis))),
         DataCell(SizedBox(width: 120, child: Text(product['distributor_name'] ?? 'N/A', overflow: TextOverflow.ellipsis))),
         DataCell(Text(product['price']?.toStringAsFixed(2) ?? 'N/A')),
@@ -1667,6 +2439,44 @@ class _OcrProductsDataSource extends DataTableSource {
           ],
         )),
       ],
+    );
+  }
+
+  Widget _buildImage(String url) {
+    if (url.isEmpty) {
+      return Container(
+        width: 50,
+        height: 50,
+        color: Colors.grey[200],
+        child: const Icon(Icons.qr_code_scanner, size: 24, color: Colors.grey),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: CachedNetworkImage(
+        imageUrl: url,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => Container(
+          width: 50,
+          height: 50,
+          color: Colors.grey[200],
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          width: 50,
+          height: 50,
+          color: Colors.grey[200],
+          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+        ),
+      ),
     );
   }
 
@@ -1772,6 +2582,18 @@ class _OcrProductsDataSource extends DataTableSource {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (product['image_url'] != null && product['image_url'].toString().isNotEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: CachedNetworkImage(
+                      imageUrl: product['image_url'],
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
               Text('OCR Product ID: ${product['ocr_product_id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
               Text('Distributor: ${product['distributor_name'] ?? "N/A"}'),
               Text('Distributor ID: ${product['distributor_id']}'),

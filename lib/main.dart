@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:fieldawy_store/core/services/http_overrides.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -21,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+// ignore: unused_import
 import 'package:pdfrx/pdfrx.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/language_provider.dart';
@@ -509,6 +512,7 @@ int _getTabIndexFromScreen(String screen) {
 }
 
 Future<void> main() async {
+  HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
 
   // ✅ Firebase initialization
@@ -817,7 +821,7 @@ Future<void> main() async {
     });
   } // End of if (!kIsWeb) for Firebase Messaging
 
-  pdfrxFlutterInitialize();
+  // pdfrxFlutterInitialize(); // Not needed in pdfrx 1.3.5
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
@@ -834,7 +838,12 @@ Future<void> main() async {
   await SubscriptionCacheService.init();
   print('✅ Subscription cache initialized');
 
-  runApp(const ConnectivityHandler());
+  // Wrap with ProviderScope for Riverpod
+  runApp(
+    const ProviderScope(
+      child: ConnectivityHandler(),
+    ),
+  );
 }
 
 class ConnectivityHandler extends StatefulWidget {
@@ -1030,13 +1039,12 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
 
   @override
   Widget build(BuildContext context) {
-    final locale = ref.watch(languageProvider);
+    ref.watch(languageProvider); // Watch for language changes
     final themeMode = ref.watch(themeNotifierProvider);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
       scaffoldMessengerKey: scaffoldMessengerKey,
-      key: ValueKey(locale),
       debugShowCheckedModeBanner: false,
       title: 'Fieldawy Store',
       localizationsDelegates: context.localizationDelegates,
@@ -1047,6 +1055,8 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       themeMode: themeMode,
       themeAnimationDuration: const Duration(milliseconds: 200),
       themeAnimationCurve: Curves.easeOutCubic,
+      // For Web: start with Admin Login, for Mobile: start with regular app
+      initialRoute: kIsWeb ? '/admin/login' : '/',
       onGenerateRoute: (settings) {
         // Check if it's an admin route
         if (settings.name != null && settings.name!.startsWith('/admin')) {

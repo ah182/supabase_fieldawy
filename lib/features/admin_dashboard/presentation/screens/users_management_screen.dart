@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/data_actions_toolbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,35 +30,60 @@ class _UsersManagementScreenState extends ConsumerState<UsersManagementScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Users Management'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.medical_services), text: 'Doctors'),
-            Tab(icon: Icon(Icons.local_shipping), text: 'Distributors'),
-            Tab(icon: Icon(Icons.business), text: 'Companies'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(allDoctorsProvider);
-              ref.invalidate(allDistributorsProvider);
-            },
+    // Get counts for tabs
+    final doctorsAsync = ref.watch(allDoctorsProvider);
+    final distributorsAsync = ref.watch(allDistributorsProvider);
+    final usersAsync = ref.watch(allUsersListProvider);
+    
+    final doctorsCount = doctorsAsync.maybeWhen(
+      data: (doctors) => doctors.length,
+      orElse: () => 0,
+    );
+    final distributorsCount = distributorsAsync.maybeWhen(
+      data: (distributors) => distributors.length,
+      orElse: () => 0,
+    );
+    final companiesCount = usersAsync.maybeWhen(
+      data: (users) => users.where((u) => u.role == 'company').length,
+      orElse: () => 0,
+    );
+    
+    return Column(
+      children: [
+        // TabBar only (AdminScaffold has AppBar)
+        Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 4,
+          child: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(
+                icon: const Icon(Icons.medical_services),
+                text: 'Doctors ($doctorsCount)',
+              ),
+              Tab(
+                icon: const Icon(Icons.local_shipping),
+                text: 'Distributors ($distributorsCount)',
+              ),
+              Tab(
+                icon: const Icon(Icons.business),
+                text: 'Companies ($companiesCount)',
+              ),
+            ],
           ),
-        ],
-      ),
-      body: TabBarView(
+        ),
+        // TabBarView
+        Expanded(
+          child: TabBarView(
         controller: _tabController,
         children: const [
           _DoctorsTab(),
           _DistributorsTab(),
           _CompaniesTab(),
         ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -89,25 +115,48 @@ class _DoctorsTab extends ConsumerWidget {
           );
         }
 
+        // Convert doctors to Map format for export
+        final doctorsData = doctors.map((doctor) => {
+          'Name': doctor.displayName ?? 'N/A',
+          'Email': doctor.email ?? 'N/A',
+          'WhatsApp': doctor.whatsappNumber ?? 'N/A',
+          'Role': doctor.role,
+          'Status': doctor.accountStatus,
+          'Governorates': doctor.governorates?.join(', ') ?? 'N/A',
+        }).toList();
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: const Text('All Doctors'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Photo')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Email')),
-                DataColumn(label: Text('WhatsApp')),
-                DataColumn(label: Text('Governorates')),
-                DataColumn(label: Text('Document')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _UsersDataSource(doctors, context, ref, 'doctor'),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Export Toolbar
+              DataActionsToolbar(
+                title: 'Doctors',
+                data: doctorsData,
+                onRefresh: () => ref.invalidate(allDoctorsProvider),
+              ),
+              const SizedBox(height: 16),
+              // Data Table
+              SizedBox(
+                width: double.infinity,
+                child: PaginatedDataTable(
+                  header: const Text('All Doctors'),
+                  rowsPerPage: 10,
+                  columns: const [
+                    DataColumn(label: Text('Photo')),
+                    DataColumn(label: Text('Name')),
+                    DataColumn(label: Text('Email')),
+                    DataColumn(label: Text('WhatsApp')),
+                    DataColumn(label: Text('Governorates')),
+                    DataColumn(label: Text('Document')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Actions')),
+                  ],
+                  source: _UsersDataSource(doctors, context, ref, 'doctor'),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -142,25 +191,48 @@ class _DistributorsTab extends ConsumerWidget {
           );
         }
 
+        // Convert distributors to Map format for export
+        final distributorsData = distributors.map((distributor) => {
+          'Name': distributor.displayName ?? 'N/A',
+          'Email': distributor.email ?? 'N/A',
+          'WhatsApp': distributor.whatsappNumber ?? 'N/A',
+          'Role': distributor.role,
+          'Status': distributor.accountStatus,
+          'Governorates': distributor.governorates?.join(', ') ?? 'N/A',
+        }).toList();
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: const Text('All Distributors'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Photo')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Email')),
-                DataColumn(label: Text('WhatsApp')),
-                DataColumn(label: Text('Governorates')),
-                DataColumn(label: Text('Document')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _UsersDataSource(distributors, context, ref, 'distributor'),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Export Toolbar
+              DataActionsToolbar(
+                title: 'Distributors',
+                data: distributorsData,
+                onRefresh: () => ref.invalidate(allDistributorsProvider),
+              ),
+              const SizedBox(height: 16),
+              // Data Table
+              SizedBox(
+                width: double.infinity,
+                child: PaginatedDataTable(
+                  header: const Text('All Distributors'),
+                  rowsPerPage: 10,
+                  columns: const [
+                    DataColumn(label: Text('Photo')),
+                    DataColumn(label: Text('Name')),
+                    DataColumn(label: Text('Email')),
+                    DataColumn(label: Text('WhatsApp')),
+                    DataColumn(label: Text('Governorates')),
+                    DataColumn(label: Text('Document')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Actions')),
+                  ],
+                  source: _UsersDataSource(distributors, context, ref, 'distributor'),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -171,11 +243,17 @@ class _DistributorsTab extends ConsumerWidget {
 // ===================================================================
 // Companies Tab
 // ===================================================================
-class _CompaniesTab extends ConsumerWidget {
+class _CompaniesTab extends ConsumerStatefulWidget {
   const _CompaniesTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CompaniesTab> createState() => _CompaniesTabState();
+}
+
+class _CompaniesTabState extends ConsumerState<_CompaniesTab> {
+
+  @override
+  Widget build(BuildContext context) {
     final usersAsync = ref.watch(allUsersListProvider);
 
     return usersAsync.when(
@@ -198,25 +276,48 @@ class _CompaniesTab extends ConsumerWidget {
           );
         }
 
+        // Convert companies to Map format for export
+        final companiesData = companies.map((company) => {
+          'Name': company.displayName ?? 'N/A',
+          'Email': company.email ?? 'N/A',
+          'WhatsApp': company.whatsappNumber ?? 'N/A',
+          'Role': company.role,
+          'Status': company.accountStatus,
+          'Governorates': company.governorates?.join(', ') ?? 'N/A',
+        }).toList();
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: PaginatedDataTable(
-              header: const Text('All Companies'),
-              rowsPerPage: 10,
-              columns: const [
-                DataColumn(label: Text('Photo')),
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Email')),
-                DataColumn(label: Text('WhatsApp')),
-                DataColumn(label: Text('Governorates')),
-                DataColumn(label: Text('Document')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Actions')),
-              ],
-              source: _UsersDataSource(companies, context, ref, 'company'),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Export Toolbar
+              DataActionsToolbar(
+                title: 'Companies',
+                data: companiesData,
+                onRefresh: () => ref.invalidate(allUsersListProvider),
+              ),
+              const SizedBox(height: 16),
+              // Data Table
+              SizedBox(
+                width: double.infinity,
+                child: PaginatedDataTable(
+                  header: const Text('All Companies'),
+                  rowsPerPage: 10,
+                  columns: const [
+                    DataColumn(label: Text('Photo')),
+                    DataColumn(label: Text('Name')),
+                    DataColumn(label: Text('Email')),
+                    DataColumn(label: Text('WhatsApp')),
+                    DataColumn(label: Text('Governorates')),
+                    DataColumn(label: Text('Document')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Actions')),
+                  ],
+                  source: _UsersDataSource(companies, context, ref, 'company'),
+                ),
+              ),
+            ],
           ),
         );
       },

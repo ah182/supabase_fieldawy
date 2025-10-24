@@ -40,6 +40,15 @@ class UserModel {
   @HiveField(11)
   final DateTime createdAt;
 
+  @HiveField(12)
+  final double? lastLatitude;
+
+  @HiveField(13)
+  final double? lastLongitude;
+
+  @HiveField(14)
+  final DateTime? lastLocationUpdate;
+
   UserModel({
     required this.id,
     this.displayName,
@@ -54,6 +63,9 @@ class UserModel {
     this.governorates,
     this.centers,
     required this.createdAt,
+    this.lastLatitude,
+    this.lastLongitude,
+    this.lastLocationUpdate,
   });
 
   // 3. استبدال fromFirestore بـ fromMap للتعامل مع بيانات Supabase
@@ -70,8 +82,12 @@ class UserModel {
       whatsappNumber: map['whatsapp_number'],
       governorates: List<String>.from(map['governorates'] ?? []),
       centers: List<String>.from(map['centers'] ?? []),
-      // 5. تحويل التاريخ من نص إلى كائن DateTime
       createdAt: DateTime.parse(map['created_at']),
+      lastLatitude: map['last_latitude'] != null ? (map['last_latitude'] as num).toDouble() : null,
+      lastLongitude: map['last_longitude'] != null ? (map['last_longitude'] as num).toDouble() : null,
+      lastLocationUpdate: map['last_location_update'] != null 
+          ? DateTime.parse(map['last_location_update']) 
+          : null,
     );
   }
 
@@ -90,6 +106,9 @@ class UserModel {
       'governorates': governorates,
       'centers': centers,
       'created_at': createdAt.toIso8601String(),
+      'last_latitude': lastLatitude,
+      'last_longitude': lastLongitude,
+      'last_location_update': lastLocationUpdate?.toIso8601String(),
     };
   }
 
@@ -106,6 +125,9 @@ class UserModel {
     List<String>? governorates,
     List<String>? centers,
     DateTime? createdAt,
+    double? lastLatitude,
+    double? lastLongitude,
+    DateTime? lastLocationUpdate,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -120,6 +142,9 @@ class UserModel {
       governorates: governorates ?? this.governorates,
       centers: centers ?? this.centers,
       createdAt: createdAt ?? this.createdAt,
+      lastLatitude: lastLatitude ?? this.lastLatitude,
+      lastLongitude: lastLongitude ?? this.lastLongitude,
+      lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
     );
   }
 }

@@ -584,6 +584,80 @@ class ProductRepository {
     });
   }
 
+  /// Admin: Get ALL products (Catalog + Distributor) for admin panel
+  Future<List<ProductModel>> getAllProductsForAdmin({bool bypassCache = false}) async {
+    try {
+      // Fetch catalog products
+      final catalogProducts = await getAllProducts();
+      
+      // Fetch distributor products
+      final distributorProducts = await getAllDistributorProducts(bypassCache: bypassCache);
+      
+      // Combine both lists
+      final allProducts = [...catalogProducts, ...distributorProducts];
+      
+      return allProducts;
+    } catch (e) {
+      print('Error fetching all products for admin: $e');
+      return [];
+    }
+  }
+  
+  /// Admin: Get ONLY regular distributor products (excluding OCR products)
+  Future<List<ProductModel>> getOnlyDistributorProducts({bool bypassCache = false}) async {
+    try {
+      final List<ProductModel> allProducts = [];
+      
+      // Fetch ONLY from distributor_products table (NOT ocr)
+      final distProductsResponse = await _supabase
+          .from('distributor_products')
+          .select(
+              'product_id, price, old_price, price_updated_at, package, distributor_name')
+          .order('price_updated_at', ascending: false);
+
+      if (distProductsResponse.isNotEmpty) {
+        final productIds = distProductsResponse
+            .map((row) => row['product_id'] as String)
+            .toSet()
+            .toList();
+
+        final productDocs =
+            await _supabase.from('products').select().inFilter('id', productIds);
+
+        final productsMap = {
+          for (var doc in productDocs)
+            doc['id'].toString(): ProductModel.fromMap(doc)
+        };
+
+        final products = distProductsResponse
+            .map((row) {
+              final productDetails = productsMap[row['product_id']];
+              if (productDetails != null) {
+                return productDetails.copyWith(
+                  price: (row['price'] as num?)?.toDouble(),
+                  oldPrice: (row['old_price'] as num?)?.toDouble(),
+                  priceUpdatedAt: row['price_updated_at'] != null
+                      ? DateTime.tryParse(row['price_updated_at'])
+                      : null,
+                  selectedPackage: row['package'] as String?,
+                  distributorId: row['distributor_name'] as String?,
+                );
+              }
+              return null;
+            })
+            .whereType<ProductModel>()
+            .toList();
+        
+        allProducts.addAll(products);
+      }
+
+      return allProducts;
+    } catch (e) {
+      print('Error fetching distributor products only: $e');
+      return [];
+    }
+  }
+
   Future<void> addMultipleProductsToDistributorCatalog({
     required String distributorId,
     required String distributorName,
@@ -1407,10 +1481,11 @@ class ProductRepository {
 
   // ===== ADMIN METHODS FOR DISTRIBUTOR_OCR_PRODUCTS =====
 
-  // Admin: Get all distributor OCR products
+  // Admin: Get all distributor OCR products with image URLs
   Future<List<Map<String, dynamic>>> adminGetAllDistributorOcrProducts() async {
     try {
-      final response = await _supabase
+      // First get distributor OCR products
+      final distOcrResponse = await _supabase
           .from('distributor_ocr_products')
           .select('''
             id,
@@ -1425,11 +1500,36 @@ class ProductRepository {
           ''')
           .order('created_at', ascending: false);
 
-      if (response == null) {
+      if (distOcrResponse.isEmpty) {
         return [];
       }
 
-      return (response as List<dynamic>).cast<Map<String, dynamic>>();
+      // Get unique OCR product IDs
+      final ocrProductIds = (distOcrResponse as List)
+          .map((item) => item['ocr_product_id'] as String)
+          .toSet()
+          .toList();
+
+      // Fetch OCR products data including image URLs
+      final ocrProductsResponse = await _supabase
+          .from('ocr_products')
+          .select('id, image_url')
+          .inFilter('id', ocrProductIds);
+
+      // Create a map for quick lookup
+      final ocrProductsMap = <String, String>{};
+      for (var product in ocrProductsResponse) {
+        ocrProductsMap[product['id']] = product['image_url'] ?? '';
+      }
+
+      // Merge image URLs into distributor OCR products
+      final result = (distOcrResponse as List).map((item) {
+        final Map<String, dynamic> product = Map.from(item);
+        product['image_url'] = ocrProductsMap[item['ocr_product_id']] ?? '';
+        return product;
+      }).toList();
+
+      return result;
     } catch (e) {
       throw Exception('Failed to fetch distributor OCR products: $e');
     }
@@ -1811,11 +1911,19 @@ final allDistributorProductsProvider =
 
 final adminAllProductsProvider = FutureProvider<List<ProductModel>>((ref) {
   // This provider is for the admin panel and bypasses the cache to ensure
-  // data is always fresh.
+  // data is always fresh. Returns both Catalog and Distributor products.
   ref.watch(productDataLastModifiedProvider);
   return ref
       .watch(productRepositoryProvider)
-      .getAllDistributorProducts(bypassCache: true);
+      .getAllProductsForAdmin(bypassCache: true);
+});
+
+final adminOnlyDistributorProductsProvider = FutureProvider<List<ProductModel>>((ref) {
+  // This provider returns ONLY distributor_products (excludes OCR products)
+  ref.watch(productDataLastModifiedProvider);
+  return ref
+      .watch(productRepositoryProvider)
+      .getOnlyDistributorProducts(bypassCache: true);
 });
 
 final myOffersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {

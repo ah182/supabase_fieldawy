@@ -1,10 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/theme/app_theme.dart';
-import 'package:fieldawy_store/features/image_cropper_test/image_cropper_test_screen.dart';
+
 // ignore: unused_import
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/features/clinics/presentation/widgets/location_permission_dialog.dart';
 
 
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
@@ -183,36 +184,48 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // --- قسم الاختبار ---
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: Text(
-                    'Testing Area',
-                    style: textTheme.titleSmall
-                        ?.copyWith(color: Colors.grey.shade600),
+                // --- قسم الموقع (للأطباء فقط) ---
+                if (isDoctor) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
+                    child: Text(
+                      'موقع العيادة',
+                      style: textTheme.titleSmall
+                          ?.copyWith(color: Colors.grey.shade600),
+                    ),
                   ),
-                ),
-                Card(
-                  elevation: 1,
-                  shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
-                  clipBehavior: Clip.antiAlias,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  child: ListTile(
-                    leading: const Icon(Icons.crop),
-                    title: const Text('Test Image Cropper'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ImageCropperTestScreen(),
-                        ),
-                      );
-                    },
+                  Card(
+                    elevation: 1,
+                    shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
+                    clipBehavior: Clip.antiAlias,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                      leading: Icon(Icons.local_hospital,
+                          color: Theme.of(context).colorScheme.primary),
+                      title: const Text('تحديث موقع العيادة'),
+                      subtitle: const Text('تحديث موقع عيادتك الثابت على الخريطة'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () async {
+                        final user = userData.asData?.value;
+                        if (user != null) {
+                          await showLocationPermissionDialog(
+                            context,
+                            user.id,
+                            user.displayName ?? 'الطبيب',
+                          );
+                        }
+                      },
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                ],
+
+
+                const SizedBox(height: 24),
+
+
               ],
             ),
           ),

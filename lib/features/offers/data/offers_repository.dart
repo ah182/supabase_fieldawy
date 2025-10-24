@@ -22,10 +22,6 @@ class OffersRepository {
           ''')
           .order('created_at', ascending: false);
 
-      if (response == null) {
-        return [];
-      }
-
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) => Offer.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
@@ -66,11 +62,7 @@ class OffersRepository {
           .eq('id', id)
           .single();
 
-      if (response == null) {
-        return null;
-      }
-
-      return Offer.fromJson(response as Map<String, dynamic>);
+      return Offer.fromJson(response);
     } catch (e) {
       throw Exception('Failed to fetch offer details: $e');
     }
@@ -84,10 +76,6 @@ class OffersRepository {
           .delete()
           .lt('expiration_date', DateTime.now().toIso8601String())
           .select();
-
-      if (response == null) {
-        return 0;
-      }
 
       return (response as List).length;
     } catch (e) {

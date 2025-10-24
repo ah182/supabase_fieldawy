@@ -16,6 +16,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fieldawy_store/core/providers/connectivity_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:fieldawy_store/features/clinics/presentation/widgets/location_permission_dialog.dart';
+import 'package:fieldawy_store/features/clinics/data/clinic_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class AuthGate extends HookConsumerWidget {
@@ -83,6 +86,9 @@ class AuthGate extends HookConsumerWidget {
                   });
                 }
               }
+
+              // طلب الموقع للأطباء عند أول تسجيل دخول
+              _checkAndRequestLocationForDoctor(context, ref, userModel);
 
               return const DrawerWrapper();
             },
@@ -160,5 +166,43 @@ class AuthGate extends HookConsumerWidget {
 
     allowedRoutes.addAll(['profile', 'settings']);
     return allowedRoutes.contains(route);
+  }
+
+  // طلب الموقع للأطباء عند أول تسجيل دخول
+  void _checkAndRequestLocationForDoctor(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel userModel,
+  ) async {
+    // فقط للأطباء
+    if (userModel.role != 'doctor') return;
+
+    // تحقق من الـ SharedPreferences إذا كان تم طلب الموقع من قبل
+    final prefs = await SharedPreferences.getInstance();
+    final locationRequestedKey = 'location_requested_${userModel.id}';
+    final hasRequestedBefore = prefs.getBool(locationRequestedKey) ?? false;
+
+    // إذا تم طلب الموقع من قبل، لا نطلبه مرة أخرى
+    if (hasRequestedBefore) return;
+
+    // تحقق إذا كان لدى الطبيب موقع مسجل
+    final clinic = await ref.read(clinicRepositoryProvider).getClinicByUserId(userModel.id);
+
+    // إذا لم يكن لديه موقع، اطلب الموقع
+    if (clinic == null && context.mounted) {
+      // تأخير صغير لضمان أن الـ UI جاهزة
+      Future.delayed(const Duration(seconds: 1), () {
+        if (context.mounted) {
+          showLocationPermissionDialog(
+            context,
+            userModel.id,
+            userModel.displayName ?? 'الطبيب',
+          );
+        }
+      });
+
+      // حفظ أننا طلبنا الموقع (سواء وافق أو رفض)
+      await prefs.setBool(locationRequestedKey, true);
+    }
   }
 }
