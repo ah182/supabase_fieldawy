@@ -1122,7 +1122,7 @@ class _BookCard extends StatelessWidget {
                       book.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1132,7 +1132,7 @@ class _BookCard extends StatelessWidget {
                       book.author,
                       style: TextStyle(
                         color: Colors.grey[600],
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1146,7 +1146,7 @@ class _BookCard extends StatelessWidget {
                           style: const TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
                         Row(
@@ -1155,7 +1155,7 @@ class _BookCard extends StatelessWidget {
                             const SizedBox(width: 2),
                             Text(
                               '${book.views}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                             ),
                           ],
                         ),
