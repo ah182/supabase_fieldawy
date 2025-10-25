@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'review_system.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 
 // ============================================================================
@@ -134,6 +135,7 @@ class ProductsWithReviewsScreen extends ConsumerWidget {
                   screenContext, // نستخدم screen context
                   MaterialPageRoute(
                     builder: (context) => const AddFromCatalogScreen(
+                      catalogContext: CatalogContext.reviews,
                       isFromReviewRequest: true,
                     ),
                   ),

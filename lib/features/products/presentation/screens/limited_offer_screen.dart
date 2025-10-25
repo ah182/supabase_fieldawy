@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart' hide NumberFormat;
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
@@ -15,6 +16,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 // ===================================================================
 class LimitedOfferScreen extends ConsumerWidget {
   const LimitedOfferScreen({super.key});
+
+  
 
   void _showAddDialog(BuildContext context) {
     showModalBottomSheet(
@@ -61,6 +64,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                     Navigator.pop(context);
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => const AddFromCatalogScreen(
+                        catalogContext: CatalogContext.offers,
                         showExpirationDate: true,
                         isFromOfferScreen: true,
                       ),

@@ -17,11 +17,13 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
+  final CatalogContext catalogContext;
   final bool showExpirationDate;
   final bool isFromOfferScreen;
   final bool isFromReviewRequest;
   const AddFromCatalogScreen({
     super.key,
+    required this.catalogContext,
     this.showExpirationDate = false,
     this.isFromOfferScreen = false,
     this.isFromReviewRequest = false,
@@ -110,6 +112,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
   @override
   void dispose() {
+    ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearAll();
+    
     _tabController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -196,7 +200,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   @override
   Widget build(BuildContext context) {
     final allProductsAsync = ref.watch(productsProvider);
-    final selection = ref.watch(catalogSelectionControllerProvider);
+    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
 
     // Determine which list of items to use based on the active tab
     final currentItems = _tabController?.index == 0
@@ -210,9 +214,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       return '${product.id}_$package';
     }).toSet();
 
-    // Filter selection.prices to only include items from the current tab that have a valid price
+    // Filter selected items from the current tab that have a valid price
     final validSelections = Map.from(selection.prices)
-      ..removeWhere((key, price) => !currentTabKeys.contains(key) || price <= 0);
+      ..removeWhere((key, price) => 
+        !currentTabKeys.contains(key) || 
+        !selection.selectedKeys.contains(key) || 
+        price <= 0);
 
     // === تحديد الألوان المطلوبة للعناصر المخصصة ===
     final Color customElementColor = const Color.fromARGB(255, 119, 186, 225);
@@ -402,8 +409,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
               ? FloatingActionButton.extended(
                   onPressed: widget.isFromReviewRequest
                       ? () {
-                          // عند الاستخدام من صفحة التقييمات، نرجع بيانات المنتج المختار
-                          final selection = ref.read(catalogSelectionControllerProvider);
+                          final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
                           if (selection.prices.isEmpty) return;
 
                           final selectedKey = selection.prices.keys.first;
@@ -457,20 +463,19 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                             final String package = item['package'];
                             final String key = '${product.id}_$package';
 
-                            final isSelectedNow = ref
-                                .read(catalogSelectionControllerProvider)
-                                .prices
-                                .containsKey(key);
-
-                            if (isSelectedNow) {
-                              final price = ref
-                                      .read(catalogSelectionControllerProvider)
-                                      .prices[key] ??
-                                  0.0;
-                              final expirationDate = ref
-                                  .read(catalogSelectionControllerProvider)
-                                  .expirationDates[key];
-
+                                                          final isSelectedNow = ref
+                                                            .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                                            .prices
+                                                            .containsKey(key);
+                            
+                                                        if (isSelectedNow) {
+                                                          final price = ref
+                                                                  .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                                                  .prices[key] ??
+                                                              0.0;
+                                                          final expirationDate = ref
+                                                              .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                                              .expirationDates[key];
                               if (price > 0) {
                                 String? ocrProductId =
                                     await _checkOrCreateOcrProduct(
@@ -518,7 +523,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                 }
                               }
 
-                              ref.read(catalogSelectionControllerProvider.notifier).clearSelections(keysToClear);
+                              ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearSelections(keysToClear);
 
                               if (context.mounted) {
                                 if (offerIds.length == 1) {
@@ -572,7 +577,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
                               ref
                                   .read(
-                                      catalogSelectionControllerProvider.notifier)
+                                      catalogSelectionControllerProvider(widget.catalogContext).notifier)
                                   .clearSelections(keysToClear);
 
                               if (context.mounted) {
@@ -641,7 +646,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final userId = userModel?.id;
                           
                           if (userId != null) {
-                            final selection = ref.read(catalogSelectionControllerProvider);
+                            final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
                             final List<String> offerIds = [];
                             final List<Map<String, dynamic>> offerDetails = [];
                             
@@ -676,7 +681,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                               }
                             }
                             
-                            ref.read(catalogSelectionControllerProvider.notifier).clearSelections(mainCatalogKeys);
+                            ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearSelections(mainCatalogKeys);
                             
                             if (context.mounted) {
                               if (offerIds.length == 1) {
@@ -712,7 +717,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                         } else {
                           // الحفظ العادي في distributor_products
                           final success = await ref
-                              .read(catalogSelectionControllerProvider.notifier)
+                              .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
                               .saveSelections(
                                   keysToSave: mainCatalogKeys,
                                   withExpiration: widget.showExpirationDate);
@@ -869,6 +874,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
+                              catalogContext: widget.catalogContext,
                               product: product,
                               package: package,
                               showExpirationDate: widget.showExpirationDate,
@@ -994,6 +1000,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
+                                  catalogContext: widget.catalogContext,
                                   product: product,
                                   package: package,
                                   showExpirationDate:
@@ -1041,8 +1048,633 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                     child: CircularProgressIndicator(),
                   ),
                 ),
+              // Floating Stats Widget
+              Positioned(
+                left: 16,
+                bottom: 16,
+                child: Builder(
+                  builder: (context) {
+                    final categorized = _categorizeProducts();
+                    final completeCount = categorized['complete']?.length ?? 0;
+                    final missingPriceCount = categorized['missingPrice']?.length ?? 0;
+                    final notActivatedCount = categorized['notActivated']?.length ?? 0;
+
+                    // Only show if there are items in any category
+                    if (completeCount == 0 && missingPriceCount == 0 && notActivatedCount == 0) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(12),
+                          color: Theme.of(context).colorScheme.surface,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context).dividerColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Complete Badge
+                                if (completeCount > 0)
+                                  _StatsBadge(
+                                    count: completeCount,
+                                    label: 'مكتمل',
+                                    color: Colors.green,
+                                    icon: Icons.check_circle,
+                                    onTap: () => _showStatsDialog('complete'),
+                                  ),
+                                if (completeCount > 0 && (missingPriceCount > 0 || notActivatedCount > 0))
+                                  const SizedBox(height: 6),
+                                // Missing Price Badge
+                                if (missingPriceCount > 0)
+                                  _StatsBadge(
+                                    count: missingPriceCount,
+                                    label: 'بدون سعر',
+                                    color: Colors.orange,
+                                    icon: Icons.warning_amber_rounded,
+                                    onTap: () => _showStatsDialog('missingPrice'),
+                                  ),
+                                if (missingPriceCount > 0 && notActivatedCount > 0)
+                                  const SizedBox(height: 6),
+                                // Not Activated Badge
+                                if (notActivatedCount > 0)
+                                  _StatsBadge(
+                                    count: notActivatedCount,
+                                    label: 'غير مفعّل',
+                                    color: Colors.red,
+                                    icon: Icons.toggle_off,
+                                    onTap: () => _showStatsDialog('notActivated'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: -5,
+                          right: -5,
+                          child: InkWell(
+                            onTap: () {
+                              ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearAll();
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color.fromARGB(255, 245, 241, 241)),
+                              ),
+                              child: Icon(Icons.close, size: 16, color: const Color.fromARGB(255, 243, 136, 136)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Method to calculate product states
+  Map<String, List<Map<String, dynamic>>> _categorizeProducts() {
+    final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
+    final currentItems = _tabController?.index == 0
+        ? _mainCatalogShuffledDisplayItems
+        : _ocrCatalogShuffledDisplayItems;
+
+    final Map<String, List<Map<String, dynamic>>> categorized = {
+      'complete': [], // مفعّل + كاتب السعر
+      'missingPrice': [], // مفعّل + مش كاتب السعر
+      'notActivated': [], // كاتب السعر + مش مفعّل
+    };
+
+    for (var item in currentItems) {
+      final ProductModel product = item['product'];
+      final String package = item['package'];
+      final String key = '${product.id}_$package';
+      
+      final bool isSelected = selection.selectedKeys.contains(key); // استخدام selectedKeys
+      final double? price = selection.prices[key];
+      final bool hasValidPrice = price != null && price > 0;
+
+      if (isSelected && hasValidPrice) {
+        // الحالة 1: مفعّل + كاتب السعر
+        categorized['complete']!.add({
+          'product': product,
+          'package': package,
+          'key': key,
+          'price': price,
+        });
+      } else if (isSelected && !hasValidPrice) {
+        // الحالة 2: مفعّل + مش كاتب السعر
+        categorized['missingPrice']!.add({
+          'product': product,
+          'package': package,
+          'key': key,
+        });
+      } else if (!isSelected && hasValidPrice) {
+        // الحالة 3: كاتب السعر + مش مفعّل
+        categorized['notActivated']!.add({
+          'product': product,
+          'package': package,
+          'key': key,
+          'price': price,
+        });
+      }
+    }
+
+    return categorized;
+  }
+
+  // Show stats dialog
+  void _showStatsDialog(String category) {
+    final categorized = _categorizeProducts();
+    final items = categorized[category] ?? [];
+
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('لا توجد منتجات في هذه الحالة'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    String title;
+    Color headerColor;
+    switch (category) {
+      case 'complete':
+        title = 'منتجات مكتملة (مفعّلة + بسعر)';
+        headerColor = Colors.green;
+        break;
+      case 'missingPrice':
+        title = 'منتجات مفعّلة بدون سعر';
+        headerColor = Colors.orange;
+        break;
+      case 'notActivated':
+        title = 'منتجات بسعر لكن غير مفعّلة';
+        headerColor = Colors.red;
+        break;
+      default:
+        title = 'منتجات';
+        headerColor = Colors.grey;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => _StatsDialog(
+        catalogContext: widget.catalogContext,
+        title: title,
+        headerColor: headerColor,
+        items: items,
+        category: category,
+      ),
+    ).then((_) {
+      // عند إغلاق الـ Dialog، نحفظ جميع التغييرات
+      setState(() {}); // refresh الشاشة
+    });
+  }
+}
+
+// Stats Dialog Widget
+class _StatsDialog extends ConsumerStatefulWidget {
+  final CatalogContext catalogContext;
+  final String title;
+  final Color headerColor;
+  final List<Map<String, dynamic>> items;
+  final String category;
+
+  const _StatsDialog({
+    required this.catalogContext,
+    required this.title,
+    required this.headerColor,
+    required this.items,
+    required this.category,
+  });
+
+  @override
+  ConsumerState<_StatsDialog> createState() => _StatsDialogState();
+}
+
+class _StatsDialogState extends ConsumerState<_StatsDialog> {
+  // Map to store temporary price edits (key -> {productId, package, price})
+  final Map<String, Map<String, String>> _tempPriceEdits = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: 500,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: widget.headerColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${widget.items.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // List
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: widget.items.length,
+                  itemBuilder: (context, index) {
+                    final item = widget.items[index];
+                    final product = item['product'] as ProductModel;
+                    final package = item['package'] as String;
+                    final key = item['key'] as String;
+                    final price = item['price'] as double?;
+
+                    return _ProductStatusItem(
+                      catalogContext: widget.catalogContext,
+                      product: product,
+                      package: package,
+                      uniqueKey: key,
+                      initialPrice: price,
+                      category: widget.category,
+                      onPriceChanged: (newPrice) {
+                        // حفظ مؤقت في الـ Dialog
+                        _tempPriceEdits[key] = {
+                          'productId': product.id,
+                          'package': package,
+                          'price': newPrice,
+                        };
+                      },
+                    );
+                  },
+                ),
+              ),
+              // Close button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () {
+                    // حفظ كل التغييرات في الـ state قبل الإغلاق
+                    _tempPriceEdits.forEach((key, data) {
+                      final productId = data['productId']!;
+                      final package = data['package']!;
+                      final price = data['price']!;
+                      
+                      ref
+                          .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                          .setPrice(productId, package, price);
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('إغلاق'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+}
+
+// Product Status Item Widget
+class _ProductStatusItem extends ConsumerStatefulWidget {
+  final CatalogContext catalogContext;
+  final ProductModel product;
+  final String package;
+  final String uniqueKey;
+  final double? initialPrice;
+  final String category;
+  final Function(String)? onPriceChanged;
+
+  const _ProductStatusItem({
+    required this.catalogContext,
+    required this.product,
+    required this.package,
+    required this.uniqueKey,
+    this.initialPrice,
+    required this.category,
+    this.onPriceChanged,
+  });
+
+  @override
+  ConsumerState<_ProductStatusItem> createState() => _ProductStatusItemState();
+}
+
+class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
+  late TextEditingController _priceController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _priceController = TextEditingController(
+      text: widget.initialPrice?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
+    final isSelected = selection.selectedKeys.contains(widget.uniqueKey);
+    
+    // تحديث السعر من الـ state فقط إذا مفيش callback (يعني مش في Dialog)
+    if (widget.onPriceChanged == null) {
+      final currentPrice = selection.prices[widget.uniqueKey];
+      if (currentPrice != null && currentPrice > 0) {
+        if (_priceController.text != currentPrice.toString()) {
+          _priceController.text = currentPrice.toString();
+        }
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+            : Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CachedNetworkImage(
+                imageUrl: widget.product.imageUrl,
+                width: 50,
+                height: 50,
+                fit: BoxFit.contain,
+                errorWidget: (context, url, error) => Container(
+                  width: 50,
+                  height: 50,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.medication, size: 24),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (widget.package.isNotEmpty)
+                    Directionality(
+                      textDirection: ui.TextDirection.ltr,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          widget.package,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  // Price Field
+                  SizedBox(
+                    height: 40,
+                    child: TextField(
+                      controller: _priceController,
+                      enabled: true,
+                      onChanged: (value) {
+                        // إذا كان في callback، نستخدمه (من الـ Dialog)
+                        if (widget.onPriceChanged != null) {
+                          // حفظ أي تغيير حتى لو السعر فاضي
+                          widget.onPriceChanged!(value);
+                        } else {
+                          // من الشاشة الأساسية - حفظ مباشرة
+                          final controller = ref.read(
+                              catalogSelectionControllerProvider(widget.catalogContext).notifier);
+
+                          if (value.trim().isEmpty) {
+                            controller.setPrice(widget.product.id, widget.package, '0');
+                          } else {
+                            controller.setPrice(widget.product.id, widget.package, value);
+                          }
+                        }
+                      },
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'price'.tr(),
+                        prefixText: 'EGP ',
+                        prefixStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 11,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceVariant
+                            .withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withOpacity(0.3),
+                            width: 1.0,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: isSelected
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.5)
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withOpacity(0.3),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        hintText: isSelected ? null : 'حدد المنتج',
+                        hintStyle: TextStyle(
+                          color: Theme.of(context).disabledColor,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 11,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Toggle
+            Switch(
+              value: isSelected,
+              onChanged: (value) {
+                ref
+                    .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                    .toggleProduct(
+                      widget.product.id,
+                      widget.package,
+                      _priceController.text,
+                    );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Stats Badge Widget
+class _StatsBadge extends StatelessWidget {
+  final int count;
+  final String label;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _StatsBadge({
+    required this.count,
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.5), width: 1.2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                count.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1050,6 +1682,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 }
 
 class _ProductCatalogItem extends HookConsumerWidget {
+  final CatalogContext catalogContext;
   final ProductModel product;
   final String package;
   final bool showExpirationDate;
@@ -1057,6 +1690,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
   final bool hidePrice;
 
   const _ProductCatalogItem({
+    required this.catalogContext,
     required this.product,
     required this.package,
     this.showExpirationDate = false,
@@ -1066,26 +1700,52 @@ class _ProductCatalogItem extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selection = ref.watch(catalogSelectionControllerProvider);
+    final selection = ref.watch(catalogSelectionControllerProvider(catalogContext));
     final uniqueKey = '${product.id}_$package';
-    final isSelected = selection.prices.containsKey(uniqueKey);
+    final isSelected = selection.selectedKeys.contains(uniqueKey);
 
     final priceController = useTextEditingController();
     final expirationDateController = useTextEditingController();
     final focusNode = useMemoized(() => FocusNode(), const []);
     final expirationDateFocusNode = useMemoized(() => FocusNode(), const []);
+    final isFocused = useState(false);
 
-    // === تحديث الـ Controller لما يتغير isSelected بس ===
+    // تتبع الـ focus
     useEffect(() {
-      // بس نسيب المسح لما يتشال التحديد
+      void listener() {
+        isFocused.value = focusNode.hasFocus;
+      }
+      focusNode.addListener(listener);
+      return () => focusNode.removeListener(listener);
+    }, [focusNode]);
+
+    // تحديث عند تغيير التحديد فقط
+    useEffect(() {
       if (!isSelected) {
         priceController.clear();
         expirationDateController.clear();
       }
       return null;
-    }, [isSelected]); // يشتغل بس لما يتغير isSelected
+    }, [isSelected]);
 
-    // === تحرير الـ FocusNode لما الكومبوننت يتشال ===
+    // تحديث من الـ state بس لما يفقد التركيز
+    useEffect(() {
+      if (!isFocused.value && isSelected) {
+        final currentPrice = selection.prices[uniqueKey];
+        if (currentPrice != null && currentPrice > 0) {
+          if (priceController.text != currentPrice.toString()) {
+            priceController.text = currentPrice.toString();
+          }
+        } else if (currentPrice == 0 || currentPrice == null) {
+          if (priceController.text.isNotEmpty) {
+            priceController.clear();
+          }
+        }
+      }
+      return null;
+    }, [isFocused.value, selection.prices[uniqueKey]]);
+
+    // تنظيف
     useEffect(() {
       return () {
         focusNode.dispose();
@@ -1217,17 +1877,31 @@ class _ProductCatalogItem extends HookConsumerWidget {
                           controller: priceController,
                           focusNode: focusNode,
                           enabled: true,
+                          textInputAction: TextInputAction.done,
                           onChanged: (value) {
                             final controller = ref.read(
-                                catalogSelectionControllerProvider.notifier);
+                                catalogSelectionControllerProvider(catalogContext).notifier);
 
                             if (value.trim().isEmpty) {
-                              // لو الحقل اتفضى → نخلي السعر صفر لكن نسيب المنتج متحدد
                               controller.setPrice(product.id, package, '0');
                             } else {
-                              // لو في قيمة → ابعتها
                               controller.setPrice(product.id, package, value);
                             }
+                          },
+                          onSubmitted: (value) {
+                            // حفظ عند الضغط على Enter/Done
+                            final controller = ref.read(
+                                catalogSelectionControllerProvider(catalogContext).notifier);
+
+                            if (value.trim().isEmpty) {
+                              controller.setPrice(product.id, package, '0');
+                            } else {
+                              controller.setPrice(product.id, package, value);
+                            }
+                          },
+                          onEditingComplete: () {
+                            // إخفاء الكيبورد
+                            focusNode.unfocus();
                           },
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
@@ -1311,7 +1985,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
                                   DateFormat('MM-yyyy').format(picked);
                               expirationDateController.text = formattedDate;
                               ref
-                                  .read(catalogSelectionControllerProvider
+                                  .read(catalogSelectionControllerProvider(catalogContext)
                                       .notifier)
                                   .setExpirationDate(
                                       product.id, package, picked);
@@ -1348,12 +2022,12 @@ class _ProductCatalogItem extends HookConsumerWidget {
               Switch.adaptive(
                 value: isSelected,
                 onChanged: (value) {
-                  final controller = ref.read(catalogSelectionControllerProvider.notifier);
+                  final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
                   
                   // إذا كان singleSelection مفعل ونريد اختيار منتج جديد
                   if (singleSelection && value) {
                     // امسح كل الاختيارات السابقة أولاً
-                    final currentSelections = ref.read(catalogSelectionControllerProvider).prices.keys.toSet();
+                    final currentSelections = ref.read(catalogSelectionControllerProvider(catalogContext)).prices.keys.toSet();
                     controller.clearSelections(currentSelections);
                   }
                   

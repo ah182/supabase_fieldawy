@@ -2,6 +2,7 @@ import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
@@ -525,7 +526,7 @@ class MyProductsScreen extends HookConsumerWidget {
                   Navigator.of(context).pop();
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (context) => const AddFromCatalogScreen()),
+                        builder: (context) => const AddFromCatalogScreen(catalogContext: CatalogContext.myProducts)),
                   );
                   ref.invalidate(myProductsProvider);
                 },
@@ -1154,7 +1155,7 @@ class MyProductsScreen extends HookConsumerWidget {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const AddFromCatalogScreen()),
+                                        const AddFromCatalogScreen(catalogContext: CatalogContext.myProducts)),
                               );
                             },
                             icon: const Icon(Icons.add, size: 18),
