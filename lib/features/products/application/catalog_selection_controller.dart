@@ -40,8 +40,12 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
 
   // دالة لتحديث سعر منتج (سواء محدد أو لا)
   void setPrice(String productId, String package, String priceText) {
-    final price = double.tryParse(priceText);
-    if (price == null) return;
+    // إذا كان النص فارغاً، نعتبر السعر 0. إذا كان نصاً غير صالح، نتجاهله.
+    final price = priceText.isEmpty ? 0.0 : double.tryParse(priceText);
+    if (price == null) {
+      // This happens if priceText is not empty and not a valid double.
+      return;
+    }
 
     final key = '${productId}_$package';
     final newPrices = Map<String, double>.from(state.prices);

@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/custom_product_dialog.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
@@ -99,6 +100,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   @override
   void initState() {
     super.initState();
+    
+
     _searchController = TextEditingController();
     _tabController = TabController(length: 2, vsync: this);
     _tabController!.addListener(() {
@@ -112,8 +115,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
   @override
   void dispose() {
-    ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearAll();
-    
+    // State is cleared in initState, not here, to avoid lifecycle issues.
     _tabController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -874,6 +876,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
+                              key: ValueKey('${product.id}_$package'),
                               catalogContext: widget.catalogContext,
                               product: product,
                               package: package,
@@ -1000,6 +1003,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return _ProductCatalogItem(
+                                  key: ValueKey('${product.id}_$package'),
                                   catalogContext: widget.catalogContext,
                                   product: product,
                                   package: package,
@@ -1150,7 +1154,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
   // Method to calculate product states
   Map<String, List<Map<String, dynamic>>> _categorizeProducts() {
-    final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
+    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
     final currentItems = _tabController?.index == 0
         ? _mainCatalogShuffledDisplayItems
         : _ocrCatalogShuffledDisplayItems;
@@ -1234,7 +1238,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         headerColor = Colors.grey;
     }
 
-    showDialog(
+    showDialog<Map<String, Map<String, String>>?>(
       context: context,
       builder: (context) => _StatsDialog(
         catalogContext: widget.catalogContext,
@@ -1243,9 +1247,22 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         items: items,
         category: category,
       ),
-    ).then((_) {
-      // عند إغلاق الـ Dialog، نحفظ جميع التغييرات
-      setState(() {}); // refresh الشاشة
+    ).then((edits) {
+      if (edits == null || edits.isEmpty) {
+        return;
+      }
+
+      print("======== DIALOG CLOSED WITH EDITS: $edits ========");
+
+      // Update the provider state here, in the main screen's context.
+      final controller = ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier);
+      edits.forEach((key, data) {
+        final productId = data['productId']!;
+        final package = data['package']!;
+        final price = data['price']!;
+        print(">>> Calling setPrice for key: $key with price: '$price'");
+        controller.setPrice(productId, package, price);
+      });
     });
   }
 }
@@ -1356,17 +1373,9 @@ class _StatsDialogState extends ConsumerState<_StatsDialog> {
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
                   onPressed: () {
-                    // حفظ كل التغييرات في الـ state قبل الإغلاق
-                    _tempPriceEdits.forEach((key, data) {
-                      final productId = data['productId']!;
-                      final package = data['package']!;
-                      final price = data['price']!;
-                      
-                      ref
-                          .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
-                          .setPrice(productId, package, price);
-                    });
-                    Navigator.pop(context);
+                    // Don't update the state here.
+                    // Just pop and return the temporary edits.
+                    Navigator.pop(context, _tempPriceEdits);
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 45),
@@ -1601,12 +1610,13 @@ class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
             Switch(
               value: isSelected,
               onChanged: (value) {
+                final priceText = _priceController.text.isEmpty ? '0' : _priceController.text;
                 ref
                     .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
                     .toggleProduct(
                       widget.product.id,
                       widget.package,
-                      _priceController.text,
+                      priceText,
                     );
               },
             ),
@@ -1690,6 +1700,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
   final bool hidePrice;
 
   const _ProductCatalogItem({
+    super.key,
     required this.catalogContext,
     required this.product,
     required this.package,
@@ -1708,48 +1719,43 @@ class _ProductCatalogItem extends HookConsumerWidget {
     final expirationDateController = useTextEditingController();
     final focusNode = useMemoized(() => FocusNode(), const []);
     final expirationDateFocusNode = useMemoized(() => FocusNode(), const []);
-    final isFocused = useState(false);
+    
 
-    // تتبع الـ focus
     useEffect(() {
-      void listener() {
-        isFocused.value = focusNode.hasFocus;
+      // This effect ALWAYS synchronizes the text field with the provider state.
+      // The user's input is now only sent to the provider on "onEditingComplete",
+      // which prevents race conditions.
+
+      // HACK: Force-read the latest state from the provider to bypass a timing
+      // issue where the `selection` object from the build method is stale.
+      final latestSelection = ref.read(catalogSelectionControllerProvider(catalogContext));
+      final priceFromState = latestSelection.prices[uniqueKey];
+      final isSelectedNow = latestSelection.selectedKeys.contains(uniqueKey);
+
+      final priceString = (priceFromState == null || priceFromState <= 0) ? '' : priceFromState.toString();
+
+      if (priceController.text != priceString) {
+        priceController.text = priceString;
       }
-      focusNode.addListener(listener);
-      return () => focusNode.removeListener(listener);
-    }, [focusNode]);
-
-    // تحديث عند تغيير التحديد فقط
-    useEffect(() {
-      if (!isSelected) {
-        priceController.clear();
-        expirationDateController.clear();
-      }
-      return null;
-    }, [isSelected]);
-
-    // تحديث من الـ state بس لما يفقد التركيز
-    useEffect(() {
-      if (!isFocused.value && isSelected) {
-        final currentPrice = selection.prices[uniqueKey];
-        if (currentPrice != null && currentPrice > 0) {
-          if (priceController.text != currentPrice.toString()) {
-            priceController.text = currentPrice.toString();
-          }
-        } else if (currentPrice == 0 || currentPrice == null) {
-          if (priceController.text.isNotEmpty) {
-            priceController.clear();
-          }
+      
+      if (!isSelectedNow) {
+        if (expirationDateController.text.isNotEmpty) {
+          expirationDateController.clear();
         }
       }
+      
       return null;
-    }, [isFocused.value, selection.prices[uniqueKey]]);
+    }, [selection]); // Depend only on selection for robustness
+
+    // State for debouncing
+    final debounceTimer = useState<Timer?>(null);
 
     // تنظيف
     useEffect(() {
       return () {
         focusNode.dispose();
         expirationDateFocusNode.dispose();
+        debounceTimer.value?.cancel(); // Cancel timer on dispose
       };
     }, const []);
 
@@ -1879,28 +1885,27 @@ class _ProductCatalogItem extends HookConsumerWidget {
                           enabled: true,
                           textInputAction: TextInputAction.done,
                           onChanged: (value) {
-                            final controller = ref.read(
-                                catalogSelectionControllerProvider(catalogContext).notifier);
-
-                            if (value.trim().isEmpty) {
-                              controller.setPrice(product.id, package, '0');
-                            } else {
-                              controller.setPrice(product.id, package, value);
-                            }
-                          },
-                          onSubmitted: (value) {
-                            // حفظ عند الضغط على Enter/Done
-                            final controller = ref.read(
-                                catalogSelectionControllerProvider(catalogContext).notifier);
-
-                            if (value.trim().isEmpty) {
-                              controller.setPrice(product.id, package, '0');
-                            } else {
-                              controller.setPrice(product.id, package, value);
-                            }
+                            // Debounce the input to update the state only when the user stops typing.
+                            debounceTimer.value?.cancel();
+                            debounceTimer.value = Timer(const Duration(seconds: 3  ), () {
+                              final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
+                              if (value.trim().isEmpty) {
+                                controller.setPrice(product.id, package, '0');
+                              } else {
+                                controller.setPrice(product.id, package, value);
+                              }
+                            });
                           },
                           onEditingComplete: () {
-                            // إخفاء الكيبورد
+                            // When editing is done, cancel any pending timer and update immediately.
+                            debounceTimer.value?.cancel();
+                            final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
+                            final value = priceController.text;
+                            if (value.trim().isEmpty) {
+                              controller.setPrice(product.id, package, '0');
+                            } else {
+                              controller.setPrice(product.id, package, value);
+                            }
                             focusNode.unfocus();
                           },
                           keyboardType: const TextInputType.numberWithOptions(
@@ -2032,7 +2037,9 @@ class _ProductCatalogItem extends HookConsumerWidget {
                   }
                   
                   // عند hidePrice، نستخدم قيمة افتراضية (1) بدلاً من قيمة حقل السعر
-                  controller.toggleProduct(product.id, package, hidePrice ? '1' : priceController.text);
+                  // التأكد من أننا لا نمرر نصًا فارغًا للسعر لتجنب خطأ التحويل
+                  final priceText = priceController.text.isEmpty ? '0' : priceController.text;
+                  controller.toggleProduct(product.id, package, hidePrice ? '1' : priceText);
 
                   // لو المنتج بقى محدد، نركز على حقل السعر (إلا إذا كان مخفي)
                   if (value && !hidePrice) {

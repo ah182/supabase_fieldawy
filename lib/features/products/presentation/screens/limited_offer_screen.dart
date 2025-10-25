@@ -17,15 +17,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 class LimitedOfferScreen extends ConsumerWidget {
   const LimitedOfferScreen({super.key});
 
-  
-
   void _showAddDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) {
+      builder: (modalContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -61,7 +59,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                   title: const Text('Add from Catalog'),
                   subtitle: const Text('اختر من الكتالوج'),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(modalContext);
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => const AddFromCatalogScreen(
                         catalogContext: CatalogContext.offers,
@@ -82,7 +80,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                   title: const Text('Add from Gallery'),
                   subtitle: const Text('إضافة من المعرض'),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(modalContext);
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => const AddProductOcrScreen(
                         showExpirationDate: true,
@@ -292,7 +290,7 @@ class _StatsCard extends StatelessWidget {
 // ===================================================================
 // _ModernOfferCard - بطاقة العرض المحسنة
 // ===================================================================
-class _ModernOfferCard extends StatelessWidget {
+class _ModernOfferCard extends ConsumerWidget {
   final Map<String, dynamic> offer;
   final Map<String, dynamic> product;
   final int index;
@@ -306,7 +304,7 @@ class _ModernOfferCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
@@ -677,13 +675,12 @@ class _ModernOfferCard extends StatelessWidget {
                             ),
                           );
 
-                          if (confirm == true) {
+                          if (confirm == true && context.mounted) {
                             try {
-                              final ref = ProviderScope.containerOf(context).read(productRepositoryProvider);
-                              await ref.deleteOffer(offer['id'].toString());
+                              await ref.read(productRepositoryProvider).deleteOffer(offer['id'].toString());
                               
                               if (context.mounted) {
-                                ProviderScope.containerOf(context).invalidate(myOffersProvider);
+                                ref.invalidate(myOffersProvider);
                                 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
