@@ -4,10 +4,57 @@ import 'package:fieldawy_store/features/authentication/services/auth_service.dar
 import 'package:fieldawy_store/features/leaderboard/application/leaderboard_provider.dart';
 import 'package:fieldawy_store/features/leaderboard/presentation/screens/fortune_wheel_screen.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LeaderboardScreen extends ConsumerWidget {
   const LeaderboardScreen({super.key});
+
+  Future<void> _showInfoDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) async {
+    final theme = Theme.of(context);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.info_outline,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(message, style: theme.textTheme.bodyLarge),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showRewardsBottomSheet(BuildContext context) {
     showModalBottomSheet(
@@ -30,11 +77,11 @@ class LeaderboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final seasonAsync = ref.watch(currentSeasonProvider);
     final leaderboardData = ref.watch(leaderboardProvider);
     final theme = Theme.of(context);
     final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
 
-    // Find the current user's rank
     int? currentUserRank;
     if (leaderboardData is AsyncData<List<UserModel>>) {
       try {
@@ -43,10 +90,17 @@ class LeaderboardScreen extends ConsumerWidget {
         );
         currentUserRank = currentUserInLeaderboard.rank;
       } catch (e) {
-        // Current user is not on the leaderboard
         currentUserRank = null;
       }
     }
+
+    final canSpinWheel = currentUserRank != null && currentUserRank <= 5;
+    final season = seasonAsync.asData?.value;
+    final now = DateTime.now().toUtc();
+    final isLastDay = season != null &&
+        now.year == season.endDate.toUtc().year &&
+        now.month == season.endDate.toUtc().month &&
+        now.day == season.endDate.toUtc().day;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -86,37 +140,73 @@ class LeaderboardScreen extends ConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () => ref.refresh(leaderboardProvider.future),
-            child: ListView.builder(
-              padding: const EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 8,
-                bottom: 100, // Extra padding for FABs
-              ),
-              itemCount:
-                  users.length >= 3 ? users.length - 3 + 1 : users.length,
-              itemBuilder: (context, index) {
-                if (index == 0 && users.length >= 3) {
-                  return _buildPodium(context, users.take(3).toList());
-                }
+            edgeOffset: 8,
+            displacement: 32,
+            color: theme.colorScheme.primary,
+            backgroundColor: theme.colorScheme.surface,
+            onRefresh: () async {
+              ref.invalidate(leaderboardProvider);
+              ref.invalidate(currentSeasonProvider);
+              await ref.read(leaderboardProvider.future);
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: seasonAsync.when(
+                    data: (season) => season == null
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: _CountdownTimer(endDate: season.endDate),
+                          ),
+                    loading: () => const SizedBox(
+                      height: 72,
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    error: (e, st) => const SizedBox.shrink(),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index == 0 && users.length >= 3) {
+                          return _buildPodium(context, users.take(3).toList());
+                        }
 
-                final actualIndex = users.length >= 3 ? index + 2 : index;
-                if (actualIndex >= users.length) {
-                  return const SizedBox.shrink();
-                }
+                        final actualIndex =
+                            users.length >= 3 ? index + 2 : index;
+                        if (actualIndex >= users.length) {
+                          return const SizedBox.shrink();
+                        }
 
-                final user = users[actualIndex];
-                final rank = user.rank ?? (actualIndex + 1);
+                        final user = users[actualIndex];
+                        final rank = user.rank ?? (actualIndex + 1);
 
-                if (rank <= 3 && users.length < 3) {
-                  return _buildTopRankerCard(context, user, rank);
-                } else if (rank == 4 || rank == 5) {
-                  return _buildSpecialRankerTile(context, user, rank);
-                } else {
-                  return _buildRegularRankerTile(context, user, rank);
-                }
-              },
+                        if (rank <= 3 && users.length < 3) {
+                          return _buildTopRankerCard(context, user, rank);
+                        } else if (rank == 4 || rank == 5) {
+                          return _buildSpecialRankerTile(context, user, rank);
+                        } else {
+                          return _buildRegularRankerTile(context, user, rank);
+                        }
+                      },
+                      childCount: users.length >= 3
+                          ? users.length - 3 + 1
+                          : users.length,
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 100),
+                ),
+              ],
             ),
           );
         },
@@ -178,45 +268,45 @@ class LeaderboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         width: double.infinity,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.purple[400]!,
-                    Colors.purple[600]!,
+            Expanded(
+              child: Container(
+                height: 52,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.purple[400]!,
+                      Colors.purple[600]!,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.purple.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _showRewardsBottomSheet(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _showRewardsBottomSheet(context),
+                    borderRadius: BorderRadius.circular(16),
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.card_giftcard,
-                            color: Colors.white, size: 20),
-                        SizedBox(width: 8),
+                            color: Colors.white, size: 22),
+                        SizedBox(width: 10),
                         Text(
                           'Rewards',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
@@ -225,53 +315,87 @@ class LeaderboardScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: (currentUserRank != null && currentUserRank <= 5)
-                      ? [Colors.amber[400]!, Colors.orange[600]!]
-                      : [Colors.grey[700]!, Colors.grey[800]!],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  if (currentUserRank != null && currentUserRank <= 5)
-                    BoxShadow(
-                      color: Colors.orange.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+            Expanded(
+              child: Opacity(
+                opacity: (canSpinWheel && isLastDay) ? 1.0 : 0.6,
+                child: Container(
+                  height: 52,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: (canSpinWheel && isLastDay)
+                          ? [Colors.amber[400]!, Colors.orange[600]!]
+                          : [Colors.grey[500]!, Colors.grey[700]!],
                     ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: (currentUserRank != null && currentUserRank <= 5)
-                      ? () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => FortuneWheelScreen(rank: currentUserRank!)),
-                          );
-                        }
-                      : null,
-                  borderRadius: BorderRadius.circular(16),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.casino_outlined,
-                            color: Colors.white, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Spin Wheel',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      if (canSpinWheel && isLastDay)
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                      ],
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: (canSpinWheel && isLastDay)
+                          ? () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => FortuneWheelScreen(
+                                      rank: currentUserRank!),
+                                ),
+                              );
+                            }
+                          : () async {
+                              if (season == null) {
+                                await _showInfoDialog(
+                                  context,
+                                  title: 'غير متاح مؤقتاً',
+                                  message:
+                                      'تعذر جلب بيانات الموسم الحالي. حاول لاحقاً.',
+                                );
+                              } else if (!canSpinWheel) {
+                                await _showInfoDialog(
+                                  context,
+                                  title: 'غير مؤهل',
+                                  message:
+                                      'عجلة الحظ متاحة للمراكز الخمسة الأولى فقط.',
+                                );
+                              } else if (!isLastDay) {
+                                await _showInfoDialog(
+                                  context,
+                                  title: 'ليست متاحة بعد',
+                                  message:
+                                      'عجلة الحظ ستكون متاحة في اليوم الأخير من الموسم.',
+                                );
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            (canSpinWheel && isLastDay)
+                                ? Icons.casino
+                                : Icons.lock_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Spin Wheel',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -659,26 +783,42 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSpecialRankerTile(BuildContext context, UserModel user, int rank) {
+  Widget _buildSpecialRankerTile(
+      BuildContext context, UserModel user, int rank) {
     final theme = Theme.of(context);
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue[100]!.withOpacity(0.5),
+            Colors.blue[50]!.withOpacity(0.3),
+          ],
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[300]!, width: 1.5),
+        border: Border.all(color: Colors.blue[300]!, width: 2),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: SizedBox(
-          width: 32,
-          child: Text(
-            '#$rank',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.blue[700],
-              fontWeight: FontWeight.w600,
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: Colors.blue[400],
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              '#$rank',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
         ),
         title: Row(
@@ -699,19 +839,192 @@ class LeaderboardScreen extends ConsumerWidget {
               child: Text(
                 user.displayName ?? 'No Name',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        trailing: Text(
-          '${user.points ?? 0}',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.blue[400],
+            borderRadius: BorderRadius.circular(12),
           ),
+          child: Text(
+            '${user.points ?? 0}',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountdownTimer extends StatefulWidget {
+  final DateTime endDate;
+  const _CountdownTimer({required this.endDate});
+
+  @override
+  State<_CountdownTimer> createState() => _CountdownTimerState();
+}
+
+class _CountdownTimerState extends State<_CountdownTimer> {
+  late Duration _remaining;
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _remaining = _computeRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _remaining = _computeRemaining();
+        });
+      }
+    });
+  }
+
+  Duration _computeRemaining() {
+    final now = DateTime.now().toUtc();
+    final end = widget.endDate.toUtc();
+    final diff = end.difference(now);
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  String _two(int n) => n.toString().padLeft(2, '0');
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final days = _remaining.inDays;
+    final hours = _remaining.inHours % 24;
+    final minutes = _remaining.inMinutes % 60;
+    final seconds = _remaining.inSeconds % 60;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color.fromARGB(255, 87, 142, 194),
+            const Color.fromARGB(255, 36, 119, 170),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.timer,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Season ends in',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _timeBox(context, '$days', 'Days'),
+              _timeSeparator(),
+              _timeBox(context, _two(hours), 'Hours'),
+              _timeSeparator(),
+              _timeBox(context, _two(minutes), 'Min'),
+              _timeSeparator(),
+              _timeBox(context, _two(seconds), 'Sec'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timeBox(BuildContext context, String value, String label) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _timeSeparator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        ':',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
@@ -740,7 +1053,6 @@ class _RewardsInfoSheet extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Drag Handle
           Container(
             margin: const EdgeInsets.symmetric(vertical: 12),
             width: 40,
@@ -750,7 +1062,6 @@ class _RewardsInfoSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Row(
@@ -793,7 +1104,6 @@ class _RewardsInfoSheet extends StatelessWidget {
             ),
           ),
           const Divider(),
-          // Rewards List
           Expanded(
             child: ListView(
               controller: scrollController,
