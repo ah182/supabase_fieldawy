@@ -2,6 +2,9 @@ import 'package:hive/hive.dart';
 
 part 'user_model.g.dart';
 
+// IMPORTANT: After modifying this file, run the following command:
+// flutter pub run build_runner build --delete-conflicting-outputs
+
 @HiveType(typeId: 3)
 class UserModel {
   @HiveField(0)
@@ -49,6 +52,15 @@ class UserModel {
   @HiveField(14)
   final DateTime? lastLocationUpdate;
 
+  @HiveField(15)
+  final String? referralCode;
+
+  @HiveField(16)
+  final int? points;
+
+  @HiveField(17)
+  final int? rank;
+
   UserModel({
     required this.id,
     this.displayName,
@@ -57,7 +69,6 @@ class UserModel {
     required this.role,
     required this.accountStatus,
     required this.isProfileComplete,
-    // إضافة الحقول الجديدة للـ constructor
     this.documentUrl,
     this.whatsappNumber,
     this.governorates,
@@ -66,16 +77,18 @@ class UserModel {
     this.lastLatitude,
     this.lastLongitude,
     this.lastLocationUpdate,
+    this.referralCode,
+    this.points,
+    this.rank,
   });
 
-  // 3. استبدال fromFirestore بـ fromMap للتعامل مع بيانات Supabase
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       id: map['id'],
-      displayName: map['display_name'], // 4. مطابقة أسماء الأعمدة (snake_case)
+      displayName: map['display_name'],
       email: map['email'],
       photoUrl: map['photo_url'],
-      role: map['role'] ?? 'viewer', // قيم افتراضية للحماية
+      role: map['role'] ?? 'viewer',
       accountStatus: map['account_status'] ?? 'pending_review',
       isProfileComplete: map['is_profile_complete'] ?? false,
       documentUrl: map['document_url'],
@@ -88,10 +101,12 @@ class UserModel {
       lastLocationUpdate: map['last_location_update'] != null 
           ? DateTime.parse(map['last_location_update']) 
           : null,
+      referralCode: map['referral_code'],
+      points: map['points'] ?? 0,
+      rank: map['rank'],
     );
   }
 
-  // 6. (نصيحة إضافية) دالة لتحويل الكائن إلى Map لإرساله إلى Supabase
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -109,6 +124,9 @@ class UserModel {
       'last_latitude': lastLatitude,
       'last_longitude': lastLongitude,
       'last_location_update': lastLocationUpdate?.toIso8601String(),
+      'referral_code': referralCode,
+      'points': points ?? 0,
+      'rank': rank,
     };
   }
 
@@ -128,6 +146,9 @@ class UserModel {
     double? lastLatitude,
     double? lastLongitude,
     DateTime? lastLocationUpdate,
+    String? referralCode,
+    int? points,
+    int? rank,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -145,6 +166,9 @@ class UserModel {
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
       lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
+      referralCode: referralCode ?? this.referralCode,
+      points: points ?? this.points,
+      rank: rank ?? this.rank,
     );
   }
 }

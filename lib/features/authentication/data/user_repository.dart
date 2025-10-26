@@ -18,7 +18,7 @@ class UserRepository {
 
   // دالة لحفظ مستخدم جديد أو تحديث بياناته إذا كان موجوداً
   // تستخدم 'upsert' لتجنب الأخطاء وللكفاءة
-  Future<void> saveNewUser(User user) async {
+  Future<bool> saveNewUser(User user) async {
     try {
       final userMap = {
         'id': user.id,
@@ -36,11 +36,12 @@ class UserRepository {
       if (userMap['role'] == 'distributor' || userMap['role'] == 'company') {
         _cache.invalidate('distributors');
       }
+      return true; // User was inserted
     } on PostgrestException catch (e) {
       // If it's a duplicate key error (code 23505), it means the user already exists.
-      // In this case, we can safely ignore the error as the user data is already present.
       if (e.code == '23505') {
         print('User with ID ${user.id} already exists in DB. Skipping insert.');
+        return false; // User already existed
       } else {
         // Re-throw other PostgrestExceptions
         print('Error saving new user to Supabase: $e');
@@ -111,31 +112,36 @@ class UserRepository {
     final cacheKey = 'user_$id';
     final cachedUser = _cache.get<UserModel>(cacheKey);
 
-    if (cachedUser != null) {
+    if (cachedUser != null && cachedUser.referralCode != null) {
       return cachedUser;
     }
 
     try {
-      // التأكد من أن الـ id ليس فارغاً لتجنب الأخطاء
       if (id.isEmpty) return null;
 
       final data = await _client.from('users').select().eq('id', id).maybeSingle();
 
       if (data == null) {
-        // User not found in DB, return null
         return null;
       }
 
-      final user = UserModel.fromMap(data);
+      var user = UserModel.fromMap(data);
+
+      // If referral code is missing (for old users), generate one now.
+      if (user.referralCode == null || user.referralCode!.isEmpty) {
+        final newCode = await _client.rpc('generate_and_get_code', params: {'user_id_param': user.id}) as String?;
+        if (newCode != null) {
+          user = user.copyWith(referralCode: newCode);
+        }
+      }
+
       _cache.set(cacheKey, user);
       return user;
     } catch (e) {
       print('Error fetching user data once: $e');
-      // If there's an error (e.g., network), but we have a cached user, return the cached user.
       if (cachedUser != null) {
         return cachedUser;
       }
-      // If there's no cached user, rethrow the error so the UI can handle it.
       rethrow;
     }
   }
@@ -322,6 +328,23 @@ class UserRepository {
       return false;
     }
   }
+
+  // Check if a user has been invited
+  Future<bool> wasInvited(String userId) async {
+    try {
+      final response = await _client
+          .from('referrals')
+          .select('id')
+          .eq('invited_id', userId)
+          .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      print('Error checking if user was invited: $e');
+      // In case of error, assume they were invited to avoid showing the screen repeatedly.
+      return true;
+    }
+  }
 } // Added this closing brace for UserRepository class
 
 // Provider المحدث ليعمل مع Supabase
@@ -357,4 +380,16 @@ final allDistributorsProvider = FutureProvider<List<UserModel>>((ref) {
 
 final allUsersListProvider = FutureProvider<List<UserModel>>((ref) {
   return ref.watch(userRepositoryProvider).getAllUsers();
+});
+
+final wasInvitedProvider = FutureProvider.autoDispose<bool>((ref) async {
+  final authState = ref.watch(authStateChangesProvider);
+  final userId = authState.asData?.value?.id;
+
+  if (userId == null) {
+    return true;
+  }
+
+  final userRepository = ref.watch(userRepositoryProvider);
+  return userRepository.wasInvited(userId);
 });

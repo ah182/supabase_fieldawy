@@ -2,8 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../widgets/shimmer_loader.dart';
-// ✅ استخدم خدمة جوجل المباشرة (بدون متصفح)
-import '../../services/google_auth_service.dart';
+import '../../services/auth_service.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -53,17 +52,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 
-  // --- التعديل هنا فقط ---
   Future<void> _signInWithGoogle() async {
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // ✅ تسجيل الدخول عبر GoogleSignIn + signInWithIdToken (بدون متصفح)
-      await GoogleAuthService().signInWithGoogle();
-
-      // AuthGate هيتولى التوجيه بعد تغير حالة المصادقة
+      await ref.read(authServiceProvider).signInWithGoogle();
+      // AuthGate will handle navigation after auth state changes.
     } catch (e) {
       if (mounted) _showError(e.toString());
     } finally {

@@ -6,6 +6,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../data/user_repository.dart';
 
 // AuthService uses native Google Sign-In and Supabase
+
+
+
 class SupabaseAuthService {
   final GoTrueClient _auth;
   final UserRepository _userRepository;
@@ -17,39 +20,24 @@ class SupabaseAuthService {
   })  : _auth = auth,
         _userRepository = userRepository,
         _googleSignIn = GoogleSignIn(
+          serverClientId: '665551059689-bb1albh5unnoh05erboo4s7piardjfsk.apps.googleusercontent.com',
           scopes: [
             'email',
             'https://www.googleapis.com/auth/userinfo.profile',
           ],
-        ) {
-    // Listen to auth state changes to save new user automatically
-    _auth.onAuthStateChange.listen((data) async {
-      final event = data.event;
-      final user = data.session?.user;
+        );
 
-      if (event == AuthChangeEvent.signedIn && user != null) {
-        await _userRepository.saveNewUser(user);
-      }
-    });
-  }
-
-  // Current user
   User? get currentUser => _auth.currentUser;
 
-  // Auth state changes stream
   Stream<User?> get authStateChanges =>
       _auth.onAuthStateChange.map((data) => data.session?.user);
 
-  // Sign in with Google using native flow
-  Future<void> signInWithGoogle() async {
+  Future<bool> signInWithGoogle() async {
     try {
-      // 1. Trigger the native Google authentication flow.
       final googleUser = await _googleSignIn.signIn();
 
-      // 2. Obtain the auth details from the request.
       if (googleUser == null) {
-        // The user canceled the sign-in.
-        return;
+        return false;
       }
       final googleAuth = await googleUser.authentication;
       final accessToken = googleAuth.accessToken;
@@ -59,21 +47,27 @@ class SupabaseAuthService {
         throw 'Google Sign-In failed: Missing ID token.';
       }
 
-      // 3. Sign in to Supabase with the ID token.
-      await _auth.signInWithIdToken(
+      final response = await _auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
+
+      final user = response.user;
+      if (user == null) {
+        throw 'Sign-in failed: No user returned from Supabase';
+      }
+
+      final isNewUser = await _userRepository.saveNewUser(user);
+      return isNewUser;
+
     } catch (e) {
       print('Error signing in with Google: $e');
-      // Optionally, sign out from Google to allow retry
       await _googleSignIn.signOut();
       rethrow;
     }
   }
 
-  // Sign out
   Future<void> signOut() async {
     try {
       // Sign out from Supabase and Google to allow account selection next time.

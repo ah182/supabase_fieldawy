@@ -600,7 +600,7 @@ class MyProductsScreen extends HookConsumerWidget {
       return null;
     }, [myProductsAsync, isSelectionMode.value]);
 
-    if (userRole != 'distributor' && userRole != 'company') {
+    if (userRole != 'distributor' && userRole != 'company' && userRole != 'admin') {
       return Scaffold(
         appBar: AppBar(
           title: Text('myMedicines'.tr()),

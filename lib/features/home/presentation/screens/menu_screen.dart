@@ -53,22 +53,42 @@ class MenuScreen extends ConsumerWidget {
               child: userDataAsync.when(
                 data: (user) {
                   if (user == null) return const SizedBox.shrink();
-                  if (user.role == 'doctor') {
-                    return _buildDoctorMenu(context);
-                  } else if (user.role == 'distributor' ||
-                      user.role == 'company') {
-                    return _buildDistributorMenu(context);
+
+                  List<Widget> menuItems = [];
+                  if (user.role == 'admin') {
+                    // Admin gets all items, remove duplicates by title
+                    final allItems = [
+                      ..._getDoctorMenuItems(context),
+                      ..._getDistributorMenuItems(context),
+                    ];
+                    final uniqueItems = <String, Widget>{};
+                    for (var item in allItems) {
+                      if (item is ListTile) {
+                        final title = (item.title as Text).data;
+                        if (title != null) {
+                          uniqueItems.putIfAbsent(title, () => item);
+                        }
+                      }
+                    }
+                    menuItems = uniqueItems.values.toList();
+                  } else if (user.role == 'doctor') {
+                    menuItems = _getDoctorMenuItems(context);
+                  } else if (user.role == 'distributor' || user.role == 'company') {
+                    menuItems = _getDistributorMenuItems(context);
                   } else {
-                    return _buildViewerMenu(context);
+                    menuItems = _getViewerMenuItems(context);
                   }
+
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    children: menuItems,
+                  );
                 },
                 loading: () => const SizedBox.shrink(),
                 error: (e, s) => const Text('Error loading menu',
                     style: TextStyle(color: Colors.white)),
               ),
             ),
-            
-            
             _buildMenuItem(
               icon: Icons.logout,
               title: 'signOut'.tr(),
@@ -93,201 +113,185 @@ class MenuScreen extends ConsumerWidget {
     );
   }
 
-  /// The menu for the distributor
-  Widget _buildDistributorMenu(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: [
-        
-        _buildMenuItem(
-            icon: Icons.map_outlined, // New map icon
-            title: 'Clinics Map',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ClinicsMapScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.rate_review,
-            title: 'Product rating',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ProductsWithReviewsScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.dashboard_outlined,
-            title: 'dashboard'.tr(),
-            onTap: () {}),
-        _buildMenuItem(
-            icon: Icons.inventory_2_outlined, // أيقونة جديدة
-            title: 'myMedicines'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const MyProductsScreen()));
-            }),
-             _buildMenuItem(
-            icon: Icons.production_quantity_limits_outlined,
-            title: 'Add Products'.tr(),
-             onTap: () {
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddProductScreen()));
+  List<Widget> _getDistributorMenuItems(BuildContext context) {
+    return [
+      _buildMenuItem(
+          icon: Icons.map_outlined, // New map icon
+          title: 'Clinics Map',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ClinicsMapScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.rate_review,
+          title: 'Product rating',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ProductsWithReviewsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.dashboard_outlined,
+          title: 'dashboard'.tr(),
+          onTap: () {}),
+      _buildMenuItem(
+          icon: Icons.inventory_2_outlined, // أيقونة جديدة
+          title: 'myMedicines'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const MyProductsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.production_quantity_limits_outlined,
+          title: 'Add Products'.tr(),
+          onTap: () {
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
           },
         ),
-
-        _buildMenuItem(
-            icon: Icons.inventory_2_outlined,
-            title: 'vetSupplies'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const VetSuppliesScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.work_outline,
-            title: 'jobOffers'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const JobOffersScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.person_outline,
-            title: 'profile'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ProfileScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.settings_outlined,
-            title: 'settings'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const SettingsScreen()));
-            }),
-      ],
-    );
+      _buildMenuItem(
+          icon: Icons.inventory_2_outlined,
+          title: 'vetSupplies'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const VetSuppliesScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.work_outline,
+          title: 'jobOffers'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const JobOffersScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.person_outline,
+          title: 'profile'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ProfileScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.settings_outlined,
+          title: 'settings'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const SettingsScreen()));
+          }),
+    ];
   }
 
-  /// The menu for the doctor
-  Widget _buildDoctorMenu(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: [
-       
-        _buildMenuItem(
-            icon: Icons.map_outlined, // New map icon
-            title: 'Clinics Map',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ClinicsMapScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.rate_review,
-            title: 'Product rating',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ProductsWithReviewsScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.people_alt_outlined,
-            title: 'distributors'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const DistributorsScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.shopping_cart_outlined,
-            title: 'Orders',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const OrdersScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.add_business_outlined,
-            title: 'Add Products'.tr(),  onTap: () {
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddProductScreen()));
+  List<Widget> _getDoctorMenuItems(BuildContext context) {
+    return [
+      _buildMenuItem(
+          icon: Icons.map_outlined, // New map icon
+          title: 'Clinics Map',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ClinicsMapScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.rate_review,
+          title: 'Product rating',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ProductsWithReviewsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.people_alt_outlined,
+          title: 'distributors'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const DistributorsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.shopping_cart_outlined,
+          title: 'Orders',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const OrdersScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.add_business_outlined,
+          title: 'Add Products'.tr(),
+          onTap: () {
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
           },
         ),
-
-        _buildMenuItem(
-            icon: Icons.inventory_2_outlined,
-            title: 'vetSupplies'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const VetSuppliesScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.work_outline,
-            title: 'jobOffers'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const JobOffersScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.person_outline,
-            title: 'profile'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ProfileScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.settings_outlined,
-            title: 'settings'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const SettingsScreen()));
-            }),
-      ],
-    );
+      _buildMenuItem(
+          icon: Icons.inventory_2_outlined,
+          title: 'vetSupplies'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const VetSuppliesScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.work_outline,
+          title: 'jobOffers'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const JobOffersScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.person_outline,
+          title: 'profile'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ProfileScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.settings_outlined,
+          title: 'settings'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const SettingsScreen()));
+          }),
+    ];
   }
 
-  /// The menu for the standard viewer
-  Widget _buildViewerMenu(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: [
-      
-        _buildMenuItem(
-            icon: Icons.map_outlined, // New map icon
-            title: 'Clinics Map',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ClinicsMapScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.rate_review,
-            title: 'Product rating',
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const ProductsWithReviewsScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.work_outline,
-            title: 'jobOffers'.tr(),
-            onTap: () {
-              ZoomDrawer.of(context)!.close();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const JobOffersScreen()));
-            }),
-        _buildMenuItem(
-            icon: Icons.person_outline, title: 'profile'.tr(), onTap: () {}),
-      ],
-    );
+  List<Widget> _getViewerMenuItems(BuildContext context) {
+    return [
+      _buildMenuItem(
+          icon: Icons.map_outlined, // New map icon
+          title: 'Clinics Map',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ClinicsMapScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.rate_review,
+          title: 'Product rating',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const ProductsWithReviewsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.work_outline,
+          title: 'jobOffers'.tr(),
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const JobOffersScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.person_outline, title: 'profile'.tr(), onTap: () {}),
+    ];
   }
 
   Widget _buildMenuHeader(
@@ -296,7 +300,6 @@ class MenuScreen extends ConsumerWidget {
 
     final currentThemeMode = ref.watch(themeNotifierProvider);
 
-    // دالة تغيير الثيم
     void changeTheme(ThemeMode mode) {
       ref.read(themeNotifierProvider.notifier).setThemeMode(mode);
     }
@@ -305,8 +308,6 @@ class MenuScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-
-        // --- Theme Switch في Header ---
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 0.0),
           child: Align(
@@ -320,26 +321,22 @@ class MenuScreen extends ConsumerWidget {
                 }
               },
               child: AnimatedContainer(
-                duration: const Duration(
-                    milliseconds: 200), // تقليل المدة لتحسين الاستجابة
-                curve: Curves.easeOutCubic, // منحنى أنعم وأكثر سلاسة
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
                 width: 60,
                 height: 32,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   color: currentThemeMode == ThemeMode.dark
-                      ? const Color.fromARGB(255, 125, 125, 125)
-                          .withOpacity(0.2)
-                      : const Color.fromARGB(255, 125, 125, 125)
-                          .withOpacity(0.2),
+                      ? const Color.fromARGB(255, 125, 125, 125).withOpacity(0.2)
+                      : const Color.fromARGB(255, 125, 125, 125).withOpacity(0.2),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     AnimatedPositioned(
-                      duration: const Duration(
-                          milliseconds: 200), // تقليل المدة لتحسين الاستجابة
-                      curve: Curves.easeOutCubic, // منحنى أنعم وأكثر سلاسة
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
                       left: currentThemeMode == ThemeMode.light ? 2.0 : 30.0,
                       child: Container(
                         width: 28,
@@ -382,7 +379,6 @@ class MenuScreen extends ConsumerWidget {
             ),
           ),
         ),
-
         const SizedBox(height: 24),
       ],
     );

@@ -96,7 +96,7 @@ class MainScaffold extends ConsumerWidget {
       bottomNavigationBar: userData.when(
         data: (user) {
           final isDistributor = user?.role == 'distributor' || user?.role == 'company';
-          final isDoctor = user?.role == 'doctor';
+          final isDoctor = user?.role == 'doctor' || user?.role == 'admin';
 
           return SalomonBottomBar(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

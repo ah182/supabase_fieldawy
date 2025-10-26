@@ -1,3 +1,7 @@
+import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/leaderboard/presentation/screens/leaderboard_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/theme/app_theme.dart';
 
@@ -184,6 +188,77 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // --- Enter Referral Code Section (if applicable) ---
+                const _ReferralEntrySection(),
+
+                // --- Referral Code Section ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
+                  child: Text(
+                    'Referral Code',
+                    style: textTheme.titleSmall
+                        ?.copyWith(color: Colors.grey.shade600),
+                  ),
+                ),
+                Card(
+                  elevation: 1,
+                  shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: Icon(Icons.card_giftcard,
+                        color: Theme.of(context).colorScheme.primary),
+                    title: Text(userData.asData?.value?.referralCode ?? 'Loading...'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.copy),
+                      onPressed: () {
+                        final referralCode = userData.asData?.value?.referralCode;
+                        if (referralCode != null) {
+                          Clipboard.setData(ClipboardData(text: referralCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Referral code copied!')),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // --- Leaderboard Section ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
+                  child: Text(
+                    'Leaderboard',
+                    style: textTheme.titleSmall
+                        ?.copyWith(color: Colors.grey.shade600),
+                  ),
+                ),
+                Card(
+                  elevation: 1,
+                  shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: Icon(Icons.leaderboard,
+                        color: Theme.of(context).colorScheme.primary),
+                    title: const Text('View Leaderboard'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const LeaderboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // --- قسم الموقع (للأطباء فقط) ---
                 if (isDoctor) ...[
                   Padding(
@@ -231,6 +306,137 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ReferralEntrySection extends ConsumerStatefulWidget {
+  const _ReferralEntrySection();
+
+  @override
+  ConsumerState<_ReferralEntrySection> createState() => _ReferralEntrySectionState();
+}
+
+class _ReferralEntrySectionState extends ConsumerState<_ReferralEntrySection> {
+  final _referralCodeController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _submitReferralCode() async {
+    if (_referralCodeController.text.trim().isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      await Supabase.instance.client.functions.invoke('handle-referral', body: {
+        'referral_code': _referralCodeController.text.trim(),
+        'invited_id': currentUser.id,
+      });
+
+      // Invalidate providers to refresh the UI
+      ref.invalidate(wasInvitedProvider);
+      ref.invalidate(userDataProvider);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Referral code applied successfully!')),
+      );
+
+      _referralCodeController.clear();
+
+    } on FunctionException catch (e) {
+      final details = e.details;
+      // Check for the specific self-referral error message from the edge function
+      if (details is Map && details['error'] == 'You cannot refer yourself') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You cannot use your own referral code.')),
+        );
+      } else {
+        // Handle other function-related errors (e.g., invalid code)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid or expired referral code.')),
+        );
+      }
+    } catch (e) {
+      // Handle other unexpected errors (e.g., network issues)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An unexpected error occurred: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _referralCodeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final wasInvitedAsync = ref.watch(wasInvitedProvider);
+    final textTheme = Theme.of(context).textTheme;
+
+    return wasInvitedAsync.when(
+      data: (wasInvited) {
+        if (wasInvited) {
+          return const SizedBox.shrink(); // User has been invited, show nothing
+        }
+
+        // Show the referral entry UI
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text(
+                'Enter Referral Code',
+                style: textTheme.titleSmall?.copyWith(color: Colors.grey.shade600),
+              ),
+            ),
+            Card(
+              elevation: 1,
+              shadowColor: Theme.of(context).shadowColor.withOpacity(0.1),
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _referralCodeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Enter code',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                            onPressed: _submitReferralCode,
+                            child: const Text('Apply Code'),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(), // Don't show anything while loading
+      error: (e, s) => const SizedBox.shrink(), // Or show an error message
     );
   }
 }

@@ -26,17 +26,20 @@ class AuthGate extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('[AuthGate] Build method called.');
     final authState = ref.watch(authStateChangesProvider);
+    print('[AuthGate] authState: ${authState.toString()}');
 
     return authState.when(
       data: (user) {
-        final currentUser = Supabase.instance.client.auth.currentUser;
+        print('[AuthGate] authState.when data: user is ${user == null ? "null" : "not null"}');
 
-        // 👤 لو مفيش مستخدم → LoginScreen من غير signOut loop
-        if (currentUser == null) {
+        if (user == null) {
+          print('[AuthGate] User is null, returning LoginScreen.');
           return const LoginScreen();
         }
 
+        // ignore: unnecessary_null_comparison
         if (user != null) {
           // Listen for userDataProvider to recover from an error, then refresh home data.
           ref.listen<AsyncValue<UserModel?>>(userDataProvider, (previous, next) {
