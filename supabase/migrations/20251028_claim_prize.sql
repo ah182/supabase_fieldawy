@@ -3,7 +3,9 @@ CREATE OR REPLACE FUNCTION public.claim_prize(
   p_user_id UUID,
   p_prize_won TEXT
 )
-RETURNS TEXT AS $$
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER AS $$
 DECLARE
   previous_season RECORD;
   winner_rank INT;
@@ -59,7 +61,7 @@ BEGIN
 
   RETURN 'Prize claimed successfully!';
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Step 2: Modify RLS policies to use the claim_prize function
 

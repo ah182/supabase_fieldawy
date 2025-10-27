@@ -100,12 +100,26 @@ class LeaderboardRepository {
 
   Future<int?> getPreviousSeasonWinnerRank(String userId) async {
     try {
+      // 1. Find the most recently ended season
+      final previousSeasonResponse = await _client
+          .from('leaderboard_seasons')
+          .select('id')
+          .eq('is_active', false)
+          .order('end_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (previousSeasonResponse == null) {
+        return null; // No previous season
+      }
+      final previousSeasonId = previousSeasonResponse['id'];
+
+      // 2. Fetch the rank for that specific season
       final response = await _client
           .from('season_rankings')
           .select('final_rank')
           .eq('user_id', userId)
-          .order('season_id', ascending: false)
-          .limit(1)
+          .eq('season_id', previousSeasonId)
           .maybeSingle();
 
       if (response == null) {

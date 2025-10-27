@@ -34,9 +34,12 @@ final spinWheelAvailabilityProvider = FutureProvider.autoDispose<SpinWheelAvaila
   try {
     final claimedPrize = await leaderboardRepository.getClaimedPrize(userId);
     if (claimedPrize != null) {
+      // Also fetch the rank to display it in the dialog.
+      final winnerRank = await leaderboardRepository.getPreviousSeasonWinnerRank(userId);
       return SpinWheelAvailabilityDetails(
         availability: SpinWheelAvailability.alreadyClaimed,
         claimedPrize: claimedPrize,
+        rank: winnerRank,
       );
     }
 

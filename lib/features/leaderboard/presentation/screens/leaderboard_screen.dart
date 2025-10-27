@@ -355,12 +355,13 @@ class LeaderboardScreen extends ConsumerWidget {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: isAvailable
-                                  ? () {
-                                      Navigator.of(context).push(
+                                  ? () async {
+                                      await Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) => const FortuneWheelScreen(),
                                         ),
                                       );
+                                      ref.invalidate(spinWheelAvailabilityProvider);
                                     }
                                   : () async {
                                       String title = 'غير متاح';
@@ -376,7 +377,7 @@ class LeaderboardScreen extends ConsumerWidget {
                                           break;
                                         case SpinWheelAvailability.alreadyClaimed:
                                           title = 'لقد طالبت بجائزتك';
-                                          message = 'لقد طالبت بجائزتك لهذا الموسم بالفعل.';
+                                          message = 'لقد طالبت بجائزتك لهذا الموسم بالفعل.\n\nالجائزة: ${details.claimedPrize}\nالمركز: ${details.rank}';
                                           break;
                                         default:
                                           break;
@@ -945,7 +946,7 @@ class _CountdownTimerState extends State<_CountdownTimer> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
+            color: const Color.fromARGB(255, 39, 121, 176).withOpacity(0.3),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
