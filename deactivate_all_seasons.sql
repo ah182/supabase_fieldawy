@@ -1,0 +1,1 @@
+UPDATE public.leaderboard_seasons SET is_active = false WHERE is_active = true;

@@ -34,10 +34,27 @@ class LeaderboardRepository {
 
   Future<String?> getClaimedPrize(String userId) async {
     try {
+      // First, get the ID of the most recently ended season
+      final previousSeasonResponse = await _client
+          .from('leaderboard_seasons')
+          .select('id')
+          .eq('is_active', false)
+          .order('end_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (previousSeasonResponse == null) {
+        // No previous season, so no prize could have been claimed for it
+        return null;
+      }
+      final previousSeasonId = previousSeasonResponse['id'];
+
+      // Now, check for a claimed prize for that specific season
       final response = await _client
           .from('claimed_prizes')
           .select('prize_won')
           .eq('user_id', userId)
+          .eq('season_id', previousSeasonId)
           .maybeSingle();
 
       if (response == null) {
@@ -52,9 +69,9 @@ class LeaderboardRepository {
 
   Future<void> claimPrize(String userId, String prize) async {
     try {
-      await _client.from('claimed_prizes').insert({
-        'user_id': userId,
-        'prize_won': prize,
+      await _client.rpc('claim_prize', params: {
+        'p_user_id': userId,
+        'p_prize_won': prize,
       });
     } catch (e) {
       print('Error claiming prize: $e');
@@ -78,6 +95,43 @@ class LeaderboardRepository {
     } catch (e) {
       print('Error fetching current season: $e');
       rethrow;
+    }
+  }
+
+  Future<int?> getPreviousSeasonWinnerRank(String userId) async {
+    try {
+      final response = await _client
+          .from('season_rankings')
+          .select('final_rank')
+          .eq('user_id', userId)
+          .order('season_id', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        return null;
+      }
+      return response['final_rank'] as int?;
+    } catch (e) {
+      print('Error fetching previous season rank: $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> isPrizeClaimWindowOpen() async {
+    try {
+      final response = await _client
+          .from('leaderboard_seasons')
+          .select('start_date')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+
+      final startDate = DateTime.parse(response['start_date']);
+      return DateTime.now().isBefore(startDate.add(const Duration(days: 30)));
+    } catch (e) {
+      print('Error checking prize claim window: $e');
+      return false;
     }
   }
 }

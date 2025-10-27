@@ -1,26 +1,98 @@
 import 'dart:async';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
-import 'package:fieldawy_store/features/leaderboard/application/leaderboard_provider.dart';
+import 'package:fieldawy_store/features/leaderboard/application/spin_wheel_provider.dart';
 import 'package:fieldawy_store/features/leaderboard/data/leaderboard_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FortuneWheelScreen extends ConsumerStatefulWidget {
-  final int rank;
-  const FortuneWheelScreen({super.key, required this.rank});
+class FortuneWheelScreen extends ConsumerWidget {
+  const FortuneWheelScreen({super.key});
 
   @override
-  ConsumerState<FortuneWheelScreen> createState() => _FortuneWheelScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final availabilityAsync = ref.watch(spinWheelAvailabilityProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Claim Your Prize'),
+        centerTitle: true,
+      ),
+      body: availabilityAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (details) {
+          switch (details.availability) {
+            case SpinWheelAvailability.available:
+              return FortuneWheelUI(rank: details.rank!);
+            case SpinWheelAvailability.alreadyClaimed:
+              return _buildAlreadyClaimedUI(context, details.claimedPrize!);
+            case SpinWheelAvailability.notWinner:
+              return const Center(
+                child: Text('You were not a top 5 winner in the previous season.'),
+              );
+            case SpinWheelAvailability.windowClosed:
+              return const Center(
+                child: Text('The prize claim window for the previous season has expired.'),
+              );
+            default:
+              return const Center(child: Text('An unexpected error occurred.'));
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildAlreadyClaimedUI(BuildContext context, String prize) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.redeem, size: 100, color: theme.colorScheme.primary),
+          const SizedBox(height: 24),
+          Text(
+            'You have already claimed your prize!',
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You won:',
+            style: theme.textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 8),
+          Chip(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            label: Text(
+              prize,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
+class FortuneWheelUI extends ConsumerStatefulWidget {
+  final int rank;
+  const FortuneWheelUI({super.key, required this.rank});
+
+  @override
+  ConsumerState<FortuneWheelUI> createState() => _FortuneWheelUIState();
+}
+
+class _FortuneWheelUIState extends ConsumerState<FortuneWheelUI>
     with SingleTickerProviderStateMixin {
   final selected = StreamController<int>.broadcast();
   String _selectedPrize = '';
   final _isSpinning = ValueNotifier<bool>(false);
-  final _hasSpun =
-      ValueNotifier<bool>(false); // إضافة متغير جديد لتتبع هل تم الدوران
+  final _hasSpun = ValueNotifier<bool>(false);
   late AnimationController _glowController;
 
   late List<String> items;
@@ -69,17 +141,17 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
     selected.close();
     _glowController.dispose();
     _isSpinning.dispose();
-    _hasSpun.dispose(); // dispose للمتغير الجديد
+    _hasSpun.dispose();
     super.dispose();
   }
 
   void _handleSpin() {
-    if (_isSpinning.value || _hasSpun.value) return; // إضافة شرط _hasSpun
+    if (_isSpinning.value || _hasSpun.value) return;
 
     final randomIndex = Fortune.randomInt(0, items.length);
     _selectedPrize = items[randomIndex];
     _isSpinning.value = true;
-    _hasSpun.value = true; // تعيين أنه تم الدوران
+    _hasSpun.value = true;
     selected.add(randomIndex);
   }
 
@@ -89,26 +161,8 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.celebration, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Congratulations! You won $_selectedPrize',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          backgroundColor: Colors.green[600],
-          duration: const Duration(seconds: 4),
+          content: Text('Congratulations! You won $_selectedPrize'),
+          backgroundColor: Colors.green,
         ),
       );
     }
@@ -136,37 +190,7 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rankColor = _getRankColor(widget.rank);
-    final claimedPrizeAsync = ref.watch(claimedPrizeProvider);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Spin for your Prize!',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: theme.colorScheme.onSurface,
-      ),
-      body: claimedPrizeAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (claimedPrize) {
-          if (claimedPrize != null) {
-            return _buildAlreadyClaimedUI(context, claimedPrize);
-          }
-          return _buildFortuneWheelUI(context, theme, rankColor);
-        },
-      ),
-    );
-  }
-
-  Widget _buildFortuneWheelUI(
-      BuildContext context, ThemeData theme, Color rankColor) {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -210,7 +234,7 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
           ),
           const SizedBox(height: 20),
           ValueListenableBuilder<bool>(
-            valueListenable: _hasSpun, // استخدام _hasSpun بدل _isSpinning
+            valueListenable: _hasSpun,
             builder: (context, hasSpun, child) {
               if (!hasSpun && _selectedPrize.isEmpty) {
                 return Container(
@@ -320,20 +344,19 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
                       );
                     },
                     child: ValueListenableBuilder<bool>(
-                      // إضافة ValueListenableBuilder لـ _hasSpun
                       valueListenable: _hasSpun,
                       builder: (context, hasSpun, child) {
                         return GestureDetector(
                           onTap: (isSpinning || hasSpun)
                               ? null
-                              : _handleSpin, // تعطيل عند الدوران أو بعد الدوران
+                              : _handleSpin,
                           child: AbsorbPointer(
                             absorbing: isSpinning ||
-                                hasSpun, // منع التفاعل بعد الدوران
+                                hasSpun,
                             child: Opacity(
                               opacity: hasSpun
                                   ? 0.6
-                                  : 1.0, // تقليل الشفافية بعد الدوران
+                                  : 1.0,
                               child: FortuneWheel(
                                 selected: selected.stream,
                                 animateFirst: false,
@@ -412,13 +435,13 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: ValueListenableBuilder<bool>(
-              valueListenable: _hasSpun, // استخدام _hasSpun
+              valueListenable: _hasSpun,
               builder: (context, hasSpun, child) {
                 return ValueListenableBuilder<bool>(
                   valueListenable: _isSpinning,
                   builder: (context, isSpinning, child) {
                     final isDisabled = isSpinning ||
-                        hasSpun; // تعطيل الزر إذا كان يدور أو تم الدوران
+                        hasSpun;
                     return Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -440,7 +463,7 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: isDisabled ? null : _handleSpin, // تعطيل الزر
+                          onTap: isDisabled ? null : _handleSpin,
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             height: 60,
@@ -463,7 +486,7 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
                                     hasSpun
                                         ? Icons.check_circle
                                         : Icons
-                                            .casino, // تغيير الأيقونة بعد الدوران
+                                            .casino,
                                     color: Colors.white,
                                     size: 28,
                                   ),
@@ -493,41 +516,6 @@ class _FortuneWheelScreenState extends ConsumerState<FortuneWheelScreen>
             ),
           ),
           const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlreadyClaimedUI(BuildContext context, String prize) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.redeem, size: 100, color: theme.colorScheme.primary),
-          const SizedBox(height: 24),
-          Text(
-            'You have already claimed your prize!',
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'You won:',
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 8),
-          Chip(
-            backgroundColor: theme.colorScheme.primaryContainer,
-            label: Text(
-              prize,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
         ],
       ),
     );

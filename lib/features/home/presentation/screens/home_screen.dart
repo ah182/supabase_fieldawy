@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -64,8 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _searchQuery = '';
   String _debouncedSearchQuery = '';
   bool _hasNavigatedToDistributor = false;
-  bool _isRefreshButtonEnabled = true;
-  int _refreshButtonCountdown = 0;
+
   Timer? _debounce;
   Timer? _countdownTimer;
 
@@ -164,28 +164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.dispose();
   }
 
-  void _startRefreshCountdown() {
-    setState(() {
-      _isRefreshButtonEnabled = false;
-      _refreshButtonCountdown = 30;
-    });
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_refreshButtonCountdown > 0) {
-        if (mounted) {
-          setState(() {
-            _refreshButtonCountdown--;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isRefreshButtonEnabled = true;
-          });
-        }
-        timer.cancel();
-      }
-    });
-  }
+
 
   int _calculateSearchScore(ProductModel product, String query) {
     int score = 0;
@@ -839,21 +818,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.refresh),
-                    color: _isRefreshButtonEnabled
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.3),
-                    onPressed: _isRefreshButtonEnabled
-                        ? () {
-                            ref
-                                .read(paginatedProductsProvider.notifier)
-                                .refresh();
-                            _startRefreshCountdown();
-                          }
-                        : null,
+                    icon: const Icon(Icons.emoji_events),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const LeaderboardScreen(),
+                        ),
+                      );
+                    },
                   ),
                   Consumer(
                     builder: (context, ref, child) {

@@ -1,0 +1,1 @@
+SELECT cron.unschedule('update-leaderboard-ranks-job');

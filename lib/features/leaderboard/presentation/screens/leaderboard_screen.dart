@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/features/leaderboard/application/spin_wheel_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
@@ -82,6 +83,7 @@ class LeaderboardScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
 
+    // ignore: unused_local_variable
     int? currentUserRank;
     if (leaderboardData is AsyncData<List<UserModel>>) {
       try {
@@ -94,13 +96,7 @@ class LeaderboardScreen extends ConsumerWidget {
       }
     }
 
-    final canSpinWheel = currentUserRank != null && currentUserRank <= 5;
-    final season = seasonAsync.asData?.value;
-    final now = DateTime.now().toUtc();
-    final isLastDay = season != null &&
-        now.year == season.endDate.toUtc().year &&
-        now.month == season.endDate.toUtc().month &&
-        now.day == season.endDate.toUtc().day;
+
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -116,153 +112,163 @@ class LeaderboardScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: theme.colorScheme.onSurface,
       ),
-      body: leaderboardData.when(
-        data: (users) {
-          if (users.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.emoji_events_outlined,
-                    size: 80,
-                    color: theme.colorScheme.onSurface.withOpacity(0.3),
+      body: Stack(
+        children: [
+          leaderboardData.when(
+            skipLoadingOnRefresh: true,
+            data: (users) {
+              if (users.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.emoji_events_outlined,
+                        size: 80,
+                        color: theme.colorScheme.onSurface.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No users on the leaderboard yet.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No users on the leaderboard yet.',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return RefreshIndicator(
-            edgeOffset: 8,
-            displacement: 32,
-            color: theme.colorScheme.primary,
-            backgroundColor: theme.colorScheme.surface,
-            onRefresh: () async {
-              ref.invalidate(leaderboardProvider);
-              ref.invalidate(currentSeasonProvider);
-              await ref.read(leaderboardProvider.future);
-            },
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: seasonAsync.when(
-                    data: (season) => season == null
-                        ? const SizedBox.shrink()
-                        : Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: _CountdownTimer(endDate: season.endDate),
+                );
+              }
+              return RefreshIndicator(
+                edgeOffset: 8,
+                displacement: 32,
+                color: theme.colorScheme.primary,
+                backgroundColor: theme.colorScheme.surface,
+                onRefresh: () async {
+                  ref.invalidate(leaderboardProvider);
+                  ref.invalidate(currentSeasonProvider);
+                  await ref.read(leaderboardProvider.future);
+                },
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: seasonAsync.when(
+                        data: (season) => season == null
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: _CountdownTimer(endDate: season.endDate),
+                              ),
+                        loading: () => const SizedBox(
+                          height: 72,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                    loading: () => const SizedBox(
-                      height: 72,
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        error: (e, st) => const SizedBox.shrink(),
                       ),
                     ),
-                    error: (e, st) => const SizedBox.shrink(),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index == 0 && users.length >= 3) {
-                          return _buildPodium(context, users.take(3).toList());
-                        }
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index == 0 && users.length >= 3) {
+                              return _buildPodium(context, users.take(3).toList());
+                            }
 
-                        final actualIndex =
-                            users.length >= 3 ? index + 2 : index;
-                        if (actualIndex >= users.length) {
-                          return const SizedBox.shrink();
-                        }
+                            final actualIndex =
+                                users.length >= 3 ? index + 2 : index;
+                            if (actualIndex >= users.length) {
+                              return const SizedBox.shrink();
+                            }
 
-                        final user = users[actualIndex];
-                        final rank = user.rank ?? (actualIndex + 1);
+                            final user = users[actualIndex];
+                            final rank = user.rank ?? (actualIndex + 1);
 
-                        if (rank <= 3 && users.length < 3) {
-                          return _buildTopRankerCard(context, user, rank);
-                        } else if (rank == 4 || rank == 5) {
-                          return _buildSpecialRankerTile(context, user, rank);
-                        } else {
-                          return _buildRegularRankerTile(context, user, rank);
-                        }
-                      },
-                      childCount: users.length >= 3
-                          ? users.length - 3 + 1
-                          : users.length,
+                            if (rank <= 3 && users.length < 3) {
+                              return _buildTopRankerCard(context, user, rank);
+                            } else if (rank == 4 || rank == 5) {
+                              return _buildSpecialRankerTile(context, user, rank);
+                            } else {
+                              return _buildRegularRankerTile(context, user, rank);
+                            }
+                          },
+                          childCount: users.length >= 3
+                              ? users.length - 3 + 1
+                              : users.length,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
-                ),
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.error_outline,
-                    color: Colors.red,
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Oops! Something went wrong',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => ref.invalidate(leaderboardProvider),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Try Again'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 100),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              );
+            },
+            loading: () => const SizedBox.shrink(), // Show nothing on load, handled by the Stack
+            error: (error, stack) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Oops! Something went wrong',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error.toString(),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => ref.invalidate(leaderboardProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+          if (leaderboardData.isLoading && !leaderboardData.hasValue)
+            Container(
+              color: theme.scaffoldBackgroundColor,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
       floatingActionButton: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -283,7 +289,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.purple.withOpacity(0.4),
+                      color: const Color.fromARGB(255, 176, 39, 155).withOpacity(0.4),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -316,89 +322,101 @@ class LeaderboardScreen extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: Opacity(
-                opacity: (canSpinWheel && isLastDay) ? 1.0 : 0.6,
-                child: Container(
-                  height: 52,
-                  margin: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: (canSpinWheel && isLastDay)
-                          ? [Colors.amber[400]!, Colors.orange[600]!]
-                          : [Colors.grey[500]!, Colors.grey[700]!],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      if (canSpinWheel && isLastDay)
-                        BoxShadow(
-                          color: Colors.orange.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: (canSpinWheel && isLastDay)
-                          ? () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => FortuneWheelScreen(
-                                      rank: currentUserRank!),
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final availabilityAsync = ref.watch(spinWheelAvailabilityProvider);
+                  return availabilityAsync.when(
+                    loading: () => const SizedBox(height: 52),
+                    error: (err, stack) => const SizedBox.shrink(), // Or show an error
+                    data: (details) {
+                      final bool isAvailable = details.availability == SpinWheelAvailability.available;
+                      return Opacity(
+                        opacity: isAvailable ? 1.0 : 0.6,
+                        child: Container(
+                          height: 52,
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isAvailable
+                                  ? [Colors.amber[400]!, Colors.orange[600]!]
+                                  : [Colors.grey[500]!, Colors.grey[700]!],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              if (isAvailable)
+                                BoxShadow(
+                                  color: Colors.orange.withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
-                              );
-                            }
-                          : () async {
-                              if (season == null) {
-                                await _showInfoDialog(
-                                  context,
-                                  title: 'غير متاح مؤقتاً',
-                                  message:
-                                      'تعذر جلب بيانات الموسم الحالي. حاول لاحقاً.',
-                                );
-                              } else if (!canSpinWheel) {
-                                await _showInfoDialog(
-                                  context,
-                                  title: 'غير مؤهل',
-                                  message:
-                                      'عجلة الحظ متاحة للمراكز الخمسة الأولى فقط.',
-                                );
-                              } else if (!isLastDay) {
-                                await _showInfoDialog(
-                                  context,
-                                  title: 'ليست متاحة بعد',
-                                  message:
-                                      'عجلة الحظ ستكون متاحة في اليوم الأخير من الموسم.',
-                                );
-                              }
-                            },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            (canSpinWheel && isLastDay)
-                                ? Icons.casino
-                                : Icons.lock_outline,
-                            color: Colors.white,
-                            size: 22,
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Spin Wheel',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: isAvailable
+                                  ? () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const FortuneWheelScreen(),
+                                        ),
+                                      );
+                                    }
+                                  : () async {
+                                      String title = 'غير متاح';
+                                      String message = 'عجلة الحظ غير متاحة حالياً.';
+                                      switch (details.availability) {
+                                        case SpinWheelAvailability.notWinner:
+                                          title = 'غير مؤهل';
+                                          message = 'عجلة الحظ متاحة فقط للفائزين في الموسم السابق.';
+                                          break;
+                                        case SpinWheelAvailability.windowClosed:
+                                          title = 'انتهت الفرصة';
+                                          message = 'لقد انتهت فترة الـ 30 يوماً للمطالبة بجائزة الموسم السابق.';
+                                          break;
+                                        case SpinWheelAvailability.alreadyClaimed:
+                                          title = 'لقد طالبت بجائزتك';
+                                          message = 'لقد طالبت بجائزتك لهذا الموسم بالفعل.';
+                                          break;
+                                        default:
+                                          break;
+                                      }
+                                      await _showInfoDialog(
+                                        context,
+                                        title: title,
+                                        message: message,
+                                      );
+                                    },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isAvailable
+                                        ? Icons.casino
+                                        : Icons.lock_outline,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Spin Wheel',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],

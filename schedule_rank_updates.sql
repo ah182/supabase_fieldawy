@@ -1,8 +1,8 @@
--- This script schedules the 'update-leaderboard-ranks' function to run every 5 minutes.
+-- This script schedules the 'update-leaderboard-ranks' function to run every minute.
 
 SELECT cron.schedule(
   'update-leaderboard-ranks-job',
-  '* * * * *', -- Every  minute
+  '* * * * *', -- Every minute
   $$
   SELECT net.http_post(
     url:='https://rkukzuwerbvmueuxadul.supabase.co/functions/v1/update-leaderboard-ranks',
