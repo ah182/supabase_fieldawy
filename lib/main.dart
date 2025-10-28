@@ -864,11 +864,21 @@ class _ConnectivityHandlerState extends State<ConnectivityHandler> {
   @override
   void initState() {
     super.initState();
+    // Check initial connectivity state when app starts
+    _checkInitialConnectivity();
     _connectivitySubscription =
         Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
         _isOffline = result.contains(ConnectivityResult.none);
       });
+    });
+  }
+
+  // Method to check the initial connectivity state
+  Future<void> _checkInitialConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOffline = result.contains(ConnectivityResult.none);
     });
   }
 
@@ -909,7 +919,12 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
   }
 
   Future<void> _initializeApp() async {
-    await initSupabase();
+    try {
+      await initSupabase();
+    } catch (e) {
+      print('⚠️ Supabase initialization failed (likely offline): $e');
+      // Continue initialization even if Supabase fails (for offline mode)
+    }
     unawaited(StorageService().cleanupTempImages());
     
     // ✅ إعداد FCM Token Service لحفظ Token في Supabase
@@ -963,8 +978,44 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
         }
 
         if (snapshot.hasError) {
-          return Center(
-              child: Text('Error initializing app: ${snapshot.error}'));
+          print('❌ Error initializing app: ${snapshot.error}');
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 80,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Application Error',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Please restart the app',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Restart the initialization
+                        setState(() {
+                          _initFuture = _initializeApp();
+                        });
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
         }
 
         return ProviderScope(
@@ -987,38 +1038,34 @@ class NoInternetScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.wifi_off,
-                size: 100,
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off,
+              size: 100,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No Internet Connection'.tr(),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Please check your internet connection and try again.'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
                 color: Colors.grey,
               ),
-              const SizedBox(height: 20),
-              Text(
-                'No Internet Connection'.tr(),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Please check your internet connection and try again.'.tr(),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
