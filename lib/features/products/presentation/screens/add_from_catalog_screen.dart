@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
@@ -8,14 +9,19 @@ import 'package:fieldawy_store/features/products/presentation/screens/offer_deta
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/custom_product_dialog.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
+
+import 'package:excel/excel.dart' hide Border;
+import 'package:fieldawy_store/features/products/presentation/screens/bulk_add_review_screen.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final CatalogContext catalogContext;
@@ -36,7 +42,7 @@ class AddFromCatalogScreen extends ConsumerStatefulWidget {
 
   /// دالة علشان تفتح Dialog فيه تفاصيل المنتج كاملة
   /// معرفة كـ static علشان نقدر نستخدمها من الـ Item
-  static void _showProductDetailDialog(
+  static void showProductDetailDialog(
       BuildContext context, ProductModel product,
       [String? package]) {
     // إنشاء نسخة مؤقتة من المنتج مع العبوة المحددة
@@ -96,6 +102,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   String? _lastShuffledQuery; // علشان نعرف نعيد الشفل لو البحث اتغير
   String? _lastOcrShuffledQuery; // For OCR catalog search
   bool _isSaving = false;
+  bool _isProcessingFile = false;
 
   @override
   void initState() {
@@ -120,6 +127,132 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     _searchController.dispose();
     super.dispose();
   }
+
+  Future<void> _pickExcelFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+      );
+
+      if (result != null) {
+        final path = result.files.single.path;
+        if (path != null && mounted) {
+          setState(() { _isProcessingFile = true; });
+          try {
+            await _processExcelFile(path);
+          } finally {
+            if (mounted) {
+              setState(() { _isProcessingFile = false; });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _processExcelFile(String path) async {
+    try {
+      var bytes = File(path).readAsBytesSync();
+      var excel = Excel.decodeBytes(bytes);
+      var sheet = excel.tables[excel.tables.keys.first];
+
+      if (sheet == null || sheet.maxRows < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel file is empty or has no data rows.')),
+          );
+        }
+        return;
+      }
+
+      // 1. Find column indices from header row
+      final headerRow = sheet.row(0);
+      final Map<String, int> columnIndices = {};
+      for (int i = 0; i < headerRow.length; i++) {
+        final cellValue = headerRow[i]?.value?.toString().toLowerCase() ?? '';
+        if (cellValue.contains('name') || cellValue.contains('product')) {
+          columnIndices['name'] = i;
+        } else if (cellValue.contains('package')) {
+          columnIndices['package'] = i;
+        } else if (cellValue.contains('price')) {
+          columnIndices['price'] = i;
+        }
+      }
+
+      // 2. Validate that the 'name' column was found
+      if (!columnIndices.containsKey('name')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel file must contain a column with \'name\' or \'product\' in the header.')),
+          );
+        }
+        return;
+      }
+
+      // 3. Process data rows
+      List<ExtractedItem> extractedItems = [];
+      final nameIndex = columnIndices['name']!;
+      final packageIndex = columnIndices['package']; // Can be null
+      final priceIndex = columnIndices['price'];   // Can be null
+
+      for (var i = 1; i < sheet.maxRows; i++) {
+        final row = sheet.row(i);
+        if (row.isEmpty || row.length <= nameIndex || row[nameIndex] == null) continue;
+
+        final name = row[nameIndex]?.value?.toString();
+        
+        final package = (packageIndex != null && row.length > packageIndex && row[packageIndex] != null)
+                        ? row[packageIndex]!.value?.toString()
+                        : '';
+        final price = (priceIndex != null && row.length > priceIndex && row[priceIndex] != null)
+                      ? double.tryParse(row[priceIndex]!.value?.toString() ?? '')
+                      : 0.0;
+
+        if (name != null && name.isNotEmpty) {
+          extractedItems.add(ExtractedItem(
+            name: name,
+            package: package ?? '',
+            price: price ?? 0.0,
+          ));
+        }
+      }
+
+      if (mounted) {
+        if (extractedItems.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No data could be extracted from the Excel file.')),
+          );
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => BulkAddReviewScreen(extractedItems: extractedItems),
+            ),
+          );
+        }
+      }
+
+    } catch (e) {
+      debugPrint('Error processing Excel file: $e');
+      String errorMessage = 'Error processing file: $e';
+      if (e.toString().contains('numFmtId')) {
+        errorMessage = 'Unsupported Excel format. Please re-save the file using Microsoft Excel or Google Sheets and try again.';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    }
+  }
+
+
 
     void _buildMainCatalogShuffledDisplayItems(
       List<ProductModel> filteredProducts, String currentSearchQuery) {
@@ -254,7 +387,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         onTap: () {
           FocusScope.of(context).unfocus();
         },
-        child: Scaffold(
+        child: Stack(
+          children: [
+            Scaffold(
           // === تعديل AppBar علشان يحتوي على SearchBar وعداد المنتجات ===
           appBar: AppBar(
             title: Column(
@@ -271,6 +406,13 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   ),
               ],
             ),
+            actions: [
+              IconButton(
+                icon: const FaIcon(FontAwesomeIcons.fileExcel, color: Colors.green),
+                onPressed: _pickExcelFile,
+                tooltip: 'Import from Excel',
+              ),
+            ],
             backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
             scrolledUnderElevation: 0,
@@ -1045,6 +1187,13 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   ),
                 ],
               ),
+              if (_isProcessingFile)
+                Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
               if (_isSaving)
                 Container(
                   color: Colors.black.withOpacity(0.5),
@@ -1148,6 +1297,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             ],
           ),
         ),
+       
+        ],
+      ),
       ),
     );
   }
@@ -1792,7 +1944,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
               GestureDetector(
                 onTap: () {
                   // استدعاء الدالة كـ static من الـ StatefulWidget
-                  AddFromCatalogScreen._showProductDetailDialog(
+                  AddFromCatalogScreen.showProductDetailDialog(
                       context, product, package);
                 },
                 child: Container(
