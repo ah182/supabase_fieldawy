@@ -13,7 +13,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/custom_product_dialog.dart';
-import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -97,6 +97,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   TabController? _tabController;
   late TextEditingController _searchController;
   String _searchQuery = '';
+  String _ghostText = '';
+  String _fullSuggestion = '';
   List<Map<String, dynamic>> _mainCatalogShuffledDisplayItems = [];
   List<Map<String, dynamic>> _ocrCatalogShuffledDisplayItems = [];
   String? _lastShuffledQuery; // علشان نعرف نعيد الشفل لو البحث اتغير
@@ -426,22 +428,105 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16.0, vertical: 8.0),
-                    child: UnifiedSearchBar(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        // تحديث نص البحث في الـ state
-                        setState(() {
-                          _searchQuery = value;
-                        });
-                        // مش محتاجين نعمل حاجة تانية هنا، الـ build هتشتغل تاني وتشوف التغيير
-                      },
-                      onClear: () {
-                        // مسح النص وتحديث الـ state
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                      },
-                      hintText: 'ابحث عن منتج...',
+                    child: Stack(
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                            
+                            // Update ghost text immediately
+                            if (value.isNotEmpty) {
+                              final provider = _tabController?.index == 0 ? productsProvider : ocrProductsProvider;
+                              final asyncValue = ref.read(provider);
+                              
+                              if (asyncValue is AsyncData<List<ProductModel>>) {
+                                final products = asyncValue.value;
+                                final matches = products.where((product) {
+                                  return product.name.toLowerCase().startsWith(value.toLowerCase());
+                                }).toList();
+                                
+                                setState(() {
+                                  if (matches.isNotEmpty) {
+                                    _ghostText = matches.first.name;
+                                    _fullSuggestion = matches.first.name;
+                                  } else {
+                                    _ghostText = '';
+                                    _fullSuggestion = '';
+                                  }
+                                });
+                              }
+                            } else {
+                              setState(() {
+                                _ghostText = '';
+                                _fullSuggestion = '';
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'ابحث عن منتج...',
+                            prefixIcon: Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _ghostText = '';
+                                        _fullSuggestion = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                          ),
+                        ),
+                        if (_ghostText.isNotEmpty)
+                          Positioned(
+                            top: 11,
+                            right: 55,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_fullSuggestion.isNotEmpty) {
+                                  _searchController.text = _fullSuggestion;
+                                  setState(() {
+                                    _searchQuery = _fullSuggestion;
+                                    _ghostText = '';
+                                    _fullSuggestion = '';
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _ghostText,
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.secondary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   // === عداد المنتجات المحسن ===

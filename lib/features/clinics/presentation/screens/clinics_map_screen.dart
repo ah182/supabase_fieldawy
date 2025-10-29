@@ -34,6 +34,10 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
   List<Marker> _clinicMarkers = []; // Renamed from _markers
   Position? _currentUserPosition;
   Timer? _debounce;
+  
+  // Ghost text variables
+  String _ghostText = '';
+  String _fullSuggestion = '';
 
   LatLng _initialPosition = LatLng(30.0444, 31.2357);
   bool _isLoading = true;
@@ -85,19 +89,44 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
   }
 
   void _onSearchChanged() {
+    final query = _searchController.text;
+    
+    // Update ghost text immediately
+    if (query.isNotEmpty) {
+      final filtered = _allClinics.where((clinic) {
+        return clinic.clinicName.toLowerCase().startsWith(query.toLowerCase());
+      }).toList();
+      
+      setState(() {
+        if (filtered.isNotEmpty) {
+          _ghostText = filtered.first.clinicName;
+          _fullSuggestion = filtered.first.clinicName;
+        } else {
+          _ghostText = '';
+          _fullSuggestion = '';
+        }
+      });
+    } else {
+      setState(() {
+        _ghostText = '';
+        _fullSuggestion = '';
+      });
+    }
+    
+    // Debounced search
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      final query = _searchController.text.toLowerCase();
+      final queryLower = query.toLowerCase();
       setState(() {
         if (query.isEmpty) {
           _filteredClinics = _allClinics;
         } else {
           _filteredClinics = _allClinics.where((clinic) {
-            return (clinic.clinicName.toLowerCase().contains(query) ||
-                    clinic.doctorName.toLowerCase().contains(query) ||
-                    (clinic.address?.toLowerCase() ?? '').contains(query) ||
-                    (clinic.clinicPhoneNumber?.toLowerCase() ?? '').contains(query) ||
-                    (clinic.doctorWhatsappNumber?.toLowerCase() ?? '').contains(query));
+            return (clinic.clinicName.toLowerCase().contains(queryLower) ||
+                    clinic.doctorName.toLowerCase().contains(queryLower) ||
+                    (clinic.address?.toLowerCase() ?? '').contains(queryLower) ||
+                    (clinic.clinicPhoneNumber?.toLowerCase() ?? '').contains(queryLower) ||
+                    (clinic.doctorWhatsappNumber?.toLowerCase() ?? '').contains(queryLower));
           }).toList();
         }
         _loadClinicMarkers(_filteredClinics);
@@ -221,19 +250,67 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'ابحث عن عيادة, طبيب, منطقة...', 
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                filled: true,
-                fillColor: Theme.of(context).scaffoldBackgroundColor,
-                contentPadding: EdgeInsets.zero,
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(icon: Icon(Icons.clear), onPressed: () => _searchController.clear())
-                    : null,
-              ),
+            child: Stack(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'ابحث عن عيادة, طبيب, منطقة...', 
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    filled: true,
+                    fillColor: Theme.of(context).scaffoldBackgroundColor,
+                    contentPadding: EdgeInsets.zero,
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear), 
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _ghostText = '';
+                                _fullSuggestion = '';
+                              });
+                            }
+                          )
+                        : null,
+                  ),
+                ),
+                if (_ghostText.isNotEmpty)
+                  Positioned(
+                    top: 11,
+                    right: 55,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_fullSuggestion.isNotEmpty) {
+                          _searchController.text = _fullSuggestion;
+                          setState(() {
+                            _ghostText = '';
+                            _fullSuggestion = '';
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _ghostText,
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           Expanded(

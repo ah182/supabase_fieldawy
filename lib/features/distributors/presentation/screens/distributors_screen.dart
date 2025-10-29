@@ -15,8 +15,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
-import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
+import 'dart:async';
 
 final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
@@ -62,8 +62,27 @@ class DistributorsScreen extends HookConsumerWidget {
     final theme = Theme.of(context);
     final distributorsAsync = ref.watch(distributorsProvider);
     final searchQuery = useState<String>('');
+    final debouncedSearchQuery = useState<String>('');
     final searchController = useTextEditingController();
     final searchFocusNode = useFocusNode();
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    
+    useEffect(() {
+      Timer? debounce;
+      void listener() {
+        if (debounce?.isActive ?? false) debounce!.cancel();
+        debounce = Timer(const Duration(milliseconds: 500), () {
+          debouncedSearchQuery.value = searchController.text;
+        });
+      }
+      
+      searchController.addListener(listener);
+      return () {
+        debounce?.cancel();
+        searchController.removeListener(listener);
+      };
+    }, [searchController]);
 
     final filteredDistributors = useMemoized(
       () {
@@ -71,18 +90,18 @@ class DistributorsScreen extends HookConsumerWidget {
         if (distributors == null) {
           return <DistributorModel>[];
         }
-        if (searchQuery.value.isEmpty) {
+        if (debouncedSearchQuery.value.isEmpty) {
           return distributors;
         }
         return distributors.where((distributor) {
-          final query = searchQuery.value.toLowerCase();
+          final query = debouncedSearchQuery.value.toLowerCase();
           return distributor.displayName.toLowerCase().contains(query) ||
               (distributor.companyName?.toLowerCase().contains(query) ??
                   false) ||
               (distributor.email?.toLowerCase().contains(query) ?? false);
         }).toList();
       },
-      [distributorsAsync, searchQuery.value],
+      [distributorsAsync, debouncedSearchQuery.value],
     );
 
     
@@ -110,16 +129,102 @@ final sliverAppBar = SliverAppBar(
         child: Column(
           children: [
             // شريط البحث مع مسافات محسنة
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  16.0, 12.0, 16.0, 8.0), // مسافات أفضل
-              child: UnifiedSearchBar(
-                controller: searchController,
-                focusNode: searchFocusNode,
-                onChanged: (value) => searchQuery.value = value,
-                onClear: () => searchQuery.value = '',
-                hintText: 'searchDistributor'.tr(),
-              ),
+            Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      16.0, 12.0, 16.0, 8.0), // مسافات أفضل
+                  child: TextField(
+                    controller: searchController,
+                    focusNode: searchFocusNode,
+                    onChanged: (value) {
+                      searchQuery.value = value;
+                      if (value.isNotEmpty) {
+                        distributorsAsync.whenData((distributors) {
+                          final filtered = distributors.where((distributor) {
+                            final displayName = distributor.displayName.toLowerCase();
+                            return displayName.startsWith(value.toLowerCase());
+                          }).toList();
+                          
+                          if (filtered.isNotEmpty) {
+                            final suggestion = filtered.first;
+                            ghostText.value = suggestion.displayName;
+                            fullSuggestion.value = suggestion.displayName;
+                          } else {
+                            ghostText.value = '';
+                            fullSuggestion.value = '';
+                          }
+                        });
+                      } else {
+                        ghostText.value = '';
+                        fullSuggestion.value = '';
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'searchDistributor'.tr(),
+                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: theme.colorScheme.primary,
+                        size: 25,
+                      ),
+                      suffixIcon: searchQuery.value.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                searchController.clear();
+                                searchQuery.value = '';
+                                debouncedSearchQuery.value = '';
+                                ghostText.value = '';
+                                fullSuggestion.value = '';
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                ),
+                if (ghostText.value.isNotEmpty)
+                  Positioned(
+                    top: 23,
+                    right: 71,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (fullSuggestion.value.isNotEmpty) {
+                          searchController.text = fullSuggestion.value;
+                          searchQuery.value = fullSuggestion.value;
+                          debouncedSearchQuery.value = fullSuggestion.value;
+                          ghostText.value = '';
+                          fullSuggestion.value = '';
+                          searchFocusNode.unfocus();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.brightness == Brightness.dark
+                              ? theme.colorScheme.secondary.withOpacity(0.1)
+                              : theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          ghostText.value,
+                          style: TextStyle(
+                            color: theme.brightness == Brightness.dark
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             // العداد المحسن
             Container(
@@ -146,12 +251,12 @@ final sliverAppBar = SliverAppBar(
                   distributorsAsync.when(
                     data: (distributors) {
                       final totalCount = distributors.length;
-                      final filteredCount = searchQuery.value.isEmpty
+                      final filteredCount = debouncedSearchQuery.value.isEmpty
                           ? totalCount
                           : filteredDistributors.length;
 
                       return Text(
-                        searchQuery.value.isEmpty
+                        debouncedSearchQuery.value.isEmpty
                             ? 'إجمالي الموزعين: $totalCount'
                             : 'عرض $filteredCount من $totalCount موزع',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -203,11 +308,11 @@ final sliverAppBar = SliverAppBar(
                       child: _buildEmptyState(context, theme),
                     )
                   else if (filteredDistributors.isEmpty &&
-                      searchQuery.value.isNotEmpty)
+                      debouncedSearchQuery.value.isNotEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: _buildNoSearchResults(
-                          context, theme, searchQuery.value),
+                          context, theme, debouncedSearchQuery.value),
                     )
                   else
                     SliverList(

@@ -18,7 +18,7 @@ import 'package:fieldawy_store/features/authentication/services/auth_service.dar
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/widgets/custom_product_dialog.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
-import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 
@@ -613,6 +613,9 @@ class MyProductsScreen extends HookConsumerWidget {
     }
 
     final searchQuery = useState<String>('');
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    final searchController = useTextEditingController();
 
     ref.listen(myProductsProvider, (previous, next) {});
 
@@ -914,15 +917,97 @@ class MyProductsScreen extends HookConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16.0, vertical: 8.0),
-                  child: UnifiedSearchBar(
-                    focusNode: searchFocusNode,
-                    onChanged: (value) {
-                      searchQuery.value = value;
-                    },
-                    onClear: () {
-                      searchQuery.value = '';
-                    },
-                    hintText: 'ابحث عن منتج...',
+                  child: Stack(
+                    children: [
+                      TextField(
+                        controller: searchController,
+                        focusNode: searchFocusNode,
+                        onChanged: (value) {
+                          searchQuery.value = value;
+                          
+                          // Update ghost text immediately based on active tab
+                          if (value.isNotEmpty) {
+                            final isMainTab = tabController.index == 0;
+                            final productsAsync = isMainTab ? myProductsAsync : ref.read(myOcrProductsProvider);
+                            
+                            if (productsAsync is AsyncData<List<ProductModel>>) {
+                              final products = productsAsync.value;
+                              final matches = products.where((product) {
+                                return product.name.toLowerCase().startsWith(value.toLowerCase());
+                              }).toList();
+                              
+                              if (matches.isNotEmpty) {
+                                ghostText.value = matches.first.name;
+                                fullSuggestion.value = matches.first.name;
+                              } else {
+                                ghostText.value = '';
+                                fullSuggestion.value = '';
+                              }
+                            }
+                          } else {
+                            ghostText.value = '';
+                            fullSuggestion.value = '';
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'ابحث عن منتج...',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          suffixIcon: searchQuery.value.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    searchQuery.value = '';
+                                    ghostText.value = '';
+                                    fullSuggestion.value = '';
+                                    searchFocusNode.unfocus();
+                                  },
+                                )
+                              : null,
+                        ),
+                      ),
+                      if (ghostText.value.isNotEmpty)
+                        Positioned(
+                          top: 11,
+                          right: 55,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (fullSuggestion.value.isNotEmpty) {
+                                searchController.text = fullSuggestion.value;
+                                searchQuery.value = fullSuggestion.value;
+                                ghostText.value = '';
+                                fullSuggestion.value = '';
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                                    : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                ghostText.value,
+                                style: TextStyle(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.secondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Container(

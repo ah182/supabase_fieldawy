@@ -3,6 +3,7 @@ import "package:fieldawy_store/core/caching/caching_service.dart";
 // lib/features/distributors/presentation/screens/distributor_products_screen.dart
 
 import "dart:ui" as ui;
+import "dart:async";
 
 import "package:cached_network_image/cached_network_image.dart";
 import "package:easy_localization/easy_localization.dart";
@@ -16,7 +17,6 @@ import "package:hooks_riverpod/hooks_riverpod.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "package:url_launcher/url_launcher.dart";
 import "package:fieldawy_store/widgets/shimmer_loader.dart";
-import "package:fieldawy_store/widgets/unified_search_bar.dart";
 
 import "../../../products/domain/product_model.dart";
 import "package:awesome_snackbar_content/awesome_snackbar_content.dart";
@@ -659,12 +659,30 @@ class DistributorProductsScreen extends HookConsumerWidget {
     final productsAsync =
         ref.watch(distributorProductsProvider(_distributorId));
     final searchQuery = useState<String>('');
+    final debouncedSearchQuery = useState<String>('');
     final searchController = useTextEditingController();
     final searchFocusNode = useFocusNode();
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    
+    useEffect(() {
+      Timer? debounce;
+      void listener() {
+        if (debounce?.isActive ?? false) debounce!.cancel();
+        debounce = Timer(const Duration(milliseconds: 500), () {
+          debouncedSearchQuery.value = searchController.text;
+        });
+      }
+      
+      searchController.addListener(listener);
+      return () {
+        debounce?.cancel();
+        searchController.removeListener(listener);
+      };
+    }, [searchController]);
 
     return GestureDetector(
       onTap: () {
-        // Don't unfocus during search loading to keep the keyboard open
         if (!productsAsync.isLoading) {
           searchFocusNode.unfocus();
         }
@@ -679,20 +697,111 @@ class DistributorProductsScreen extends HookConsumerWidget {
             preferredSize: const Size.fromHeight(kToolbarHeight + 15.0),
             child: Column(
               children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: UnifiedSearchBar(
-                    controller: searchController,
-                    focusNode: searchFocusNode,
-                    onChanged: (value) {
-                      searchQuery.value = value;
-                    },
-                    onClear: () {
-                      searchQuery.value = '';
-                    },
-                    hintText: 'ابحث عن دواء، مادة فعالة...',
-                  ),
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
+                      child: TextField(
+                        controller: searchController,
+                        focusNode: searchFocusNode,
+                        onChanged: (value) {
+                          searchQuery.value = value;
+                          if (value.isNotEmpty) {
+                            productsAsync.whenData((products) {
+                              final filtered = products.where((product) {
+                                final productName = product.name.toLowerCase();
+                                return productName.startsWith(value.toLowerCase());
+                              }).toList();
+                              
+                              if (filtered.isNotEmpty) {
+                                final suggestion = filtered.first;
+                                ghostText.value = suggestion.name;
+                                fullSuggestion.value = suggestion.name;
+                              } else {
+                                ghostText.value = '';
+                                fullSuggestion.value = '';
+                              }
+                            });
+                          } else {
+                            ghostText.value = '';
+                            fullSuggestion.value = '';
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'ابحث عن دواء، مادة فعالة...',
+                          hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.5),
+                              ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 25,
+                          ),
+                          suffixIcon: searchQuery.value.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    searchQuery.value = '';
+                                    debouncedSearchQuery.value = '';
+                                    ghostText.value = '';
+                                    fullSuggestion.value = '';
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    if (ghostText.value.isNotEmpty)
+                      Positioned(
+                        top: 19,
+                        right: 55,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (fullSuggestion.value.isNotEmpty) {
+                              searchController.text = fullSuggestion.value;
+                              searchQuery.value = fullSuggestion.value;
+                              debouncedSearchQuery.value = fullSuggestion.value;
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                              searchFocusNode.unfocus();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .secondary
+                                      .withOpacity(0.1)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              ghostText.value,
+                              style: TextStyle(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.secondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
               ],
@@ -732,11 +841,11 @@ class DistributorProductsScreen extends HookConsumerWidget {
               }
 
               List<ProductModel> filteredProducts;
-              if (searchQuery.value.isEmpty) {
+              if (debouncedSearchQuery.value.isEmpty) {
                 filteredProducts = products;
               } else {
                 filteredProducts = products.where((product) {
-                  final query = searchQuery.value.toLowerCase().trim();
+                  final query = debouncedSearchQuery.value.toLowerCase().trim();
                   final productName = product.name.toLowerCase();
                   final distributorName =
                       (product.distributorId ?? '').toLowerCase();
@@ -762,7 +871,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                 }).toList();
 
                 filteredProducts.sort((a, b) {
-                  final query = searchQuery.value.toLowerCase().trim();
+                  final query = debouncedSearchQuery.value.toLowerCase().trim();
                   int scoreA = _calculateSearchScore(a, query);
                   int scoreB = _calculateSearchScore(b, query);
                   return scoreB.compareTo(scoreA);
@@ -801,7 +910,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   ),
                   Expanded(
                     child:
-                        filteredProducts.isEmpty && searchQuery.value.isNotEmpty
+                        filteredProducts.isEmpty && debouncedSearchQuery.value.isNotEmpty
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -816,7 +925,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'لا توجد نتائج للبحث عن "${searchQuery.value}" ',
+                                      'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}" ',
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -847,6 +956,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                       onPressed: () {
                                         searchController.clear();
                                         searchQuery.value = '';
+                                        debouncedSearchQuery.value = '';
+                                        ghostText.value = '';
+                                        fullSuggestion.value = '';
                                       },
                                       icon: const Icon(Icons.clear, size: 18),
                                       label: const Text('مسح البحث'),
@@ -869,7 +981,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                   final product = filteredProducts[index];
 
                                   return _buildProductCard(context, ref, product,
-                                      searchQuery.value, _distributorName);
+                                      debouncedSearchQuery.value, _distributorName);
                                 },
                               ),
                   ),

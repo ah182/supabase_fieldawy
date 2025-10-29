@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'review_system.dart';
@@ -12,76 +14,249 @@ import 'package:fieldawy_store/features/products/presentation/screens/add_produc
 // 🌟 MAIN SCREEN: المنتجات اللي عليها طلبات تقييم
 // ============================================================================
 
-class ProductsWithReviewsScreen extends ConsumerWidget {
+class ProductsWithReviewsScreen extends HookConsumerWidget {
   const ProductsWithReviewsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestsAsync = ref.watch(activeReviewRequestsProvider);
+    final theme = Theme.of(context);
+    
+    // Search functionality
+    final searchQuery = useState<String>('');
+    final debouncedSearchQuery = useState<String>('');
+    final searchController = useTextEditingController();
+    final searchFocusNode = useFocusNode();
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    
+    useEffect(() {
+      Timer? debounce;
+      void listener() {
+        if (debounce?.isActive ?? false) debounce!.cancel();
+        debounce = Timer(const Duration(milliseconds: 500), () {
+          debouncedSearchQuery.value = searchController.text;
+        });
+      }
+      
+      searchController.addListener(listener);
+      return () {
+        debounce?.cancel();
+        searchController.removeListener(listener);
+      };
+    }, [searchController]);
+    
+    // Filter requests based on search
+    final filteredRequests = useMemoized(() {
+      if (requestsAsync is! AsyncData<List<ReviewRequestModel>>) {
+        return <ReviewRequestModel>[];
+      }
+      final requests = requestsAsync.value;
+      if (debouncedSearchQuery.value.isEmpty) {
+        return requests;
+      }
+      final query = debouncedSearchQuery.value.toLowerCase();
+      return requests.where((request) {
+        return request.productName.toLowerCase().contains(query) ||
+               (request.productPackage ?? '').toLowerCase().contains(query) ||
+               request.requesterName.toLowerCase().contains(query);
+      }).toList();
+    }, [requestsAsync, debouncedSearchQuery.value]);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('المنتجات المطلوب تقييمها'),
-        centerTitle: true,
-      ),
-      body: requestsAsync.when(
-        data: (requests) {
-          if (requests.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.rate_review_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'لا توجد منتجات مطلوب تقييمها حالياً',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
+    return GestureDetector(
+      onTap: () => searchFocusNode.unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('المنتجات المطلوب تقييمها'),
+          centerTitle: true,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(70),
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        controller: searchController,
+                        focusNode: searchFocusNode,
+                        onChanged: (value) {
+                          searchQuery.value = value;
+                          if (value.isNotEmpty && requestsAsync is AsyncData<List<ReviewRequestModel>>) {
+                            // ignore: unnecessary_cast
+                            final requests = (requestsAsync as AsyncData<List<ReviewRequestModel>>).value;
+                            final filtered = requests.where((request) {
+                              final productName = request.productName.toLowerCase();
+                              return productName.startsWith(value.toLowerCase());
+                            }).toList();
+                            
+                            if (filtered.isNotEmpty) {
+                              final suggestion = filtered.first;
+                              ghostText.value = suggestion.productName;
+                              fullSuggestion.value = suggestion.productName;
+                            } else {
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                            }
+                          } else {
+                            ghostText.value = '';
+                            fullSuggestion.value = '';
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'ابحث عن منتج...',
+                          hintStyle: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: theme.colorScheme.primary,
+                            size: 25,
+                          ),
+                          suffixIcon: searchQuery.value.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    searchQuery.value = '';
+                                    debouncedSearchQuery.value = '';
+                                    ghostText.value = '';
+                                    fullSuggestion.value = '';
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'اضغط على + لإضافة طلب تقييم',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
+                    if (ghostText.value.isNotEmpty)
+                      Positioned(
+                        top: 11,
+                        right: 71,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (fullSuggestion.value.isNotEmpty) {
+                              searchController.text = fullSuggestion.value;
+                              searchQuery.value = fullSuggestion.value;
+                              debouncedSearchQuery.value = fullSuggestion.value;
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                              searchFocusNode.unfocus();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.brightness == Brightness.dark
+                                  ? theme.colorScheme.secondary.withOpacity(0.1)
+                                  : theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              ghostText.value,
+                              style: TextStyle(
+                                color: theme.brightness == Brightness.dark
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.secondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: requestsAsync.when(
+          data: (requests) {
+            final displayRequests = debouncedSearchQuery.value.isEmpty ? requests : filteredRequests;
+            
+            if (displayRequests.isEmpty && debouncedSearchQuery.value.isNotEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}"',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            if (requests.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.rate_review_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'لا توجد منتجات مطلوب تقييمها حالياً',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'اضغط على + لإضافة طلب تقييم',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(activeReviewRequestsProvider);
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: displayRequests.length,
+                itemBuilder: (context, index) {
+                  final request = displayRequests[index];
+                  return ProductReviewCard(
+                    request: request,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProductReviewDetailsScreen(request: request),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(activeReviewRequestsProvider);
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: requests.length,
-              itemBuilder: (context, index) {
-                final request = requests[index];
-                return ProductReviewCard(
-                  request: request,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProductReviewDetailsScreen(request: request),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          );
-        },
+          },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
           child: Column(
@@ -102,10 +277,11 @@ class ProductsWithReviewsScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddReviewRequestDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('إضافة طلب تقييم'),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _showAddReviewRequestDialog(context, ref),
+          icon: const Icon(Icons.add),
+          label: const Text('إضافة طلب تقييم'),
+        ),
       ),
     );
   }

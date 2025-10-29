@@ -68,21 +68,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Timer? _debounce;
   Timer? _countdownTimer;
-
-  List<ProductModel> _suggestions = [];
-  bool _showSuggestions = false;
+  
+  String _ghostText = '';
+  String _fullSuggestion = '';
 
   @override
   void initState() {
     super.initState();
 
-    _focusNode.addListener(() {
-      if (mounted) {
-        setState(() {
-          _showSuggestions = _focusNode.hasFocus;
-        });
-      }
-    });
     // استخدام initialTabIndex إذا تم توفيره من الإشعار
     final initialIndex = widget.initialTabIndex ?? 0;
     _tabController = TabController(
@@ -809,347 +802,341 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }(),
     );
 
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: () {
-            _focusNode.unfocus();
-          },
-          child: Scaffold(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            body: NestedScrollView(
-              headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-                return <Widget>[
-                  SliverAppBar(
-                    title: Text('homeScreen'.tr()),
-                    pinned: true,
-                    floating: true,
-                    forceElevated: innerBoxIsScrolled,
-                    leading: IconButton(
-                      icon: const Icon(Icons.menu),
-                      onPressed: () => ZoomDrawer.of(context)!.toggle(),
-                    ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.emoji_events),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const LeaderboardScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      Consumer(
-                        builder: (context, ref, child) {
-                          final userDataAsync = ref.watch(userDataProvider);
-                          return userDataAsync.when(
-                            data: (user) {
-                              if (user?.photoUrl != null &&
-                                  user!.photoUrl!.isNotEmpty) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18.0)
+    return GestureDetector(
+      onTap: () {
+        _focusNode.unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                title: Text('homeScreen'.tr()),
+                pinned: true,
+                floating: false,
+                snap: false,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => ZoomDrawer.of(context)!.toggle(),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.emoji_events),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const LeaderboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final userDataAsync = ref.watch(userDataProvider);
+                      return userDataAsync.when(
+                        data: (user) {
+                          if (user?.photoUrl != null &&
+                              user!.photoUrl!.isNotEmpty) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 18.0)
                                       .add(const EdgeInsets.only(top: 4.0)),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const ProfileScreen(),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProfileScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.surface,
+                                    child: ClipOval(
+                                      child: CachedNetworkImage(
+                                        imageUrl: user.photoUrl!,
+                                        width: 29,
+                                        height: 29,
+                                        fit: BoxFit.contain,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                          width: 29,
+                                          height: 29,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
                                         ),
-                                      );
-                                    },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor: Theme.of(context).colorScheme.surface,
-                                        child: ClipOval(
-                                          child: CachedNetworkImage(
-                                            imageUrl: user.photoUrl!,
-                                            width: 29,
-                                            height: 29,
-                                            fit: BoxFit.contain,
-                                            placeholder: (context, url) =>
-                                                Container(
-                                              width: 29,
-                                              height: 29,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
-                                                    .withOpacity(0.1),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                size: 16,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                              ),
-                                            ),
-                                            errorWidget: (context, url, error) =>
-                                                Container(
-                                              width: 32,
-                                              height: 32,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
-                                                    .withOpacity(0.1),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                size: 16,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                              ),
-                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            },
-                            loading: () => const SizedBox.shrink(),
-                            error: (error, stack) => const SizedBox.shrink(),
-                          );
-                        },
-                      ),
-                    ],
-                    bottom: PreferredSize(
-                      preferredSize: const Size.fromHeight(kToolbarHeight + 70.0),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 2.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(30.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context)
-                                        .shadowColor
-                                        .withOpacity(0.1),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                focusNode: _focusNode,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _searchQuery = value;
-                                    if (value.isNotEmpty) {
-                                      _suggestions = allProductsForSearch.where((product) {
-                                        final productName = product.name.toLowerCase();
-                                        final activePrinciple = (product.activePrinciple ?? '').toLowerCase();
-                                        final distributorName = (product.distributorId ?? '').toLowerCase();
-                                        return productName.contains(value.toLowerCase()) ||
-                                            activePrinciple.contains(value.toLowerCase()) ||
-                                            distributorName.contains(value.toLowerCase());
-                                      }).toList();
-                                    } else {
-                                      _suggestions = [];
-                                    }
-                                  });
-                                },
-                                decoration: InputDecoration(
-                                  hintText: 'ابحث عن دواء، مادة فعالة...',
-                                  hintStyle: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withOpacity(0.5),
-                                      ),
-                                  prefixIcon: Icon(
-                                    Icons.search,
-                                    color: Theme.of(context).colorScheme.primary,
-                                    size: 25,
-                                  ),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear, size: 20),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {
-                                              _searchQuery = '';
-                                              _suggestions = [];
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                )
-                              ],
-                            ),
-                            child: TabBar(
-                              controller: _tabController,
-                              isScrollable: true,
-                              tabAlignment: TabAlignment.start,
-
-                              /// Indicator بشكل أنيق مع Gradient + حواف ناعمة
-                              indicator: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withOpacity(0.8),
-                                    Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withOpacity(0.8),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withOpacity(0.3),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  )
-                                ],
-                              ),
-
-                              indicatorSize: TabBarIndicatorSize.tab,
-                              indicatorPadding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 5),
-
-                              labelColor: Colors.white,
-                              unselectedLabelColor: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-
-                              labelStyle: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                              unselectedLabelStyle: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                              ),
-                              dividerColor: Colors.transparent,
-
-                              tabs: _tabsInfo.map((tab) {
-                                return Tab(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(tab.icon, size: 14),
-                                        const SizedBox(width: 3),
-                                        Text(tab.text),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                  ),
-                ];
-              },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  homeTabContent,
-                  PriceUpdateTab(searchQuery: _debouncedSearchQuery),
-                  ExpireSoonTab(searchQuery: _debouncedSearchQuery),
-                  SurgicalDiagnosticTab(searchQuery: _debouncedSearchQuery),
-                  OffersTab(searchQuery: _debouncedSearchQuery),
-                  CoursesTab(searchQuery: _debouncedSearchQuery),
-                  BooksTab(searchQuery: _debouncedSearchQuery),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (_showSuggestions && _suggestions.isNotEmpty)
-          Positioned(
-            top: 160,
-            left: 16,
-            right: 16,
-            child: Opacity(
-              opacity: 0.9,
-              child: Material(
-                elevation: 4.0,
-                borderRadius: BorderRadius.circular(8.0),
-                child: Container(
-                  height: 200,
-                  child: ListView.builder(
-                    itemCount: _suggestions.length,
-                    itemBuilder: (context, index) {
-                      final suggestion = _suggestions[index];
-                      return ListTile(
-                        title: Text(suggestion.name),
-                        onTap: () {
-                          _searchController.text = suggestion.name;
-                          setState(() {
-                            _searchQuery = suggestion.name;
-                            _showSuggestions = false;
-                            _suggestions = [];
-                          });
-                          _focusNode.unfocus();
+                            );
+                          } else {
+                            return const SizedBox.shrink();
+                          }
                         },
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stack) => const SizedBox.shrink(),
                       );
                     },
                   ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(120),
+                  child: Column(
+                    children: [
+                      Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 8.0),
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _focusNode,
+                              onChanged: (value) {
+                                setState(() {
+                                  _searchQuery = value;
+                                  if (value.isNotEmpty) {
+                                    final filtered =
+                                        allProductsForSearch.where((product) {
+                                      final productName = product.name.toLowerCase();
+                                      return productName
+                                          .startsWith(value.toLowerCase());
+                                    }).toList();
+                                            
+                                    if (filtered.isNotEmpty) {
+                                      final suggestion = filtered.first;
+                                      _ghostText = suggestion.name;
+                                      _fullSuggestion = suggestion.name;
+                                    } else {
+                                      _ghostText = '';
+                                      _fullSuggestion = '';
+                                    }
+                                  } else {
+                                    _ghostText = '';
+                                    _fullSuggestion = '';
+                                  }
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'ابحث عن دواء، مادة فعالة...',
+                                hintStyle:
+                                    Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.5),
+                                        ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 25,
+                                ),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 20),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _searchQuery = '';
+                                            _ghostText = '';
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ),
+                          if (_ghostText.isNotEmpty)
+                            Positioned(
+                              top: 19,
+                              right: 55 ,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (_fullSuggestion.isNotEmpty) {
+                                    _searchController.text = _fullSuggestion;
+                                    setState(() {
+                                      _searchQuery = _fullSuggestion;
+                                      _ghostText = '';
+                                      _fullSuggestion = '';
+                                    });
+                                    _focusNode.unfocus();
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .secondary
+                                            .withOpacity(0.1)
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _ghostText,
+                                    style: TextStyle(
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Theme.of(context).colorScheme.secondary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+
+                          /// Indicator بشكل أنيق مع Gradient + حواف ناعمة
+                          indicator: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              )
+                            ],
+                          ),
+
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          indicatorPadding:
+                              const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+
+                          labelColor: Colors.white,
+                          unselectedLabelColor:
+                              Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                          dividerColor: Colors.transparent,
+
+                          tabs: _tabsInfo.map((tab) {
+                            return Tab(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(tab.icon, size: 14),
+                                    const SizedBox(width: 3),
+                                    Text(tab.text),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ];
+          },
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              homeTabContent,
+              PriceUpdateTab(searchQuery: _debouncedSearchQuery),
+              ExpireSoonTab(searchQuery: _debouncedSearchQuery),
+              SurgicalDiagnosticTab(searchQuery: _debouncedSearchQuery),
+              OffersTab(searchQuery: _debouncedSearchQuery),
+              CoursesTab(searchQuery: _debouncedSearchQuery),
+              BooksTab(searchQuery: _debouncedSearchQuery),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }

@@ -6,9 +6,11 @@ import 'package:fieldawy_store/features/leaderboard/application/leaderboard_prov
 import 'package:fieldawy_store/features/leaderboard/presentation/screens/fortune_wheel_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LeaderboardScreen extends ConsumerWidget {
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+
+class LeaderboardScreen extends HookConsumerWidget {
   const LeaderboardScreen({super.key});
 
   Future<void> _showInfoDialog(
@@ -82,6 +84,30 @@ class LeaderboardScreen extends ConsumerWidget {
     final leaderboardData = ref.watch(leaderboardProvider);
     final theme = Theme.of(context);
     final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
+    
+    // Search functionality
+    final searchQuery = useState<String>('');
+    final debouncedSearchQuery = useState<String>('');
+    final searchController = useTextEditingController();
+    final searchFocusNode = useFocusNode();
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    
+    useEffect(() {
+      Timer? debounce;
+      void listener() {
+        if (debounce?.isActive ?? false) debounce!.cancel();
+        debounce = Timer(const Duration(milliseconds: 500), () {
+          debouncedSearchQuery.value = searchController.text;
+        });
+      }
+      
+      searchController.addListener(listener);
+      return () {
+        debounce?.cancel();
+        searchController.removeListener(listener);
+      };
+    }, [searchController]);
 
     // ignore: unused_local_variable
     int? currentUserRank;
@@ -98,26 +124,171 @@ class LeaderboardScreen extends ConsumerWidget {
 
 
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Leaderboard',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+    // Filter users based on search
+    final filteredUsers = useMemoized(() {
+      if (leaderboardData is! AsyncData<List<UserModel>>) {
+        return <UserModel>[];
+      }
+      final users = leaderboardData.value;
+      if (debouncedSearchQuery.value.isEmpty) {
+        return users;
+      }
+      final query = debouncedSearchQuery.value.toLowerCase();
+      return users.where((user) {
+        return (user.displayName ?? '').toLowerCase().contains(query) ||
+               (user.email ?? '').toLowerCase().contains(query);
+      }).toList();
+    }, [leaderboardData, debouncedSearchQuery.value]);
+
+    return GestureDetector(
+      onTap: () => searchFocusNode.unfocus(),
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        appBar: AppBar(
+          title: Text(
+            'Leaderboard',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: theme.colorScheme.onSurface,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(70),
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        controller: searchController,
+                        focusNode: searchFocusNode,
+                        onChanged: (value) {
+                          searchQuery.value = value;
+                          if (value.isNotEmpty && leaderboardData is AsyncData<List<UserModel>>) {
+                            // ignore: unnecessary_cast
+                            final users = (leaderboardData as AsyncData<List<UserModel>>).value;
+                            final filtered = users.where((user) {
+                              final displayName = (user.displayName ?? '').toLowerCase();
+                              return displayName.startsWith(value.toLowerCase());
+                            }).toList();
+                            
+                            if (filtered.isNotEmpty) {
+                              final suggestion = filtered.first;
+                              ghostText.value = suggestion.displayName ?? '';
+                              fullSuggestion.value = suggestion.displayName ?? '';
+                            } else {
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                            }
+                          } else {
+                            ghostText.value = '';
+                            fullSuggestion.value = '';
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search players...',
+                          hintStyle: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: theme.colorScheme.primary,
+                            size: 25,
+                          ),
+                          suffixIcon: searchQuery.value.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    searchQuery.value = '';
+                                    debouncedSearchQuery.value = '';
+                                    ghostText.value = '';
+                                    fullSuggestion.value = '';
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    if (ghostText.value.isNotEmpty)
+                      Positioned(
+                        top: 11,
+                        right: 71,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (fullSuggestion.value.isNotEmpty) {
+                              searchController.text = fullSuggestion.value;
+                              searchQuery.value = fullSuggestion.value;
+                              debouncedSearchQuery.value = fullSuggestion.value;
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                              searchFocusNode.unfocus();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.brightness == Brightness.dark
+                                  ? theme.colorScheme.secondary.withOpacity(0.1)
+                                  : theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              ghostText.value,
+                              style: TextStyle(
+                                color: theme.brightness == Brightness.dark
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.secondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: theme.colorScheme.onSurface,
-      ),
-      body: Stack(
-        children: [
-          leaderboardData.when(
-            skipLoadingOnRefresh: true,
-            data: (users) {
-              if (users.isEmpty) {
+        body: Stack(
+          children: [
+            leaderboardData.when(
+              skipLoadingOnRefresh: true,
+              data: (users) {
+                final displayUsers = debouncedSearchQuery.value.isEmpty ? users : filteredUsers;
+                
+                if (displayUsers.isEmpty && debouncedSearchQuery.value.isNotEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off_outlined,
+                          size: 80,
+                          color: theme.colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No players found for "${debouncedSearchQuery.value}"',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                if (users.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -170,25 +341,37 @@ class LeaderboardScreen extends ConsumerWidget {
                         error: (e, st) => const SizedBox.shrink(),
                       ),
                     ),
+                    // Current User Card
+                    SliverToBoxAdapter(
+                      child: () {
+                        final currentUserInList = displayUsers.where((u) => u.id == currentUserId).firstOrNull;
+                        if (currentUserInList == null) return const SizedBox.shrink();
+                        
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: _buildCurrentUserCard(context, currentUserInList),
+                        );
+                      }(),
+                    ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            if (index == 0 && users.length >= 3) {
-                              return _buildPodium(context, users.take(3).toList());
+                            if (index == 0 && displayUsers.length >= 3) {
+                              return _buildPodium(context, displayUsers.take(3).toList());
                             }
 
                             final actualIndex =
-                                users.length >= 3 ? index + 2 : index;
-                            if (actualIndex >= users.length) {
+                                displayUsers.length >= 3 ? index + 2 : index;
+                            if (actualIndex >= displayUsers.length) {
                               return const SizedBox.shrink();
                             }
 
-                            final user = users[actualIndex];
+                            final user = displayUsers[actualIndex];
                             final rank = user.rank ?? (actualIndex + 1);
 
-                            if (rank <= 3 && users.length < 3) {
+                            if (rank <= 3 && displayUsers.length < 3) {
                               return _buildTopRankerCard(context, user, rank);
                             } else if (rank == 4 || rank == 5) {
                               return _buildSpecialRankerTile(context, user, rank);
@@ -196,9 +379,9 @@ class LeaderboardScreen extends ConsumerWidget {
                               return _buildRegularRankerTile(context, user, rank);
                             }
                           },
-                          childCount: users.length >= 3
-                              ? users.length - 3 + 1
-                              : users.length,
+                          childCount: displayUsers.length >= 3
+                              ? displayUsers.length - 3 + 1
+                              : displayUsers.length,
                         ),
                       ),
                     ),
@@ -424,6 +607,7 @@ class LeaderboardScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
     );
   }
 
@@ -624,6 +808,140 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildCurrentUserCard(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    final rank = user.rank ?? 0;
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary,
+            theme.colorScheme.primary.withOpacity(0.7),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '#$rank',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.surfaceVariant,
+                backgroundImage:
+                    user.photoUrl != null && user.photoUrl!.isNotEmpty
+                        ? CachedNetworkImageProvider(user.photoUrl!)
+                        : null,
+                child: user.photoUrl == null || user.photoUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 22, color: Colors.white)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.emoji_events,
+                        size: 14,
+                        color: Colors.amber[300],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Your Rank',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    user.displayName ?? 'No Name',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '${user.points ?? 0}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    'points',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopRankerCard(BuildContext context, UserModel user, int rank) {
     final theme = Theme.of(context);
     final colors = [
@@ -633,7 +951,7 @@ class LeaderboardScreen extends ConsumerWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -643,19 +961,19 @@ class LeaderboardScreen extends ConsumerWidget {
             colors[rank - 1].withOpacity(0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: colors[rank - 1].withOpacity(0.5),
-          width: 2,
+          width: 1.5,
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: colors[rank - 1].withOpacity(0.2),
                 shape: BoxShape.circle,
@@ -663,24 +981,25 @@ class LeaderboardScreen extends ConsumerWidget {
               child: Center(
                 child: Text(
                   '#$rank',
-                  style: theme.textTheme.titleLarge?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colors[rank - 1],
+                    fontSize: 14,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: colors[rank - 1],
-                  width: 3,
+                  width: 2,
                 ),
               ),
               child: CircleAvatar(
-                radius: 28,
+                radius: 22,
                 backgroundColor: theme.colorScheme.surfaceVariant,
                 backgroundImage:
                     user.photoUrl != null && user.photoUrl!.isNotEmpty
@@ -691,31 +1010,33 @@ class LeaderboardScreen extends ConsumerWidget {
                     : null,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     user.displayName ?? 'No Name',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       Icon(
                         Icons.emoji_events,
-                        size: 16,
+                        size: 14,
                         color: colors[rank - 1],
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 3),
                       Text(
                         '${user.points ?? 0} points',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -724,16 +1045,17 @@ class LeaderboardScreen extends ConsumerWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: colors[rank - 1].withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 '${user.points ?? 0}',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: colors[rank - 1],
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -746,65 +1068,7 @@ class LeaderboardScreen extends ConsumerWidget {
   Widget _buildRegularRankerTile(
       BuildContext context, UserModel user, int rank) {
     final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: SizedBox(
-          width: 32,
-          child: Text(
-            '#$rank',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.surfaceVariant,
-              backgroundImage:
-                  user.photoUrl != null && user.photoUrl!.isNotEmpty
-                      ? CachedNetworkImageProvider(user.photoUrl!)
-                      : null,
-              child: user.photoUrl == null || user.photoUrl!.isEmpty
-                  ? const Icon(Icons.person, size: 20)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                user.displayName ?? 'No Name',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        trailing: Text(
-          '${user.points ?? 0}',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSpecialRankerTile(
-      BuildContext context, UserModel user, int rank) {
-    final theme = Theme.of(context);
+    final color = theme.colorScheme.primary;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -813,71 +1077,229 @@ class LeaderboardScreen extends ConsumerWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.blue[100]!.withOpacity(0.5),
-            Colors.blue[50]!.withOpacity(0.3),
+            color.withOpacity(0.08),
+            color.withOpacity(0.03),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[300]!, width: 2),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.blue[400],
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              '#$rank',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '#$rank',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.surfaceVariant,
-              backgroundImage:
-                  user.photoUrl != null && user.photoUrl!.isNotEmpty
-                      ? CachedNetworkImageProvider(user.photoUrl!)
-                      : null,
-              child: user.photoUrl == null || user.photoUrl!.isEmpty
-                  ? const Icon(Icons.person, size: 20)
-                  : null,
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: color,
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.surfaceVariant,
+                backgroundImage:
+                    user.photoUrl != null && user.photoUrl!.isNotEmpty
+                        ? CachedNetworkImageProvider(user.photoUrl!)
+                        : null,
+                child: user.photoUrl == null || user.photoUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 22)
+                    : null,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName ?? 'No Name',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.emoji_events,
+                        size: 14,
+                        color: color,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${user.points ?? 0} points',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Text(
-                user.displayName ?? 'No Name',
+                '${user.points ?? 0}',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 14,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.blue[400],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '${user.points ?? 0}',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildSpecialRankerTile(
+      BuildContext context, UserModel user, int rank) {
+    final theme = Theme.of(context);
+    final color = Colors.blue[400]!;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.5),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '#$rank',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: color,
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.surfaceVariant,
+                backgroundImage:
+                    user.photoUrl != null && user.photoUrl!.isNotEmpty
+                        ? CachedNetworkImageProvider(user.photoUrl!)
+                        : null,
+                child: user.photoUrl == null || user.photoUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 22)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName ?? 'No Name',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.emoji_events,
+                        size: 14,
+                        color: color,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${user.points ?? 0} points',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '${user.points ?? 0}',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
