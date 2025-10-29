@@ -22,6 +22,11 @@ import '../../application/user_data_provider.dart';
 import '../widgets/home_tabs_content.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
+import 'package:fieldawy_store/features/books/application/books_provider.dart';
+import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
+import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
+import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
 
 
 
@@ -86,6 +91,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         HapticFeedback.lightImpact();
+        // إعادة تعيين النص الشبحي عند تغيير التاب
+        setState(() {
+          _ghostText = '';
+          _fullSuggestion = '';
+        });
       }
     });
     
@@ -117,6 +127,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           });
         }
       });
+    });
+
+    // إضافة listener للـ focus node لتحسين تجربة المستخدم
+    _focusNode.addListener(() {
+      if (mounted) {
+        setState(() {
+          // تحديث الواجهة عند تغيير حالة الـ focus
+        });
+        
+        // تأثيرات haptic عند التركيز وإلغاء التركيز
+        if (_focusNode.hasFocus) {
+          HapticFeedback.selectionClick();
+        } else {
+          // إخفاء النص الشبحي عند فقدان التركيز إذا كان مربع البحث فارغاً
+          if (_searchController.text.isEmpty) {
+            _ghostText = '';
+            _fullSuggestion = '';
+          }
+        }
+      }
     });
   }
 
@@ -166,6 +196,135 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _debounce?.cancel();
     _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  // دالة للحصول على منتجات التاب الحالي للنص الشبحي
+  List<ProductModel> _getCurrentTabProducts() {
+    final allProductsForSearch = ref.read(allDistributorProductsProvider).asData?.value ?? [];
+    final currentTabIndex = _tabController.index;
+    
+    try {
+      switch (currentTabIndex) {
+        case 0: // Home Tab
+          return allProductsForSearch;
+        case 1: // Price Action Tab - استخدام جميع المنتجات حالياً
+          return allProductsForSearch;
+        case 2: // Expire Soon Tab
+          return _getExpireSoonProducts();
+        case 3: // Surgical & Diagnostic Tab
+          return _getSurgicalProducts();
+        case 4: // Offers Tab
+          return _getOffersProducts();
+        case 5: // Courses Tab
+          // للكورسات، نحتاج لإنشاء منتجات وهمية للنص الشبحي
+          return _createDummyProductsFromCourses();
+        case 6: // Books Tab
+          // للكتب، نحتاج لإنشاء منتجات وهمية للنص الشبحي
+          return _createDummyProductsFromBooks();
+        default:
+          return allProductsForSearch;
+      }
+    } catch (e) {
+      // في حالة حدوث خطأ، إرجاع جميع المنتجات
+      return allProductsForSearch;
+    }
+  }
+
+  // دالة لإنشاء منتجات وهمية من الكورسات للنص الشبحي
+  List<ProductModel> _createDummyProductsFromCourses() {
+    try {
+      final coursesAsync = ref.read(allCoursesNotifierProvider);
+      return coursesAsync.when(
+        data: (courses) => courses.map((course) => ProductModel(
+          id: course.id,
+          name: course.title,
+          imageUrl: course.imageUrl,
+          price: course.price,
+          distributorId: 'course',
+          activePrinciple: course.description,
+          availablePackages: [],
+        )).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
+  }
+
+  // دالة لإنشاء منتجات وهمية من الكتب للنص الشبحي
+  List<ProductModel> _createDummyProductsFromBooks() {
+    try {
+      final booksAsync = ref.read(allBooksNotifierProvider);
+      return booksAsync.when(
+        data: (books) => books.map((book) => ProductModel(
+          id: book.id,
+          name: book.name,
+          imageUrl: book.imageUrl,
+          price: book.price,
+          distributorId: 'book',
+          activePrinciple: book.author,
+          company: book.description,
+          availablePackages: [],
+        )).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
+  }
+
+  // دالة للحصول على منتجات منتهية الصلاحية
+  List<ProductModel> _getExpireSoonProducts() {
+    try {
+      final expireDrugsAsync = ref.read(expireDrugsProvider);
+      return expireDrugsAsync.when(
+        data: (items) => items.map((item) => item.product).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
+  }
+
+  // دالة للحصول على الأدوات الجراحية
+  List<ProductModel> _getSurgicalProducts() {
+    try {
+      final toolsAsync = ref.read(surgicalToolsHomeProvider);
+      return toolsAsync.when(
+        data: (tools) => tools.map((tool) => ProductModel(
+          id: tool.id,
+          name: tool.name,
+          imageUrl: tool.imageUrl,
+          price: tool.price,
+          distributorId: tool.distributorId ?? 'surgical',
+          activePrinciple: tool.activePrinciple,
+          company: tool.company,
+          description: tool.description,
+          availablePackages: [],
+        )).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
+  }
+
+  // دالة للحصول على منتجات العروض
+  List<ProductModel> _getOffersProducts() {
+    try {
+      final offersAsync = ref.read(offersHomeProvider);
+      return offersAsync.when(
+        data: (items) => items.map((item) => item.product).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
   }
 
 
@@ -803,8 +962,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
-        _focusNode.unfocus();
+        // إخفاء الكيبورد عند اللمس خارج شريط البحث
+        if (_focusNode.hasFocus) {
+          _focusNode.unfocus();
+          HapticFeedback.lightImpact();
+          // مسح النص الشبحي عند إخفاء الكيبورد
+          setState(() {
+            if (_searchController.text.isEmpty) {
+              _ghostText = '';
+              _fullSuggestion = '';
+            }
+          });
+        }
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -932,18 +1103,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     children: [
                       Stack(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 8.0),
-                            child: TextField(
+                          // حماية منطقة شريط البحث من إخفاء الكيبورد
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              // منع إخفاء الكيبورد عند اللمس على شريط البحث
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 8.0),
+                              child: TextField(
                               controller: _searchController,
                               focusNode: _focusNode,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (value) {
+                                // عند الضغط على زر البحث في لوحة المفاتيح، إخفاء الكيبورد
+                                _focusNode.unfocus();
+                              },
+                              onTap: () {
+                                // تحسين تجربة التفاعل عند النقر على مربع البحث
+                                if (!_focusNode.hasFocus) {
+                                  HapticFeedback.selectionClick();
+                                }
+                              },
                               onChanged: (value) {
                                 setState(() {
                                   _searchQuery = value;
                                   if (value.isNotEmpty) {
-                                    final filtered =
-                                        allProductsForSearch.where((product) {
+                                    // الحصول على قائمة المنتجات حسب التاب الحالي
+                                    List<ProductModel> currentTabProducts = _getCurrentTabProducts();
+                                    
+                                    final filtered = currentTabProducts.where((product) {
                                       final productName = product.name.toLowerCase();
                                       return productName
                                           .startsWith(value.toLowerCase());
@@ -972,67 +1162,138 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               .onSurface
                                               .withOpacity(0.5),
                                         ),
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 25,
+                                prefixIcon: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    Icons.search,
+                                    color: _focusNode.hasFocus 
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                    size: 25,
+                                  ),
                                 ),
                                 suffixIcon: _searchQuery.isNotEmpty
                                     ? IconButton(
-                                        icon: const Icon(Icons.clear, size: 20),
+                                        icon: Icon(
+                                          Icons.clear, 
+                                          size: 20,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                        ),
                                         onPressed: () {
                                           _searchController.clear();
                                           setState(() {
                                             _searchQuery = '';
                                             _ghostText = '';
+                                            _fullSuggestion = '';
                                           });
+                                          HapticFeedback.lightImpact();
                                         },
+                                        tooltip: 'مسح البحث',
                                       )
                                     : null,
-                                border: InputBorder.none,
+                                // تحسين الحدود والشكل
+                                filled: true,
+                                fillColor: Theme.of(context).brightness == Brightness.dark
+                                    ? Theme.of(context).colorScheme.surface.withOpacity(0.8)
+                                    : Theme.of(context).colorScheme.surface,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 2,
+                                  ),
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 12),
                               ),
                             ),
                           ),
-                          if (_ghostText.isNotEmpty)
+                          ),
+                          // النص الشبحي المحسن مع تأثيرات بصرية
+                          if (_ghostText.isNotEmpty && _focusNode.hasFocus)
                             Positioned(
-                              top: 19,
-                              right: 55 ,
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (_fullSuggestion.isNotEmpty) {
-                                    _searchController.text = _fullSuggestion;
-                                    setState(() {
-                                      _searchQuery = _fullSuggestion;
-                                      _ghostText = '';
-                                      _fullSuggestion = '';
-                                    });
-                                    _focusNode.unfocus();
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .secondary
-                                            .withOpacity(0.1)
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .primary
-                                            .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    _ghostText,
-                                    style: TextStyle(
+                              top: 17,
+                              right: 55,
+                              child: AnimatedOpacity(
+                                opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (_fullSuggestion.isNotEmpty) {
+                                      _searchController.text = _fullSuggestion;
+                                      setState(() {
+                                        _searchQuery = _fullSuggestion;
+                                        _ghostText = '';
+                                        _fullSuggestion = '';
+                                      });
+                                      HapticFeedback.selectionClick();
+                                      // إبقاء التركيز لتمكين المستخدم من المتابعة في الكتابة
+                                      _focusNode.requestFocus();
+                                    }
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
                                       color: Theme.of(context).brightness == Brightness.dark
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Theme.of(context).colorScheme.secondary,
-                                      fontWeight: FontWeight.bold,
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.15)
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.auto_awesome,
+                                          size: 14,
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? Theme.of(context).colorScheme.primary
+                                              : Theme.of(context).colorScheme.secondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            _ghostText,
+                                            style: TextStyle(
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Theme.of(context).colorScheme.primary
+                                                  : Theme.of(context).colorScheme.secondary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
