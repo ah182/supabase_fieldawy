@@ -63,8 +63,21 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
       }).toList();
     }, [requestsAsync, debouncedSearchQuery.value]);
 
+    // دالة مساعدة لإخفاء الكيبورد
+    void hideKeyboard() {
+      if (searchFocusNode.hasFocus) {
+        searchFocusNode.unfocus();
+        // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
+        if (searchController.text.isEmpty) {
+          ghostText.value = '';
+          fullSuggestion.value = '';
+        }
+      }
+    }
+
     return GestureDetector(
-      onTap: () => searchFocusNode.unfocus(),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => hideKeyboard(),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('المنتجات المطلوب تقييمها'),

@@ -22,11 +22,13 @@ import '../../application/user_data_provider.dart';
 import '../widgets/home_tabs_content.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
 import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
+import 'package:fieldawy_store/core/utils/location_proximity.dart';
 
 
 
@@ -91,6 +93,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         HapticFeedback.lightImpact();
+        
+        // إخفاء الكيبورد عند تغيير التاب
+        _hideKeyboard();
+        
         // إعادة تعيين النص الشبحي عند تغيير التاب
         setState(() {
           _ghostText = '';
@@ -108,6 +114,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _scrollController.addListener(() {
       if (!_scrollController.hasClients) return;
+      
+      // إخفاء الكيبورد عند التمرير
+      _hideKeyboard();
+      
       final threshold = _scrollController.position.maxScrollExtent - 200;
       final state = ref.read(paginatedProductsProvider);
 
@@ -196,6 +206,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _debounce?.cancel();
     _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  // دالة مساعدة لإخفاء الكيبورد
+  void _hideKeyboard() {
+    if (_focusNode.hasFocus) {
+      _focusNode.unfocus();
+      HapticFeedback.lightImpact();
+      setState(() {
+        if (_searchController.text.isEmpty) {
+          _ghostText = '';
+          _fullSuggestion = '';
+        }
+      });
+    }
   }
 
   // دالة للحصول على منتجات التاب الحالي للنص الشبحي
@@ -819,12 +843,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final products = paginatedState.products;
     final allDistributorProductsAsync =
         ref.watch(allDistributorProductsProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
     final query = _debouncedSearchQuery.toLowerCase().trim();
 
     final allProductsForSearch =
         allDistributorProductsAsync.asData?.value ?? [];
     final List<ProductModel> productsToFilter =
         query.isNotEmpty ? allProductsForSearch : products;
+
+    // إنشاء Map للموزعين لسهولة الوصول
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     final filteredProducts = () {
       if (query.isEmpty) return productsToFilter;
@@ -847,11 +881,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             action.contains(query);
       }).toList();
 
+      // ترتيب أولي حسب نتيجة البحث
       list.sort((a, b) {
         final scoreA = _calculateSearchScore(a, query);
         final scoreB = _calculateSearchScore(b, query);
         return scoreB.compareTo(scoreA);
       });
+
+      // ترتيب ثانوي حسب القرب الجغرافي
+      final currentUser = currentUserAsync.asData?.value;
+      if (currentUser != null && distributorsMap.isNotEmpty) {
+        list.sort((a, b) {
+          final distributorA = distributorsMap[a.distributorId];
+          final distributorB = distributorsMap[b.distributorId];
+
+          if (distributorA == null && distributorB == null) return 0;
+          if (distributorA == null) return 1;
+          if (distributorB == null) return -1;
+
+          final proximityA = LocationProximity.calculateProximityScore(
+            userGovernorates: currentUser.governorates,
+            userCenters: currentUser.centers,
+            distributorGovernorates: distributorA.governorates,
+            distributorCenters: distributorA.centers,
+          );
+
+          final proximityB = LocationProximity.calculateProximityScore(
+            userGovernorates: currentUser.governorates,
+            userCenters: currentUser.centers,
+            distributorGovernorates: distributorB.governorates,
+            distributorCenters: distributorB.centers,
+          );
+
+          // ترتيب تنازلي - الأقرب أولاً
+          return proximityB.compareTo(proximityA);
+        });
+      }
 
       return list;
     }();
@@ -934,10 +999,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     final product = filteredProducts[index];
                     return RepaintBoundary(
                       child: _KeepAlive(
-                        child: ProductCard(
+                        child: ViewTrackingProductCard(
                           product: product,
                           searchQuery: _debouncedSearchQuery,
                           productType: 'home',
+                          trackViewOnVisible: true, // حساب المشاهدة عند الظهور
                           onTap: () {
                             _showProductDetailDialog(context, ref, product);
                           },
@@ -965,17 +1031,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       behavior: HitTestBehavior.opaque,
       onTap: () {
         // إخفاء الكيبورد عند اللمس خارج شريط البحث
-        if (_focusNode.hasFocus) {
-          _focusNode.unfocus();
-          HapticFeedback.lightImpact();
-          // مسح النص الشبحي عند إخفاء الكيبورد
-          setState(() {
-            if (_searchController.text.isEmpty) {
-              _ghostText = '';
-              _fullSuggestion = '';
-            }
-          });
-        }
+        _hideKeyboard();
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -991,7 +1047,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrolledUnderElevation: 0,
                 leading: IconButton(
                   icon: const Icon(Icons.menu),
-                  onPressed: () => ZoomDrawer.of(context)!.toggle(),
+                  onPressed: () {
+                    // إخفاء الكيبورد عند فتح القائمة الجانبية
+                    _hideKeyboard();
+                    ZoomDrawer.of(context)!.toggle();
+                  },
                 ),
                 actions: [
                   IconButton(

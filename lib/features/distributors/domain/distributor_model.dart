@@ -12,6 +12,8 @@ class DistributorModel {
   final bool isVerified;
   final DateTime? joinDate;
   final String? whatsappNumber;
+  final List<String>? governorates;
+  final List<String>? centers;
 
   DistributorModel({
     required this.id,
@@ -24,6 +26,8 @@ class DistributorModel {
     this.isVerified = false,
     this.joinDate,
     this.whatsappNumber,
+    this.governorates,
+    this.centers,
   });
 
   factory DistributorModel.fromMap(Map<String, dynamic> data) {
@@ -44,6 +48,12 @@ class DistributorModel {
                   ? DateTime.tryParse(data['created_at'])
                   : null,
       whatsappNumber: data['whatsapp_number'] ?? data['whatsappNumber'],
+      governorates: data['governorates'] != null 
+          ? List<String>.from(data['governorates']) 
+          : null,
+      centers: data['centers'] != null 
+          ? List<String>.from(data['centers']) 
+          : null,
     );
   }
 }

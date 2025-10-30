@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
+import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
 import 'product_dialogs.dart';
 
 // ===================================================================
@@ -103,6 +105,8 @@ class CoursesTab extends ConsumerWidget {
   static void _showCourseDialog(BuildContext context, WidgetRef ref, dynamic course) {
     final theme = Theme.of(context);
     
+    // حساب المشاهدة فور فتح الديالوج
+    ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
     
     showDialog(
       context: context,
@@ -186,33 +190,56 @@ class CoursesTab extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
-                    // --- Action Button ---
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
-                          Navigator.pop(context);
-                          _openWhatsApp(context, course.phone);
-                        },
-                        icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
-                        label: const Text(
-                          'تواصل مع مقدم الكورس',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    const SizedBox(height: 24),
+                    // --- Action Buttons ---
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => CourseDetailsScreen(course: course),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.info_outline, size: 20),
+                            label: const Text('تفاصيل الكورس'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _openWhatsApp(context, course.phone);
+                            },
+                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                            label: const Text(
+                              'تواصل',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF25D366),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     ],
                   ),
@@ -381,6 +408,8 @@ class BooksTab extends ConsumerWidget {
   static void _showBookDialog(BuildContext context, WidgetRef ref, dynamic book) {
     final theme = Theme.of(context);
     
+    // حساب المشاهدة فور فتح الديالوج
+    ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
     
     showDialog(
       context: context,
@@ -477,33 +506,56 @@ class BooksTab extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
-                    // --- Action Button ---
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
-                          Navigator.pop(context);
-                          _openWhatsApp(context, book.phone);
-                        },
-                        icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
-                        label: const Text(
-                          'تواصل مع البائع',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    const SizedBox(height: 24),
+                    // --- Action Buttons ---
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => BookDetailsScreen(book: book),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.info_outline, size: 20),
+                            label: const Text('تفاصيل الكتاب'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _openWhatsApp(context, book.phone);
+                            },
+                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                            label: const Text(
+                              'تواصل',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF25D366),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     ],
                   ),
@@ -656,10 +708,11 @@ class ExpireSoonTab extends ConsumerWidget {
             itemCount: filteredItems.length,
             itemBuilder: (context, index) {
               final item = filteredItems[index];
-              return ProductCard(
+              return ViewTrackingProductCard(
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'expire_soon',
+                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
                 expirationDate: item.expirationDate,
                 onTap: () {
                   showProductDialog(
@@ -814,10 +867,11 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
             itemCount: filteredTools.length,
             itemBuilder: (context, index) {
               final tool = filteredTools[index];
-              return ProductCard(
+              return ViewTrackingProductCard(
                 product: tool,
                 searchQuery: searchQuery,
                 productType: 'surgical',
+                trackViewOnVisible: false, // حساب المشاهدة عند فتح الديالوج فقط
                 status: tool.activePrinciple,
                 onTap: () {
                   showSurgicalToolDialog(context, tool);
@@ -990,10 +1044,11 @@ class OffersTab extends ConsumerWidget {
             itemCount: filteredOfferItems.length,
             itemBuilder: (context, index) {
               final item = filteredOfferItems[index];
-              return ProductCard(
+              return ViewTrackingProductCard(
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'offers',
+                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
                 onTap: () {
                   showOfferProductDialog(
                     context,

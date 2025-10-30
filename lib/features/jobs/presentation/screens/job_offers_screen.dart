@@ -2,7 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/jobs/application/job_offers_provider.dart';
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:fieldawy_store/features/jobs/presentation/screens/add_job_offer_screen.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,45 +17,226 @@ class JobOffersScreen extends ConsumerStatefulWidget {
 
 class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  String _ghostText = '';
+  String _fullSuggestion = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    // إضافة listener لإخفاء الكيبورد عند تغيير التاب
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        _hideKeyboard();
+      }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  // دالة مساعدة لإخفاء الكيبورد
+  void _hideKeyboard() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+      HapticFeedback.lightImpact();
+      setState(() {
+        if (_searchController.text.isEmpty) {
+          _ghostText = '';
+          _fullSuggestion = '';
+        }
+      });
+    }
+  }
+
+  // دالة لتحديث الاقتراحات
+  void _updateSuggestions(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _ghostText = '';
+        _fullSuggestion = '';
+      });
+      return;
+    }
+
+    // جمع جميع الوظائف من كلا المصدرين
+    final allJobsState = ref.read(allJobOffersNotifierProvider);
+    final myJobsState = ref.read(myJobOffersNotifierProvider);
+    
+    List<JobOffer> allJobs = [];
+    
+    allJobsState.whenData((jobs) => allJobs.addAll(jobs));
+    myJobsState.whenData((jobs) => allJobs.addAll(jobs));
+
+    // البحث عن أفضل اقتراح
+    String bestMatch = '';
+    for (final job in allJobs) {
+      final title = job.title.toLowerCase();
+      final description = job.description.toLowerCase();
+      final queryLower = query.toLowerCase();
+      
+      if (title.startsWith(queryLower) && title.length > query.length) {
+        bestMatch = job.title;
+        break;
+      } else if (description.contains(queryLower)) {
+        // العثور على الكلمة التي تبدأ بالاستعلام
+        final words = description.split(' ');
+        for (final word in words) {
+          if (word.startsWith(queryLower) && word.length > query.length) {
+            bestMatch = word;
+            break;
+          }
+        }
+        if (bestMatch.isNotEmpty) break;
+      }
+    }
+
+    setState(() {
+      if (bestMatch.isNotEmpty && bestMatch.toLowerCase().startsWith(query.toLowerCase())) {
+        _ghostText = query + bestMatch.substring(query.length);
+        _fullSuggestion = bestMatch;
+      } else {
+        _ghostText = '';
+        _fullSuggestion = '';
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('jobOffers'.tr()),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.work_outline),
-              text: 'availableJobs'.tr(),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _hideKeyboard(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('jobOffers'.tr()),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(
+                icon: const Icon(Icons.work_outline),
+                text: 'availableJobs'.tr(),
+              ),
+              Tab(
+                icon: const Icon(Icons.manage_accounts_outlined),
+                text: 'myJobOffers'.tr(),
+              ),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            // شريط البحث
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Stack(
+                children: [
+                  // النص الشبحي
+                  if (_ghostText.isNotEmpty)
+                    Positioned.fill(
+                      child: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 48, right: 12),
+                        child: Text(
+                          _ghostText,
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // حقل البحث الفعلي
+                  TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'البحث في الوظائف...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_fullSuggestion.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.keyboard_tab, color: Colors.blue),
+                                    onPressed: () {
+                                      _searchController.text = _fullSuggestion;
+                                      _searchController.selection = TextSelection.fromPosition(
+                                        TextPosition(offset: _fullSuggestion.length),
+                                      );
+                                      setState(() {
+                                        _searchQuery = _fullSuggestion;
+                                        _ghostText = '';
+                                        _fullSuggestion = '';
+                                      });
+                                    },
+                                    tooltip: 'قبول الاقتراح',
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _ghostText = '';
+                                      _fullSuggestion = '';
+                                    });
+                                  },
+                                ),
+                              ],
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                      
+                      // تحديث الاقتراحات مع debounce
+                      _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                        _updateSuggestions(value);
+                      });
+                    },
+                    onTap: () {
+                      // إظهار الاقتراحات عند النقر
+                      if (_searchController.text.isNotEmpty) {
+                        _updateSuggestions(_searchController.text);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
-            Tab(
-              icon: const Icon(Icons.manage_accounts_outlined),
-              text: 'myJobOffers'.tr(),
+            // محتوى التابات
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _AvailableJobsTab(searchQuery: _searchQuery),
+                  _MyJobOffersTab(searchQuery: _searchQuery),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _AvailableJobsTab(),
-          _MyJobOffersTab(),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.of(context).push(
@@ -71,12 +254,15 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
         label: Text('addJobOffer'.tr()),
         elevation: 4,
       ),
+      ),
     );
   }
 }
 
 class _AvailableJobsTab extends ConsumerWidget {
-  const _AvailableJobsTab();
+  const _AvailableJobsTab({this.searchQuery = ''});
+
+  final String searchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -84,7 +270,53 @@ class _AvailableJobsTab extends ConsumerWidget {
 
     return jobsAsync.when(
       data: (jobs) {
-        if (jobs.isEmpty) {
+        // فلترة الوظائف حسب البحث
+        final filteredJobs = searchQuery.isEmpty
+            ? jobs
+            : jobs.where((job) =>
+                job.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                job.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                (job.userName != null && job.userName!.toLowerCase().contains(searchQuery.toLowerCase()))
+              ).toList();
+
+        if (filteredJobs.isEmpty) {
+          if (searchQuery.isNotEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 100,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'لم يتم العثور على وظائف',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'جرب كلمات بحث أخرى',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -128,9 +360,9 @@ class _AvailableJobsTab extends ConsumerWidget {
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16.0),
-            itemCount: jobs.length,
+            itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
-              final job = jobs[index];
+              final job = filteredJobs[index];
               return _JobOfferCard(
                 job: job,
                 showActions: false,
@@ -173,7 +405,9 @@ class _AvailableJobsTab extends ConsumerWidget {
 }
 
 class _MyJobOffersTab extends ConsumerWidget {
-  const _MyJobOffersTab();
+  const _MyJobOffersTab({this.searchQuery = ''});
+
+  final String searchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -181,7 +415,52 @@ class _MyJobOffersTab extends ConsumerWidget {
 
     return jobsAsync.when(
       data: (jobs) {
-        if (jobs.isEmpty) {
+        // فلترة الوظائف حسب البحث
+        final filteredJobs = searchQuery.isEmpty
+            ? jobs
+            : jobs.where((job) =>
+                job.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                job.description.toLowerCase().contains(searchQuery.toLowerCase())
+              ).toList();
+
+        if (filteredJobs.isEmpty) {
+          if (searchQuery.isNotEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 100,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'لم يتم العثور على وظائف',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'جرب كلمات بحث أخرى',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -244,9 +523,9 @@ class _MyJobOffersTab extends ConsumerWidget {
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16.0),
-            itemCount: jobs.length,
+            itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
-              final job = jobs[index];
+              final job = filteredJobs[index];
               return _JobOfferCard(
                 job: job,
                 showActions: true,

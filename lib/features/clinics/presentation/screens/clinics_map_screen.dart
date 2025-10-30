@@ -246,13 +246,25 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.my_location, color: Colors.white),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Stack(
-              children: [
-                TextField(
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // إخفاء الكيبورد عند النقر على الخريطة
+          FocusScope.of(context).unfocus();
+          if (_searchController.text.isEmpty) {
+            setState(() {
+              _ghostText = '';
+              _fullSuggestion = '';
+            });
+          }
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Stack(
+                children: [
+                  TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'ابحث عن عيادة, طبيب, منطقة...', 
@@ -381,6 +393,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
             ),
           ),
         ],
+      ),
       ),
     );
   }

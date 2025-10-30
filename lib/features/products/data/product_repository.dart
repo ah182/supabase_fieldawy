@@ -15,6 +15,17 @@ final productDataLastModifiedProvider = StateProvider<DateTime>((ref) {
 });
 
 class ProductRepository {
+  // دالة لزيادة عدد المشاهدات للمنتج
+  static Future<void> incrementViews(String productId) async {
+    try {
+      await Supabase.instance.client.rpc('increment_product_views', params: {
+        'product_id': productId,
+      });
+    } catch (e) {
+      print('خطأ في زيادة مشاهدات المنتج: $e');
+    }
+  }
+
   Future<void> updateProductExpirationAndPrice({
     required String distributorId,
     required String productId,
@@ -71,7 +82,7 @@ class ProductRepository {
     final List<String> allIds = [];
     
     // Get IDs from distributor_products
-    final regularRows = await _supabase.from('distributor_products').select('id');
+    final regularRows = await _supabase.from('distributor_products').select('id, views');
     allIds.addAll(regularRows.map((row) => 'regular_${row['id']}'));
     
     // Get IDs from distributor_ocr_products
@@ -96,7 +107,7 @@ class ProductRepository {
     if (regularIds.isNotEmpty) {
       final rows = await _supabase
           .from('distributor_products')
-          .select()
+          .select('*, views')
           .inFilter('id', regularIds);
 
       if (rows.isNotEmpty) {
@@ -108,7 +119,7 @@ class ProductRepository {
             rows.map((row) => row['product_id'] as String).toSet().toList();
 
         final productDocs =
-            await _supabase.from('products').select().inFilter('id', productIds);
+            await _supabase.from('products').select('*').inFilter('id', productIds);
 
         final productsMap = {
           for (var doc in productDocs)
@@ -130,6 +141,7 @@ class ProductRepository {
                       : null,
                   selectedPackage: distributorProductRow['package'] as String?,
                   distributorId: distributorProductRow['distributor_name'] as String?,
+                  views: (distributorProductRow['views'] as int?) ?? 0,
                 ));
               }
             }
@@ -157,7 +169,7 @@ class ProductRepository {
         // Fetch distributor_ocr_products
         final distOcrRows = await _supabase
             .from('distributor_ocr_products')
-            .select('ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id')
+            .select('ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
             .inFilter('ocr_product_id', ocrProductIds.toList());
 
         if (distOcrRows.isNotEmpty) {
@@ -171,7 +183,7 @@ class ProductRepository {
           // Fetch the corresponding OCR products
           final ocrProductDocs = await _supabase
               .from('ocr_products')
-              .select()
+              .select('*')
               .inFilter('id', ocrProductIds.toList());
 
           final ocrProductsMap = {
@@ -199,6 +211,7 @@ class ProductRepository {
                         ? DateTime.tryParse(row['price_updated_at'])
                         : null,
                     distributorId: row['distributor_name'] as String?,
+                    views: (row['views'] as int?) ?? 0,
                   ));
                 }
               }

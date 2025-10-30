@@ -570,6 +570,23 @@ class MyProductsScreen extends HookConsumerWidget {
     final mainTabSelectionMode = useState(false);
     final ocrTabSelectionMode = useState(false);
 
+    final searchQuery = useState<String>('');
+    final ghostText = useState<String>('');
+    final fullSuggestion = useState<String>('');
+    final searchController = useTextEditingController();
+
+    // دالة مساعدة لإخفاء الكيبورد
+    void hideKeyboard() {
+      if (searchFocusNode.hasFocus) {
+        searchFocusNode.unfocus();
+        // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
+        if (searchController.text.isEmpty) {
+          ghostText.value = '';
+          fullSuggestion.value = '';
+        }
+      }
+    }
+
     // إضافة مراقب للتابات مع تحسينات UX
     final currentTabIndex = useState(tabController.index);
     useEffect(() {
@@ -578,7 +595,7 @@ class MyProductsScreen extends HookConsumerWidget {
         if (currentTabIndex.value != newIndex) {
           currentTabIndex.value = newIndex;
           // إخفاء الكيبورد عند تغيير التاب
-          searchFocusNode.unfocus();
+          hideKeyboard();
         }
       }
       tabController.addListener(tabListener);
@@ -612,16 +629,12 @@ class MyProductsScreen extends HookConsumerWidget {
       );
     }
 
-    final searchQuery = useState<String>('');
-    final ghostText = useState<String>('');
-    final fullSuggestion = useState<String>('');
-    final searchController = useTextEditingController();
-
     ref.listen(myProductsProvider, (previous, next) {});
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
-        searchFocusNode.unfocus();
+        hideKeyboard();
       },
       child: MainScaffold(
         selectedIndex: 0,

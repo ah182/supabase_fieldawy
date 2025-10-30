@@ -827,6 +827,16 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
 
   await Hive.initFlutter();
+  
+  // ✅ CRITICAL: Clear Hive cache to refresh views field
+  try {
+    await Hive.deleteFromDisk();
+    print('🧹 Cleared Hive cache - views field will now work!');
+    await Hive.initFlutter();
+  } catch (e) {
+    print('⚠️ Could not clear cache: $e');
+  }
+  
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(OrderItemModelAdapter());
   Hive.registerAdapter(CacheEntryAdapter());

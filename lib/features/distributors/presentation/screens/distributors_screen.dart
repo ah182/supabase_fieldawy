@@ -1,7 +1,7 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
-// ignore: unused_import
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
+import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'dart:async';
 
 final distributorsProvider =
@@ -28,10 +29,7 @@ final distributorsProvider =
   // 1. Start the network fetch immediately, but don't wait for it.
   final networkFuture = supabase.functions.invoke('get-distributors').then((response) {
     if (response.data == null) {
-      // If the network fails, we can choose to simply log it and rely on the old cache
-      // or throw an error to be caught elsewhere.
       print('Failed to fetch fresh distributors');
-      // Silently fail to avoid breaking the UI if stale data is already shown
       return <DistributorModel>[]; 
     }
     final List<dynamic> data = response.data;
@@ -40,6 +38,10 @@ final distributorsProvider =
     // Parse and return the fresh data
     final result = data.map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d))).toList();
     return result;
+  }).catchError((error) {
+    // معالجة أخطاء الشبكة
+    print('خطأ في جلب الموزعين: $error');
+    return <DistributorModel>[];
   });
 
   // 2. Check the local cache for stale data.
@@ -51,7 +53,13 @@ final distributorsProvider =
   }
 
   // 3. If there's no cached data, we have to wait for the network to complete.
-  return await networkFuture;
+  try {
+    return await networkFuture;
+  } catch (e) {
+    print('خطأ في تحميل الموزعين: $e');
+    // إعادة قائمة فارغة بدلاً من رمي استثناء
+    return <DistributorModel>[];
+  }
 });
 
 class DistributorsScreen extends HookConsumerWidget {
@@ -61,6 +69,7 @@ class DistributorsScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final distributorsAsync = ref.watch(distributorsProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
     final searchQuery = useState<String>('');
     final debouncedSearchQuery = useState<String>('');
     final searchController = useTextEditingController();
@@ -87,21 +96,44 @@ class DistributorsScreen extends HookConsumerWidget {
     final filteredDistributors = useMemoized(
       () {
         final distributors = distributorsAsync.asData?.value;
+        final currentUser = currentUserAsync.asData?.value;
+        
         if (distributors == null) {
           return <DistributorModel>[];
         }
+
+        // تصفية حسب البحث
+        List<DistributorModel> filtered;
         if (debouncedSearchQuery.value.isEmpty) {
-          return distributors;
+          filtered = distributors;
+        } else {
+          filtered = distributors.where((distributor) {
+            final query = debouncedSearchQuery.value.toLowerCase();
+            return distributor.displayName.toLowerCase().contains(query) ||
+                (distributor.companyName?.toLowerCase().contains(query) ??
+                    false) ||
+                (distributor.email?.toLowerCase().contains(query) ?? false);
+          }).toList();
         }
-        return distributors.where((distributor) {
-          final query = debouncedSearchQuery.value.toLowerCase();
-          return distributor.displayName.toLowerCase().contains(query) ||
-              (distributor.companyName?.toLowerCase().contains(query) ??
-                  false) ||
-              (distributor.email?.toLowerCase().contains(query) ?? false);
-        }).toList();
+
+        // ترتيب حسب القرب الجغرافي
+        if (currentUser != null) {
+          return LocationProximity.sortByProximity<DistributorModel>(
+            items: filtered,
+            getProximityScore: (distributor) {
+              return LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributor.governorates,
+                distributorCenters: distributor.centers,
+              );
+            },
+          );
+        }
+
+        return filtered;
       },
-      [distributorsAsync, debouncedSearchQuery.value],
+      [distributorsAsync, currentUserAsync, debouncedSearchQuery.value],
     );
 
     
@@ -289,9 +321,22 @@ final sliverAppBar = SliverAppBar(
       ),
     );
 
-    return GestureDetector(
-      onTap: () {
+    // دالة مساعدة لإخفاء الكيبورد
+    void hideKeyboard() {
+      if (searchFocusNode.hasFocus) {
         searchFocusNode.unfocus();
+        // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
+        if (searchController.text.isEmpty) {
+          ghostText.value = '';
+          fullSuggestion.value = '';
+        }
+      }
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        hideKeyboard();
       },
       child: MainScaffold(
         selectedIndex: 0,
@@ -323,7 +368,7 @@ final sliverAppBar = SliverAppBar(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0, vertical: 6.0),
                             child: _buildDistributorCard(
-                                context, theme, distributor),
+                                context, theme, distributor, ref),
                           );
                         },
                         childCount: filteredDistributors.length,
@@ -338,8 +383,8 @@ final sliverAppBar = SliverAppBar(
               sliverAppBar,
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(
+                  (context, index) => const Padding(
+                    padding: EdgeInsets.symmetric(
                         horizontal: 16.0, vertical: 6.0),
                     child: DistributorCardShimmer(),
                   ),
@@ -353,7 +398,7 @@ final sliverAppBar = SliverAppBar(
               sliverAppBar,
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildErrorState(context, theme, error.toString()),
+                child: _buildErrorState(context, theme, error.toString(), ref),
               ),
             ],
           ),
@@ -364,11 +409,13 @@ final sliverAppBar = SliverAppBar(
 
   // كارت الموزع المحسن
   Widget _buildDistributorCard(
-      BuildContext context, ThemeData theme, DistributorModel distributor) {
+      BuildContext context, ThemeData theme, DistributorModel distributor, WidgetRef ref) {
+    final currentUser = ref.read(userDataProvider).asData?.value;
     return _DistributorCard(
       key: ValueKey(distributor.id),
       distributor: distributor,
       theme: theme,
+      currentUser: currentUser,
       onShowDetails: () => _showDistributorDetails(context, theme, distributor),
     );
   }
@@ -638,7 +685,7 @@ final sliverAppBar = SliverAppBar(
   }
 
   // حالة الخطأ
-  Widget _buildErrorState(BuildContext context, ThemeData theme, String error) {
+  Widget _buildErrorState(BuildContext context, ThemeData theme, String error, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -646,21 +693,21 @@ final sliverAppBar = SliverAppBar(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.error_outline_rounded,
+              Icons.cloud_off_rounded,
               size: 64,
               color: theme.colorScheme.error.withOpacity(0.6),
             ),
             const SizedBox(height: 16),
             Text(
-              'errorLoadingDistributors'.tr(),
+              'خطأ في الاتصال بالإنترنت',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              error,
+              'تأكد من اتصالك بالإنترنت وحاول مرة أخرى',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -670,10 +717,10 @@ final sliverAppBar = SliverAppBar(
             FilledButton.icon(
               onPressed: () {
                 // إعادة تحميل البيانات
-                Navigator.of(context).pop();
+                ref.invalidate(distributorsProvider);
               },
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text('retry'.tr()),
+              label: const Text('إعادة المحاولة'),
             ),
           ],
         ),
@@ -790,12 +837,14 @@ class DistributorCardShimmer extends StatelessWidget {
 class _DistributorCard extends HookWidget {
   final DistributorModel distributor;
   final ThemeData theme;
+  final UserModel? currentUser;
   final VoidCallback onShowDetails;
 
   const _DistributorCard({
     super.key,
     required this.distributor,
     required this.theme,
+    required this.currentUser,
     required this.onShowDetails,
   });
 
@@ -933,32 +982,123 @@ class _DistributorCard extends HookWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_rounded,
-                              size: 12,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'productCount'.tr(
-                                  args: [distributor.productCount.toString()]),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
+                      // المؤشرات البصرية للقرب الجغرافي
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          // شارة "قريب منك" للمركز
+                          if (currentUser?.centers != null &&
+                              LocationProximity.hasCommonCenter(
+                                userCenters: currentUser!.centers!,
+                                distributorCenters: distributor.centers,
+                              ))
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.green.shade400,
+                                    Colors.green.shade600,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.green.withOpacity(0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
+                                    size: 11,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'قريب منك',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          // أيقونة للمحافظة فقط (بدون مركز مشترك)
+                          else if (currentUser?.governorates != null &&
+                                   LocationProximity.hasCommonGovernorate(
+                                     userGovernorates: currentUser!.governorates!,
+                                     distributorGovernorates: distributor.governorates,
+                                   ))
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.blue.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_city,
+                                    size: 10,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'نفس المحافظة',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.blue.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          // عداد المنتجات
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_rounded,
+                                  size: 11,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'productCount'.tr(
+                                      args: [distributor.productCount.toString()]),
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -970,7 +1110,7 @@ class _DistributorCard extends HookWidget {
                       color: isSubscribed.value!
                           ? theme.colorScheme.primary.withOpacity(0.12)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: isSubscribed.value!
                           ? null
                           : Border.all(
@@ -979,11 +1119,16 @@ class _DistributorCard extends HookWidget {
                             ),
                     ),
                     child: IconButton(
+                      iconSize: 18,
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(
+                        minWidth: 34,
+                        minHeight: 34,
+                      ),
                       icon: Icon(
                         isSubscribed.value!
                             ? Icons.notifications_active_rounded
                             : Icons.notifications_off_outlined,
-                        size: 22,
                         color: isSubscribed.value!
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurface.withOpacity(0.5),
@@ -1019,10 +1164,10 @@ class _DistributorCard extends HookWidget {
                   )
                 else
                   Padding(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(8.0),
                     child: SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: theme.colorScheme.primary.withOpacity(0.5),

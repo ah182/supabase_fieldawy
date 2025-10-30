@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/add_vet_supply_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/edit_vet_supply_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,45 +19,226 @@ class VetSuppliesScreen extends ConsumerStatefulWidget {
 class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  String _ghostText = '';
+  String _fullSuggestion = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    // إضافة listener لإخفاء الكيبورد عند تغيير التاب
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        _hideKeyboard();
+      }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  // دالة مساعدة لإخفاء الكيبورد
+  void _hideKeyboard() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+      HapticFeedback.lightImpact();
+      setState(() {
+        if (_searchController.text.isEmpty) {
+          _ghostText = '';
+          _fullSuggestion = '';
+        }
+      });
+    }
+  }
+
+  // دالة لتحديث الاقتراحات
+  void _updateSuggestions(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _ghostText = '';
+        _fullSuggestion = '';
+      });
+      return;
+    }
+
+    // جمع جميع المستلزمات من كلا المصدرين
+    final allSuppliesState = ref.read(allVetSuppliesNotifierProvider);
+    final mySuppliesState = ref.read(myVetSuppliesNotifierProvider);
+    
+    List<VetSupply> allSupplies = [];
+    
+    allSuppliesState.whenData((supplies) => allSupplies.addAll(supplies));
+    mySuppliesState.whenData((supplies) => allSupplies.addAll(supplies));
+
+    // البحث عن أفضل اقتراح
+    String bestMatch = '';
+    for (final supply in allSupplies) {
+      final name = supply.name.toLowerCase();
+      final description = supply.description.toLowerCase();
+      final queryLower = query.toLowerCase();
+      
+      if (name.startsWith(queryLower) && name.length > query.length) {
+        bestMatch = supply.name;
+        break;
+      } else if (description.contains(queryLower)) {
+        // العثور على الكلمة التي تبدأ بالاستعلام
+        final words = description.split(' ');
+        for (final word in words) {
+          if (word.startsWith(queryLower) && word.length > query.length) {
+            bestMatch = word;
+            break;
+          }
+        }
+        if (bestMatch.isNotEmpty) break;
+      }
+    }
+
+    setState(() {
+      if (bestMatch.isNotEmpty && bestMatch.toLowerCase().startsWith(query.toLowerCase())) {
+        _ghostText = query + bestMatch.substring(query.length);
+        _fullSuggestion = bestMatch;
+      } else {
+        _ghostText = '';
+        _fullSuggestion = '';
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('المستلزمات البيطرية'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.inventory_2_outlined),
-              text: 'جميع المستلزمات',
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _hideKeyboard(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('المستلزمات البيطرية'),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.inventory_2_outlined),
+                text: 'جميع المستلزمات',
+              ),
+              Tab(
+                icon: Icon(Icons.store_outlined),
+                text: 'مستلزماتي',
+              ),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            // شريط البحث
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Stack(
+                children: [
+                  // النص الشبحي
+                  if (_ghostText.isNotEmpty)
+                    Positioned.fill(
+                      child: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 48, right: 12),
+                        child: Text(
+                          _ghostText,
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // حقل البحث الفعلي
+                  TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'البحث في المستلزمات...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_fullSuggestion.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.keyboard_tab, color: Colors.blue),
+                                    onPressed: () {
+                                      _searchController.text = _fullSuggestion;
+                                      _searchController.selection = TextSelection.fromPosition(
+                                        TextPosition(offset: _fullSuggestion.length),
+                                      );
+                                      setState(() {
+                                        _searchQuery = _fullSuggestion;
+                                        _ghostText = '';
+                                        _fullSuggestion = '';
+                                      });
+                                    },
+                                    tooltip: 'قبول الاقتراح',
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _ghostText = '';
+                                      _fullSuggestion = '';
+                                    });
+                                  },
+                                ),
+                              ],
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                      
+                      // تحديث الاقتراحات مع debounce
+                      _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                        _updateSuggestions(value);
+                      });
+                    },
+                    onTap: () {
+                      // إظهار الاقتراحات عند النقر
+                      if (_searchController.text.isNotEmpty) {
+                        _updateSuggestions(_searchController.text);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
-            Tab(
-              icon: Icon(Icons.store_outlined),
-              text: 'مستلزماتي',
+            // محتوى التابات
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _AllSuppliesTab(searchQuery: _searchQuery),
+                  _MySuppliesTab(searchQuery: _searchQuery),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _AllSuppliesTab(),
-          _MySuppliesTab(),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.of(context).push(
@@ -73,6 +256,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
         label: const Text('إضافة مستلزم'),
         elevation: 4,
       ),
+      ),
     );
   }
 }
@@ -81,7 +265,9 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
 // All Supplies Tab
 // ===================================================================
 class _AllSuppliesTab extends ConsumerWidget {
-  const _AllSuppliesTab();
+  const _AllSuppliesTab({this.searchQuery = ''});
+
+  final String searchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,7 +275,53 @@ class _AllSuppliesTab extends ConsumerWidget {
 
     return suppliesAsync.when(
       data: (supplies) {
-        if (supplies.isEmpty) {
+        // فلترة المستلزمات حسب البحث
+        final filteredSupplies = searchQuery.isEmpty
+            ? supplies
+            : supplies.where((supply) =>
+                supply.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                supply.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                (supply.userName != null && supply.userName!.toLowerCase().contains(searchQuery.toLowerCase()))
+              ).toList();
+
+        if (filteredSupplies.isEmpty) {
+          if (searchQuery.isNotEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 100,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'لم يتم العثور على مستلزمات',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'جرب كلمات بحث أخرى',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -139,9 +371,9 @@ class _AllSuppliesTab extends ConsumerWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 0.62,
             ),
-            itemCount: supplies.length,
+            itemCount: filteredSupplies.length,
             itemBuilder: (context, index) {
-              final supply = supplies[index];
+              final supply = filteredSupplies[index];
               return _SupplyCard(
                 supply: supply,
                 showActions: false,
@@ -375,7 +607,9 @@ class _AllSuppliesTab extends ConsumerWidget {
 // My Supplies Tab
 // ===================================================================
 class _MySuppliesTab extends ConsumerWidget {
-  const _MySuppliesTab();
+  const _MySuppliesTab({this.searchQuery = ''});
+
+  final String searchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -383,7 +617,52 @@ class _MySuppliesTab extends ConsumerWidget {
 
     return suppliesAsync.when(
       data: (supplies) {
-        if (supplies.isEmpty) {
+        // فلترة المستلزمات حسب البحث
+        final filteredSupplies = searchQuery.isEmpty
+            ? supplies
+            : supplies.where((supply) =>
+                supply.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                supply.description.toLowerCase().contains(searchQuery.toLowerCase())
+              ).toList();
+
+        if (filteredSupplies.isEmpty) {
+          if (searchQuery.isNotEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 100,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'لم يتم العثور على مستلزمات',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'جرب كلمات بحث أخرى',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
@@ -433,9 +712,9 @@ class _MySuppliesTab extends ConsumerWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 0.62,
             ),
-            itemCount: supplies.length,
+            itemCount: filteredSupplies.length,
             itemBuilder: (context, index) {
-              final supply = supplies[index];
+              final supply = filteredSupplies[index];
               return _SupplyCard(
                 supply: supply,
                 showActions: true,

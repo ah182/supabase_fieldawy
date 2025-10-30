@@ -115,7 +115,16 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController!.addListener(() {
       if (mounted) {
-        setState(() {});
+        // إخفاء الكيبورد عند تغيير التاب
+        FocusScope.of(context).unfocus();
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _ghostText = '';
+            _fullSuggestion = '';
+          });
+        } else {
+          setState(() {});
+        }
       }
     });
     _lastShuffledQuery = null; // مش اتعمل شفل لحد دلوقتي
@@ -386,8 +395,17 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             )
           : Theme.of(context), // لو مش داكن، نسيب الثيم زي ما هو
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
+          // دالة مساعدة لإخفاء الكيبورد
           FocusScope.of(context).unfocus();
+          // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
+          if (_searchController.text.isEmpty) {
+            setState(() {
+              _ghostText = '';
+              _fullSuggestion = '';
+            });
+          }
         },
         child: Stack(
           children: [

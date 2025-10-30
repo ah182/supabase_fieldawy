@@ -34,6 +34,8 @@ class ProductModel {
   late bool isFavorite;
   final double? oldPrice;
   final DateTime? priceUpdatedAt;
+  @HiveField(14)
+  final int views;
 
   ProductModel({
     required this.id,
@@ -52,6 +54,7 @@ class ProductModel {
     this.isFavorite = false,
     this.oldPrice,
     this.priceUpdatedAt,
+    this.views = 0,
   });
 
   // --- من Supabase (row) ---
@@ -84,6 +87,7 @@ class ProductModel {
           ? DateTime.tryParse(data['price_updated_at'].toString())
           : null,
       selectedPackage: data['selected_package'] as String?,
+      views: (data['views'] as int?) ?? 0,
     );
   }
 
@@ -106,6 +110,7 @@ class ProductModel {
       'price_updated_at': priceUpdatedAt?.toIso8601String(),
       'selected_package': selectedPackage,
       'is_favorite': isFavorite,
+      'views': views,
     };
   }
 
@@ -133,6 +138,7 @@ class ProductModel {
     DateTime? priceUpdatedAt,
     String? selectedPackage,
     bool? isFavorite,
+    int? views,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -151,6 +157,7 @@ class ProductModel {
       priceUpdatedAt: priceUpdatedAt ?? this.priceUpdatedAt,
       selectedPackage: selectedPackage ?? this.selectedPackage,
       isFavorite: isFavorite ?? this.isFavorite,
+      views: views ?? this.views,
     );
   }
 }

@@ -63,8 +63,9 @@ final distributorProductsProvider =
       // Check if this is an OCR product (has availablePackages field)
       if (d.containsKey('availablePackages')) {
         // OCR product - already in camelCase from Edge Function
+        // إضافة prefix 'ocr_' لتمييز OCR products في view tracking
         return ProductModel(
-          id: d['id']?.toString() ?? '',
+          id: 'ocr_${d['id']?.toString() ?? ''}',
           name: d['name']?.toString() ?? '',
           company: d['company']?.toString() ?? '',
           activePrinciple: d['activePrinciple']?.toString() ?? '',

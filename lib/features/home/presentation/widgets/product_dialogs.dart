@@ -1080,10 +1080,61 @@ Future<void> showSurgicalToolDialog(
   BuildContext context,
   ProductModel tool,
 ) {
+  // حساب المشاهدة فور فتح الديالوج للأدوات الجراحية
+  _incrementProductViews(tool.id, isSurgicalTool: true);
+  
   return showDialog(
     context: context,
     builder: (context) => _SurgicalToolDialog(tool: tool),
   );
+}
+
+// دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical)
+void _incrementProductViews(String productId, {String? distributorId, bool isSurgicalTool = false}) {
+  try {
+    print('🔵 [Dialog] Incrementing views for product: $productId, surgical: $isSurgicalTool');
+    
+    // تحقق من نوع المنتج
+    if (isSurgicalTool) {
+      // أداة جراحية
+      Supabase.instance.client.rpc('increment_surgical_tool_views', params: {
+        'p_tool_id': productId,  // ✅ تم التعديل
+      }).then((response) {
+        print('✅ [Dialog] Surgical tool views incremented');
+      }).catchError((error) {
+        print('❌ [Dialog] Error incrementing surgical tool views: $error');
+      });
+    } else if (productId.startsWith('ocr_') && distributorId != null) {
+      // منتج OCR
+      final ocrProductId = productId.substring(4); // إزالة "ocr_" من البداية
+      
+      print('🔍 [OCR] distributorId: $distributorId');
+      print('🔍 [OCR] original productId: $productId');
+      print('🔍 [OCR] ocr_product_id (after removing prefix): $ocrProductId');
+      
+      Supabase.instance.client.rpc('increment_ocr_product_views', params: {
+        'p_distributor_id': distributorId,  // ✅ صحيح
+        'p_ocr_product_id': ocrProductId,   // ✅ صحيح
+      }).then((response) {
+        print('✅ [Dialog] OCR product views incremented for: $ocrProductId');
+        print('✅ [Dialog] Response: $response');
+      }).catchError((error) {
+        print('❌ [Dialog] Error incrementing OCR product views: $error');
+        print('❌ [Dialog] Failed for distributorId: $distributorId, ocrProductId: $ocrProductId');
+      });
+    } else {
+      // منتج عادي
+      Supabase.instance.client.rpc('increment_product_views', params: {
+        'p_product_id': productId,  // ✅ تم التعديل
+      }).then((response) {
+        print('✅ [Dialog] Regular product views incremented for ID: $productId');
+      }).catchError((error) {
+        print('❌ [Dialog] Error incrementing regular product views: $error');
+      });
+    }
+  } catch (e) {
+    print('❌ [Dialog] خطأ في زيادة مشاهدات المنتج: $e');
+  }
 }
 
 class _SurgicalToolDialog extends StatefulWidget {
