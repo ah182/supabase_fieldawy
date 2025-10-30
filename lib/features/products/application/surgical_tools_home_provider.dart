@@ -16,6 +16,7 @@ final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async
         status,
         distributor_name,
         created_at,
+        views,
         surgical_tools (
           id,
           tool_name,
@@ -51,6 +52,7 @@ final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async
         isFavorite: false,
         oldPrice: null,
         priceUpdatedAt: null,
+        views: (row['views'] as int?) ?? 0,
       ));
     }
   }

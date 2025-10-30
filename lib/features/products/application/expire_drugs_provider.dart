@@ -17,12 +17,12 @@ final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
   // جلب جميع المنتجات من distributor_products (من جميع الموزعين)
   final rows = await supabase
       .from('distributor_products')
-      .select();
+      .select('*, views');
 
   // جلب جميع المنتجات من distributor_ocr_products (من جميع الموزعين)
   final ocrRows = await supabase
       .from('distributor_ocr_products')
-      .select();
+      .select('*, views');
 
   // جلب تفاصيل المنتجات العادية
   final productIds = rows.map((row) => row['product_id'].toString()).toSet().toList();
@@ -77,6 +77,7 @@ final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: row['package'] as String?,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
           isOcr: false,
@@ -106,6 +107,7 @@ final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: selectedPackage,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
           isOcr: true,
@@ -130,13 +132,13 @@ final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
   // جلب منتجات المستخدم الحالي فقط من distributor_products
   final rows = await supabase
       .from('distributor_products')
-      .select()
+      .select('*, views')
       .eq('distributor_id', userId);
 
   // جلب منتجات المستخدم الحالي فقط من distributor_ocr_products
   final ocrRows = await supabase
       .from('distributor_ocr_products')
-      .select()
+      .select('*, views')
       .eq('distributor_id', userId);
 
   // جلب تفاصيل المنتجات العادية
@@ -192,6 +194,7 @@ final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: row['package'] as String?,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
           isOcr: false,
@@ -220,6 +223,7 @@ final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: selectedPackage,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
           isOcr: true,

@@ -1534,11 +1534,12 @@ class PriceUpdateTab extends ConsumerWidget {
             itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
               final product = filteredProducts[index];
-              return ProductCard(
+              return ViewTrackingProductCard(
                 product: product,
                 searchQuery: searchQuery,
                 productType: 'price_action',
                 showPriceChange: true,
+                trackViewOnVisible: true,
                 onTap: () {
                   // This is a bit of a workaround to access the dialog function
                   // A better approach would be to extract the dialog to its own widget/function

@@ -491,7 +491,7 @@ class ProductRepository {
       final distProductsResponse = await _supabase
           .from('distributor_products')
           .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name');
+              'product_id, price, old_price, price_updated_at, package, distributor_name, views');
 
       if (distProductsResponse.isNotEmpty) {
         final productIds = distProductsResponse
@@ -535,7 +535,7 @@ class ProductRepository {
       final distOcrProductsResponse = await _supabase
           .from('distributor_ocr_products')
           .select(
-              'ocr_product_id, price, old_price, price_updated_at, distributor_name');
+              'ocr_product_id, price, old_price, price_updated_at, distributor_name, views');
 
       if (distOcrProductsResponse.isNotEmpty) {
         final ocrProductIds = distOcrProductsResponse
@@ -571,6 +571,7 @@ class ProductRepository {
                       ? DateTime.tryParse(row['price_updated_at'])
                       : null,
                   distributorId: row['distributor_name'] as String?,
+                  views: (row['views'] as int?) ?? 0,
                 );
               }
               return null;

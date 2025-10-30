@@ -871,7 +871,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 product: tool,
                 searchQuery: searchQuery,
                 productType: 'surgical',
-                trackViewOnVisible: false, // حساب المشاهدة عند فتح الديالوج فقط
+                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
                 status: tool.activePrinciple,
                 onTap: () {
                   showSurgicalToolDialog(context, tool);

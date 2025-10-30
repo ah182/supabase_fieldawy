@@ -378,27 +378,26 @@ class ProductCard extends ConsumerWidget {
                     const SizedBox(height: 2),
                     
                     // === عداد المشاهدات ===
-                    if (product.views > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.visibility_outlined,
-                              size: 10,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${product.views} ${product.views == 1 ? 'مشاهدة' : 'مشاهدات'}',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Colors.grey[600],
-                                    fontSize: 9,
-                                  ),
-                            ),
-                          ],
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.visibility_outlined,
+                            size: 10,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${product.views} ${product.views == 1 ? 'مشاهدة' : 'مشاهدات'}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: Colors.grey[600],
+                                  fontSize: 9,
+                                ),
+                          ),
+                        ],
                       ),
+                    ),
 
                     // === السعر ===
                     if (showPriceChange &&
