@@ -43,6 +43,18 @@ export default {
         });
       }
 
+      // 🚫 منع الإشعارات إذا كان التحديث فقط على عمود views
+      if (operation === 'UPDATE' && old_record && record) {
+        const isOnlyViewsUpdate = checkIfOnlyViewsUpdate(old_record, record);
+        if (isOnlyViewsUpdate) {
+          console.log('⏭️ Skipping notification - only views column updated');
+          return new Response('Skipped - views only update', {
+            status: 200,
+            headers: corsHeaders
+          });
+        }
+      }
+
       // Get product name and details
       let productName = 'منتج';
       let tabName = 'home';
@@ -644,4 +656,35 @@ function pemToArrayBuffer(pem) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes.buffer;
+}
+
+// Helper function to check if only views column was updated
+function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
+  // تحويل الكائنات لمصفوفات من المفاتيح
+  const oldKeys = Object.keys(oldRecord);
+  const newKeys = Object.keys(newRecord);
+  
+  // التحقق من أن عدد الحقول متساوٍ
+  if (oldKeys.length !== newKeys.length) {
+    return false;
+  }
+  
+  let hasChanges = false;
+  let onlyViewsChanged = true;
+  
+  // فحص كل حقل
+  for (const key of oldKeys) {
+    if (oldRecord[key] !== newRecord[key]) {
+      hasChanges = true;
+      
+      // إذا تغير حقل غير views، فهذا ليس تحديث views فقط
+      if (key !== 'views') {
+        onlyViewsChanged = false;
+        break;
+      }
+    }
+  }
+  
+  // إرجاع true إذا كان هناك تغييرات وكانت فقط على views
+  return hasChanges && onlyViewsChanged;
 }
