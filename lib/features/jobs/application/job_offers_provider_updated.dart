@@ -37,8 +37,30 @@ class JobOffersNotifier extends StateNotifier<AsyncValue<List<JobOffer>>> {
     await fetchAllJobs();
   }
 
+  // ✅ إضافة دالة زيادة المشاهدات
   Future<void> incrementViews(String jobId) async {
     await _repository.incrementJobViews(jobId);
+    // تحديث المشاهدات في الحالة المحلية
+    state.whenData((jobs) {
+      final updatedJobs = jobs.map((job) {
+        if (job.id == jobId) {
+          return JobOffer(
+            id: job.id,
+            userId: job.userId,
+            title: job.title,
+            description: job.description,
+            phone: job.phone,
+            status: job.status,
+            viewsCount: job.viewsCount + 1, // زيادة المشاهدات
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+            userName: job.userName,
+          );
+        }
+        return job;
+      }).toList();
+      state = AsyncValue.data(updatedJobs);
+    });
   }
 }
 
@@ -88,8 +110,30 @@ class MyJobOffersNotifier extends StateNotifier<AsyncValue<List<JobOffer>>> {
     }
   }
 
+  // ✅ إضافة دالة زيادة المشاهدات للوظائف الخاصة بي أيضاً
   Future<void> incrementViews(String jobId) async {
     await _repository.incrementJobViews(jobId);
+    // تحديث المشاهدات في الحالة المحلية
+    state.whenData((jobs) {
+      final updatedJobs = jobs.map((job) {
+        if (job.id == jobId) {
+          return JobOffer(
+            id: job.id,
+            userId: job.userId,
+            title: job.title,
+            description: job.description,
+            phone: job.phone,
+            status: job.status,
+            viewsCount: job.viewsCount + 1, // زيادة المشاهدات
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+            userName: job.userName,
+          );
+        }
+        return job;
+      }).toList();
+      state = AsyncValue.data(updatedJobs);
+    });
   }
 }
 

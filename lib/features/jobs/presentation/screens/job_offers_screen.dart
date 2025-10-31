@@ -15,7 +15,8 @@ class JobOffersScreen extends ConsumerStatefulWidget {
   ConsumerState<JobOffersScreen> createState() => _JobOffersScreenState();
 }
 
-class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTickerProviderStateMixin {
+class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -28,8 +29,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
-    // إضافة listener لإخفاء الكيبورد عند تغيير التاب
+
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         _hideKeyboard();
@@ -46,7 +46,6 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
     super.dispose();
   }
 
-  // دالة مساعدة لإخفاء الكيبورد
   void _hideKeyboard() {
     if (_searchFocusNode.hasFocus) {
       _searchFocusNode.unfocus();
@@ -60,7 +59,6 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
     }
   }
 
-  // دالة لتحديث الاقتراحات
   void _updateSuggestions(String query) {
     if (query.isEmpty) {
       setState(() {
@@ -70,27 +68,24 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
       return;
     }
 
-    // جمع جميع الوظائف من كلا المصدرين
     final allJobsState = ref.read(allJobOffersNotifierProvider);
     final myJobsState = ref.read(myJobOffersNotifierProvider);
-    
+
     List<JobOffer> allJobs = [];
-    
+
     allJobsState.whenData((jobs) => allJobs.addAll(jobs));
     myJobsState.whenData((jobs) => allJobs.addAll(jobs));
 
-    // البحث عن أفضل اقتراح
     String bestMatch = '';
     for (final job in allJobs) {
       final title = job.title.toLowerCase();
       final description = job.description.toLowerCase();
       final queryLower = query.toLowerCase();
-      
+
       if (title.startsWith(queryLower) && title.length > query.length) {
         bestMatch = job.title;
         break;
       } else if (description.contains(queryLower)) {
-        // العثور على الكلمة التي تبدأ بالاستعلام
         final words = description.split(' ');
         for (final word in words) {
           if (word.startsWith(queryLower) && word.length > query.length) {
@@ -103,7 +98,8 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
     }
 
     setState(() {
-      if (bestMatch.isNotEmpty && bestMatch.toLowerCase().startsWith(query.toLowerCase())) {
+      if (bestMatch.isNotEmpty &&
+          bestMatch.toLowerCase().startsWith(query.toLowerCase())) {
         _ghostText = query + bestMatch.substring(query.length);
         _fullSuggestion = bestMatch;
       } else {
@@ -115,145 +111,352 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _hideKeyboard(),
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('jobOffers'.tr()),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.work_outline),
-                text: 'availableJobs'.tr(),
-              ),
-              Tab(
-                icon: const Icon(Icons.manage_accounts_outlined),
-                text: 'myJobOffers'.tr(),
-              ),
-            ],
-          ),
-        ),
-        body: Column(
-          children: [
-            // شريط البحث
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              child: Stack(
-                children: [
-                  // النص الشبحي
-                  if (_ghostText.isNotEmpty)
-                    Positioned.fill(
-                      child: Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 48, right: 12),
-                        child: Text(
-                          _ghostText,
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 16,
-                          ),
+        backgroundColor: theme.colorScheme.surface,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                expandedHeight: 200,
+                floating: false,
+                pinned: true,
+                elevation: 0,
+                backgroundColor: theme.colorScheme.surface,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.primary.withOpacity(0.8),
+                          theme.colorScheme.primary,
+                        ],
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.work_outline,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'jobOffers'.tr(),
+                                        style: theme.textTheme.headlineSmall
+                                            ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Find your next opportunity',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  // حقل البحث الفعلي
-                  TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'البحث في الوظائف...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_fullSuggestion.isNotEmpty)
+                  ),
+                ),
+                title: innerBoxIsScrolled
+                    ? Text(
+                        'jobOffers'.tr(),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
+            ];
+          },
+          body: Column(
+            children: [
+              // Search bar
+              Container(
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    if (_ghostText.isNotEmpty)
+                      Positioned.fill(
+                        child: Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: 52, right: 12),
+                          child: Text(
+                            _ghostText,
+                            style: TextStyle(
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.3),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Search jobs, titles, skills...',
+                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                        prefixIcon: Container(
+                          padding: const EdgeInsets.all(12),
+                          child: Icon(
+                            Icons.search_rounded,
+                            color: theme.colorScheme.primary,
+                            size: 24,
+                          ),
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_fullSuggestion.isNotEmpty)
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            theme.colorScheme.primaryContainer,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(
+                                          Icons.keyboard_tab_rounded,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        onPressed: () {
+                                          _searchController.text =
+                                              _fullSuggestion;
+                                          _searchController.selection =
+                                              TextSelection.fromPosition(
+                                            TextPosition(
+                                                offset: _fullSuggestion.length),
+                                          );
+                                          setState(() {
+                                            _searchQuery = _fullSuggestion;
+                                            _ghostText = '';
+                                            _fullSuggestion = '';
+                                          });
+                                        },
+                                        tooltip: 'Accept suggestion',
+                                      ),
+                                    ),
                                   IconButton(
-                                    icon: const Icon(Icons.keyboard_tab, color: Colors.blue),
+                                    icon: const Icon(Icons.clear_rounded),
                                     onPressed: () {
-                                      _searchController.text = _fullSuggestion;
-                                      _searchController.selection = TextSelection.fromPosition(
-                                        TextPosition(offset: _fullSuggestion.length),
-                                      );
+                                      _searchController.clear();
                                       setState(() {
-                                        _searchQuery = _fullSuggestion;
+                                        _searchQuery = '';
                                         _ghostText = '';
                                         _fullSuggestion = '';
                                       });
                                     },
-                                    tooltip: 'قبول الاقتراح',
                                   ),
-                                IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _ghostText = '';
-                                      _fullSuggestion = '';
-                                    });
-                                  },
-                                ),
-                              ],
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                                ],
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor:
+                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                       ),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
+                      style: theme.textTheme.bodyLarge,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+
+                        _debounce?.cancel();
+                        _debounce =
+                            Timer(const Duration(milliseconds: 300), () {
+                          _updateSuggestions(value);
+                        });
+                      },
+                      onTap: () {
+                        if (_searchController.text.isNotEmpty) {
+                          _updateSuggestions(_searchController.text);
+                        }
+                      },
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                      
-                      // تحديث الاقتراحات مع debounce
-                      _debounce?.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 300), () {
-                        _updateSuggestions(value);
-                      });
-                    },
-                    onTap: () {
-                      // إظهار الاقتراحات عند النقر
-                      if (_searchController.text.isNotEmpty) {
-                        _updateSuggestions(_searchController.text);
-                      }
-                    },
+                  ],
+                ),
+              ),
+
+              // Tabs
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.primary.withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: Colors.white,
+                  unselectedLabelColor:
+                      theme.colorScheme.onSurface.withOpacity(0.6),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.explore_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('availableJobs'.tr()),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.business_center_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('myJobOffers'.tr()),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // محتوى التابات
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _AvailableJobsTab(searchQuery: _searchQuery),
-                  _MyJobOffersTab(searchQuery: _searchQuery),
-                ],
+              const SizedBox(height: 16),
+
+              // Tab content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _AvailableJobsTab(searchQuery: _searchQuery),
+                    _MyJobOffersTab(searchQuery: _searchQuery),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const AddJobOfferScreen(),
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primary,
+                theme.colorScheme.primary.withOpacity(0.8),
+              ],
             ),
-          );
-          
-          if (result == true && mounted) {
-            ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
-            ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: Text('addJobOffer'.tr()),
-        elevation: 4,
-      ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AddJobOfferScreen(),
+                ),
+              );
+
+              if (result == true && mounted) {
+                ref
+                    .read(allJobOffersNotifierProvider.notifier)
+                    .refreshAllJobs();
+                ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+              }
+            },
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            icon: const Icon(Icons.add_rounded, size: 24),
+            label: Text(
+              'addJobOffer'.tr(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -267,83 +470,65 @@ class _AvailableJobsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(allJobOffersNotifierProvider);
+    final theme = Theme.of(context);
 
     return jobsAsync.when(
       data: (jobs) {
-        // فلترة الوظائف حسب البحث
         final filteredJobs = searchQuery.isEmpty
             ? jobs
-            : jobs.where((job) =>
-                job.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                job.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                (job.userName != null && job.userName!.toLowerCase().contains(searchQuery.toLowerCase()))
-              ).toList();
+            : jobs
+                .where((job) =>
+                    job.title
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase()) ||
+                    job.description
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase()) ||
+                    (job.userName != null &&
+                        job.userName!
+                            .toLowerCase()
+                            .contains(searchQuery.toLowerCase())))
+                .toList();
 
         if (filteredJobs.isEmpty) {
-          if (searchQuery.isNotEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 100,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'لم يتم العثور على وظائف',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'جرب كلمات بحث أخرى',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.work_off_outlined,
-                    size: 100,
-                    color: Colors.grey[300],
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color:
+                          theme.colorScheme.primaryContainer.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      searchQuery.isNotEmpty
+                          ? Icons.search_off_rounded
+                          : Icons.work_off_outlined,
+                      size: 80,
+                      color: theme.colorScheme.primary.withOpacity(0.6),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'noJobsAvailable'.tr(),
-                    style: TextStyle(
-                      fontSize: 20,
+                    searchQuery.isNotEmpty
+                        ? 'No jobs found'
+                        : 'noJobsAvailable'.tr(),
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'noJobsAvailableDesc'.tr(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                    searchQuery.isNotEmpty
+                        ? 'Try different keywords'
+                        : 'noJobsAvailableDesc'.tr(),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
@@ -356,17 +541,19 @@ class _AvailableJobsTab extends ConsumerWidget {
 
         return RefreshIndicator(
           onRefresh: () async {
-            await ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
+            await ref
+                .read(allJobOffersNotifierProvider.notifier)
+                .refreshAllJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
               return _JobOfferCard(
                 job: job,
                 showActions: false,
-                onTap: () => _showJobDetailsDialog(context, job),
+                onTap: () => _showJobDetailsDialog(context, job, ref),
               );
             },
           ),
@@ -374,29 +561,48 @@ class _AvailableJobsTab extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'حدث خطأ في تحميل الوظائف',
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
-              },
-              child: Text('retry'.tr()),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.error_outline,
+                    size: 60, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Something went wrong',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () {
+                  ref
+                      .read(allJobOffersNotifierProvider.notifier)
+                      .refreshAllJobs();
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text('retry'.tr()),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showJobDetailsDialog(BuildContext context, JobOffer job) {
+  void _showJobDetailsDialog(
+      BuildContext context, JobOffer job, WidgetRef ref) {
+    ref.read(allJobOffersNotifierProvider.notifier).incrementViews(job.id);
+
     showDialog(
       context: context,
       builder: (context) => _JobDetailsDialog(job: job),
@@ -412,105 +618,89 @@ class _MyJobOffersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(myJobOffersNotifierProvider);
+    final theme = Theme.of(context);
 
     return jobsAsync.when(
       data: (jobs) {
-        // فلترة الوظائف حسب البحث
         final filteredJobs = searchQuery.isEmpty
             ? jobs
-            : jobs.where((job) =>
-                job.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                job.description.toLowerCase().contains(searchQuery.toLowerCase())
-              ).toList();
+            : jobs
+                .where((job) =>
+                    job.title
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase()) ||
+                    job.description
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase()))
+                .toList();
 
         if (filteredJobs.isEmpty) {
-          if (searchQuery.isNotEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 100,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'لم يتم العثور على وظائف',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'جرب كلمات بحث أخرى',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.post_add_outlined,
-                    size: 100,
-                    color: Colors.grey[300],
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color:
+                          theme.colorScheme.primaryContainer.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      searchQuery.isNotEmpty
+                          ? Icons.search_off_rounded
+                          : Icons.post_add_outlined,
+                      size: 80,
+                      color: theme.colorScheme.primary.withOpacity(0.6),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'noMyJobOffers'.tr(),
-                    style: TextStyle(
-                      fontSize: 20,
+                    searchQuery.isNotEmpty
+                        ? 'No jobs found'
+                        : 'noMyJobOffers'.tr(),
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'noMyJobOffersDesc'.tr(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                    searchQuery.isNotEmpty
+                        ? 'Try different keywords'
+                        : 'noMyJobOffersDesc'.tr(),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const AddJobOfferScreen(),
-                        ),
-                      );
-                      
-                      if (result == true) {
-                        ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: Text('addYourFirstJob'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  if (searchQuery.isEmpty) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AddJobOfferScreen(),
+                          ),
+                        );
+
+                        if (result == true) {
+                          ref
+                              .read(myJobOffersNotifierProvider.notifier)
+                              .refreshMyJobs();
+                        }
+                      },
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text('addYourFirstJob'.tr()),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -519,10 +709,12 @@ class _MyJobOffersTab extends ConsumerWidget {
 
         return RefreshIndicator(
           onRefresh: () async {
-            await ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+            await ref
+                .read(myJobOffersNotifierProvider.notifier)
+                .refreshMyJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
@@ -535,18 +727,36 @@ class _MyJobOffersTab extends ConsumerWidget {
                       builder: (context) => AddJobOfferScreen(jobToEdit: job),
                     ),
                   );
-                  
+
                   if (result == true) {
-                    ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+                    ref
+                        .read(myJobOffersNotifierProvider.notifier)
+                        .refreshMyJobs();
                   }
                 },
                 onDelete: () async {
                   final confirmed = await _showDeleteDialog(context);
                   if (confirmed == true) {
-                    final success = await ref.read(myJobOffersNotifierProvider.notifier).deleteJob(job.id);
+                    final success = await ref
+                        .read(myJobOffersNotifierProvider.notifier)
+                        .deleteJob(job.id);
                     if (success && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تم حذف العرض بنجاح'.tr())),
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  color: Colors.white),
+                              const SizedBox(width: 12),
+                              Text('Job deleted successfully'.tr()),
+                            ],
+                          ),
+                          backgroundColor: Colors.green[600],
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       );
                     }
                   }
@@ -558,42 +768,75 @@ class _MyJobOffersTab extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'حدث خطأ في تحميل عروضك',
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
-              },
-              child: Text('retry'.tr()),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.error_outline,
+                    size: 60, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Something went wrong',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () {
+                  ref
+                      .read(myJobOffersNotifierProvider.notifier)
+                      .refreshMyJobs();
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text('retry'.tr()),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Future<bool?> _showDeleteDialog(BuildContext context) {
+    
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('تأكيد الحذف'.tr()),
-        content: Text('هل أنت متأكد من حذف هذا العرض؟'.tr()),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.red),
+            ),
+            const SizedBox(width: 12),
+            Text('Confirm Delete'.tr()),
+          ],
+        ),
+        content: Text('Are you sure you want to delete this job?'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text('cancel'.tr()),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
             child: Text('delete'.tr()),
           ),
         ],
@@ -602,7 +845,7 @@ class _MyJobOffersTab extends ConsumerWidget {
   }
 }
 
-class _JobOfferCard extends StatelessWidget {
+class _JobOfferCard extends ConsumerStatefulWidget {
   const _JobOfferCard({
     required this.job,
     this.showActions = false,
@@ -618,106 +861,198 @@ class _JobOfferCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  ConsumerState<_JobOfferCard> createState() => _JobOfferCardState();
+}
+
+class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    final theme = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.work,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 28,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.primaryContainer,
+                            theme.colorScheme.primaryContainer.withOpacity(0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.work_outline_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.job.title,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(widget.job.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.visibility_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${widget.job.viewsCount}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                Text(
+                  widget.job.description,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    height: 1.5,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF25D366).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _openWhatsApp(widget.job.phone),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.chat_rounded,
+                                      size: 20, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'whatsapp'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDate(job.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                    ),
+                  ],
+                ),
+                if (widget.showActions) ...[
+                  const SizedBox(height: 12),
+                  Divider(color: theme.colorScheme.outline.withOpacity(0.2)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: widget.onEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text('edit'.tr()),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: widget.onDelete,
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: Text('delete'.tr()),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
                         ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              job.description,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-                height: 1.4,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () => _openWhatsApp(job.phone),
-              icon: const Icon(Icons.chat, size: 18),
-              label: Text('whatsapp'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-            ),
-            if (showActions) ...[
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: Text('edit'.tr()),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: Text('delete'.tr()),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
           ),
         ),
       ),
@@ -727,7 +1062,7 @@ class _JobOfferCard extends StatelessWidget {
   Future<void> _openWhatsApp(String phone) async {
     final message = Uri.encodeComponent('whatsappInquiry'.tr());
     final url = Uri.parse('https://wa.me/$phone?text=$message');
-    
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -756,175 +1091,282 @@ class _JobDetailsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.primaryContainer,
+                            theme.colorScheme.primaryContainer.withOpacity(0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.work_outline_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'jobDetails'.tr(),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(job.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.work_outline,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'jobTitle'.tr(),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        job.title,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'jobDescription'.tr(),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        job.description,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (job.userName != null) ...[
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                      Icons.work,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          'jobDetails'.tr(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.person_outline,
+                            size: 20,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatDate(job.createdAt),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'postedBy'.tr(),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                job.userName!,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 20),
-              
-              Text(
-                'jobTitle'.tr(),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                job.title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              Text(
-                'jobDescription'.tr(),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                job.description,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[800],
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              if (job.userName != null) ...[
-                Text(
-                  'postedBy'.tr(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      child: Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      job.userName!,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 16),
-              ],
-              
-              Row(
-                children: [
-                  Icon(
-                    Icons.visibility_outlined,
-                    size: 18,
-                    color: Colors.grey[600],
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${job.viewsCount} ${'views'.tr()}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.visibility_outlined,
+                        size: 18,
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${job.viewsCount} ${'views'.tr()}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () => _openWhatsApp(job.phone),
-                  icon: const Icon(Icons.chat, size: 20),
-                  label: Text(
-                    'contactViaWhatsApp'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                      ),
                       borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF25D366).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _openWhatsApp(job.phone),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.chat_rounded,
+                                  size: 22, color: Colors.white),
+                              const SizedBox(width: 12),
+                              Text(
+                                'contactViaWhatsApp'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -934,7 +1376,7 @@ class _JobDetailsDialog extends StatelessWidget {
   Future<void> _openWhatsApp(String phone) async {
     final message = Uri.encodeComponent('whatsappInquiry'.tr());
     final url = Uri.parse('https://wa.me/$phone?text=$message');
-    
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }

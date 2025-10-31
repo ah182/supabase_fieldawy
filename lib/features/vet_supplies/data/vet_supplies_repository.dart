@@ -105,6 +105,7 @@ class VetSuppliesRepository {
   }
 
   // Increment views count
+  // Increment views count - SINGLE FUNCTION ONLY
   Future<void> incrementViews(String id) async {
     try {
       await _supabase.rpc('increment_vet_supply_views', params: {

@@ -24,6 +24,10 @@ class NotificationPreferencesService {
           'expire_soon': true,
           'offers': true,
           'surgical_tools': true,
+          'books': true,
+          'courses': true,
+          'job_offers': true,
+          'vet_supplies': true,
         };
       }
 
@@ -32,6 +36,10 @@ class NotificationPreferencesService {
         'expire_soon': response['expire_soon'] ?? true,
         'offers': response['offers'] ?? true,
         'surgical_tools': response['surgical_tools'] ?? true,
+        'books': response['books'] ?? true,
+        'courses': response['courses'] ?? true,
+        'job_offers': response['job_offers'] ?? true,
+        'vet_supplies': response['vet_supplies'] ?? true,
       };
     } catch (e) {
       print('Error fetching notification preferences: $e');
@@ -62,6 +70,10 @@ class NotificationPreferencesService {
           'expire_soon': type == 'expire_soon' ? enabled : true,
           'offers': type == 'offers' ? enabled : true,
           'surgical_tools': type == 'surgical_tools' ? enabled : true,
+          'books': type == 'books' ? enabled : true,
+          'courses': type == 'courses' ? enabled : true,
+          'job_offers': type == 'job_offers' ? enabled : true,
+          'vet_supplies': type == 'vet_supplies' ? enabled : true,
         });
       } else {
         // Update existing preferences
@@ -82,6 +94,10 @@ class NotificationPreferencesService {
     required bool expireSoon,
     required bool offers,
     required bool surgicalTools,
+    required bool books,
+    required bool courses,
+    required bool jobOffers,
+    required bool vetSupplies,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -95,6 +111,10 @@ class NotificationPreferencesService {
         'expire_soon': expireSoon,
         'offers': offers,
         'surgical_tools': surgicalTools,
+        'books': books,
+        'courses': courses,
+        'job_offers': jobOffers,
+        'vet_supplies': vetSupplies,
       });
     } catch (e) {
       print('Error updating all notification preferences: $e');

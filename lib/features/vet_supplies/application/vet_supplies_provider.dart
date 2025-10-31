@@ -20,8 +20,10 @@ class AllVetSuppliesNotifier extends StateNotifier<AsyncValue<List<VetSupply>>> 
     state = await AsyncValue.guard(() => repository.getAllVetSupplies());
   }
 
+  // ✅ إضافة دالة زيادة المشاهدات
   Future<void> incrementViews(String id) async {
     await repository.incrementViews(id);
+    
     // Update the views count in the current state
     state.whenData((supplies) {
       final index = supplies.indexWhere((s) => s.id == id);
@@ -63,6 +65,23 @@ class MyVetSuppliesNotifier extends StateNotifier<AsyncValue<List<VetSupply>>> {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Increment vet supply views - similar to job offers
+  Future<void> incrementViews(String id) async {
+    await repository.incrementViews(id);
+    
+    // Update the views count in the current state
+    state.whenData((supplies) {
+      final index = supplies.indexWhere((s) => s.id == id);
+      if (index != -1) {
+        final updatedSupplies = List<VetSupply>.from(supplies);
+        updatedSupplies[index] = supplies[index].copyWith(
+          viewsCount: supplies[index].viewsCount + 1,
+        );
+        state = AsyncValue.data(updatedSupplies);
+      }
+    });
   }
 }
 

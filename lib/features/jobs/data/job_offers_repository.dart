@@ -87,13 +87,15 @@ class JobOffersRepository {
     }
   }
 
+  /// Increment job views - exactly like courses/books
   Future<void> incrementJobViews(String jobId) async {
     try {
       await _supabase.rpc('increment_job_views', params: {
         'p_job_id': jobId,
       });
     } catch (e) {
-      // Silently fail for view increment
+      // Silent fail for views - exactly like courses/books
+      print('Failed to increment job views: $e');
     }
   }
 

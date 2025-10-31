@@ -43,11 +43,11 @@ export default {
         });
       }
 
-      // 🚫 منع الإشعارات إذا كان التحديث فقط على عمود views
+      // 🚫 منع الإشعارات إذا كان التحديث فقط على عمود views أو views_count
       if (operation === 'UPDATE' && old_record && record) {
         const isOnlyViewsUpdate = checkIfOnlyViewsUpdate(old_record, record);
         if (isOnlyViewsUpdate) {
-          console.log('⏭️ Skipping notification - only views column updated');
+          console.log('⏭️ Skipping notification - only views/views_count column updated');
           return new Response('Skipped - views only update', {
             status: 200,
             headers: corsHeaders
@@ -59,6 +59,93 @@ export default {
       let productName = 'منتج';
       let tabName = 'home';
       let isPriceUpdate = false;
+
+      // 📚 Handle Books notifications
+      if (table === 'vet_books') {
+        const bookName = record.name || 'كتاب بيطري';
+        const authorName = record.author || 'مؤلف';
+        const isNew = operation === 'INSERT';
+        
+        const title = isNew ? '📚 كتاب بيطري جديد' : '📚 تحديث كتاب بيطري';
+        const body = isNew 
+          ? `${bookName}\nبواسطة ${authorName}`
+          : `تم تحديث ${bookName}`;
+        
+        const extraData = {
+          type: 'books',
+          operation,
+          book_id: record.id,
+          book_name: bookName,
+          author_name: authorName,
+          price: record.price ? String(record.price) : '0',
+        };
+        
+        return await sendFCMNotification(env, title, body, 'books', extraData);
+      }
+
+      // 🎓 Handle Courses notifications  
+      if (table === 'vet_courses') {
+        const courseTitle = record.title || 'كورس بيطري';
+        const isNew = operation === 'INSERT';
+        
+        const title = isNew ? '🎓 كورس بيطري جديد' : '🎓 تحديث كورس بيطري';
+        const body = isNew 
+          ? `${courseTitle}`
+          : `تم تحديث ${courseTitle}`;
+        
+        const extraData = {
+          type: 'courses',
+          operation,
+          course_id: record.id,
+          course_title: courseTitle,
+          price: record.price ? String(record.price) : '0',
+        };
+        
+        return await sendFCMNotification(env, title, body, 'courses', extraData);
+      }
+
+      // 💼 Handle Job Offers notifications
+      if (table === 'job_offers') {
+        const jobTitle = record.title || 'وظيفة بيطرية';
+        const isNew = operation === 'INSERT';
+        
+        const title = isNew ? '💼 وظيفة بيطرية جديدة' : '💼 تحديث وظيفة بيطرية';
+        const body = isNew 
+          ? `${jobTitle}`
+          : `تم تحديث ${jobTitle}`;
+        
+        const extraData = {
+          type: 'job_offers',
+          operation,
+          job_id: record.id,
+          job_title: jobTitle,
+          phone: record.phone || null,
+        };
+        
+        return await sendFCMNotification(env, title, body, 'job_offers', extraData);
+      }
+
+      // 🏥 Handle Vet Supplies notifications
+      if (table === 'vet_supplies') {
+        const supplyName = record.name || 'مستلزم بيطري';
+        const isNew = operation === 'INSERT';
+        
+        const title = isNew ? '🏥 مستلزم بيطري جديد' : '🏥 تحديث مستلزم بيطري';
+        const body = isNew 
+          ? `${supplyName}`
+          : `تم تحديث ${supplyName}`;
+        
+        const extraData = {
+          type: 'vet_supplies',
+          operation,
+          supply_id: record.id,
+          supply_name: supplyName,
+          price: record.price ? String(record.price) : null,
+          phone: record.phone || null,
+        };
+        
+        return await sendFCMNotification(env, title, body, 'vet_supplies', extraData);
+      }
 
       // Handle review requests
       if (table === 'review_requests') {
@@ -658,7 +745,7 @@ function pemToArrayBuffer(pem) {
   return bytes.buffer;
 }
 
-// Helper function to check if only views column was updated
+// Helper function to check if only views or views_count column was updated
 function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
   // تحويل الكائنات لمصفوفات من المفاتيح
   const oldKeys = Object.keys(oldRecord);
@@ -677,14 +764,14 @@ function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
     if (oldRecord[key] !== newRecord[key]) {
       hasChanges = true;
       
-      // إذا تغير حقل غير views، فهذا ليس تحديث views فقط
-      if (key !== 'views') {
+      // إذا تغير حقل غير views أو views_count أو updated_at، فهذا ليس تحديث views فقط
+      if (key !== 'views' && key !== 'views_count' && key !== 'updated_at') {
         onlyViewsChanged = false;
         break;
       }
     }
   }
   
-  // إرجاع true إذا كان هناك تغييرات وكانت فقط على views
+  // إرجاع true إذا كان هناك تغييرات وكانت فقط على views أو views_count أو updated_at
   return hasChanges && onlyViewsChanged;
 }

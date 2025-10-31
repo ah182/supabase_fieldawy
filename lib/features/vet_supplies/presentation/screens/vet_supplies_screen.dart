@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class VetSuppliesScreen extends ConsumerStatefulWidget {
   const VetSuppliesScreen({super.key});
@@ -997,7 +998,7 @@ class _MySuppliesTab extends ConsumerWidget {
 // ===================================================================
 // Supply Card Widget
 // ===================================================================
-class _SupplyCard extends StatelessWidget {
+class _SupplyCard extends ConsumerStatefulWidget {
   final VetSupply supply;
   final bool showActions;
   final VoidCallback? onTap;
@@ -1013,16 +1014,41 @@ class _SupplyCard extends StatelessWidget {
   });
 
   @override
+  ConsumerState<_SupplyCard> createState() => _SupplyCardState();
+}
+
+class _SupplyCardState extends ConsumerState<_SupplyCard> {
+  bool _hasBeenViewed = false; // لمنع العد المتكرر
+  
+  void _handleVisibilityChanged(VisibilityInfo info) {
+    // إذا كان الكارت مرئي أكثر من 50% ولم يتم عده مسبقاً
+    if (info.visibleFraction > 0.5 && !_hasBeenViewed) {
+      _hasBeenViewed = true; // منع العد المتكرر
+      
+      // زيادة المشاهدات
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          print('👁️ Supply Card became visible: ${widget.supply.name} (${widget.supply.id})');
+          ref.read(allVetSuppliesNotifierProvider.notifier).incrementViews(widget.supply.id);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Card(
-      elevation: 2,
-      
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return VisibilityDetector(
+      key: Key('supply_card_${widget.supply.id}'),
+      onVisibilityChanged: _handleVisibilityChanged,
+      child: Card(
+        elevation: 2,
+        
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1031,7 +1057,7 @@ class _SupplyCard extends StatelessWidget {
               child: Stack(
                 children: [
                   CachedNetworkImage(
-                    imageUrl: supply.imageUrl,
+                    imageUrl: widget.supply.imageUrl,
                     width: double.infinity,
                     fit: BoxFit.contain,
                     placeholder: (context, url) => Container(
@@ -1043,7 +1069,7 @@ class _SupplyCard extends StatelessWidget {
                       child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
                     ),
                   ),
-                  if (showActions)
+                  if (widget.showActions)
                     Positioned(
                       top: 4,
                       right: 4,
@@ -1064,9 +1090,9 @@ class _SupplyCard extends StatelessWidget {
                         ),
                         onSelected: (value) {
                           if (value == 'edit') {
-                            onEdit?.call();
+                            widget.onEdit?.call();
                           } else if (value == 'delete') {
-                            onDelete?.call();
+                            widget.onDelete?.call();
                           }
                         },
                         itemBuilder: (context) => [
@@ -1101,14 +1127,14 @@ class _SupplyCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      supply.name,
+                      widget.supply.name,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (supply.userName != null) ...[
+                    if (widget.supply.userName != null) ...[
                       const SizedBox(height: 2),
                       Row(
                         children: [
@@ -1116,7 +1142,7 @@ class _SupplyCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              supply.userName!,
+                              widget.supply.userName!,
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],
@@ -1134,7 +1160,7 @@ class _SupplyCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            '${supply.price.toStringAsFixed(0)} ُEGP',
+                            '${widget.supply.price.toStringAsFixed(0)} ُEGP',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -1150,7 +1176,7 @@ class _SupplyCard extends StatelessWidget {
                                 size: 14, color: Colors.grey[600]),
                             const SizedBox(width: 4),
                             Text(
-                              '${supply.viewsCount}',
+                              '${widget.supply.viewsCount}',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],
@@ -1166,6 +1192,7 @@ class _SupplyCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

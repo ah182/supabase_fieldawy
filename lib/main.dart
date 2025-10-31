@@ -14,6 +14,8 @@ import 'package:fieldawy_store/features/authentication/presentation/screens/spla
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
 import 'package:fieldawy_store/features/reviews/review_system.dart';
+import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
+import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 
 // ignore: unused_import
 import 'features/admin_dashboard/presentation/screens/admin_login_screen.dart';
@@ -44,7 +46,35 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ✅ Firebase imports
 import 'package:firebase_core/firebase_core.dart';
+                                                                 
+// دالة للتنقل للوظائف                                           
+void _navigateToJobOffers() {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const JobOffersScreen(),
+        ),
+      );
+    }
+  });
+}
 
+// دالة للتنقل للمستلزمات
+void _navigateToVetSupplies() {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const VetSuppliesScreen(),
+        ),
+      );
+    }
+  });
+}                                                                
+                                                                 
 // ✅ ملف إعدادات Firebase
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -336,6 +366,18 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
       case 'surgical':
         notificationType = 'surgical_tools';
         break;
+      case 'books':
+        notificationType = 'books';
+        break;
+      case 'courses':
+        notificationType = 'courses';
+        break;
+      case 'job_offers':
+        notificationType = 'job_offers';
+        break;
+      case 'vet_supplies':
+        notificationType = 'vet_supplies';
+        break;
       default:
         // أنواع أخرى (home, orders, إلخ) تُعرض دائماً
         notificationType = null;
@@ -493,8 +535,7 @@ void _performNavigation(BuildContext context, String screen, String? distributor
     (route) => false,
   );
 }
-
-// دالة مساعدة لتحديد tab index من screen name
+// دالة مساعدة لتحديد tab index من screen name                      
 int _getTabIndexFromScreen(String screen) {
   switch (screen) {
     case 'home':
@@ -507,10 +548,22 @@ int _getTabIndexFromScreen(String screen) {
       return 3;
     case 'offers':
       return 4;
+    case 'courses':
+      return 5; // تاب الكورسات في الصفحة الرئيسية (تصحيح)
+    case 'books':
+      return 6; // تاب الكتب في الصفحة الرئيسية (تصحيح)
+    case 'job_offers':
+      // معالجة خاصة للوظائف
+      _navigateToJobOffers();
+      return 0; // ارجع للهوم
+    case 'vet_supplies':
+      // معالجة خاصة للمستلزمات
+      _navigateToVetSupplies();
+      return 0; // ارجع للهوم
     default:
       return 0;
   }
-}
+}                                                                   
 
 Future<void> main() async {
   HttpOverrides.global = MyHttpOverrides();
@@ -829,13 +882,7 @@ Future<void> main() async {
   await Hive.initFlutter();
   
   // ✅ CRITICAL: Clear Hive cache to refresh views field
-  try {
-    await Hive.deleteFromDisk();
-    print('🧹 Cleared Hive cache - views field will now work!');
-    await Hive.initFlutter();
-  } catch (e) {
-    print('⚠️ Could not clear cache: $e');
-  }
+  
   
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(OrderItemModelAdapter());

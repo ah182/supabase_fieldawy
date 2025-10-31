@@ -18,6 +18,10 @@ class _NotificationPreferencesScreenState
   bool _expireSoonEnabled = true;
   bool _offersEnabled = true;
   bool _surgicalToolsEnabled = true;
+  bool _booksEnabled = true;
+  bool _coursesEnabled = true;
+  bool _jobOffersEnabled = true;
+  bool _vetSuppliesEnabled = true;
 
   @override
   void initState() {
@@ -34,6 +38,10 @@ class _NotificationPreferencesScreenState
         _expireSoonEnabled = prefs['expire_soon'] ?? true;
         _offersEnabled = prefs['offers'] ?? true;
         _surgicalToolsEnabled = prefs['surgical_tools'] ?? true;
+        _booksEnabled = prefs['books'] ?? true;
+        _coursesEnabled = prefs['courses'] ?? true;
+        _jobOffersEnabled = prefs['job_offers'] ?? true;
+        _vetSuppliesEnabled = prefs['vet_supplies'] ?? true;
         _isLoading = false;
       });
     } catch (e) {
@@ -147,6 +155,66 @@ class _NotificationPreferencesScreenState
                   onChanged: (value) {
                     setState(() => _surgicalToolsEnabled = value);
                     _updatePreference('surgical_tools', value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Books Toggle
+                _buildNotificationToggle(
+                  icon: Icons.book_rounded,
+                  iconColor: Colors.purple,
+                  title: 'الكتب البيطرية',
+                  subtitle: 'استقبال إشعارات الكتب البيطرية الجديدة',
+                  value: _booksEnabled,
+                  onChanged: (value) {
+                    setState(() => _booksEnabled = value);
+                    _updatePreference('books', value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Courses Toggle
+                _buildNotificationToggle(
+                  icon: Icons.school_rounded,
+                  iconColor: Colors.teal,
+                  title: 'الكورسات البيطرية',
+                  subtitle: 'استقبال إشعارات الكورسات البيطرية الجديدة',
+                  value: _coursesEnabled,
+                  onChanged: (value) {
+                    setState(() => _coursesEnabled = value);
+                    _updatePreference('courses', value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Job Offers Toggle
+                _buildNotificationToggle(
+                  icon: Icons.work_rounded,
+                  iconColor: Colors.indigo,
+                  title: 'عروض الوظائف',
+                  subtitle: 'استقبال إشعارات الوظائف البيطرية الجديدة',
+                  value: _jobOffersEnabled,
+                  onChanged: (value) {
+                    setState(() => _jobOffersEnabled = value);
+                    _updatePreference('job_offers', value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Vet Supplies Toggle
+                _buildNotificationToggle(
+                  icon: Icons.medical_services_outlined,
+                  iconColor: Colors.cyan,
+                  title: 'المستلزمات البيطرية',
+                  subtitle: 'استقبال إشعارات المستلزمات البيطرية الجديدة',
+                  value: _vetSuppliesEnabled,
+                  onChanged: (value) {
+                    setState(() => _vetSuppliesEnabled = value);
+                    _updatePreference('vet_supplies', value);
                   },
                 ),
 
