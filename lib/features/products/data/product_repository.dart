@@ -1063,6 +1063,17 @@ class ProductRepository {
 
   // ========== Offers Methods ==========
   
+  // دالة لزيادة عدد مشاهدات العرض
+  static Future<void> incrementOfferViews(String offerId) async {
+    try {
+      await Supabase.instance.client.rpc('increment_offer_views', params: {
+        'p_offer_id': int.tryParse(offerId) ?? 0,
+      });
+    } catch (e) {
+      print('خطأ في زيادة مشاهدات العرض: $e');
+    }
+  }
+  
   Future<String?> addOffer({
     required String productId,
     required bool isOcr,
@@ -1114,7 +1125,7 @@ class ProductRepository {
     try {
       final response = await _supabase
           .from('offers')
-          .select()
+          .select('*, views')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
@@ -1150,7 +1161,7 @@ class ProductRepository {
       
       final offers = await _supabase
           .from('offers')
-          .select()
+          .select('*, views')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 

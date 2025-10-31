@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/comment_model.dart';
 
-enum CommentType { course, book }
+enum CommentType { course, book, surgicalTool }
 
 class CommentsRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -12,14 +12,29 @@ class CommentsRepository {
   // الحصول على معرف المستخدم الحالي
   String? get currentUserId => _supabase.auth.currentUser?.id;
 
-  // جلب التعليقات لكورس أو كتاب
+  // جلب التعليقات لكورس أو كتاب أو أداة جراحية
   Future<List<Comment>> getComments({
     required String itemId,
     required CommentType type,
   }) async {
     try {
-      final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
-      final itemIdKey = type == CommentType.course ? 'course_id' : 'book_id';
+      String tableName;
+      String itemIdKey;
+      
+      switch (type) {
+        case CommentType.course:
+          tableName = 'course_comments';
+          itemIdKey = 'course_id';
+          break;
+        case CommentType.book:
+          tableName = 'book_comments';
+          itemIdKey = 'book_id';
+          break;
+        case CommentType.surgicalTool:
+          tableName = 'surgical_tool_comments';
+          itemIdKey = 'distributor_surgical_tool_id';
+          break;
+      }
 
       final response = await _supabase
           .from(tableName)
@@ -63,8 +78,23 @@ class CommentsRepository {
         throw Exception('يجب تسجيل الدخول أولاً');
       }
 
-      final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
-      final itemIdKey = type == CommentType.course ? 'course_id' : 'book_id';
+      String tableName;
+      String itemIdKey;
+      
+      switch (type) {
+        case CommentType.course:
+          tableName = 'course_comments';
+          itemIdKey = 'course_id';
+          break;
+        case CommentType.book:
+          tableName = 'book_comments';
+          itemIdKey = 'book_id';
+          break;
+        case CommentType.surgicalTool:
+          tableName = 'surgical_tool_comments';
+          itemIdKey = 'distributor_surgical_tool_id';
+          break;
+      }
 
       final response = await _supabase
           .from(tableName)
@@ -102,7 +132,19 @@ class CommentsRepository {
     required CommentType type,
   }) async {
     try {
-      final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
+      String tableName;
+      
+      switch (type) {
+        case CommentType.course:
+          tableName = 'course_comments';
+          break;
+        case CommentType.book:
+          tableName = 'book_comments';
+          break;
+        case CommentType.surgicalTool:
+          tableName = 'surgical_tool_comments';
+          break;
+      }
       
       await _supabase
           .from(tableName)
@@ -123,8 +165,23 @@ class CommentsRepository {
     required CommentType type,
   }) async {
     try {
-      final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
-      final itemIdKey = type == CommentType.course ? 'course_id' : 'book_id';
+      String tableName;
+      String itemIdKey;
+      
+      switch (type) {
+        case CommentType.course:
+          tableName = 'course_comments';
+          itemIdKey = 'course_id';
+          break;
+        case CommentType.book:
+          tableName = 'book_comments';
+          itemIdKey = 'book_id';
+          break;
+        case CommentType.surgicalTool:
+          tableName = 'surgical_tool_comments';
+          itemIdKey = 'distributor_surgical_tool_id';
+          break;
+      }
 
       final response = await _supabase
           .from(tableName)
@@ -162,8 +219,23 @@ class CommentsRepository {
     required CommentType type,
   }) async {
     try {
-      final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
-      final itemIdKey = type == CommentType.course ? 'course_id' : 'book_id';
+      String tableName;
+      String itemIdKey;
+      
+      switch (type) {
+        case CommentType.course:
+          tableName = 'course_comments';
+          itemIdKey = 'course_id';
+          break;
+        case CommentType.book:
+          tableName = 'book_comments';
+          itemIdKey = 'book_id';
+          break;
+        case CommentType.surgicalTool:
+          tableName = 'surgical_tool_comments';
+          itemIdKey = 'distributor_surgical_tool_id';
+          break;
+      }
 
       final response = await _supabase
           .from(tableName)
@@ -182,8 +254,23 @@ class CommentsRepository {
     required String itemId,
     required CommentType type,
   }) {
-    final tableName = type == CommentType.course ? 'course_comments' : 'book_comments';
-    final itemIdKey = type == CommentType.course ? 'course_id' : 'book_id';
+    String tableName;
+    String itemIdKey;
+    
+    switch (type) {
+      case CommentType.course:
+        tableName = 'course_comments';
+        itemIdKey = 'course_id';
+        break;
+      case CommentType.book:
+        tableName = 'book_comments';
+        itemIdKey = 'book_id';
+        break;
+      case CommentType.surgicalTool:
+        tableName = 'surgical_tool_comments';
+        itemIdKey = 'distributor_surgical_tool_id';
+        break;
+    }
 
     return _supabase
         .from(tableName)
@@ -192,7 +279,7 @@ class CommentsRepository {
         .order('created_at', ascending: false)
         .asyncMap((data) async {
           // جلب بيانات المستخدمين لكل تعليق
-          final List<Comment> comments = [];
+          final Set<Comment> comments = {};
           
           for (final json in data) {
             try {
@@ -227,7 +314,7 @@ class CommentsRepository {
             }
           }
           
-          return comments;
+          return comments.toList();
         });
   }
 }

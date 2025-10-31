@@ -36,6 +36,8 @@ class ProductModel {
   final DateTime? priceUpdatedAt;
   @HiveField(14)
   final int views;
+  @HiveField(15)
+  final String? surgicalToolId;
 
   ProductModel({
     required this.id,
@@ -55,6 +57,7 @@ class ProductModel {
     this.oldPrice,
     this.priceUpdatedAt,
     this.views = 0,
+    this.surgicalToolId,
   });
 
   // --- من Supabase (row) ---
@@ -139,6 +142,7 @@ class ProductModel {
     String? selectedPackage,
     bool? isFavorite,
     int? views,
+    String? surgicalToolId,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -158,6 +162,7 @@ class ProductModel {
       selectedPackage: selectedPackage ?? this.selectedPackage,
       isFavorite: isFavorite ?? this.isFavorite,
       views: views ?? this.views,
+      surgicalToolId: surgicalToolId ?? this.surgicalToolId,
     );
   }
 }

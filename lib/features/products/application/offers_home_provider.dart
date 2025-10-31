@@ -15,7 +15,7 @@ final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
   // جلب جميع العروض من جميع المستخدمين
   final rows = await supabase
       .from('offers')
-      .select()
+      .select('*, views')
       .order('created_at', ascending: false);
 
   final offers = <OfferItem>[];
@@ -69,7 +69,7 @@ final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
       if (productDoc != null) {
         offers.add(OfferItem(
           product: ProductModel(
-            id: productDoc['id']?.toString() ?? '',
+            id: row['id']?.toString() ?? '', // استخدام offer_id بدلاً من product_id
             name: productDoc['product_name']?.toString() ?? '',
             description: offerDescription, // وصف العرض
             activePrinciple: productDoc['active_principle']?.toString(),
@@ -89,6 +89,7 @@ final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
             isFavorite: false,
             oldPrice: null,
             priceUpdatedAt: null,
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
         ));
@@ -105,10 +106,12 @@ final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
         final product = ProductModel.fromMap(Map<String, dynamic>.from(productDoc));
         offers.add(OfferItem(
           product: product.copyWith(
+            id: row['id']?.toString() ?? '', // استخدام offer_id بدلاً من product_id
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: row['package'] as String?,
             distributorId: distributorName, // اسم الموزع من جدول users
             description: offerDescription, // وصف العرض
+            views: (row['views'] as int?) ?? 0,
           ),
           expirationDate: expirationDate,
         ));

@@ -31,14 +31,15 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       createdAt: fields[11] as DateTime?,
       selectedPackage: fields[12] as String?,
       isFavorite: fields[13] as bool,
-      views: (fields[14] as int?) ?? 0, // FIXED: handle null for old cached data
+      views: fields[14] as int,
+      surgicalToolId: fields[15] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ProductModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +69,9 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       ..writeByte(13)
       ..write(obj.isFavorite)
       ..writeByte(14)
-      ..write(obj.views);
+      ..write(obj.views)
+      ..writeByte(15)
+      ..write(obj.surgicalToolId);
   }
 
   @override

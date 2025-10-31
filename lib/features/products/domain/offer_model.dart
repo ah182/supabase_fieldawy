@@ -7,6 +7,7 @@ class OfferModel {
   final String? description;
   final DateTime expirationDate;
   final DateTime? createdAt;
+  final int views;
 
   OfferModel({
     this.id,
@@ -17,6 +18,7 @@ class OfferModel {
     this.description,
     required this.expirationDate,
     this.createdAt,
+    this.views = 0,
   });
 
   factory OfferModel.fromMap(Map<String, dynamic> map) {
@@ -33,6 +35,7 @@ class OfferModel {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'].toString())
           : null,
+      views: (map['views'] as int?) ?? 0,
     );
   }
 
@@ -46,6 +49,7 @@ class OfferModel {
       'description': description,
       'expiration_date': expirationDate.toIso8601String(),
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      'views': views,
     };
   }
 
@@ -58,6 +62,7 @@ class OfferModel {
     String? description,
     DateTime? expirationDate,
     DateTime? createdAt,
+    int? views,
   }) {
     return OfferModel(
       id: id ?? this.id,
@@ -68,6 +73,7 @@ class OfferModel {
       description: description ?? this.description,
       expirationDate: expirationDate ?? this.expirationDate,
       createdAt: createdAt ?? this.createdAt,
+      views: views ?? this.views,
     );
   }
 }

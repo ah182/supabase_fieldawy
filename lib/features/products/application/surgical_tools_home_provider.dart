@@ -53,6 +53,7 @@ final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async
         oldPrice: null,
         priceUpdatedAt: null,
         views: (row['views'] as int?) ?? 0,
+        surgicalToolId: surgicalTool['id']?.toString(),
       ));
     }
   }

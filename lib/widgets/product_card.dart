@@ -22,13 +22,36 @@ bool _isValidUUID(String id) {
   return uuidRegex.hasMatch(id);
 }
 
-// دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical)
+// دالة لتنسيق عدد المشاهدات بشكل مختصر
+String _formatViewsCount(int views) {
+  if (views >= 1000000) {
+    return '${(views / 1000000).toStringAsFixed(1)}M';
+  } else if (views >= 1000) {
+    return '${(views / 1000).toStringAsFixed(1)}K';
+  } else {
+    return views.toString();
+  }
+}
+
+// دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offers)
 void _incrementProductViews(String productId, {String? distributorId, String? productType}) {
   try {
     print('🔵 Incrementing views for product: $productId, type: $productType, distributorId: $distributorId');
     
     // تحقق من نوع المنتج
-    if (productType == 'surgical') {
+    if (productType == 'offers') {
+      // عرض
+      print('🔴 Incrementing offer views for ID: $productId');
+      Supabase.instance.client.rpc('increment_offer_views', params: {
+        'p_offer_id': int.tryParse(productId) ?? 0,
+      }).then((response) {
+        print('✅ Offer views incremented successfully for ID: $productId');
+        print('✅ Response: $response');
+      }).catchError((error) {
+        print('❌ Error incrementing offer views for ID: $productId');
+        print('❌ Error details: $error');
+      });
+    } else if (productType == 'surgical') {
       // أداة جراحية
       Supabase.instance.client.rpc('increment_surgical_tool_views', params: {
         'p_tool_id': productId,
@@ -376,89 +399,120 @@ class ProductCard extends ConsumerWidget {
                     ),
 
                     const SizedBox(height: 2),
-                    
-                    // === عداد المشاهدات ===
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.visibility_outlined,
-                            size: 10,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${product.views} ${product.views == 1 ? 'مشاهدة' : 'مشاهدات'}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.grey[600],
-                                  fontSize: 9,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
 
-                    // === السعر ===
-                    if (showPriceChange &&
-                        product.oldPrice != null &&
-                        product.price != null &&
-                        product.oldPrice != 0 &&
-                        product.oldPrice != product.price)
-                      Wrap(
-                        spacing: 4.0,
-                        runSpacing: 4.0,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          // Old Price Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              ' ${product.oldPrice?.toStringAsFixed(0) ?? ''} ${'LE'.tr()}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                    fontWeight: FontWeight.w500,
+                    // === السعر مع عداد المشاهدات ===
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // === السعر ===
+                        Flexible(
+                          child: showPriceChange &&
+                                  product.oldPrice != null &&
+                                  product.price != null &&
+                                  product.oldPrice != 0 &&
+                                  product.oldPrice != product.price
+                              ? Wrap(
+                                  spacing: 4.0,
+                                  runSpacing: 4.0,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    // Old Price Badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        ' ${product.oldPrice?.toStringAsFixed(0) ?? ''} ${'LE'.tr()}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ),
+                                    // New Price Badge
+                                    _PriceChangeBadge(
+                                      oldPrice: product.oldPrice!,
+                                      newPrice: product.price!,
+                                    ),
+                                  ],
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
+                                  child: Text(
+                                    '${product.price?.toStringAsFixed(0) ?? '0'} ${'LE'.tr()}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context).colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ),
+                        ),
+                        
+                        // === عداد المشاهدات مع Badge احترافي ===
+                        if (product.views > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                  Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.secondary.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.visibility,
+                                    size: 8,
+                                    color: Theme.of(context).colorScheme.secondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _formatViewsCount(product.views),
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.secondary,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
-                          // New Price Badge
-                          _PriceChangeBadge(
-                            oldPrice: product.oldPrice!,
-                            newPrice: product.price!,
-                          ),
-                        ],
-                      )
-                    else
-                      // Default price display
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${product.price?.toStringAsFixed(0) ?? '0'} ${'LE'.tr()}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ),
+                      ],
+                    ),
 
                     const SizedBox(height: 2),
 

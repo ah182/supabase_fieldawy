@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:fieldawy_store/features/surgical_tools/presentation/screens/surgical_tool_details_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1471,85 +1472,135 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                       ),
                     ],
 
-                    // === زر الواتساب ===
-                    if (widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty) ...[
-                      const SizedBox(height: 30),
-                      Center(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoadingPhone || _phoneNumber == null
-                                ? null
-                                : _openWhatsApp,
-                            icon: _isLoadingPhone
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.chat_bubble_rounded,
-                                      size: 22,
-                                    ),
+                    // === أزرار العمل ===
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: [
+                          // زر تفاصيل الأداة
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SurgicalToolDetailsScreen(tool: widget.tool),
                                   ),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    _isLoadingPhone
-                                        ? 'جاري التحميل...'
-                                        : _phoneNumber == null
-                                            ? 'رقم الواتساب غير متوفر'
-                                            : 'تواصل عبر الواتساب',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                );
+                              },
+                              icon: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
                                 ),
-                                if (!_isLoadingPhone && _phoneNumber != null) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.phone_rounded,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF25D366),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                child: const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 20,
+                                ),
                               ),
-                              elevation: 4,
-                              shadowColor: const Color(0xFF25D366).withOpacity(0.5),
+                              label: const Text(
+                                'تفاصيل الأداة',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 3,
+                                shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+                              ),
                             ),
                           ),
-                        ),
+                          
+                          // زر الواتساب
+                          if (widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _isLoadingPhone || _phoneNumber == null
+                                    ? null
+                                    : _openWhatsApp,
+                                icon: _isLoadingPhone
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.chat_bubble_rounded,
+                                          size: 20,
+                                        ),
+                                      ),
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _isLoadingPhone
+                                            ? 'جاري التحميل...'
+                                            : _phoneNumber == null
+                                                ? 'رقم الواتساب غير متوفر'
+                                                : 'تواصل عبر الواتساب',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (!_isLoadingPhone && _phoneNumber != null) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.phone_rounded,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF25D366),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 4,
+                                  shadowColor: const Color(0xFF25D366).withOpacity(0.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                    ],
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
