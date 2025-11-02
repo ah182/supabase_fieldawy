@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/features/leaderboard/presentation/screens/leaderboard_screen.dart';
+import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -63,7 +64,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, SearchTrackingMixin {
   late final TabController _tabController;
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
@@ -72,6 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _searchQuery = '';
   String _debouncedSearchQuery = '';
   bool _hasNavigatedToDistributor = false;
+  String? _currentSearchId; // ID البحث الحالي لتتبع النقرات
 
   Timer? _debounce;
   Timer? _countdownTimer;
@@ -130,11 +132,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _searchController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce!.cancel();
-      _debounce = Timer(const Duration(milliseconds: 500), () {
+      _debounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
         if (mounted) {
           setState(() {
             _debouncedSearchQuery = _searchController.text;
           });
+          
+          // تتبع البحث فقط إذا كان النص ليس فارغاً وطوله 3 حروف أو أكثر
+          if (_searchController.text.trim().length >= 3) {
+            _trackCurrentSearch();
+          }
         }
       });
     });
@@ -150,6 +157,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         if (_focusNode.hasFocus) {
           HapticFeedback.selectionClick();
         } else {
+          // تتبع البحث النهائي عند فقدان التركيز
+          if (_searchController.text.trim().length >= 3) {
+            _trackCurrentSearch();
+          }
+          
           // إخفاء النص الشبحي عند فقدان التركيز إذا كان مربع البحث فارغاً
           if (_searchController.text.isEmpty) {
             _ghostText = '';
@@ -158,6 +170,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         }
       }
     });
+  }
+
+  /// تتبع البحث الحالي في قاعدة البيانات
+  /// Track current search in database
+  Future<void> _trackCurrentSearch() async {
+    if (_debouncedSearchQuery.trim().isEmpty) {
+      _currentSearchId = null;
+      return;
+    }
+
+    try {
+      // تحديد نوع البحث حسب التاب الحالي
+      final searchType = getSearchTypeFromTabIndex(_tabController.index);
+      
+      // الحصول على النتائج المفلترة لحساب العدد
+      final filteredProducts = _getFilteredProductsForCurrentTab();
+      
+      print('🔍 Tracking search: "${_debouncedSearchQuery}" (Type: $searchType, Results: ${filteredProducts.length})');
+      
+      // تتبع البحث
+      _currentSearchId = await trackSearch(
+        ref: ref,
+        searchTerm: _debouncedSearchQuery,
+        searchType: searchType,
+        resultCount: filteredProducts.length,
+      );
+      
+      if (_currentSearchId != null) {
+        print('✅ Search tracked with ID: $_currentSearchId');
+      } else {
+        print('❌ Failed to track search: no ID returned');
+      }
+    } catch (e) {
+      print('❌ Error tracking search: $e');
+    }
+  }
+
+  /// الحصول على المنتجات المفلترة للتاب الحالي
+  /// Get filtered products for current tab
+  List _getFilteredProductsForCurrentTab() {
+    final allProductsForSearch = ref.read(allDistributorProductsProvider).asData?.value ?? [];
+    final query = _debouncedSearchQuery.toLowerCase().trim();
+    
+    if (query.isEmpty) return allProductsForSearch;
+
+    return allProductsForSearch.where((product) {
+      final productName = product.name.toLowerCase();
+      final distributorName = (product.distributorId ?? '').toLowerCase();
+      final activePrinciple = (product.activePrinciple ?? '').toLowerCase();
+      final packageSize = (product.selectedPackage ?? '').toLowerCase();
+      final company = (product.company ?? '').toLowerCase();
+      final description = (product.description ?? '').toLowerCase();
+      final action = (product.action ?? '').toLowerCase();
+
+      return productName.contains(query) ||
+          activePrinciple.contains(query) ||
+          distributorName.contains(query) ||
+          company.contains(query) ||
+          packageSize.contains(query) ||
+          description.contains(query) ||
+          action.contains(query);
+    }).toList();
   }
 
   void _navigateToDistributor(String distributorId) async {
@@ -1005,6 +1079,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           productType: 'home',
                           trackViewOnVisible: true, // حساب المشاهدة عند الظهور
                           onTap: () {
+                            // تتبع النقرة على المنتج إذا كان هناك بحث نشط
+                            if (_currentSearchId != null && _debouncedSearchQuery.isNotEmpty) {
+                              print('👆 Tracking click: Product ID: ${product.id}, Search ID: $_currentSearchId');
+                              trackSearchClick(
+                                ref: ref,
+                                searchId: _currentSearchId,
+                                clickedItemId: product.id,
+                                itemType: 'product',
+                              );
+                            } else {
+                              print('⚠️ No search tracking - Search ID: $_currentSearchId, Query: $_debouncedSearchQuery');
+                            }
                             _showProductDetailDialog(context, ref, product);
                           },
                         ),

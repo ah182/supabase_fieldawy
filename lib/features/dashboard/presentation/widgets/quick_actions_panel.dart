@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:go_router/go_router.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/limited_offer_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/surgical_tools_screen.dart';
+import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
+import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/my_products_screen.dart';
+import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
+import 'package:fieldawy_store/features/books/presentation/screens/books_screen.dart';
+import 'package:fieldawy_store/features/courses/presentation/screens/courses_screen.dart';
 
 class QuickActionsPanel extends StatelessWidget {
-  const QuickActionsPanel({Key? key}) : super(key: key);
+  const QuickActionsPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,22 +35,26 @@ class QuickActionsPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+            // First row - Main actions
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
+              crossAxisCount: 3,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 2.5,
+              childAspectRatio: 2.2,
               children: [
                 _buildQuickActionButton(
                   context,
                   icon: Icons.add_circle_outline,
-                  label: 'addProduct'.tr(),
+                  label: 'إضافة منتج',
                   color: Colors.blue,
                   onTap: () {
-                    // Navigate to add product screen
-                    context.go('/add-product');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AddProductScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildQuickActionButton(
@@ -52,18 +63,49 @@ class QuickActionsPanel extends StatelessWidget {
                   label: 'إضافة عرض',
                   color: Colors.green,
                   onTap: () {
-                    // Navigate to add offer screen
-                    context.go('/limited-offer');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LimitedOfferScreen(),
+                      ),
+                    );
                   },
                 ),
+                _buildQuickActionButton(
+                  context,
+                  icon: Icons.inventory,
+                  label: 'منتجاتي',
+                  color: Colors.indigo,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const MyProductsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Second row - Category actions
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.2,
+              children: [
                 _buildQuickActionButton(
                   context,
                   icon: Icons.medical_services,
                   label: 'أدوات جراحية',
                   color: Colors.purple,
                   onTap: () {
-                    // Navigate to surgical tools
-                    context.go('/surgical-tools');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SurgicalToolsScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildQuickActionButton(
@@ -72,18 +114,62 @@ class QuickActionsPanel extends StatelessWidget {
                   label: 'مستلزمات بيطرية',
                   color: Colors.teal,
                   onTap: () {
-                    // Navigate to vet supplies
-                    context.go('/vet-supplies');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const VetSuppliesScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildQuickActionButton(
                   context,
-                  icon: Icons.analytics,
-                  label: 'التقارير',
-                  color: Colors.indigo,
+                  icon: Icons.work,
+                  label: 'عروض توظيف',
+                  color: Colors.orange,
                   onTap: () {
-                    // Navigate to analytics
-                    _showComingSoonDialog(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const JobOffersScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Third row - Educational content
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.2,
+              children: [
+                _buildQuickActionButton(
+                  context,
+                  icon: Icons.menu_book,
+                  label: 'كتب بيطرية',
+                  color: Colors.brown,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const BooksScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildQuickActionButton(
+                  context,
+                  icon: Icons.school,
+                  label: 'كورسات',
+                  color: Colors.deepPurple,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CoursesScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildQuickActionButton(
@@ -92,8 +178,11 @@ class QuickActionsPanel extends StatelessWidget {
                   label: 'الإعدادات',
                   color: Colors.grey,
                   onTap: () {
-                    // Navigate to settings
-                    context.go('/settings');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -123,13 +212,14 @@ class QuickActionsPanel extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 20),
+            Icon(icon, color: color, size: 18),
             const SizedBox(height: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: color,
                 fontWeight: FontWeight.w600,
+                fontSize: 11,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -137,22 +227,6 @@ class QuickActionsPanel extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showComingSoonDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('قريباً'),
-        content: Text('هذه الميزة ستكون متاحة قريباً'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('ok'.tr()),
-          ),
-        ],
       ),
     );
   }

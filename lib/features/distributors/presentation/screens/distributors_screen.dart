@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
@@ -62,7 +63,7 @@ final distributorsProvider =
   }
 });
 
-class DistributorsScreen extends HookConsumerWidget {
+class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
   const DistributorsScreen({super.key});
 
   @override
@@ -76,12 +77,46 @@ class DistributorsScreen extends HookConsumerWidget {
     final searchFocusNode = useFocusNode();
     final ghostText = useState<String>('');
     final fullSuggestion = useState<String>('');
+    final currentSearchId = useState<String?>(null);
+    
+    // دالة تتبع البحث في الموزعين
+    Future<void> trackDistributorsSearch(String searchTerm, List filteredResults) async {
+      if (searchTerm.trim().length < 3) { // تتبع البحث فقط إذا كان النص 3 حروف أو أكثر
+        currentSearchId.value = null;
+        return;
+      }
+
+      try {
+        print('🔍 Tracking distributor search: "$searchTerm" (Results: ${filteredResults.length})');
+        
+        // تحسين اسم المنتج قبل التتبع
+        String improvedSearchTerm = await improveDistributorProductName(ref, searchTerm);
+        
+        final searchId = await trackDistributorSearch(
+          ref: ref,
+          searchTerm: improvedSearchTerm,
+          results: filteredResults,
+        );
+        currentSearchId.value = searchId;
+        
+        if (searchId != null) {
+          print('✅ Distributor search tracked with ID: $searchId');
+          if (improvedSearchTerm != searchTerm) {
+            print('🎯 Search term improved: "$searchTerm" → "$improvedSearchTerm"');
+          }
+        } else {
+          print('❌ Failed to track distributor search: no ID returned');
+        }
+      } catch (e) {
+        print('❌ Error tracking distributor search: $e');
+      }
+    }
     
     useEffect(() {
       Timer? debounce;
       void listener() {
         if (debounce?.isActive ?? false) debounce!.cancel();
-        debounce = Timer(const Duration(milliseconds: 500), () {
+        debounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
           debouncedSearchQuery.value = searchController.text;
         });
       }
@@ -135,6 +170,35 @@ class DistributorsScreen extends HookConsumerWidget {
       },
       [distributorsAsync, currentUserAsync, debouncedSearchQuery.value],
     );
+
+    // تتبع البحث عند تغيير debouncedSearchQuery
+    useEffect(() {
+      if (debouncedSearchQuery.value.isNotEmpty) {
+        trackDistributorsSearch(debouncedSearchQuery.value, filteredDistributors);
+      } else {
+        currentSearchId.value = null;
+      }
+      return null;
+    }, [debouncedSearchQuery.value, filteredDistributors]);
+
+    // تشغيل تحسين أسماء المنتجات في الخلفية عند فتح الصفحة
+    useEffect(() {
+      Future<void> improveDistributorSearchTerms() async {
+        try {
+          print('🔄 Starting distributor search terms improvement...');
+          await improveAllDistributorSearchTerms(ref);
+          print('✅ Distributor search terms improvement completed');
+        } catch (e) {
+          print('❌ Error improving distributor search terms: $e');
+        }
+      }
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        improveDistributorSearchTerms();
+      });
+      
+      return null;
+    }, []);
 
     
 final sliverAppBar = SliverAppBar(
@@ -368,7 +432,7 @@ final sliverAppBar = SliverAppBar(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0, vertical: 6.0),
                             child: _buildDistributorCard(
-                                context, theme, distributor, ref),
+                                context, theme, distributor, ref, currentSearchId.value, debouncedSearchQuery.value),
                           );
                         },
                         childCount: filteredDistributors.length,
@@ -409,14 +473,28 @@ final sliverAppBar = SliverAppBar(
 
   // كارت الموزع المحسن
   Widget _buildDistributorCard(
-      BuildContext context, ThemeData theme, DistributorModel distributor, WidgetRef ref) {
+      BuildContext context, ThemeData theme, DistributorModel distributor, WidgetRef ref, String? searchId, String searchQuery) {
     final currentUser = ref.read(userDataProvider).asData?.value;
     return _DistributorCard(
       key: ValueKey(distributor.id),
       distributor: distributor,
       theme: theme,
       currentUser: currentUser,
-      onShowDetails: () => _showDistributorDetails(context, theme, distributor),
+      onShowDetails: () {
+        // تتبع النقرة على الموزع إذا كان هناك بحث نشط
+        if (searchId != null && searchQuery.length >= 3) {
+          print('👆 Tracking distributor click: ID: ${distributor.id}, Search ID: $searchId');
+          trackSearchClick(
+            ref: ref,
+            searchId: searchId,
+            clickedItemId: distributor.id,
+            itemType: 'distributor',
+          );
+        } else {
+          print('⚠️ No distributor search tracking - Search ID: $searchId, Query length: ${searchQuery.length}');
+        }
+        _showDistributorDetails(context, theme, distributor);
+      },
     );
   }
 

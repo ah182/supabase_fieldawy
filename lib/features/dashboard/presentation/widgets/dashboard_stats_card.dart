@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 class DashboardStatsCard extends StatelessWidget {
   final String title;
@@ -10,14 +9,14 @@ class DashboardStatsCard extends StatelessWidget {
   final double? growth;
 
   const DashboardStatsCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
     this.subtitle,
     this.growth,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

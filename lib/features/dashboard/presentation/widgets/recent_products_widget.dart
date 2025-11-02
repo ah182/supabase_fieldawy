@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/my_products_screen.dart';
 
 class RecentProductsWidget extends ConsumerWidget {
-  const RecentProductsWidget({Key? key}) : super(key: key);
+  const RecentProductsWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,6 +37,11 @@ class RecentProductsWidget extends ConsumerWidget {
                 TextButton(
                   onPressed: () {
                     // Navigate to all products
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const MyProductsScreen(),
+                      ),
+                    );
                   },
                   child: Text('عرض الكل'),
                 ),
@@ -53,6 +59,17 @@ class RecentProductsWidget extends ConsumerWidget {
                         Text(
                           'لا توجد منتجات',
                           style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const MyProductsScreen(),
+                              ),
+                            );
+                          },
+                          child: Text('إضافة منتج جديد'),
                         ),
                       ],
                     ),
@@ -72,9 +89,21 @@ class RecentProductsWidget extends ConsumerWidget {
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text(
-                  'خطأ في تحميل المنتجات',
-                  style: TextStyle(color: Colors.red),
+                child: Column(
+                  children: [
+                    Text(
+                      'خطأ في تحميل المنتجات',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        // Fix: Use the refresh result properly
+                        ref.invalidate(recentProductsProvider);
+                      },
+                      child: Text('إعادة المحاولة'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -88,41 +117,70 @@ class RecentProductsWidget extends ConsumerWidget {
     final createdAt = DateTime.tryParse(product['created_at'] ?? '');
     final timeAgo = createdAt != null ? _getTimeAgo(createdAt) : '';
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          Icons.medication,
-          color: Colors.blue,
-          size: 24,
-        ),
-      ),
-      title: Text(
-        product['name'] ?? 'منتج غير معروف',
-        style: const TextStyle(fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        '${product['price'] ?? 0} ${'EGP'.tr()} • $timeAgo',
-        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.visibility, size: 16, color: Colors.grey),
-          const SizedBox(width: 4),
-          Text(
-            '${product['views'] ?? 0}',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+    return InkWell(
+      onTap: () {
+        // Navigate to product details or edit
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const MyProductsScreen(),
           ),
-        ],
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.medication,
+            color: Colors.blue,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          product['name'] ?? 'منتج غير معروف',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          '${product['price'] ?? 0} ${'EGP'.tr()} • $timeAgo',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility, size: 14, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${product['views'] ?? 0}',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

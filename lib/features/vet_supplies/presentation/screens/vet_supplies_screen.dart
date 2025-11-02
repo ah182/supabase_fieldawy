@@ -5,6 +5,7 @@ import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dar
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/add_vet_supply_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/edit_vet_supply_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,13 +19,16 @@ class VetSuppliesScreen extends ConsumerStatefulWidget {
 }
 
 class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SearchTrackingMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
+  String _debouncedSearchQuery = '';
+  String? _currentSearchId; // ID البحث الحالي لتتبع النقرات
   String _ghostText = '';
   String _fullSuggestion = '';
+  Timer? _searchDebounce;
   Timer? _debounce;
 
   @override
@@ -38,6 +42,23 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
         _hideKeyboard();
       }
     });
+
+    // تشغيل تحسين أسماء المنتجات في الخلفية
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _improveExistingSearchTerms();
+    });
+  }
+
+  /// تحسين مصطلحات البحث الموجودة في الخلفية
+  /// Improve existing search terms in background
+  Future<void> _improveExistingSearchTerms() async {
+    try {
+      print('🔄 Starting vet supplies search terms improvement...');
+      await improveAllVetSupplySearchTerms(ref);
+      print('✅ Vet supplies search terms improvement completed');
+    } catch (e) {
+      print('❌ Error improving vet supplies search terms: $e');
+    }
   }
 
   @override
@@ -46,6 +67,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
     _searchController.dispose();
     _searchFocusNode.dispose();
     _debounce?.cancel();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -217,6 +239,20 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
                       _debounce = Timer(const Duration(milliseconds: 300), () {
                         _updateSuggestions(value);
                       });
+
+                      // تتبع البحث مع debounce
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
+                        if (mounted) {
+                          setState(() {
+                            _debouncedSearchQuery = value;
+                          });
+                          // تتبع البحث فقط في تاب "جميع المستلزمات" (التاب الأول)
+                          if (_tabController.index == 0) {
+                            _trackVetSuppliesSearch();
+                          }
+                        }
+                      });
                     },
                     onTap: () {
                       // إظهار الاقتراحات عند النقر
@@ -233,7 +269,11 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _AllSuppliesTab(searchQuery: _searchQuery),
+                  _AllSuppliesTab(
+                    searchQuery: _searchQuery,
+                    searchId: _currentSearchId,
+                    onItemTap: _handleItemTap,
+                  ),
                   _MySuppliesTab(searchQuery: _searchQuery),
                 ],
               ),
@@ -260,15 +300,89 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
       ),
     );
   }
+
+  /// تتبع البحث في المستلزمات البيطرية (فقط في تاب جميع المستلزمات)
+  /// Track vet supplies search (only in All Supplies tab)
+  Future<void> _trackVetSuppliesSearch() async {
+    if (_debouncedSearchQuery.trim().length < 3) { // تتبع البحث فقط إذا كان النص 3 حروف أو أكثر
+      _currentSearchId = null;
+      return;
+    }
+
+    try {
+      // الحصول على النتائج المفلترة لحساب العدد
+      final filteredResults = _getFilteredVetSupplies();
+      
+      print('🔍 Tracking vet supplies search: "$_debouncedSearchQuery" (Results: ${filteredResults.length})');
+      
+      // تحسين اسم المنتج قبل التتبع
+      String improvedSearchTerm = await improveVetSupplyName(ref, _debouncedSearchQuery);
+      
+      // تتبع البحث باستخدام الاسم المحسن
+      _currentSearchId = await trackVetSuppliesSearch(
+        ref: ref,
+        searchTerm: improvedSearchTerm,
+        results: filteredResults,
+      );
+      
+      if (_currentSearchId != null) {
+        print('✅ Vet supplies search tracked with ID: $_currentSearchId');
+        if (improvedSearchTerm != _debouncedSearchQuery) {
+          print('🎯 Search term improved: "$_debouncedSearchQuery" → "$improvedSearchTerm"');
+        }
+      } else {
+        print('❌ Failed to track vet supplies search: no ID returned');
+      }
+    } catch (e) {
+      print('❌ Error tracking vet supplies search: $e');
+    }
+  }
+
+  /// الحصول على المستلزمات المفلترة
+  /// Get filtered vet supplies
+  List _getFilteredVetSupplies() {
+    final suppliesAsync = ref.read(allVetSuppliesNotifierProvider);
+    final supplies = suppliesAsync.asData?.value ?? [];
+    
+    if (_debouncedSearchQuery.isEmpty) return supplies;
+
+    return supplies.where((supply) =>
+        supply.name.toLowerCase().contains(_debouncedSearchQuery.toLowerCase()) ||
+        supply.description.toLowerCase().contains(_debouncedSearchQuery.toLowerCase()) ||
+        (supply.userName != null && supply.userName!.toLowerCase().contains(_debouncedSearchQuery.toLowerCase()))
+    ).toList();
+  }
+
+  /// معالجة النقر على العنصر (فقط في تاب جميع المستلزمات)
+  /// Handle item tap for click tracking (only in All Supplies tab)
+  void _handleItemTap(String itemId) {
+    if (_currentSearchId != null && _debouncedSearchQuery.length >= 3 && _tabController.index == 0) {
+      print('👆 Tracking vet supply click: Item ID: $itemId, Search ID: $_currentSearchId');
+      trackSearchClick(
+        ref: ref,
+        searchId: _currentSearchId,
+        clickedItemId: itemId,
+        itemType: 'vet_supply',
+      );
+    } else {
+      print('⚠️ No vet supply search tracking - Search ID: $_currentSearchId, Query length: ${_debouncedSearchQuery.length}, Tab: ${_tabController.index}');
+    }
+  }
 }
 
 // ===================================================================
 // All Supplies Tab
 // ===================================================================
 class _AllSuppliesTab extends ConsumerWidget {
-  const _AllSuppliesTab({this.searchQuery = ''});
+  const _AllSuppliesTab({
+    this.searchQuery = '',
+    this.searchId,
+    this.onItemTap,
+  });
 
   final String searchQuery;
+  final String? searchId;
+  final void Function(String)? onItemTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

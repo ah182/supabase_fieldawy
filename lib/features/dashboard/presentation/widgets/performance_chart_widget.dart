@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class PerformanceChartWidget extends ConsumerWidget {
-  const PerformanceChartWidget({Key? key}) : super(key: key);
+  const PerformanceChartWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

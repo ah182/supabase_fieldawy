@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 
 class TopProductsWidget extends ConsumerWidget {
-  const TopProductsWidget({Key? key}) : super(key: key);
+  const TopProductsWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
