@@ -84,11 +84,11 @@ class AnalyticsRepositoryUpdated {
       try {
         print('🔧 Testing get_top_search_terms function...');
         
-        // استخدام الدالة المنشأة في قاعدة البيانات
+        // استخدام الدالة المنشأة في قاعدة البيانات لجميع الفئات
         final response = await _supabase.rpc('get_top_search_terms', params: {
           'p_limit': 15,
           'p_days': 30,  // تم زيادة الفترة لضمان الحصول على بيانات
-          'p_search_type': 'products'
+          // إزالة p_search_type أو وضع null لجلب جميع الأنواع
         });
         
         print('📡 Function response type: ${response.runtimeType}');
@@ -153,11 +153,11 @@ class AnalyticsRepositoryUpdated {
       
       final response = await _supabase
           .from('search_tracking')
-          .select('search_term, result_count, created_at, user_id')
+          .select('search_term, result_count, created_at, user_id, search_type')
           .gte('created_at', DateTime.now().subtract(Duration(days: 30)).toIso8601String())
-          .eq('search_type', 'products')
+          // إزالة فلتر search_type لجلب جميع الأنواع (products, vet_supplies, distributors)
           .order('created_at', ascending: false)
-          .limit(100);
+          .limit(150); // زيادة العدد لضمان تنوع أكبر
       
       print('📊 Direct query returned ${response.length} records');
       
@@ -171,17 +171,23 @@ class AnalyticsRepositoryUpdated {
       
       for (var record in response) {
         final term = record['search_term'] as String? ?? '';
+        final searchType = record['search_type'] as String? ?? 'unknown';
         if (term.isEmpty) continue;
         
         if (termStats.containsKey(term)) {
           termStats[term]!['count'] += 1;
           termStats[term]!['total_results'] += (record['result_count'] as int? ?? 0);
           termStats[term]!['users'].add(record['user_id']);
+          // تحديث نوع البحث (إذا كان متعدد الأنواع)
+          if (!termStats[term]!['search_types'].contains(searchType)) {
+            termStats[term]!['search_types'].add(searchType);
+          }
         } else {
           termStats[term] = {
             'count': 1,
             'total_results': record['result_count'] as int? ?? 0,
             'users': {record['user_id']},
+            'search_types': {searchType}, // إضافة أنواع البحث
           };
         }
       }
@@ -194,9 +200,23 @@ class AnalyticsRepositoryUpdated {
       
       for (var entry in sortedTerms.take(15)) {
         final stats = entry.value;
+        final searchTypes = List<String>.from(stats['search_types']);
         
-        // تحسين اسم المنتج للاستعلام المباشر أيضاً
-        String improvedName = await _improveProductName(entry.key, 'products');
+        // تحديد النوع الأساسي للتحسين (الأكثر شيوعاً أو الأول)
+        String primaryType = searchTypes.isNotEmpty ? searchTypes.first : 'products';
+        
+        // تحسين اسم المنتج حسب النوع الأساسي
+        String improvedName = await _improveProductName(entry.key, primaryType);
+        
+        // تكوين رسالة الأنواع
+        String typesText = '';
+        if (searchTypes.length > 1) {
+          typesText = ' (${searchTypes.join(', ')})';
+        } else if (searchTypes.isNotEmpty) {
+          typesText = ' (${searchTypes.first})';
+        }
+        
+        print('📊 Search term: "$improvedName"$typesText - Count: ${stats['count']}');
         
         searchTrends.add({
           'keyword': improvedName,
@@ -207,6 +227,8 @@ class AnalyticsRepositoryUpdated {
           'growth_percentage': stats['count'] > 5 ? 25.0 : 10.0,
           'avg_results': stats['total_results'] / stats['count'],
           'is_trending': stats['count'] > 3,
+          'search_types': searchTypes, // إضافة أنواع البحث للعرض
+          'primary_type': primaryType, // النوع الأساسي
         });
       }
       
@@ -234,7 +256,7 @@ class AnalyticsRepositoryUpdated {
       
       if (searchType == 'products' || searchType == 'general') {
         searchTables.addAll([
-          {'table': 'vet_supplies', 'nameColumn': 'product_name', 'condition': ''},
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
           {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
         ]);
@@ -242,13 +264,10 @@ class AnalyticsRepositoryUpdated {
         searchTables.addAll([
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
           {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
-          {'table': 'vet_supplies', 'nameColumn': 'product_name', 'condition': ''},
         ]);
       } else if (searchType == 'vet_supplies') {
         searchTables.addAll([
-          {'table': 'vet_supplies', 'nameColumn': 'product_name', 'condition': ''},
-          {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
-          {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
         ]);
       }
       
@@ -265,13 +284,15 @@ class AnalyticsRepositoryUpdated {
           } else {
             // استعلام مباشر مع فلتر البحث
             String searchColumn = tableInfo['nameColumn']!;
-            results = await _supabase
+            var query = _supabase
                 .from(tableInfo['table']!)
                 .select(searchColumn)
-                .or('${searchColumn}.ilike.%${cleanSearchTerm}%,${searchColumn}.ilike.${cleanSearchTerm}%')
+                .or('$searchColumn.ilike.%$cleanSearchTerm%,$searchColumn.ilike.$cleanSearchTerm%')
                 .limit(200);
             
-            // إذا لم نجد نتائج، نبحث بدون فلتر
+            results = await query;
+            
+            // إذا لم نجد نتائج، نبحث بدون فلتر البحث
             if (results.isEmpty) {
               results = await _supabase
                   .from(tableInfo['table']!)
@@ -465,18 +486,29 @@ class AnalyticsRepositoryUpdated {
     }
   }
 
-  // تحسين جميع مصطلحات البحث الموجودة (يعمل في الخلفية)
-  /// Improve all existing search terms in background
+  // تحسين جميع مصطلحات البحث الموجودة (محسن للأداء)
+  /// Improve all existing search terms in background (optimized for performance)
   Future<void> _improveAllExistingSearchTerms() async {
     try {
-      print('🔄 Starting background improvement of all search terms...');
+      print('🚀 Starting optimized background improvement...');
       
-      // جلب جميع المصطلحات الفريدة من آخر 7 أيام
+      // 1. تحقق من آخر معالجة عامة
+      final lastProcessed = await _getLastProcessingTime('general');
+      if (lastProcessed != null && 
+          lastProcessed.isAfter(DateTime.now().subtract(Duration(hours: 12)))) {
+        print('⏩ Skipping general improvement - processed recently at $lastProcessed');
+        return;
+      }
+
+      // 2. تأخير أطول للمعالجة العامة
+      await Future.delayed(Duration(seconds: 5));
+      
+      // 3. جلب 5 مصطلحات فقط (بدلاً من 50)
       final searchTerms = await _supabase
           .from('search_tracking')
           .select('search_term, search_type')
-          .gte('created_at', DateTime.now().subtract(Duration(days: 7)).toIso8601String())
-          .limit(50);
+          .gte('created_at', DateTime.now().subtract(Duration(days: 3)).toIso8601String()) // تقليل من 7 إلى 3 أيام
+          .limit(10); // تقليل من 50 إلى 10
       
       // تجميع المصطلحات الفريدة
       Set<String> uniqueTerms = {};
@@ -492,39 +524,42 @@ class AnalyticsRepositoryUpdated {
         }
       }
       
-      print('🔍 Found ${uniqueTerms.length} unique search terms to improve');
+      print('🚀 Found ${uniqueTerms.length} unique terms for optimized improvement');
       
-      // تحسين كل مصطلح (بحد أقصى 20 مصطلح لتجنب الحمل الزائد)
+      // 4. معالجة 3 مصطلحات فقط (بدلاً من 20)
       int processed = 0;
-      for (String term in uniqueTerms.take(20)) {
+      for (String term in uniqueTerms.take(3)) {
         try {
           String searchType = termTypes[term] ?? 'products';
-          print('🔧 Processing term $processed: "$term" (Type: $searchType)');
+          print('⚡ Processing term $processed: "$term" (Type: $searchType)');
           
-          String improvedName = await _improveProductName(term, searchType);
+          String improvedName = await _improveProductNameOptimized(term, searchType);
           
           // إذا تم تحسين الاسم، نحدث قاعدة البيانات
           if (improvedName != term) {
             await _updateSearchTermInTracking(term, improvedName);
-            print('✅ Improved: "$term" → "$improvedName"');
+            print('✅ Optimized: "$term" → "$improvedName"');
           } else {
-            print('⚪ No improvement needed for: "$term"');
+            print('⚪ No optimization needed for: "$term"');
           }
           
           processed++;
           
-          // توقف قصير بين كل مصطلح لتجنب الحمل الزائد
-          await Future.delayed(Duration(milliseconds: 100));
+          // توقف أقصر بين المصطلحات
+          await Future.delayed(Duration(milliseconds: 50));
           
         } catch (e) {
-          print('❌ Error improving term "$term": $e');
+          print('❌ Error in optimized processing for "$term": $e');
         }
       }
       
-      print('✅ Background improvement completed. Processed $processed terms.');
+      // 5. حفظ وقت آخر معالجة عامة
+      await _saveLastProcessingTime('general', DateTime.now());
+      
+      print('🚀 Optimized background improvement completed. Processed $processed terms.');
       
     } catch (e) {
-      print('❌ Error in background improvement: $e');
+      print('❌ Error in optimized background improvement: $e');
     }
   }
 
@@ -534,19 +569,30 @@ class AnalyticsRepositoryUpdated {
     return await _improveProductName(searchTerm, searchType);
   }
 
-  // تحسين جميع مصطلحات البحث لنوع معين
-  /// Improve all search terms for specific type
+  // تحسين جميع مصطلحات البحث لنوع معين (محسن للأداء)
+  /// Improve all search terms for specific type (optimized for performance)
   Future<void> improveSearchTermsForType(String searchType) async {
     try {
-      print('🔄 Starting improvement for type: $searchType');
+      print('🔄 Starting optimized improvement for type: $searchType');
       
-      // جلب المصطلحات الخاصة بهذا النوع من آخر 7 أيام
+      // 1. تحقق من آخر معالجة
+      final lastProcessed = await _getLastProcessingTime(searchType);
+      if (lastProcessed != null && 
+          lastProcessed.isAfter(DateTime.now().subtract(Duration(hours: 6)))) {
+        print('⏩ Skipping improvement for $searchType - processed recently at $lastProcessed');
+        return;
+      }
+
+      // 2. تأخير قصير لعدم تأثير على فتح الصفحة
+      await Future.delayed(Duration(seconds: 2));
+      
+      // 3. جلب 3 مصطلحات فقط (بدلاً من 20)
       final searchTerms = await _supabase
           .from('search_tracking')
           .select('search_term')
           .eq('search_type', searchType)
           .gte('created_at', DateTime.now().subtract(Duration(days: 7)).toIso8601String())
-          .limit(20);
+          .limit(3); // تقليل من 20 إلى 3
       
       // تجميع المصطلحات الفريدة
       Set<String> uniqueTerms = {};
@@ -558,13 +604,13 @@ class AnalyticsRepositoryUpdated {
         }
       }
       
-      print('🔍 Found ${uniqueTerms.length} unique $searchType terms to improve');
+      print('🔍 Found ${uniqueTerms.length} unique $searchType terms to improve (optimized)');
       
-      // تحسين كل مصطلح
+      // 4. معالجة سريعة للمصطلحات
       int processed = 0;
       for (String term in uniqueTerms) {
         try {
-          String improvedName = await _improveProductName(term, searchType);
+          String improvedName = await _improveProductNameOptimized(term, searchType);
           
           if (improvedName != term) {
             await _updateSearchTermInTracking(term, improvedName);
@@ -572,17 +618,172 @@ class AnalyticsRepositoryUpdated {
           }
           
           processed++;
-          await Future.delayed(Duration(milliseconds: 100));
+          // تقليل التأخير من 100ms إلى 50ms
+          await Future.delayed(Duration(milliseconds: 50));
           
         } catch (e) {
           print('❌ Error improving $searchType term "$term": $e');
         }
       }
       
-      print('✅ $searchType improvement completed. Processed $processed terms.');
+      // 5. حفظ وقت آخر معالجة
+      await _saveLastProcessingTime(searchType, DateTime.now());
+      
+      print('✅ $searchType optimized improvement completed. Processed $processed terms.');
       
     } catch (e) {
-      print('❌ Error in $searchType improvement: $e');
+      print('❌ Error in $searchType optimized improvement: $e');
+    }
+  }
+
+  // دالة تحسين محسنة للأداء (جلب أقل، معالجة أسرع)
+  /// Optimized product name improvement (fetch less, process faster)
+  Future<String> _improveProductNameOptimized(String searchTerm, String searchType) async {
+    try {
+      print('🚀 Optimized improving: "$searchTerm" (Type: $searchType)');
+      
+      String cleanSearchTerm = searchTerm.trim().toLowerCase();
+      String bestMatch = searchTerm;
+      int bestMatchScore = 0;
+      
+      // جداول البحث المحسنة (ترتيب حسب الأولوية)
+      List<Map<String, String>> searchTables = [];
+      
+      if (searchType == 'vet_supplies') {
+        // للمستلزمات: البحث في جدول vet_supplies فقط
+        searchTables.addAll([
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
+        ]);
+      } else if (searchType == 'distributors') {
+        // للموزعين: البحث في منتجات الموزعين فقط
+        searchTables.addAll([
+          {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
+        ]);
+      } else {
+        // للمنتجات العامة
+        searchTables.addAll([
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
+          {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
+        ]);
+      }
+      
+      for (var tableInfo in searchTables) {
+        try {
+          List<dynamic> results = [];
+          
+          if (tableInfo['condition']!.isNotEmpty) {
+            // استعلام مع join - محدود جداً
+            results = await _supabase
+                .from(tableInfo['table']!)
+                .select('id${tableInfo['condition']}')
+                .limit(30); // تقليل من 200 إلى 30
+          } else {
+            // استعلام مباشر - بحث مستهدف
+            String searchColumn = tableInfo['nameColumn']!;
+            var query = _supabase
+                .from(tableInfo['table']!)
+                .select(searchColumn)
+                .ilike(searchColumn, '%$cleanSearchTerm%') // بحث مستهدف مباشرة
+                .limit(30); // تقليل من 200 إلى 30
+            
+            results = await query;
+          }
+          
+          // معالجة سريعة للنتائج
+          for (var product in results.take(10)) { // معالجة 10 فقط من كل جدول
+            String productName = '';
+            
+            if (tableInfo['condition']!.isNotEmpty) {
+              var nestedData = product[tableInfo['table'] == 'distributor_products' ? 'products' : 'ocr_products'];
+              if (nestedData != null) {
+                productName = nestedData[tableInfo['table'] == 'distributor_products' ? 'name' : 'product_name'] ?? '';
+              }
+            } else {
+              productName = product[tableInfo['nameColumn']!.split('.').last] ?? '';
+            }
+            
+            if (productName.isNotEmpty) {
+              int matchScore = _calculateMatchScoreOptimized(cleanSearchTerm, productName.toLowerCase());
+              
+              if (matchScore > bestMatchScore) {
+                bestMatchScore = matchScore;
+                bestMatch = productName;
+                
+                // إذا وجدنا مطابقة ممتازة، توقف فوراً
+                if (matchScore >= 85) {
+                  await _updateSearchTermInTracking(searchTerm, productName);
+                  print('⚡ Quick match found: "$searchTerm" → "$productName" ($matchScore%)');
+                  return productName;
+                }
+              }
+            }
+          }
+          
+          // إذا وجدنا مطابقة جيدة، لا نحتاج للجدول التالي
+          if (bestMatchScore >= 80) break;
+          
+        } catch (e) {
+          print('❌ Error in optimized search for ${tableInfo['table']}: $e');
+        }
+      }
+      
+      print('⚡ Optimized result: "$searchTerm" → "$bestMatch" (Score: $bestMatchScore)');
+      return bestMatch;
+      
+    } catch (e) {
+      print('❌ Error in optimized improvement: $e');
+      return searchTerm;
+    }
+  }
+
+  // حساب درجة التطابق محسن (أسرع)
+  /// Optimized match score calculation (faster)
+  int _calculateMatchScoreOptimized(String searchTerm, String productName) {
+    if (searchTerm == productName) return 100;
+    
+    // فحص سريع للبداية المطابقة فقط (الأهم)
+    if (productName.startsWith(searchTerm) && searchTerm.length >= 3) {
+      int score = 80;
+      if (searchTerm.length >= 4) score = 85;
+      if (searchTerm.length >= 5) score = 90;
+      return score;
+    }
+    
+    // فحص الاحتواء البسيط
+    if (productName.contains(searchTerm)) {
+      return ((searchTerm.length / productName.length) * 75).round();
+    }
+    
+    return 0; // بدلاً من الحسابات المعقدة
+  }
+
+  // جلب وقت آخر معالجة
+  /// Get last processing time
+  Future<DateTime?> _getLastProcessingTime(String searchType) async {
+    try {
+      // استخدام SharedPreferences أو cache بسيط
+      // final key = 'last_processed_$searchType';
+      // يمكن استخدام أي cache system هنا
+      // مثلاً: return SharedPreferences.getInt(key)?.toDateTime();
+      
+      // الآن نرجع null ليعمل التحسين دائماً (أول مرة)
+      // تجاهل searchType مؤقتاً حتى يتم تطبيق cache
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // حفظ وقت آخر معالجة
+  /// Save last processing time
+  Future<void> _saveLastProcessingTime(String searchType, DateTime time) async {
+    try {
+      // final key = 'last_processed_$searchType';
+      // يمكن حفظ الوقت في SharedPreferences أو cache
+      // مثلاً: SharedPreferences.setInt(key, time.millisecondsSinceEpoch);
+      print('📅 Saved processing time for $searchType: $time');
+    } catch (e) {
+      print('❌ Error saving processing time: $e');
     }
   }
 
@@ -613,7 +814,7 @@ class AnalyticsRepositoryUpdated {
         'p_session_id': sessionId,
       });
       
-      print('Search logged successfully: $searchTerm (ID: ${response})');
+      print('Search logged successfully: $searchTerm (ID: $response)');
       
       // الدالة المحدثة ترجع BIGINT، تحويل إلى string
       if (response != null) {

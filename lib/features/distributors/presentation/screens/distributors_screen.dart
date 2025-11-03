@@ -87,10 +87,16 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
       }
 
       try {
+        // التحقق من أن الـ widget لا يزال موجوداً
+        if (!context.mounted) return;
+        
         print('🔍 Tracking distributor search: "$searchTerm" (Results: ${filteredResults.length})');
         
         // تحسين اسم المنتج قبل التتبع
         String improvedSearchTerm = await improveDistributorProductName(ref, searchTerm);
+        
+        // التحقق مرة أخرى بعد العملية غير المتزامنة
+        if (!context.mounted) return;
         
         final searchId = await trackDistributorSearch(
           ref: ref,
@@ -98,6 +104,9 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
           results: filteredResults,
         );
         currentSearchId.value = searchId;
+        
+        // التحقق الأخير قبل طباعة النتائج
+        if (!context.mounted) return;
         
         if (searchId != null) {
           print('✅ Distributor search tracked with ID: $searchId');
@@ -185,8 +194,15 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
     useEffect(() {
       Future<void> improveDistributorSearchTerms() async {
         try {
+          // التحقق من أن الـ widget لا يزال موجوداً
+          if (!context.mounted) return;
+          
           print('🔄 Starting distributor search terms improvement...');
           await improveAllDistributorSearchTerms(ref);
+          
+          // التحقق مرة أخرى بعد العملية غير المتزامنة
+          if (!context.mounted) return;
+          
           print('✅ Distributor search terms improvement completed');
         } catch (e) {
           print('❌ Error improving distributor search terms: $e');

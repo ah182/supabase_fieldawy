@@ -53,8 +53,15 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
   /// Improve existing search terms in background
   Future<void> _improveExistingSearchTerms() async {
     try {
+      // التحقق من أن الـ widget لا يزال موجوداً قبل استخدام ref
+      if (!mounted) return;
+      
       print('🔄 Starting vet supplies search terms improvement...');
       await improveAllVetSupplySearchTerms(ref);
+      
+      // التحقق مرة أخرى بعد العملية غير المتزامنة
+      if (!mounted) return;
+      
       print('✅ Vet supplies search terms improvement completed');
     } catch (e) {
       print('❌ Error improving vet supplies search terms: $e');
@@ -310,6 +317,9 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
     }
 
     try {
+      // التحقق من أن الـ widget لا يزال موجوداً
+      if (!mounted) return;
+      
       // الحصول على النتائج المفلترة لحساب العدد
       final filteredResults = _getFilteredVetSupplies();
       
@@ -318,12 +328,18 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
       // تحسين اسم المنتج قبل التتبع
       String improvedSearchTerm = await improveVetSupplyName(ref, _debouncedSearchQuery);
       
+      // التحقق مرة أخرى بعد العملية غير المتزامنة
+      if (!mounted) return;
+      
       // تتبع البحث باستخدام الاسم المحسن
       _currentSearchId = await trackVetSuppliesSearch(
         ref: ref,
         searchTerm: improvedSearchTerm,
         results: filteredResults,
       );
+      
+      // التحقق الأخير قبل طباعة النتائج
+      if (!mounted) return;
       
       if (_currentSearchId != null) {
         print('✅ Vet supplies search tracked with ID: $_currentSearchId');

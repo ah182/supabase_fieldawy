@@ -181,6 +181,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     try {
+      // التحقق من أن الـ widget لا يزال موجوداً
+      if (!mounted) return;
+      
       // تحديد نوع البحث حسب التاب الحالي
       final searchType = getSearchTypeFromTabIndex(_tabController.index);
       
@@ -196,6 +199,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         searchType: searchType,
         resultCount: filteredProducts.length,
       );
+      
+      // التحقق مرة أخرى بعد العملية غير المتزامنة
+      if (!mounted) return;
       
       if (_currentSearchId != null) {
         print('✅ Search tracked with ID: $_currentSearchId');
