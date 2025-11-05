@@ -42,6 +42,7 @@ import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ✅ Firebase imports
@@ -878,12 +879,10 @@ Future<void> main() async {
   // pdfrxFlutterInitialize(); // Not needed in pdfrx 1.3.5
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: ".env");
-
   await Hive.initFlutter();
-  
-  // ✅ CRITICAL: Clear Hive cache to refresh views field
-  
-  
+
+ 
+
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(OrderItemModelAdapter());
   Hive.registerAdapter(CacheEntryAdapter());
