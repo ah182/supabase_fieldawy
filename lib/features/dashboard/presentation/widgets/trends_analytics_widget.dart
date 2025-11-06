@@ -44,11 +44,11 @@ class TrendsAnalyticsWidget extends ConsumerWidget {
                   // Global trending products
                   _buildTrendingProducts(context, analytics['trending']),
                   const SizedBox(height: 20),
-                  
+
                   // Search trends
                   _buildSearchTrends(context, analytics['searches']),
                   const SizedBox(height: 20),
-                  
+
                   // Recommendations for distributor
                   _buildRecommendations(context, analytics['recommendations']),
                 ],
@@ -380,7 +380,7 @@ class TrendsAnalyticsWidget extends ConsumerWidget {
           separatorBuilder: (context, index) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
             final recommendation = recommendations[index];
-            
+
             return Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(

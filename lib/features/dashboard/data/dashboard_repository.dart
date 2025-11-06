@@ -219,7 +219,7 @@ class DashboardRepository {
             ''')
             .eq('distributor_id', userId)
             .order('added_at', ascending: false)
-            .limit(3);
+            .limit(2);
 
         for (var product in distributorProducts) {
           final productInfo = product['products'] as Map<String, dynamic>?;
@@ -252,7 +252,7 @@ class DashboardRepository {
             ''')
             .eq('distributor_id', userId)
             .order('created_at', ascending: false)
-            .limit(3);
+            .limit(2);
 
         for (var product in ocrProducts) {
           final ocrProduct = product['ocr_products'] as Map<String, dynamic>?;
@@ -267,6 +267,84 @@ class DashboardRepository {
         }
       } catch (e) {
         print('Error getting OCR products: $e');
+      }
+
+      // Get recent courses
+      try {
+        final courses = await _supabase
+            .from('vet_courses')
+            .select('id, title, price, created_at, views')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false)
+            .limit(1);
+
+        for (var course in courses) {
+          allProducts.add({
+            'id': course['id'],
+            'name': course['title'] ?? 'كورس غير معروف',
+            'price': course['price'] ?? 0,
+            'created_at': course['created_at'],
+            'views': course['views'] ?? 0,
+            'source': 'course',
+          });
+        }
+      } catch (e) {
+        print('Error getting recent courses: $e');
+      }
+
+      // Get recent books
+      try {
+        final books = await _supabase
+            .from('vet_books')
+            .select('id, name, price, created_at, views')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false)
+            .limit(1);
+
+        for (var book in books) {
+          allProducts.add({
+            'id': book['id'],
+            'name': book['name'] ?? 'كتاب غير معروف',
+            'price': book['price'] ?? 0,
+            'created_at': book['created_at'],
+            'views': book['views'] ?? 0,
+            'source': 'book',
+          });
+        }
+      } catch (e) {
+        print('Error getting recent books: $e');
+      }
+
+      // Get recent surgical tools
+      try {
+        final surgicalTools = await _supabase
+            .from('distributor_surgical_tools')
+            .select('''
+              id,
+              price,
+              created_at,
+              views,
+              surgical_tools (
+                tool_name
+              )
+            ''')
+            .eq('distributor_id', userId)
+            .order('created_at', ascending: false)
+            .limit(1);
+
+        for (var tool in surgicalTools) {
+          final toolInfo = tool['surgical_tools'] as Map<String, dynamic>?;
+          allProducts.add({
+            'id': tool['id'],
+            'name': toolInfo?['tool_name'] ?? 'أداة جراحية غير معروفة',
+            'price': tool['price'] ?? 0,
+            'created_at': tool['created_at'],
+            'views': tool['views'] ?? 0,
+            'source': 'surgical',
+          });
+        }
+      } catch (e) {
+        print('Error getting recent surgical tools: $e');
       }
 
       // Sort all products by created_at and take top 5
@@ -365,10 +443,33 @@ class DashboardRepository {
             .limit(2);
 
         for (var offer in offers) {
-          final productSource = offer['is_ocr'] == true ? 'OCR' : 'كتالوج';
+          // Get product name based on source
+          String productName = 'عرض';
+          if (offer['product_id'] != null) {
+            try {
+              if (offer['is_ocr'] == true) {
+                final ocrProduct = await _supabase
+                    .from('ocr_products')
+                    .select('product_name')
+                    .eq('ocr_product_id', offer['product_id'])
+                    .maybeSingle();
+                productName = ocrProduct?['product_name'] ?? 'عرض OCR';
+              } else {
+                final product = await _supabase
+                    .from('products')
+                    .select('name')
+                    .eq('id', offer['product_id'])
+                    .maybeSingle();
+                productName = product?['name'] ?? 'عرض';
+              }
+            } catch (e) {
+              productName = 'عرض - ${offer['product_id']}';
+            }
+          }
+
           topProducts.add({
             'id': offer['id'],
-            'name': 'عرض ($productSource) - ${offer['product_id'] ?? 'غير معروف'}',
+            'name': productName,
             'price': offer['price'] ?? 0,
             'views': offer['views'] ?? 0,
             'created_at': offer['created_at'],
@@ -379,11 +480,218 @@ class DashboardRepository {
         print('Error getting top offers: $e');
       }
 
-      // Sort by views and take top 5
+      // 4. Get top courses by views
+      try {
+        final courses = await _supabase
+            .from('vet_courses')
+            .select('id, title, price, views, created_at')
+            .eq('user_id', userId)
+            .order('views', ascending: false)
+            .limit(2);
+
+        for (var course in courses) {
+          topProducts.add({
+            'id': course['id'],
+            'name': course['title'] ?? 'كورس غير معروف',
+            'price': course['price'] ?? 0,
+            'views': course['views'] ?? 0,
+            'created_at': course['created_at'],
+            'source': 'course',
+          });
+        }
+      } catch (e) {
+        print('Error getting top courses: $e');
+      }
+
+      // 5. Get top books by views
+      try {
+        final books = await _supabase
+            .from('vet_books')
+            .select('id, name, price, views, created_at')
+            .eq('user_id', userId)
+            .order('views', ascending: false)
+            .limit(2);
+
+        for (var book in books) {
+          topProducts.add({
+            'id': book['id'],
+            'name': book['name'] ?? 'كتاب غير معروف',
+            'price': book['price'] ?? 0,
+            'views': book['views'] ?? 0,
+            'created_at': book['created_at'],
+            'source': 'book',
+          });
+        }
+      } catch (e) {
+        print('Error getting top books: $e');
+      }
+
+      // 6. Get top surgical tools by views
+      try {
+        final surgicalTools = await _supabase
+            .from('distributor_surgical_tools')
+            .select('''
+              id,
+              price,
+              views,
+              created_at,
+              surgical_tools (
+                tool_name
+              )
+            ''')
+            .eq('distributor_id', userId)
+            .order('views', ascending: false)
+            .limit(2);
+
+        for (var tool in surgicalTools) {
+          final toolInfo = tool['surgical_tools'] as Map<String, dynamic>?;
+          topProducts.add({
+            'id': tool['id'],
+            'name': toolInfo?['tool_name'] ?? 'أداة جراحية غير معروفة',
+            'price': tool['price'] ?? 0,
+            'views': tool['views'] ?? 0,
+            'created_at': tool['created_at'],
+            'source': 'surgical',
+          });
+        }
+      } catch (e) {
+        print('Error getting top surgical tools: $e');
+      }
+
+      // Sort by views and take top 10
       topProducts.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
-      return topProducts.take(5).toList();
+      return topProducts.take(10).toList();
     } catch (e) {
       print('Error getting top products: $e');
+      return [];
+    }
+  }
+
+  // Get global top products that distributor doesn't own
+  Future<List<Map<String, dynamic>>> getGlobalTopProductsNotOwned() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      // Get distributor's product IDs from both regular and OCR products
+      final distributorProductIds = <String>{};
+      final distributorProductNames = <String>{};
+
+      // 1. Get regular distributor products
+      try {
+        final distributorProducts = await _supabase
+            .from('distributor_products')
+            .select('''
+              product_id,
+              products (
+                id,
+                name
+              )
+            ''')
+            .eq('distributor_id', userId);
+
+        for (var product in distributorProducts) {
+          if (product['product_id'] != null) {
+            distributorProductIds.add(product['product_id'].toString());
+          }
+          final productInfo = product['products'] as Map<String, dynamic>?;
+          if (productInfo != null && productInfo['name'] != null) {
+            distributorProductNames.add(productInfo['name'].toString().toLowerCase().trim());
+          }
+        }
+      } catch (e) {
+        print('Error getting distributor products: $e');
+      }
+
+      // 2. Get OCR products
+      try {
+        final ocrProducts = await _supabase
+            .from('distributor_ocr_products')
+            .select('''
+              ocr_product_id,
+              ocr_products (
+                product_name
+              )
+            ''')
+            .eq('distributor_id', userId);
+
+        for (var product in ocrProducts) {
+          final ocrProduct = product['ocr_products'] as Map<String, dynamic>?;
+          if (ocrProduct != null && ocrProduct['product_name'] != null) {
+            final productName = ocrProduct['product_name'].toString().toLowerCase().trim();
+            distributorProductNames.add(productName);
+          }
+        }
+      } catch (e) {
+        print('Error getting OCR products: $e');
+      }
+
+      print('Distributor has ${distributorProductIds.length} product IDs and ${distributorProductNames.length} product names');
+
+      // Get all products with their distributor counts
+      // Since products table doesn't have views, we'll rank by distributor count
+      final allProducts = await _supabase
+          .from('products')
+          .select('id, name, company')
+          .limit(200);
+
+      // Calculate stats for each product
+      final productStats = <Map<String, dynamic>>[];
+
+      for (var product in allProducts) {
+        final productId = product['id'].toString();
+        final productName = (product['name'] ?? '').toString().toLowerCase().trim();
+
+        // Check if distributor has this product (by ID or by name)
+        final hasProductById = distributorProductIds.contains(productId);
+        final hasProductByName = distributorProductNames.contains(productName);
+
+        if (!hasProductById && !hasProductByName && productName.isNotEmpty) {
+          // Get stats for this product
+          int globalViews = 0;
+          int distributorCount = 0;
+
+          try {
+            // Get distributor count and sum of views
+            final distributorData = await _supabase
+                .from('distributor_products')
+                .select('views')
+                .eq('product_id', productId);
+
+            distributorCount = distributorData.length;
+
+            // Sum all views from all distributors
+            for (var dist in distributorData) {
+              globalViews += (dist['views'] ?? 0) as int;
+            }
+          } catch (e) {
+            print('Error getting product stats for ${product['name']}: $e');
+          }
+
+          // Only add if product has some activity
+          if (distributorCount > 0 || globalViews > 0) {
+            productStats.add({
+              'id': productId,
+              'name': product['name'],
+              'company': product['company'],
+              'global_views': globalViews,
+              'distributor_count': distributorCount,
+              'score': (globalViews * 2) + (distributorCount * 100), // Ranking score
+            });
+          }
+        }
+      }
+
+      // Sort by score (combination of views and distributor count)
+      productStats.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+
+      // Return top 10 recommendations
+      final recommendations = productStats.take(10).toList();
+
+      print('Found ${recommendations.length} recommendations');
+      return recommendations;
+    } catch (e) {
+      print('Error getting global top products: $e');
       return [];
     }
   }
@@ -475,17 +783,125 @@ class DashboardRepository {
     }
   }
 
-  // Get regional statistics
+  // Get regional statistics - Real data based on product views
   Future<List<Map<String, dynamic>>> getRegionalStats() async {
     try {
-      // For now, return mock data since we don't have regional tracking yet
-      return [
-        {'region': 'القاهرة', 'customers': 45, 'orders': 23},
-        {'region': 'الإسكندرية', 'customers': 32, 'orders': 18},
-        {'region': 'الجيزة', 'customers': 28, 'orders': 15},
-        {'region': 'الدقهلية', 'customers': 21, 'orders': 12},
-        {'region': 'الشرقية', 'customers': 19, 'orders': 10},
-      ];
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      // Get all product IDs for this distributor from all sources
+      List<String> productIds = [];
+
+      // 1. Get IDs from distributor_products
+      try {
+        final distributorProducts = await _supabase
+            .from('distributor_products')
+            .select('product_id')
+            .eq('distributor_id', userId);
+
+        for (var product in distributorProducts) {
+          if (product['product_id'] != null) {
+            productIds.add(product['product_id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting distributor products for regional stats: $e');
+      }
+
+      // 2. Get IDs from distributor_ocr_products
+      try {
+        final ocrProducts = await _supabase
+            .from('distributor_ocr_products')
+            .select('id')
+            .eq('distributor_id', userId);
+
+        for (var product in ocrProducts) {
+          if (product['id'] != null) {
+            productIds.add(product['id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting OCR products for regional stats: $e');
+      }
+
+      // 3. Get IDs from distributor_surgical_tools
+      try {
+        final surgicalTools = await _supabase
+            .from('distributor_surgical_tools')
+            .select('id')
+            .eq('distributor_id', userId);
+
+        for (var tool in surgicalTools) {
+          if (tool['id'] != null) {
+            productIds.add(tool['id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting surgical tools for regional stats: $e');
+      }
+
+      if (productIds.isEmpty) {
+        return [];
+      }
+
+      // Get product views with user information
+      final productViews = await _supabase
+          .from('product_views')
+          .select('user_id, product_id')
+          .inFilter('product_id', productIds);
+
+      // Get unique user IDs who viewed the products
+      Set<String> viewerUserIds = {};
+      for (var view in productViews) {
+        if (view['user_id'] != null) {
+          viewerUserIds.add(view['user_id'].toString());
+        }
+      }
+
+      if (viewerUserIds.isEmpty) {
+        return [];
+      }
+
+      // Get user governorates
+      final users = await _supabase
+          .from('users')
+          .select('id, governorates')
+          .inFilter('id', viewerUserIds.toList());
+
+      // Count views by governorate
+      Map<String, int> governorateViews = {};
+      int totalViews = 0;
+
+      for (var user in users) {
+        final governorates = user['governorates'] as List<dynamic>?;
+        if (governorates != null && governorates.isNotEmpty) {
+          // Count how many times this user viewed products
+          final userViews = productViews.where((v) => v['user_id'] == user['id']).length;
+
+          // Distribute views across user's governorates
+          for (var gov in governorates) {
+            final govName = gov.toString();
+            governorateViews[govName] = (governorateViews[govName] ?? 0) + userViews;
+            totalViews += userViews;
+          }
+        }
+      }
+
+      // Convert to list and sort by views
+      List<Map<String, dynamic>> result = [];
+      governorateViews.forEach((region, views) {
+        result.add({
+          'region': region,
+          'views': views,
+          'percentage': totalViews > 0 ? (views / totalViews) : 0.0,
+        });
+      });
+
+      // Sort by views descending
+      result.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
+
+      // Return top 10 regions
+      return result.take(10).toList();
     } catch (e) {
       print('Error getting regional stats: $e');
       return [];

@@ -38,9 +38,18 @@ final topProductsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>
 final expiringProductsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   // Watch the refresh counter to trigger updates
   ref.watch(dashboardRefreshProvider);
-  
+
   final repository = ref.watch(dashboardRepositoryProvider);
   return await repository.getExpiringProducts();
+});
+
+// Provider for global top products that distributor doesn't own
+final globalTopProductsNotOwnedProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  // Watch the refresh counter to trigger updates
+  ref.watch(dashboardRefreshProvider);
+
+  final repository = ref.watch(dashboardRepositoryProvider);
+  return await repository.getGlobalTopProductsNotOwned();
 });
 
 // Provider for monthly sales data for charts

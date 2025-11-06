@@ -116,6 +116,7 @@ class RecentProductsWidget extends ConsumerWidget {
   Widget _buildProductItem(BuildContext context, Map<String, dynamic> product) {
     final createdAt = DateTime.tryParse(product['created_at'] ?? '');
     final timeAgo = createdAt != null ? _getTimeAgo(createdAt) : '';
+    final source = product['source'] ?? 'catalog';
 
     return InkWell(
       onTap: () {
@@ -127,60 +128,157 @@ class RecentProductsWidget extends ConsumerWidget {
         );
       },
       borderRadius: BorderRadius.circular(8),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.medication,
-            color: Colors.blue,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          product['name'] ?? 'منتج غير معروف',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          '${product['price'] ?? 0} ${'EGP'.tr()} • $timeAgo',
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.visibility, size: 14, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${product['views'] ?? 0}',
+            // الاسم مع Badge النوع
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    product['name'] ?? 'منتج غير معروف',
                     style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                _buildSourceBadge(source),
+              ],
             ),
-            const SizedBox(width: 8),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            const SizedBox(height: 8),
+            // السعر والمشاهدات والوقت
+            Row(
+              children: [
+                // السعر
+                Text(
+                  '${product['price'] ?? 0} ${'EGP'.tr()}',
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // المشاهدات
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility, size: 12, color: Colors.green),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${product['views'] ?? 0}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                // الوقت في Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.access_time, size: 12, color: Colors.blue[700]),
+                      const SizedBox(width: 4),
+                      Text(
+                        timeAgo,
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSourceBadge(String source) {
+    String label;
+    Color color;
+    IconData icon;
+
+    switch (source) {
+      case 'offer':
+        label = 'عرض';
+        color = Colors.red;
+        icon = Icons.local_offer;
+        break;
+      case 'course':
+        label = 'كورس';
+        color = Colors.purple;
+        icon = Icons.school;
+        break;
+      case 'book':
+        label = 'كتاب';
+        color = Colors.brown;
+        icon = Icons.menu_book;
+        break;
+      case 'surgical':
+        label = 'جراحي';
+        color = Colors.teal;
+        icon = Icons.medical_services;
+        break;
+      case 'ocr':
+        label = 'OCR';
+        color = Colors.orange;
+        icon = Icons.qr_code_scanner;
+        break;
+      default:
+        label = 'منتج';
+        color = Colors.blue;
+        icon = Icons.inventory;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

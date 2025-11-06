@@ -34,96 +34,90 @@ String _formatViewsCount(int views) {
 }
 
 // دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offers)
+// تستخدم النظام الجديد الذي يسجل في product_views
 void _incrementProductViews(String productId, {String? distributorId, String? productType}) {
   try {
-    print('🔵 Incrementing views for product: $productId, type: $productType, distributorId: $distributorId');
-    
-    // تحقق من نوع المنتج
+    print('🔵 [_incrementProductViews] ========== START ==========');
+    print('🔵 [_incrementProductViews] Product ID: $productId');
+    print('🔵 [_incrementProductViews] Product Type: $productType');
+    print('🔵 [_incrementProductViews] Distributor ID: $distributorId');
+
+    // تحديد نوع المنتج
+    String type = 'regular';
+
     if (productType == 'offers') {
-      // عرض
-      print('🔴 Incrementing offer views for ID: $productId');
-      Supabase.instance.client.rpc('increment_offer_views', params: {
-        'p_offer_id': int.tryParse(productId) ?? 0,
-      }).then((response) {
-        print('✅ Offer views incremented successfully for ID: $productId');
-        print('✅ Response: $response');
-      }).catchError((error) {
-        print('❌ Error incrementing offer views for ID: $productId');
-        print('❌ Error details: $error');
-      });
+      type = 'offer';
+      print('🔵 [_incrementProductViews] Detected as OFFER');
     } else if (productType == 'surgical') {
-      // أداة جراحية
-      Supabase.instance.client.rpc('increment_surgical_tool_views', params: {
-        'p_tool_id': productId,
-      }).then((response) {
-        print('✅ Surgical tool views incremented successfully');
-      }).catchError((error) {
-        print('❌ Error incrementing surgical tool views: $error');
-      });
+      type = 'surgical';
+      print('🔵 [_incrementProductViews] Detected as SURGICAL');
+    } else if (productType == 'ocr') {
+      type = 'ocr';
+      print('🔵 [_incrementProductViews] Detected as OCR');
     } else {
-      // تحقق من صيغة الـ ID - إذا كان integer/text، اعتبره منتج عادي
-      if (!_isValidUUID(productId)) {
-        // هذا منتج عادي (ID = integer/text)
-        print('🔍 This is a regular product with integer ID: $productId');
-        
-        Supabase.instance.client.rpc('increment_product_views', params: {
-          'p_product_id': productId,
-        }).then((response) {
-          print('✅ Regular product views incremented successfully for ID: $productId');
-        }).catchError((error) {
-          print('❌ Error incrementing regular product views: $error');
-        });
-      } else {
-        // ID هو UUID - تحقق من نوع المنتج (OCR أم عادي)
-        print('🔍 UUID format detected, checking if OCR product: $productId');
-        
+      print('🔵 [_incrementProductViews] Checking if UUID...');
+      // تحقق من صيغة الـ ID
+      if (_isValidUUID(productId)) {
+        print('🔵 [_incrementProductViews] Is UUID - checking if OCR...');
+        // قد يكون OCR، نحتاج للتحقق
         Supabase.instance.client
             .from('distributor_ocr_products')
-            .select('distributor_id')
+            .select('id')
             .eq('ocr_product_id', productId)
             .limit(1)
             .then((ocrResponse) {
-          
           if (ocrResponse.isNotEmpty) {
-            // هذا منتج OCR - استخدم أول موزع في القائمة
-            final ocrDistributorId = ocrResponse[0]['distributor_id'] as String;
-            print('🔍 Found OCR product with distributor_id: $ocrDistributorId');
-            
-            Supabase.instance.client.rpc('increment_ocr_product_views', params: {
-              'p_distributor_id': ocrDistributorId,
-              'p_ocr_product_id': productId,
-            }).then((response) {
-              print('✅ OCR product views incremented successfully for product: $productId');
-            }).catchError((error) {
-              print('❌ Error incrementing OCR product views: $error');
-            });
+            print('🔵 [_incrementProductViews] Confirmed as OCR product');
+            _trackView(productId, 'ocr');
           } else {
-            // هذا منتج عادي من الكتالوج (UUID format)
-            print('🔍 This is a regular catalog product with UUID: $productId');
-            
-            Supabase.instance.client.rpc('increment_product_views', params: {
-              'p_product_id': productId,
-            }).then((response) {
-              print('✅ Regular product views incremented successfully for ID: $productId');
-            }).catchError((error) {
-              print('❌ Error incrementing regular product views: $error');
-            });
+            print('🔵 [_incrementProductViews] Not OCR - treating as REGULAR');
+            _trackView(productId, 'regular');
           }
         }).catchError((error) {
-          print('❌ Error checking product type: $error');
-          // في حالة الخطأ، افترض أنه منتج عادي
-          Supabase.instance.client.rpc('increment_product_views', params: {
-            'p_product_id': productId,
-          }).then((response) {
-            print('✅ Regular product views incremented successfully (fallback) for ID: $productId');
-          }).catchError((fallbackError) {
-            print('❌ Error incrementing regular product views (fallback): $fallbackError');
-          });
+          print('❌ [_incrementProductViews] Error checking OCR: $error');
+          print('🔵 [_incrementProductViews] Fallback to REGULAR');
+          _trackView(productId, 'regular');
         });
+        return; // الخروج لأننا سنتابع في then
+      } else {
+        print('🔵 [_incrementProductViews] Not UUID - treating as REGULAR');
       }
     }
+
+    // تسجيل المشاهدة
+    print('🔵 [_incrementProductViews] Final type: $type');
+    print('🔵 [_incrementProductViews] Calling _trackView...');
+    _trackView(productId, type);
+    print('🔵 [_incrementProductViews] ========== END ==========');
+
   } catch (e) {
-    print('❌ خطأ في زيادة مشاهدات المنتج: $e');
+    print('❌ [_incrementProductViews] EXCEPTION: $e');
+    print('❌ [_incrementProductViews] Stack trace: ${StackTrace.current}');
+  }
+}
+
+// دالة مساعدة لتسجيل المشاهدة
+Future<void> _trackView(String productId, String productType) async {
+  print('🟢 [_trackView] Starting to track view...');
+  print('🟢 [_trackView] Product ID: $productId');
+  print('🟢 [_trackView] Product Type: $productType');
+
+  try {
+    final response = await Supabase.instance.client.rpc('track_product_view', params: {
+      'p_product_id': productId,
+      'p_product_type': productType,
+    });
+
+    print('✅ [_trackView] View tracked successfully!');
+    print('✅ [_trackView] Product: $productId');
+    print('✅ [_trackView] Type: $productType');
+    print('✅ [_trackView] Response: $response');
+  } catch (error) {
+    print('❌ [_trackView] Error tracking view!');
+    print('❌ [_trackView] Product: $productId');
+    print('❌ [_trackView] Type: $productType');
+    print('❌ [_trackView] Error: $error');
+    print('❌ [_trackView] Error Type: ${error.runtimeType}');
   }
 }
 

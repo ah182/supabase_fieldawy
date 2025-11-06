@@ -34,20 +34,18 @@ class AnalyticsRepositoryUpdated {
     }
   }
 
-  // Get global trends analytics with REAL search data
+  // Get global trends analytics with REAL search data - WITH AUTO-IMPROVE
   Future<Map<String, dynamic>> getTrendsAnalytics() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
-      
+
       // Get globally trending products - using direct database queries
       final trending = await _getGlobalTrendingProductsSimplified(userId);
-      
-      // Get REAL search trends from database
-      final searches = await _getRealSearchTrends();
-      
-      // تشغيل تحسين الأسماء للمصطلحات الموجودة في الخلفية
-      _improveAllExistingSearchTerms();
-      
+
+      // Get REAL search trends from database - WITH CACHE
+      // الأسماء محسّنة تلقائياً في قاعدة البيانات عند البحث
+      final searches = await _getRealSearchTrendsWithCache();
+
       // Get personalized recommendations - simplified
       final recommendations = await _getPersonalizedRecommendationsSimplified(userId);
 
@@ -62,181 +60,114 @@ class AnalyticsRepositoryUpdated {
     }
   }
 
-  // NEW: Get REAL search trends from search_tracking table
-  Future<List<Map<String, dynamic>>> _getRealSearchTrends() async {
+  // NEW: Get search trends WITH CACHE - Super Fast!
+  Future<List<Map<String, dynamic>>> _getRealSearchTrendsWithCache() async {
     try {
-      print('🔍 Getting real search trends from search_tracking table...');
-      
-      // أولاً: التحقق من وجود بيانات في الجدول
-      final tableCheck = await _supabase
-          .from('search_tracking')
-          .select('*')
-          .count(CountOption.exact);
-      
-      print('📊 Total records in search_tracking: ${tableCheck.count}');
-      
-      if (tableCheck.count == 0) {
-        print('⚠️ search_tracking table is empty, returning empty list');
-        return [];
+      print('🚀 Getting search trends WITH CACHE...');
+
+      // استخدام الدالة المحسّنة التي تستخدم الـ Cache
+      final response = await _supabase.rpc('get_top_search_terms_cached', params: {
+        'p_limit': 10,
+        'p_days': 7,
+      });
+
+      if (response == null || response is! List || response.isEmpty) {
+        print('⚠️ No cached data, falling back to direct query');
+        return await _getRealSearchTrendsFast();
       }
-      
-      // ثانياً: التحقق من وجود دالة get_top_search_terms
-      try {
-        print('🔧 Testing get_top_search_terms function...');
-        
-        // استخدام الدالة المنشأة في قاعدة البيانات لجميع الفئات
-        final response = await _supabase.rpc('get_top_search_terms', params: {
-          'p_limit': 15,
-          'p_days': 30,  // تم زيادة الفترة لضمان الحصول على بيانات
-          // إزالة p_search_type أو وضع null لجلب جميع الأنواع
+
+      List<Map<String, dynamic>> searchTrends = [];
+
+      for (var row in response) {
+        searchTrends.add({
+          'keyword': row['improved_name'] ?? row['search_term'] ?? 'مصطلح غير معروف',
+          'count': row['search_count'] ?? 0,
+          'unique_users': row['unique_users'] ?? 0,
+          'click_rate': 0.0,
+          'trend_direction': 'up',
+          'growth_percentage': (row['search_count'] ?? 0) > 5 ? 25.0 : 10.0,
+          'avg_results': (row['avg_result_count'] ?? 0).toDouble(),
+          'is_trending': (row['search_count'] ?? 0) > 3,
+          'improvement_score': row['improvement_score'] ?? 0,
         });
-        
-        print('📡 Function response type: ${response.runtimeType}');
-        print('📡 Function response: $response');
-        
-        if (response == null) {
-          print('❌ Function returned null, trying alternative query...');
-          return await _getDirectSearchTrends();
-        }
-        
-        if (response is! List || response.isEmpty) {
-          print('⚠️ Function returned empty or invalid data, trying alternative query...');
-          print('Response details: $response');
-          return await _getDirectSearchTrends();
-        }
-        
-        List<Map<String, dynamic>> searchTrends = [];
-        
-        for (var row in response) {
-          print('🔸 Processing row: $row');
-          String originalTerm = row['search_term'] ?? 'مصطلح غير معروف';
-          
-          // تحسين اسم المنتج بالبحث في الجداول
-          String improvedName = await _improveProductName(originalTerm, row['search_type'] ?? 'products');
-          
-          searchTrends.add({
-            'keyword': improvedName,
-            'count': row['search_count'] ?? 0,
-            'unique_users': row['unique_users'] ?? 0,
-            'click_rate': row['click_rate'] ?? 0.0,
-            'trend_direction': row['trend_direction'] ?? 'stable',
-            'growth_percentage': row['growth_percentage'] ?? 0.0,
-            'avg_results': row['avg_result_count'] ?? 0.0,
-            'is_trending': (row['growth_percentage'] ?? 0.0) > 10,
-          });
-        }
-        
-        if (searchTrends.isNotEmpty) {
-          print('✅ Successfully got ${searchTrends.length} real search trends');
-          return searchTrends;
-        } else {
-          print('⚠️ No valid search trends found, trying direct query...');
-          return await _getDirectSearchTrends();
-        }
-        
-      } catch (functionError) {
-        print('❌ Error calling get_top_search_terms function: $functionError');
-        print('🔄 Falling back to direct query...');
-        return await _getDirectSearchTrends();
       }
-      
+
+      print('✅ Got ${searchTrends.length} search trends from CACHE');
+      return searchTrends;
+
     } catch (e) {
-      print('❌ Error getting real search trends: $e');
-      return [];
+      print('❌ Error getting cached search trends: $e');
+      print('🔄 Falling back to fast version...');
+      return await _getRealSearchTrendsFast();
     }
   }
 
-  // استعلام مباشر كبديل للدالة
-  Future<List<Map<String, dynamic>>> _getDirectSearchTrends() async {
+  // FAST VERSION: Get search trends without expensive name improvement
+  Future<List<Map<String, dynamic>>> _getRealSearchTrendsFast() async {
     try {
-      print('🔍 Using direct query to get search trends...');
-      
+      print('🚀 Getting search trends - FAST VERSION...');
+
+      // استعلام مباشر بسيط بدون تحسين الأسماء
       final response = await _supabase
           .from('search_tracking')
-          .select('search_term, result_count, created_at, user_id, search_type')
-          .gte('created_at', DateTime.now().subtract(Duration(days: 30)).toIso8601String())
-          // إزالة فلتر search_type لجلب جميع الأنواع (products, vet_supplies, distributors)
+          .select('search_term, result_count, user_id, search_type')
+          .gte('created_at', DateTime.now().subtract(Duration(days: 7)).toIso8601String())
           .order('created_at', ascending: false)
-          .limit(150); // زيادة العدد لضمان تنوع أكبر
-      
-      print('📊 Direct query returned ${response.length} records');
-      
+          .limit(50);
+
+      print('📊 Query returned ${response.length} records');
+
       if (response.isEmpty) {
-        print('⚠️ No search data found in direct query, returning empty list');
+        print('⚠️ No search data found');
         return [];
       }
-      
-      // تجميع البيانات يدوياً
+
+      // تجميع البيانات يدوياً بدون تحسين الأسماء
       Map<String, Map<String, dynamic>> termStats = {};
-      
+
       for (var record in response) {
         final term = record['search_term'] as String? ?? '';
-        final searchType = record['search_type'] as String? ?? 'unknown';
-        if (term.isEmpty) continue;
-        
+        if (term.isEmpty || term.length < 2) continue;
+
         if (termStats.containsKey(term)) {
           termStats[term]!['count'] += 1;
           termStats[term]!['total_results'] += (record['result_count'] as int? ?? 0);
           termStats[term]!['users'].add(record['user_id']);
-          // تحديث نوع البحث (إذا كان متعدد الأنواع)
-          if (!termStats[term]!['search_types'].contains(searchType)) {
-            termStats[term]!['search_types'].add(searchType);
-          }
         } else {
           termStats[term] = {
             'count': 1,
             'total_results': record['result_count'] as int? ?? 0,
             'users': {record['user_id']},
-            'search_types': {searchType}, // إضافة أنواع البحث
           };
         }
       }
-      
+
       // تحويل لقائمة مرتبة
       List<Map<String, dynamic>> searchTrends = [];
-      
+
       var sortedTerms = termStats.entries.toList()
         ..sort((a, b) => b.value['count'].compareTo(a.value['count']));
-      
-      for (var entry in sortedTerms.take(15)) {
+
+      for (var entry in sortedTerms.take(10)) {
         final stats = entry.value;
-        final searchTypes = List<String>.from(stats['search_types']);
-        
-        // تحديد النوع الأساسي للتحسين (الأكثر شيوعاً أو الأول)
-        String primaryType = searchTypes.isNotEmpty ? searchTypes.first : 'products';
-        
-        // تحسين اسم المنتج حسب النوع الأساسي
-        String improvedName = await _improveProductName(entry.key, primaryType);
-        
-        // تكوين رسالة الأنواع
-        String typesText = '';
-        if (searchTypes.length > 1) {
-          typesText = ' (${searchTypes.join(', ')})';
-        } else if (searchTypes.isNotEmpty) {
-          typesText = ' (${searchTypes.first})';
-        }
-        
-        print('📊 Search term: "$improvedName"$typesText - Count: ${stats['count']}');
-        
+
         searchTrends.add({
-          'keyword': improvedName,
+          'keyword': entry.key,
           'count': stats['count'],
           'unique_users': stats['users'].length,
-          'click_rate': 0.0, // لا يمكن حسابها بدون بيانات النقرات
+          'click_rate': 0.0,
           'trend_direction': 'up',
           'growth_percentage': stats['count'] > 5 ? 25.0 : 10.0,
           'avg_results': stats['total_results'] / stats['count'],
           'is_trending': stats['count'] > 3,
-          'search_types': searchTypes, // إضافة أنواع البحث للعرض
-          'primary_type': primaryType, // النوع الأساسي
         });
       }
-      
-      print('✅ Successfully processed ${searchTrends.length} search trends from direct query');
+
+      print('✅ Got ${searchTrends.length} search trends in FAST mode');
       return searchTrends;
-      
+
     } catch (e) {
-      print('❌ Error in direct search trends query: $e');
+      print('❌ Error getting search trends: $e');
       return [];
     }
   }
@@ -483,83 +414,6 @@ class AnalyticsRepositoryUpdated {
       print('❌ Error updating search tracking: $e');
       print('❌ Old term: "$oldTerm"');
       print('❌ New term: "$newTerm"');
-    }
-  }
-
-  // تحسين جميع مصطلحات البحث الموجودة (محسن للأداء)
-  /// Improve all existing search terms in background (optimized for performance)
-  Future<void> _improveAllExistingSearchTerms() async {
-    try {
-      print('🚀 Starting optimized background improvement...');
-      
-      // 1. تحقق من آخر معالجة عامة
-      final lastProcessed = await _getLastProcessingTime('general');
-      if (lastProcessed != null && 
-          lastProcessed.isAfter(DateTime.now().subtract(Duration(hours: 12)))) {
-        print('⏩ Skipping general improvement - processed recently at $lastProcessed');
-        return;
-      }
-
-      // 2. تأخير أطول للمعالجة العامة
-      await Future.delayed(Duration(seconds: 5));
-      
-      // 3. جلب 5 مصطلحات فقط (بدلاً من 50)
-      final searchTerms = await _supabase
-          .from('search_tracking')
-          .select('search_term, search_type')
-          .gte('created_at', DateTime.now().subtract(Duration(days: 3)).toIso8601String()) // تقليل من 7 إلى 3 أيام
-          .limit(10); // تقليل من 50 إلى 10
-      
-      // تجميع المصطلحات الفريدة
-      Set<String> uniqueTerms = {};
-      Map<String, String> termTypes = {};
-      
-      for (var record in searchTerms) {
-        String term = record['search_term'] ?? '';
-        String type = record['search_type'] ?? 'products';
-        
-        if (term.length >= 3 && !uniqueTerms.contains(term)) {
-          uniqueTerms.add(term);
-          termTypes[term] = type;
-        }
-      }
-      
-      print('🚀 Found ${uniqueTerms.length} unique terms for optimized improvement');
-      
-      // 4. معالجة 3 مصطلحات فقط (بدلاً من 20)
-      int processed = 0;
-      for (String term in uniqueTerms.take(3)) {
-        try {
-          String searchType = termTypes[term] ?? 'products';
-          print('⚡ Processing term $processed: "$term" (Type: $searchType)');
-          
-          String improvedName = await _improveProductNameOptimized(term, searchType);
-          
-          // إذا تم تحسين الاسم، نحدث قاعدة البيانات
-          if (improvedName != term) {
-            await _updateSearchTermInTracking(term, improvedName);
-            print('✅ Optimized: "$term" → "$improvedName"');
-          } else {
-            print('⚪ No optimization needed for: "$term"');
-          }
-          
-          processed++;
-          
-          // توقف أقصر بين المصطلحات
-          await Future.delayed(Duration(milliseconds: 50));
-          
-        } catch (e) {
-          print('❌ Error in optimized processing for "$term": $e');
-        }
-      }
-      
-      // 5. حفظ وقت آخر معالجة عامة
-      await _saveLastProcessingTime('general', DateTime.now());
-      
-      print('🚀 Optimized background improvement completed. Processed $processed terms.');
-      
-    } catch (e) {
-      print('❌ Error in optimized background improvement: $e');
     }
   }
 

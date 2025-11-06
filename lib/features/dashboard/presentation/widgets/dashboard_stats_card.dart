@@ -6,7 +6,7 @@ class DashboardStatsCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String? subtitle;
-  final double? growth;
+  // final double? growth; // ❌ تم الحذف
 
   const DashboardStatsCard({
     super.key,
@@ -15,92 +15,93 @@ class DashboardStatsCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.subtitle,
-    this.growth,
+    // this.growth, // ❌ تم الحذف
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color.withOpacity(0.1),
-              color.withOpacity(0.05),
-            ],
-          ),
-        ),
+      elevation: 2,
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(
-                  icon,
-                  color: color,
-                  size: 28,
-                ),
-                if (growth != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: growth! >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          growth! >= 0 ? Icons.trending_up : Icons.trending_down,
-                          color: growth! >= 0 ? Colors.green : Colors.red,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${growth!.abs().toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: growth! >= 0 ? Colors.green : Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
+            // --- الأيقونة فقط ---
+            _buildIcon(), // ✅ أصبح يستدعي الأيقونة مباشرة
+            const SizedBox(height: 20),
+
+            // --- القيمة (الرقم الكبير) ---
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: theme.textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w900,
                 color: color,
+                fontSize: 36,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
+
+            // --- العنوان ---
             Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
               ),
             ),
+
+            // --- العنوان الفرعي (إن وجد) ---
             if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[500],
-                ),
-              ),
+              const SizedBox(height: 10),
+              _buildSubtitleBadge(subtitle!, theme),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  // --- 1. دالة مساعدة لرسم الأيقونة ---
+  Widget _buildIcon() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: 24,
+      ),
+    );
+  }
+
+  // --- 2. دالة شارة النمو ---
+  // ❌ تم حذف دالة _buildGrowthBadge بالكامل
+
+  // --- 3. دالة مساعدة لرسم العنوان الفرعي ---
+  Widget _buildSubtitleBadge(String subtitle, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        subtitle,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
         ),
       ),
     );

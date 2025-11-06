@@ -6,11 +6,10 @@ import 'package:fieldawy_store/features/dashboard/application/dashboard_provider
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/dashboard_stats_card.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/quick_actions_panel.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/recent_products_widget.dart';
-import 'package:fieldawy_store/features/dashboard/presentation/widgets/performance_chart_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/top_products_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/alerts_notifications_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/regional_stats_widget.dart';
-import 'package:fieldawy_store/features/dashboard/presentation/widgets/advanced_views_analytics_widget.dart';
+import 'package:fieldawy_store/features/dashboard/presentation/widgets/smart_recommendations_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/trends_analytics_widget_updated.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -20,9 +19,8 @@ class DashboardPage extends ConsumerStatefulWidget {
   ConsumerState<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends ConsumerState<DashboardPage> 
+class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  
   late TabController _tabController;
 
   @override
@@ -41,15 +39,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Refresh dashboard when app comes to foreground
-    if (state == AppLifecycleState.resumed) {
-      _refreshDashboard();
-    }
+    // تم إلغاء التحديث التلقائي عند العودة للتطبيق
+    // if (state == AppLifecycleState.resumed) {
+    //   _refreshDashboard();
+    // }
   }
 
-  // Function to refresh all dashboard data
   Future<void> _refreshDashboard() async {
-    // Increment refresh counter to trigger all providers
     final currentCount = ref.read(dashboardRefreshProvider);
     ref.read(dashboardRefreshProvider.notifier).state = currentCount + 1;
   }
@@ -58,181 +54,239 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Widget build(BuildContext context) {
     final dashboardStatsAsync = ref.watch(dashboardStatsProvider);
     final isRefreshing = ref.watch(dashboardRefreshNotifierProvider);
+    final theme = Theme.of(context);
 
     return MainScaffold(
-      selectedIndex: 2, // Dashboard is at index 2 for distributors
+      selectedIndex: 2,
       body: Stack(
         children: [
           Column(
             children: [
-              // Welcome Header with refresh button
+              // Modern Header with Gradient
               Container(
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Theme.of(context).primaryColor,
-                      Theme.of(context).primaryColor.withOpacity(0.8),
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primary.withOpacity(0.8),
+                      theme.colorScheme.secondary.withOpacity(0.6),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'مرحباً بك في لوحة التحكم المتقدمة',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'إحصائياتك الخاصة • ترندات عالمية • تحليلات متقدمة',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.dashboard,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Manual refresh button
-                        InkWell(
-                          onTap: () {
-                            ref.read(dashboardRefreshNotifierProvider.notifier).refreshDashboard();
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.refresh,
-                                  color: Colors.white,
-                                  size: 16,
+                        Row(
+                          children: [
+                            // Back Arrow
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1.5,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'تحديث',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      color: Colors.white,
+                                      size: 15,
+                                    ),
                                   ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dashboard',
+                                    style: theme.textTheme.headlineMedium
+                                        ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Real-time analytics & insights',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    ref
+                                        .read(dashboardRefreshNotifierProvider
+                                            .notifier)
+                                        .refreshDashboard();
+                                  },
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(9),
+                                    child: Icon(
+                                      Icons.refresh_rounded,
+                                      color: Colors.white,
+                                      size: 17,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Modern Tab Bar
+                        Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: TabBar(
+                            controller: _tabController,
+                            indicator: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            labelColor: theme.colorScheme.primary,
+                            unselectedLabelColor: Colors.white.withOpacity(0.9),
+                            labelStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            unselectedLabelStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                            dividerColor: Colors.transparent,
+                            tabs: [
+                              Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.person_outline, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text('Personal'),
+                                  ],
+                                ),
+                              ),
+                              Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.trending_up_rounded, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text('Trends'),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Tab Bar
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey[600],
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.person, size: 20),
-                          const SizedBox(width: 8),
-                          Text('إحصائياتي الخاصة'),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.public, size: 20),
-                          const SizedBox(width: 8),
-                          Text('الترندات العالمية'),
-                        ],
-                      ),
-                    ),
-                  ],
                 ),
               ),
 
-              // Tab Bar View
+              // Tab Content
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    // Tab 1: Personal Statistics
                     _buildPersonalStatsTab(dashboardStatsAsync),
-                    
-                    // Tab 2: Global Trends
                     _buildGlobalTrendsTab(),
                   ],
                 ),
               ),
             ],
           ),
-          
-          // Refreshing indicator
+
+          // Modern Refreshing Indicator
           if (isRefreshing)
             Container(
-              color: Colors.black.withOpacity(0.1),
-              child: const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.primary,
+                          ),
                         ),
-                        SizedBox(width: 16),
-                        Text('جارٍ تحديث البيانات...'),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Refreshing data...',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -242,37 +296,71 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  // Tab 1: Personal Statistics
   Widget _buildPersonalStatsTab(AsyncValue<dynamic> dashboardStatsAsync) {
+    final theme = Theme.of(context);
+
     return RefreshIndicator(
       onRefresh: _refreshDashboard,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Personal Stats Header
-            Row(
-              children: [
-                Icon(Icons.person, color: Theme.of(context).primaryColor, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'إحصائياتي الشخصية',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            // Section Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primaryContainer.withOpacity(0.5),
+                    theme.colorScheme.primaryContainer.withOpacity(0.2),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'تفاصيل شاملة عن أداء منتجاتك ونشاطك في التطبيق',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.person_outline,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Personal Statistics',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Your performance insights',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Stats Cards
             dashboardStatsAsync.when(
@@ -282,46 +370,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     children: [
                       Expanded(
                         child: DashboardStatsCard(
-                          title: 'إجمالي المنتجات',
+                          title: 'Total Products',
                           value: '${stats.totalProducts}',
-                          icon: Icons.inventory,
+                          icon: Icons.inventory_2_outlined,
                           color: Colors.blue,
-                          growth: stats.monthlyGrowth,
+                        
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: DashboardStatsCard(
-                          title: 'العروض النشطة',
+                          title: 'Active Offers',
                           value: '${stats.activeOffers}',
-                          icon: Icons.local_offer,
+                          icon: Icons.local_offer_outlined,
                           color: Colors.green,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DashboardStatsCard(
-                          title: 'إجمالي المشاهدات',
-                          value: '${stats.totalViews}',
-                          icon: Icons.visibility,
-                          color: Colors.purple,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DashboardStatsCard(
-                          title: 'متوسط التقييم',
-                          value: '${stats.averageRating.toStringAsFixed(1)}',
-                          icon: Icons.star,
-                          color: Colors.amber,
-                          subtitle: 'من 5.0',
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 12),
+                  DashboardStatsCard(
+                    title: 'Total Views',
+                    value: '${stats.totalViews}',
+                    icon: Icons.visibility_outlined,
+                    color: Colors.purple,
                   ),
                 ],
               ),
@@ -330,66 +402,67 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   Row(
                     children: [
                       Expanded(child: _buildLoadingCard()),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(child: _buildLoadingCard()),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _buildLoadingCard()),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildLoadingCard()),
-                    ],
-                  ),
+                  const SizedBox(height: 12),
+                  _buildLoadingCard(),
                 ],
               ),
-              error: (error, stack) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.error, color: Colors.red, size: 48),
-                        const SizedBox(height: 8),
-                        Text(
-                          'خطأ في تحميل الإحصائيات',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _refreshDashboard,
-                          child: Text('إعادة المحاولة'),
-                        ),
-                      ],
-                    ),
+              error: (error, stack) => Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.red.withOpacity(0.3),
                   ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.error_outline,
+                          color: Colors.red, size: 40),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load statistics',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _refreshDashboard,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // Quick Actions Panel
+            // Quick Actions
             const QuickActionsPanel(),
 
             const SizedBox(height: 24),
 
-            // Advanced Views Analytics Widget
-            const AdvancedViewsAnalyticsWidget(),
-
-            const SizedBox(height: 24),
-
-            // Original Charts and Analytics
-            const PerformanceChartWidget(),
-
-            const SizedBox(height: 24),
-
-            // Responsive Layout for Products and Alerts
+            // Responsive Layout
             LayoutBuilder(
               builder: (context, constraints) {
                 if (constraints.maxWidth > 768) {
-                  // Desktop layout - two columns
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -398,6 +471,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         child: Column(
                           children: [
                             const RecentProductsWidget(),
+                            const SizedBox(height: 16),
+                            const SmartRecommendationsWidget(),
                             const SizedBox(height: 16),
                             const TopProductsWidget(),
                           ],
@@ -416,10 +491,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     ],
                   );
                 } else {
-                  // Mobile layout - single column
                   return Column(
                     children: [
                       const RecentProductsWidget(),
+                      const SizedBox(height: 16),
+                      const SmartRecommendationsWidget(),
                       const SizedBox(height: 16),
                       const AlertsNotificationsWidget(),
                       const SizedBox(height: 16),
@@ -434,25 +510,43 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
             const SizedBox(height: 24),
 
-            // Footer for personal tab
+            // Footer Badge
             Center(
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primaryContainer.withOpacity(0.5),
+                      theme.colorScheme.primaryContainer.withOpacity(0.2),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.person, color: Colors.blue, size: 16),
-                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.person_outline,
+                        color: theme.colorScheme.primary,
+                        size: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Text(
-                      'إحصائياتك الشخصية - محدثة كل دقيقة',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontSize: 12,
+                      'Personal Stats • Updated every minute',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -468,76 +562,147 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  // Tab 2: Global Trends
   Widget _buildGlobalTrendsTab() {
+    final theme = Theme.of(context);
+
     return RefreshIndicator(
       onRefresh: _refreshDashboard,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Global Trends Header
-            Row(
-              children: [
-                Icon(Icons.public, color: Colors.green, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'الترندات العالمية',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            // Section Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.green.withOpacity(0.15),
+                    Colors.green.withOpacity(0.05),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'اكتشف المنتجات الأكثر رواجاً عالمياً واحصل على توصيات ذكية',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.green.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.trending_up_rounded,
+                      color: Colors.green,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Global Trends',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Market insights & analytics',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Global Trends Analytics Widget (Updated with real data)
+            // Trends Widget
             const TrendsAnalyticsWidgetUpdated(),
 
             const SizedBox(height: 24),
 
-            // Footer for global trends tab
+            // Footer
             Center(
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.green.withOpacity(0.15),
+                          Colors.green.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.public, color: Colors.green, size: 16),
-                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.public,
+                            color: Colors.green,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Text(
-                          'بيانات عالمية من جميع الموزعين - محدثة كل ساعة',
-                          style: TextStyle(
+                          'Global Data • Updated hourly',
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.green[700],
-                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'آخر تحديث: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
+                  const SizedBox(height: 12),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 12,
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Last updated: ${DateFormat('MMM dd, HH:mm').format(DateTime.now())}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -552,56 +717,73 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildLoadingCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        height: 120,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                Container(
-                  width: 40,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: 80,
-              height: 24,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: 120,
-              height: 16,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ],
+    final theme = Theme.of(context);
+
+    return Container(
+      height: 130,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Container(
+                width: 50,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 100,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 140,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

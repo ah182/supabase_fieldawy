@@ -229,17 +229,125 @@ class AnalyticsRepository {
     }
   }
 
-  // Get geographic distribution of views
+  // Get geographic distribution of views - REAL DATA from product_views
   Future<List<Map<String, dynamic>>> _getGeographicViews(String userId) async {
     try {
-      // For now, return mock data since we don't track user locations
-      return [
-        {'region': 'القاهرة', 'views': 125, 'percentage': 0.35},
-        {'region': 'الجيزة', 'views': 89, 'percentage': 0.25},
-        {'region': 'الإسكندرية', 'views': 67, 'percentage': 0.19},
-        {'region': 'الدقهلية', 'views': 45, 'percentage': 0.13},
-        {'region': 'الشرقية', 'views': 29, 'percentage': 0.08},
-      ];
+      // Get all product IDs for this distributor
+      List<String> productIds = [];
+
+      // 1. Get IDs from distributor_products
+      try {
+        final distributorProducts = await _supabase
+            .from('distributor_products')
+            .select('product_id')
+            .eq('distributor_id', userId);
+
+        for (var product in distributorProducts) {
+          if (product['product_id'] != null) {
+            productIds.add(product['product_id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting distributor products: $e');
+      }
+
+      // 2. Get IDs from distributor_ocr_products
+      try {
+        final ocrProducts = await _supabase
+            .from('distributor_ocr_products')
+            .select('id, ocr_product_id')
+            .eq('distributor_id', userId);
+
+        for (var product in ocrProducts) {
+          if (product['id'] != null) {
+            productIds.add(product['id'].toString());
+          }
+          if (product['ocr_product_id'] != null) {
+            productIds.add(product['ocr_product_id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting OCR products: $e');
+      }
+
+      // 3. Get IDs from distributor_surgical_tools
+      try {
+        final surgicalTools = await _supabase
+            .from('distributor_surgical_tools')
+            .select('id')
+            .eq('distributor_id', userId);
+
+        for (var tool in surgicalTools) {
+          if (tool['id'] != null) {
+            productIds.add(tool['id'].toString());
+          }
+        }
+      } catch (e) {
+        print('Error getting surgical tools: $e');
+      }
+
+      if (productIds.isEmpty) {
+        return [];
+      }
+
+      // Get product views with user information
+      final productViews = await _supabase
+          .from('product_views')
+          .select('user_id, product_id')
+          .inFilter('product_id', productIds);
+
+      // Get unique user IDs who viewed the products
+      Set<String> viewerUserIds = {};
+      for (var view in productViews) {
+        if (view['user_id'] != null) {
+          viewerUserIds.add(view['user_id'].toString());
+        }
+      }
+
+      if (viewerUserIds.isEmpty) {
+        return [];
+      }
+
+      // Get user governorates
+      final users = await _supabase
+          .from('users')
+          .select('id, governorates')
+          .inFilter('id', viewerUserIds.toList());
+
+      // Count views by governorate
+      Map<String, int> governorateViews = {};
+      int totalViews = 0;
+
+      for (var user in users) {
+        final governorates = user['governorates'] as List<dynamic>?;
+        if (governorates != null && governorates.isNotEmpty) {
+          // Count how many times this user viewed products
+          final userViews = productViews.where((v) => v['user_id'] == user['id']).length;
+
+          // Distribute views across user's governorates
+          for (var gov in governorates) {
+            final govName = gov.toString();
+            governorateViews[govName] = (governorateViews[govName] ?? 0) + userViews;
+            totalViews += userViews;
+          }
+        }
+      }
+
+      // Convert to list and calculate percentages
+      List<Map<String, dynamic>> result = [];
+      governorateViews.forEach((region, views) {
+        result.add({
+          'region': region,
+          'views': views,
+          'percentage': totalViews > 0 ? (views / totalViews) : 0.0,
+        });
+      });
+
+      // Sort by views descending
+      result.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
+
+      // Return top 10 regions
+      return result.take(10).toList();
     } catch (e) {
       print('Error getting geographic views: $e');
       return [];

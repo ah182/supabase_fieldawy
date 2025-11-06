@@ -9,19 +9,135 @@ import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_scr
 import 'package:fieldawy_store/features/books/presentation/screens/books_screen.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/courses_screen.dart';
 
+// -------------------------------------------------------------------
+// 2. كلاس مساعد لتنظيم بيانات الأزرار
+// -------------------------------------------------------------------
+class _QuickActionItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+// -------------------------------------------------------------------
+// 3. الـ Widget الرئيسية بتصميم عصري وجذاب
+// -------------------------------------------------------------------
 class QuickActionsPanel extends StatelessWidget {
   const QuickActionsPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // تجميع كل الإجراءات في قائمة واحدة لسهولة إدارتها
+    final List<_QuickActionItem> actions = [
+      _QuickActionItem(
+        icon: Icons.add_circle_outline,
+        label: 'إضافة منتج',
+        color: Colors.blue,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const AddProductScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.local_offer,
+        label: 'إضافة عرض',
+        color: Colors.green,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const LimitedOfferScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.inventory,
+        label: 'منتجاتي',
+        color: Colors.indigo,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const MyProductsScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.medical_services,
+        label: 'أدوات جراحية',
+        color: Colors.purple,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const SurgicalToolsScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.pets,
+        label: 'مستلزمات بيطرية',
+        color: Colors.teal,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const VetSuppliesScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.work,
+        label: 'عروض توظيف',
+        color: Colors.orange,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const JobOffersScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.menu_book,
+        label: 'كتب بيطرية',
+        color: Colors.brown,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const BooksScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.school,
+        label: 'كورسات',
+        color: Colors.deepPurple,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const CoursesScreen(),
+          ));
+        },
+      ),
+      _QuickActionItem(
+        icon: Icons.settings,
+        label: 'الإعدادات',
+        color: Colors.grey.shade700,
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const SettingsScreen(),
+          ));
+        },
+      ),
+    ];
+
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2, // ✅ تخفيف الظل لمظهر أنعم
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16)), // ✅ زيادة الحواف الدائرية
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- الهيدر (العنوان) ---
             Row(
               children: [
                 Icon(Icons.flash_on, color: Colors.orange, size: 24),
@@ -29,163 +145,26 @@ class QuickActionsPanel extends StatelessWidget {
                 Text(
                   'إجراءات سريعة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // First row - Main actions
+            const SizedBox(height: 20),
+
+            // --- استخدام GridView لعرض الأزرار بشكل عصري ---
             GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
-              children: [
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.add_circle_outline,
-                  label: 'إضافة منتج',
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AddProductScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.local_offer,
-                  label: 'إضافة عرض',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const LimitedOfferScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.inventory,
-                  label: 'منتجاتي',
-                  color: Colors.indigo,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const MyProductsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Second row - Category actions
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
-              children: [
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.medical_services,
-                  label: 'أدوات جراحية',
-                  color: Colors.purple,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SurgicalToolsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.pets,
-                  label: 'مستلزمات بيطرية',
-                  color: Colors.teal,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const VetSuppliesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.work,
-                  label: 'عروض توظيف',
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const JobOffersScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Third row - Educational content
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
-              children: [
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.menu_book,
-                  label: 'كتب بيطرية',
-                  color: Colors.brown,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const BooksScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.school,
-                  label: 'كورسات',
-                  color: Colors.deepPurple,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CoursesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildQuickActionButton(
-                  context,
-                  icon: Icons.settings,
-                  label: 'الإعدادات',
-                  color: Colors.grey,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+              crossAxisCount: 2, // ✅ عرض عنصرين في كل صف
+              shrinkWrap: true, // ✅ ضروري داخل Column
+              physics:
+                  const NeverScrollableScrollPhysics(), // ✅ لمنع السكرول داخل الكارد
+              crossAxisSpacing: 12, // ✅ مسافة أفقية
+              mainAxisSpacing: 12, // ✅ مسافة رأسية
+              childAspectRatio:
+                  (3 / 2.5), // ✅ ضبط النسبة بين العرض والارتفاع للزر
+              children: actions.map((item) {
+                return _buildQuickActionButton(context, item: item);
+              }).toList(),
             ),
           ],
         ),
@@ -193,37 +172,39 @@ class QuickActionsPanel extends StatelessWidget {
     );
   }
 
+  // --- تصميم الزر الجديد ---
+  // أبسط، أنظف، ويعتمد على الأيقونة والنص بشكل عمودي
   Widget _buildQuickActionButton(
     BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
+    required _QuickActionItem item,
   }) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      onTap: item.onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
-          color: color.withOpacity(0.05),
+          color: item.color.withOpacity(0.1), // ✅ لون خلفية خفيف جداً
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
+            Icon(item.icon, color: item.color, size: 32), // ✅ أيقونة بحجم أوضح
+            const SizedBox(height: 10),
+            Expanded(
+              child: Text(
+                item.label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: item.color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

@@ -76,6 +76,7 @@ class TopProductsWidget extends ConsumerWidget {
   Widget _buildTopProductItem(BuildContext context, Map<String, dynamic> product, int rank) {
     final views = product['views'] ?? 0;
     final price = product['price'] ?? 0;
+    final source = product['source'] ?? 'catalog';
 
     Color rankColor;
     switch (rank) {
@@ -112,11 +113,22 @@ class TopProductsWidget extends ConsumerWidget {
           ),
         ),
       ),
-      title: Text(
-        product['name'] ?? 'منتج غير معروف',
-        style: const TextStyle(fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              product['name'] ?? 'منتج غير معروف',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          _buildSourceBadge(source),
+        ],
       ),
       subtitle: Text(
         '$price ${'EGP'.tr()}',
@@ -143,6 +155,68 @@ class TopProductsWidget extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSourceBadge(String source) {
+    String label;
+    Color color;
+    IconData icon;
+
+    switch (source) {
+      case 'offer':
+        label = 'عرض';
+        color = Colors.red;
+        icon = Icons.local_offer;
+        break;
+      case 'course':
+        label = 'كورس';
+        color = Colors.purple;
+        icon = Icons.school;
+        break;
+      case 'book':
+        label = 'كتاب';
+        color = Colors.brown;
+        icon = Icons.menu_book;
+        break;
+      case 'surgical':
+        label = 'جراحي';
+        color = Colors.teal;
+        icon = Icons.medical_services;
+        break;
+      case 'ocr':
+        label = 'OCR';
+        color = Colors.orange;
+        icon = Icons.qr_code_scanner;
+        break;
+      default:
+        label = 'منتج';
+        color = Colors.blue;
+        icon = Icons.inventory;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

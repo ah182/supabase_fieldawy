@@ -78,11 +78,11 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                   // Global trending products
                   _buildTrendingProducts(context, analytics['trending'] ?? []),
                   const SizedBox(height: 20),
-                  
+
                   // REAL Search trends
                   _buildRealSearchTrends(context, analytics['searches'] ?? []),
                   const SizedBox(height: 20),
-                  
+
                   // Recommendations for distributor
                   _buildRecommendations(context, analytics['recommendations'] ?? []),
                 ],
@@ -125,13 +125,16 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Text(
-              '🔥 المنتجات الأكثر رواجاً عالمياً',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                '🔥 المنتجات الأكثر رواجاً عالمياً',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -260,21 +263,25 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              Text(
-                                '${product['total_views']} مشاهدة عالمية',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
+                              Flexible(
+                                child: Text(
+                                  '${product['total_views']} مشاهدة عالمية',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Icon(
                                 trendDirection == 'up' ? Icons.trending_up : 
                                 trendDirection == 'down' ? Icons.trending_down : Icons.trending_flat,
                                 color: trendDirection == 'up' ? Colors.green : 
                                        trendDirection == 'down' ? Colors.red : Colors.grey,
-                                size: 16,
+                                size: 14,
                               ),
+                              const SizedBox(width: 2),
                               Text(
                                 '${product['growth_percentage']}%',
                                 style: TextStyle(
@@ -324,15 +331,19 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Text(
-              '🔍 الأكثر بحثاً - بيانات حقيقية',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                '🔍 الأكثر بحثاً - بيانات حقيقية',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
@@ -390,100 +401,45 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: searches.map((search) {
-              final isTrending = search['is_trending'] ?? false;
-              final trendDirection = search['trend_direction'] ?? 'stable';
-              final clickRate = search['click_rate'] ?? 0.0;
-              
+              final count = search['count'] ?? 0;
+              final keyword = search['keyword'] ?? 'مصطلح غير معروف';
+
               return Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isTrending ? Colors.orange.withOpacity(0.15) : Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isTrending ? Colors.orange.withOpacity(0.5) : Colors.orange.withOpacity(0.3),
-                    width: isTrending ? 2 : 1,
+                    color: Colors.orange.withOpacity(0.3),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isTrending) ...[
-                          Icon(Icons.local_fire_department, 
-                               color: Colors.orange[700], size: 16),
-                          const SizedBox(width: 4),
-                        ],
-                        Flexible(
-                          child: Text(
-                            search['keyword'] ?? 'مصطلح غير معروف',
-                            style: TextStyle(
-                              color: Colors.orange[700],
-                              fontSize: 13,
-                              fontWeight: isTrending ? FontWeight.bold : FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${search['count'] ?? 0}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      keyword,
+                      style: TextStyle(
+                        color: Colors.orange[700],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          trendDirection == 'up' ? Icons.trending_up :
-                          trendDirection == 'down' ? Icons.trending_down : Icons.trending_flat,
-                          color: trendDirection == 'up' ? Colors.green :
-                                 trendDirection == 'down' ? Colors.red : Colors.grey,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${search['growth_percentage'] ?? 0}%',
-                          style: TextStyle(
-                            color: trendDirection == 'up' ? Colors.green :
-                                   trendDirection == 'down' ? Colors.red : Colors.grey,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'معدل النقر: ${clickRate.toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (search['unique_users'] != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        '${search['unique_users']} مستخدم فريد',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 9,
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               );
@@ -524,7 +480,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        
+
         if (recommendations.isEmpty)
           Container(
             padding: const EdgeInsets.all(16),
@@ -548,7 +504,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
             separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final recommendation = recommendations[index];
-              
+
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
