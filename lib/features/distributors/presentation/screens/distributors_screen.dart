@@ -90,34 +90,13 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
         // التحقق من أن الـ widget لا يزال موجوداً
         if (!context.mounted) return;
         
-        print('🔍 Tracking distributor search: "$searchTerm" (Results: ${filteredResults.length})');
-        
-        // تحسين اسم المنتج قبل التتبع
-        String improvedSearchTerm = await improveDistributorProductName(ref, searchTerm);
+        print('🔍 Searching distributors: "$searchTerm" (Results: ${filteredResults.length})');
         
         // التحقق مرة أخرى بعد العملية غير المتزامنة
         if (!context.mounted) return;
-        
-        final searchId = await trackDistributorSearch(
-          ref: ref,
-          searchTerm: improvedSearchTerm,
-          results: filteredResults,
-        );
-        currentSearchId.value = searchId;
-        
-        // التحقق الأخير قبل طباعة النتائج
-        if (!context.mounted) return;
-        
-        if (searchId != null) {
-          print('✅ Distributor search tracked with ID: $searchId');
-          if (improvedSearchTerm != searchTerm) {
-            print('🎯 Search term improved: "$searchTerm" → "$improvedSearchTerm"');
-          }
-        } else {
-          print('❌ Failed to track distributor search: no ID returned');
-        }
+        // تم إزالة تتبع البحث في الموزعين
       } catch (e) {
-        print('❌ Error tracking distributor search: $e');
+        print('❌ Error in distributor search: $e');
       }
     }
     
@@ -125,7 +104,7 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
       Timer? debounce;
       void listener() {
         if (debounce?.isActive ?? false) debounce!.cancel();
-        debounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
+        debounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
           debouncedSearchQuery.value = searchController.text;
         });
       }
@@ -190,31 +169,7 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
       return null;
     }, [debouncedSearchQuery.value, filteredDistributors]);
 
-    // تشغيل تحسين أسماء المنتجات في الخلفية عند فتح الصفحة
-    useEffect(() {
-      Future<void> improveDistributorSearchTerms() async {
-        try {
-          // التحقق من أن الـ widget لا يزال موجوداً
-          if (!context.mounted) return;
-          
-          print('🔄 Starting distributor search terms improvement...');
-          await improveAllDistributorSearchTerms(ref);
-          
-          // التحقق مرة أخرى بعد العملية غير المتزامنة
-          if (!context.mounted) return;
-          
-          print('✅ Distributor search terms improvement completed');
-        } catch (e) {
-          print('❌ Error improving distributor search terms: $e');
-        }
-      }
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        improveDistributorSearchTerms();
-      });
-      
-      return null;
-    }, []);
+    // تم إزالة تحسين أسماء المنتجات في الخلفية
 
     
 final sliverAppBar = SliverAppBar(
@@ -498,17 +453,8 @@ final sliverAppBar = SliverAppBar(
       currentUser: currentUser,
       onShowDetails: () {
         // تتبع النقرة على الموزع إذا كان هناك بحث نشط
-        if (searchId != null && searchQuery.length >= 3) {
-          print('👆 Tracking distributor click: ID: ${distributor.id}, Search ID: $searchId');
-          trackSearchClick(
-            ref: ref,
-            searchId: searchId,
-            clickedItemId: distributor.id,
-            itemType: 'distributor',
-          );
-        } else {
-          print('⚠️ No distributor search tracking - Search ID: $searchId, Query length: ${searchQuery.length}');
-        }
+        // تم إزالة تتبع النقر على الموزعين
+        print('👆 Distributor clicked: ${distributor.displayName}');
         _showDistributorDetails(context, theme, distributor);
       },
     );

@@ -249,7 +249,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
 
                       // تتبع البحث مع debounce
                       _searchDebounce?.cancel();
-                      _searchDebounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
+                      _searchDebounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
                         if (mounted) {
                           setState(() {
                             _debouncedSearchQuery = value;

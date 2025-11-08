@@ -60,43 +60,53 @@ class AnalyticsRepositoryUpdated {
     }
   }
 
-  // NEW: Get search trends WITH CACHE - Super Fast!
+  // NEW: Get search trends using get_real_search_trends function
   Future<List<Map<String, dynamic>>> _getRealSearchTrendsWithCache() async {
     try {
-      print('🚀 Getting search trends WITH CACHE...');
+      print('🚀 Getting search trends using get_real_search_trends...');
 
-      // استخدام الدالة المحسّنة التي تستخدم الـ Cache
-      final response = await _supabase.rpc('get_top_search_terms_cached', params: {
+      // استخدام الدالة المحسّنة من ملف SQL
+      final response = await _supabase.rpc('get_real_search_trends', params: {
         'p_limit': 10,
-        'p_days': 7,
+        'p_days_back': 7,
       });
 
       if (response == null || response is! List || response.isEmpty) {
-        print('⚠️ No cached data, falling back to direct query');
+        print('⚠️ No data from get_real_search_trends, falling back to direct query');
         return await _getRealSearchTrendsFast();
       }
 
       List<Map<String, dynamic>> searchTrends = [];
 
       for (var row in response) {
+        final keyword = row['keyword'] ?? 'مصطلح غير معروف';
+        final searchCount = row['search_count'] ?? 0;
+        final improvementScore = row['improvement_score'] ?? 0;
+        final sourceTable = row['source_table'] ?? 'none';
+        final distributorCount = row['distributor_count'] ?? 0;
+        final improved = row['improved'] ?? false;
+
         searchTrends.add({
-          'keyword': row['improved_name'] ?? row['search_term'] ?? 'مصطلح غير معروف',
-          'count': row['search_count'] ?? 0,
-          'unique_users': row['unique_users'] ?? 0,
+          'keyword': keyword,
+          'count': searchCount,
+          'unique_users': distributorCount, // عدد الموزعين كمؤشر للمستخدمين
           'click_rate': 0.0,
           'trend_direction': 'up',
-          'growth_percentage': (row['search_count'] ?? 0) > 5 ? 25.0 : 10.0,
-          'avg_results': (row['avg_result_count'] ?? 0).toDouble(),
-          'is_trending': (row['search_count'] ?? 0) > 3,
-          'improvement_score': row['improvement_score'] ?? 0,
+          'growth_percentage': searchCount > 5 ? 25.0 : 10.0,
+          'avg_results': searchCount.toDouble(),
+          'is_trending': searchCount > 3,
+          'improvement_score': improvementScore,
+          'source_table': sourceTable,
+          'distributor_count': distributorCount,
+          'improved': improved,
         });
       }
 
-      print('✅ Got ${searchTrends.length} search trends from CACHE');
+      print('✅ Got ${searchTrends.length} search trends from get_real_search_trends');
       return searchTrends;
 
     } catch (e) {
-      print('❌ Error getting cached search trends: $e');
+      print('❌ Error getting search trends from get_real_search_trends: $e');
       print('🔄 Falling back to fast version...');
       return await _getRealSearchTrendsFast();
     }
@@ -182,19 +192,26 @@ class AnalyticsRepositoryUpdated {
       String bestMatch = searchTerm; // الاسم الأصلي كاحتياطي
       int bestMatchScore = 0;
       
-      // جداول البحث المحدثة
+      // جداول البحث المحدثة - جداول الموزعين + vet_supplies
       List<Map<String, String>> searchTables = [];
-      
+
       if (searchType == 'products' || searchType == 'general') {
         searchTables.addAll([
-          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
           {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
+          {'table': 'distributor_surgical_tools', 'nameColumn': 'surgical_tools.tool_name', 'condition': ', surgical_tools!inner(tool_name)'},
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
         ]);
       } else if (searchType == 'distributors') {
+        // البحث في الموزعين فقط - بدون vet_supplies
         searchTables.addAll([
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
           {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
+          {'table': 'distributor_surgical_tools', 'nameColumn': 'surgical_tools.tool_name', 'condition': ', surgical_tools!inner(tool_name)'},
+        ]);
+      } else if (searchType == 'surgical_tools') {
+        searchTables.addAll([
+          {'table': 'distributor_surgical_tools', 'nameColumn': 'surgical_tools.tool_name', 'condition': ', surgical_tools!inner(tool_name)'},
         ]);
       } else if (searchType == 'vet_supplies') {
         searchTables.addAll([
@@ -205,13 +222,61 @@ class AnalyticsRepositoryUpdated {
       for (var tableInfo in searchTables) {
         try {
           List<dynamic> results = [];
-          
+
           if (tableInfo['condition']!.isNotEmpty) {
-            // استعلام مع join
-            results = await _supabase
-                .from(tableInfo['table']!)
-                .select('id${tableInfo['condition']}')
-                .limit(200);
+            // استعلام مع join - مع فلتر بحث مستهدف
+            // نبحث في اسم المنتج من الجدول المرتبط
+            String tableName = tableInfo['table']!;
+            String nameColumn = '';
+
+            if (tableName == 'distributor_products') {
+              nameColumn = 'products.name';
+            } else if (tableName == 'distributor_ocr_products') {
+              nameColumn = 'ocr_products.product_name';
+            } else if (tableName == 'distributor_surgical_tools') {
+              nameColumn = 'surgical_tools.tool_name';
+            }
+
+            // نجلب فقط المنتجات التي تطابق كلمة البحث
+            // ⚡ مع حساب عدد الموزعين لكل منتج (للترتيب حسب الشعبية)
+            if (nameColumn.isNotEmpty) {
+              if (tableName == 'distributor_products') {
+                // للمنتجات العادية: نجمع حسب product_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('product_id, products!inner(name)')
+                    .ilike('products.name', '%$cleanSearchTerm%')
+                    .limit(100);
+              } else if (tableName == 'distributor_ocr_products') {
+                // لمنتجات OCR: نجمع حسب ocr_product_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('ocr_product_id, ocr_products!inner(product_name)')
+                    .ilike('ocr_products.product_name', '%$cleanSearchTerm%')
+                    .limit(100);
+              } else if (tableName == 'distributor_surgical_tools') {
+                // للأدوات الجراحية: نجمع حسب surgical_tool_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('surgical_tool_id, surgical_tools!inner(tool_name)')
+                    .ilike('surgical_tools.tool_name', '%$cleanSearchTerm%')
+                    .limit(100);
+              } else {
+                results = await _supabase
+                    .from(tableName)
+                    .select('id${tableInfo['condition']}')
+                    .ilike(nameColumn, '%$cleanSearchTerm%')
+                    .limit(50);
+              }
+            }
+
+            // إذا لم نجد نتائج، نجلب بدون فلتر (fallback)
+            if (results.isEmpty) {
+              results = await _supabase
+                  .from(tableName)
+                  .select('id${tableInfo['condition']}')
+                  .limit(50);
+            }
           } else {
             // استعلام مباشر مع فلتر البحث
             String searchColumn = tableInfo['nameColumn']!;
@@ -220,9 +285,9 @@ class AnalyticsRepositoryUpdated {
                 .select(searchColumn)
                 .or('$searchColumn.ilike.%$cleanSearchTerm%,$searchColumn.ilike.$cleanSearchTerm%')
                 .limit(200);
-            
+
             results = await query;
-            
+
             // إذا لم نجد نتائج، نبحث بدون فلتر البحث
             if (results.isEmpty) {
               results = await _supabase
@@ -232,28 +297,97 @@ class AnalyticsRepositoryUpdated {
             }
           }
           
+          // ⚡ نحسب عدد الموزعين لكل منتج (لجميع الجداول)
+          Map<String, int> productDistributorCount = {};
+          String? tableName = tableInfo['table'];
+
+          if (tableName == 'distributor_products') {
+            for (var product in results) {
+              var nestedData = product['products'];
+              if (nestedData != null) {
+                String productName = nestedData['name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          } else if (tableName == 'distributor_ocr_products') {
+            for (var product in results) {
+              var nestedData = product['ocr_products'];
+              if (nestedData != null) {
+                String productName = nestedData['product_name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          } else if (tableName == 'distributor_surgical_tools') {
+            for (var product in results) {
+              var nestedData = product['surgical_tools'];
+              if (nestedData != null) {
+                String productName = nestedData['tool_name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          }
+
+          // معالجة النتائج
+          Set<String> processedNames = {}; // لتجنب تكرار نفس المنتج
+
           for (var product in results) {
             String productName = '';
-            
+
             // استخراج اسم المنتج حسب بنية البيانات
             if (tableInfo['condition']!.isNotEmpty) {
               // بيانات مع join
-              var nestedData = product[tableInfo['table'] == 'distributor_products' ? 'products' : 'ocr_products'];
-              if (nestedData != null) {
-                productName = nestedData[tableInfo['table'] == 'distributor_products' ? 'name' : 'product_name'] ?? '';
+              String? tableName = tableInfo['table'];
+              if (tableName == 'distributor_products') {
+                var nestedData = product['products'];
+                if (nestedData != null) {
+                  productName = nestedData['name'] ?? '';
+                }
+              } else if (tableName == 'distributor_ocr_products') {
+                var nestedData = product['ocr_products'];
+                if (nestedData != null) {
+                  productName = nestedData['product_name'] ?? '';
+                }
+              } else if (tableName == 'distributor_surgical_tools') {
+                var nestedData = product['surgical_tools'];
+                if (nestedData != null) {
+                  productName = nestedData['tool_name'] ?? '';
+                }
               }
             } else {
               // بيانات مباشرة
               productName = product[tableInfo['nameColumn']!.split('.').last] ?? '';
             }
-            
+
+            // تجنب معالجة نفس المنتج مرتين
+            if (productName.isEmpty || processedNames.contains(productName)) {
+              continue;
+            }
+            processedNames.add(productName);
+
             if (productName.isNotEmpty) {
               int matchScore = _calculateMatchScore(cleanSearchTerm, productName.toLowerCase());
-              
-              if (matchScore > bestMatchScore) {
-                bestMatchScore = matchScore;
+
+              // ⚡ إضافة نقاط إضافية حسب عدد الموزعين (الشعبية)
+              int distributorCount = productDistributorCount[productName] ?? 1;
+              int popularityBonus = 0;
+              if (distributorCount >= 5) popularityBonus = 10;
+              else if (distributorCount >= 3) popularityBonus = 5;
+              else if (distributorCount >= 2) popularityBonus = 2;
+
+              int finalScore = matchScore + popularityBonus;
+
+              print('🔍 "$productName": match=$matchScore, distributors=$distributorCount, bonus=$popularityBonus, final=$finalScore');
+
+              if (finalScore > bestMatchScore) {
+                bestMatchScore = finalScore;
                 bestMatch = productName;
-                
+
                 // إذا وجدنا مطابقة ممتازة، نحدث جدول التتبع
                 if (matchScore >= 80) {
                   await _updateSearchTermInTracking(searchTerm, productName);
@@ -502,22 +636,30 @@ class AnalyticsRepositoryUpdated {
       
       // جداول البحث المحسنة (ترتيب حسب الأولوية)
       List<Map<String, String>> searchTables = [];
-      
-      if (searchType == 'vet_supplies') {
-        // للمستلزمات: البحث في جدول vet_supplies فقط
+
+      if (searchType == 'surgical_tools') {
+        // للأدوات الجراحية: البحث في جدول الموزعين فقط
+        searchTables.addAll([
+          {'table': 'distributor_surgical_tools', 'nameColumn': 'surgical_tools.tool_name', 'condition': ', surgical_tools!inner(tool_name)'},
+        ]);
+      } else if (searchType == 'vet_supplies') {
+        // للمستلزمات البيطرية
         searchTables.addAll([
           {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
         ]);
       } else if (searchType == 'distributors') {
-        // للموزعين: البحث في منتجات الموزعين فقط
+        // للموزعين: البحث في منتجات الموزعين فقط - بدون vet_supplies
         searchTables.addAll([
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
+          {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
         ]);
       } else {
         // للمنتجات العامة
         searchTables.addAll([
-          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
           {'table': 'distributor_products', 'nameColumn': 'products.name', 'condition': ', products!inner(name)'},
+          {'table': 'distributor_ocr_products', 'nameColumn': 'ocr_products.product_name', 'condition': ', ocr_products!inner(product_name)'},
+          {'table': 'distributor_surgical_tools', 'nameColumn': 'surgical_tools.tool_name', 'condition': ', surgical_tools!inner(tool_name)'},
+          {'table': 'vet_supplies', 'nameColumn': 'name', 'condition': ''},
         ]);
       }
       
@@ -526,11 +668,50 @@ class AnalyticsRepositoryUpdated {
           List<dynamic> results = [];
           
           if (tableInfo['condition']!.isNotEmpty) {
-            // استعلام مع join - محدود جداً
-            results = await _supabase
-                .from(tableInfo['table']!)
-                .select('id${tableInfo['condition']}')
-                .limit(30); // تقليل من 200 إلى 30
+            // استعلام مع join - مع فلتر بحث مستهدف
+            String tableName = tableInfo['table']!;
+            String nameColumn = '';
+
+            if (tableName == 'distributor_products') {
+              nameColumn = 'products.name';
+            } else if (tableName == 'distributor_ocr_products') {
+              nameColumn = 'ocr_products.product_name';
+            } else if (tableName == 'distributor_surgical_tools') {
+              nameColumn = 'surgical_tools.tool_name';
+            }
+
+            // نجلب فقط المنتجات التي تطابق كلمة البحث
+            // ⚡ مع حساب عدد الموزعين لكل منتج (للترتيب حسب الشعبية)
+            if (nameColumn.isNotEmpty) {
+              if (tableName == 'distributor_products') {
+                // للمنتجات العادية: نجمع حسب product_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('product_id, products!inner(name)')
+                    .ilike('products.name', '%$cleanSearchTerm%')
+                    .limit(50);
+              } else if (tableName == 'distributor_ocr_products') {
+                // لمنتجات OCR: نجمع حسب ocr_product_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('ocr_product_id, ocr_products!inner(product_name)')
+                    .ilike('ocr_products.product_name', '%$cleanSearchTerm%')
+                    .limit(50);
+              } else if (tableName == 'distributor_surgical_tools') {
+                // للأدوات الجراحية: نجمع حسب surgical_tool_id ونحسب عدد الموزعين
+                results = await _supabase
+                    .from(tableName)
+                    .select('surgical_tool_id, surgical_tools!inner(tool_name)')
+                    .ilike('surgical_tools.tool_name', '%$cleanSearchTerm%')
+                    .limit(50);
+              } else {
+                results = await _supabase
+                    .from(tableName)
+                    .select('id${tableInfo['condition']}')
+                    .ilike(nameColumn, '%$cleanSearchTerm%')
+                    .limit(30);
+              }
+            }
           } else {
             // استعلام مباشر - بحث مستهدف
             String searchColumn = tableInfo['nameColumn']!;
@@ -543,30 +724,96 @@ class AnalyticsRepositoryUpdated {
             results = await query;
           }
           
-          // معالجة سريعة للنتائج
-          for (var product in results.take(10)) { // معالجة 10 فقط من كل جدول
-            String productName = '';
-            
-            if (tableInfo['condition']!.isNotEmpty) {
-              var nestedData = product[tableInfo['table'] == 'distributor_products' ? 'products' : 'ocr_products'];
+          // ⚡ نحسب عدد الموزعين لكل منتج (لجميع الجداول)
+          Map<String, int> productDistributorCount = {};
+          String? tableName = tableInfo['table'];
+
+          if (tableName == 'distributor_products') {
+            for (var product in results) {
+              var nestedData = product['products'];
               if (nestedData != null) {
-                productName = nestedData[tableInfo['table'] == 'distributor_products' ? 'name' : 'product_name'] ?? '';
+                String productName = nestedData['name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          } else if (tableName == 'distributor_ocr_products') {
+            for (var product in results) {
+              var nestedData = product['ocr_products'];
+              if (nestedData != null) {
+                String productName = nestedData['product_name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          } else if (tableName == 'distributor_surgical_tools') {
+            for (var product in results) {
+              var nestedData = product['surgical_tools'];
+              if (nestedData != null) {
+                String productName = nestedData['tool_name'] ?? '';
+                if (productName.isNotEmpty) {
+                  productDistributorCount[productName] = (productDistributorCount[productName] ?? 0) + 1;
+                }
+              }
+            }
+          }
+
+          // معالجة سريعة للنتائج
+          Set<String> processedNames = {}; // لتجنب تكرار نفس المنتج
+
+          for (var product in results.take(20)) { // معالجة 20 من كل جدول
+            String productName = '';
+
+            if (tableInfo['condition']!.isNotEmpty) {
+              String? tableName = tableInfo['table'];
+              if (tableName == 'distributor_products') {
+                var nestedData = product['products'];
+                if (nestedData != null) {
+                  productName = nestedData['name'] ?? '';
+                }
+              } else if (tableName == 'distributor_ocr_products') {
+                var nestedData = product['ocr_products'];
+                if (nestedData != null) {
+                  productName = nestedData['product_name'] ?? '';
+                }
+              } else if (tableName == 'distributor_surgical_tools') {
+                var nestedData = product['surgical_tools'];
+                if (nestedData != null) {
+                  productName = nestedData['tool_name'] ?? '';
+                }
               }
             } else {
               productName = product[tableInfo['nameColumn']!.split('.').last] ?? '';
             }
-            
+
+            // تجنب معالجة نفس المنتج مرتين
+            if (productName.isEmpty || processedNames.contains(productName)) {
+              continue;
+            }
+            processedNames.add(productName);
+
             if (productName.isNotEmpty) {
               int matchScore = _calculateMatchScoreOptimized(cleanSearchTerm, productName.toLowerCase());
-              
-              if (matchScore > bestMatchScore) {
-                bestMatchScore = matchScore;
+
+              // ⚡ إضافة نقاط إضافية حسب عدد الموزعين (الشعبية)
+              int distributorCount = productDistributorCount[productName] ?? 1;
+              int popularityBonus = 0;
+              if (distributorCount >= 5) popularityBonus = 10;
+              else if (distributorCount >= 3) popularityBonus = 5;
+              else if (distributorCount >= 2) popularityBonus = 2;
+
+              int finalScore = matchScore + popularityBonus;
+
+              if (finalScore > bestMatchScore) {
+                bestMatchScore = finalScore;
                 bestMatch = productName;
-                
+
                 // إذا وجدنا مطابقة ممتازة، توقف فوراً
                 if (matchScore >= 85) {
                   await _updateSearchTermInTracking(searchTerm, productName);
-                  print('⚡ Quick match found: "$searchTerm" → "$productName" ($matchScore%)');
+                  print('⚡ Quick match found: "$searchTerm" → "$productName" (match=$matchScore, distributors=$distributorCount, final=$finalScore)');
                   return productName;
                 }
               }
@@ -641,7 +888,7 @@ class AnalyticsRepositoryUpdated {
     }
   }
 
-  // Log search activity - NEW function
+  // Log search activity - ENHANCED function with auto-improvement
   Future<String?> logSearchActivity({
     required String searchTerm,
     String searchType = 'products',
@@ -655,11 +902,12 @@ class AnalyticsRepositoryUpdated {
         print('Error: No authenticated user found');
         return null;
       }
-      
+
       print('Logging search activity for user: $userId');
       print('Search term: $searchTerm, Type: $searchType, Results: $resultCount');
-      
-      final response = await _supabase.rpc('log_search_activity', params: {
+
+      // استخدام الدالة المحسّنة التي تحسّن الاسم تلقائياً
+      final response = await _supabase.rpc('log_search_activity_enhanced', params: {
         'p_user_id': userId,
         'p_search_term': searchTerm,
         'p_search_type': searchType,
@@ -667,16 +915,16 @@ class AnalyticsRepositoryUpdated {
         'p_result_count': resultCount,
         'p_session_id': sessionId,
       });
-      
-      print('Search logged successfully: $searchTerm (ID: $response)');
-      
+
+      print('✅ Search logged successfully with auto-improvement: $searchTerm (ID: $response)');
+
       // الدالة المحدثة ترجع BIGINT، تحويل إلى string
       if (response != null) {
         return response.toString();
       }
       return null;
     } catch (e) {
-      print('Error logging search activity: $e');
+      print('❌ Error logging search activity: $e');
       print('User ID: ${_supabase.auth.currentUser?.id}');
       print('Search term: $searchTerm');
       return null;
@@ -940,9 +1188,28 @@ class AnalyticsRepositoryUpdated {
   Future<List<Map<String, dynamic>>> _getGlobalTrendingProductsSimplified(String? userId) async {
     try {
       List<Map<String, dynamic>> trendingProducts = [];
-      
+
       print('Getting trending products using direct database queries...');
-      
+
+      // ⚡ OPTIMIZATION: Get user's products ONCE at the beginning
+      Set<String> userProductIds = {};
+      if (userId != null) {
+        try {
+          final userProducts = await _supabase
+              .from('distributor_products')
+              .select('product_id')
+              .eq('distributor_id', userId);
+
+          userProductIds = userProducts
+              .map((p) => p['product_id'].toString())
+              .toSet();
+
+          print('User has ${userProductIds.length} products');
+        } catch (e) {
+          print('Error getting user products: $e');
+        }
+      }
+
       // Get trending from distributor_products (catalog products)
       try {
         final catalogProducts = await _supabase
@@ -956,16 +1223,16 @@ class AnalyticsRepositoryUpdated {
             ''')
             .gt('views', 0)
             .order('views', ascending: false)
-            .limit(8);
-        
+            .limit(20);  // ⚡ Increased to 20 to get more data for grouping
+
         // Group by product_id and sum views
         Map<String, Map<String, dynamic>> productMap = {};
-        
+
         for (var product in catalogProducts) {
           final productId = product['product_id'].toString();
           final productInfo = product['products'] as Map<String, dynamic>?;
           final views = product['views'] as int? ?? 0;
-          
+
           if (productMap.containsKey(productId)) {
             productMap[productId]!['total_views'] += views;
             productMap[productId]!['distributor_count'] += 1;
@@ -979,29 +1246,16 @@ class AnalyticsRepositoryUpdated {
             };
           }
         }
-        
+
         // Convert to list and add trending info
         for (var productData in productMap.values) {
-          // Check if current user has this product
-          bool userHasProduct = false;
-          if (userId != null) {
-            try {
-              final userProduct = await _supabase
-                  .from('distributor_products')
-                  .select('id')
-                  .eq('distributor_id', userId)
-                  .eq('product_id', productData['product_id'])
-                  .maybeSingle();
-              userHasProduct = userProduct != null;
-            } catch (e) {
-              print('Error checking if user has product: $e');
-            }
-          }
-          
+          // ⚡ Check from memory instead of database query
+          bool userHasProduct = userProductIds.contains(productData['product_id']);
+
           trendingProducts.add({
             'name': productData['name'],
             'total_views': productData['total_views'],
-            'growth_percentage': productData['total_views'] > 100 ? 25 : 
+            'growth_percentage': productData['total_views'] > 100 ? 25 :
                                productData['total_views'] > 50 ? 15 : 5,
             'trend_direction': 'up',
             'user_has_product': userHasProduct,
@@ -1009,7 +1263,7 @@ class AnalyticsRepositoryUpdated {
             'source': 'catalog',
           });
         }
-        
+
         print('Successfully got ${trendingProducts.length} trending catalog products');
       } catch (e) {
         print('Error getting trending catalog products: $e');
@@ -1185,6 +1439,197 @@ class AnalyticsRepositoryUpdated {
       'searches': <Map<String, dynamic>>[],
       'recommendations': <Map<String, dynamic>>[],
     };
+  }
+  // NEW: Get smart recommendations based on views and search (not in distributor catalog)
+  Future<List<Map<String, dynamic>>> getSmartRecommendationsBasedOnViewsAndSearch() async {
+    try {
+      print('🎯 Getting smart recommendations based on views and search...');
+      
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        print('⚠️ No authenticated user');
+        return [];
+      }
+
+      List<Map<String, dynamic>> recommendations = [];
+
+      // 1. أشهر المنتجات بناءً على المشاهدات (لم يضفها المستخدم)
+      try {
+        print('📊 Getting top viewed products not in user catalog...');
+        
+        // استخدام الدالة الجديدة المحسّنة
+        final topViewedProducts = await _supabase.rpc('get_top_viewed_products', params: {
+          'exclude_user_id': userId,
+          'limit_count': 15,
+        });
+
+        if (topViewedProducts != null && topViewedProducts is List) {
+          for (var product in topViewedProducts) {
+            final views = product['views'] ?? 0;
+            final distCount = product['distributor_count'] ?? 0;
+
+            recommendations.add({
+              'id': product['id'],
+              'name': product['name'] ?? 'منتج غير معروف',
+              'description': 'منتج مشهور من الكتالوج الرئيسي',
+              'type': 'catalog_product',
+              'reason': 'أكثر المنتجات مشاهدة ($views مشاهدة) + يستخدمه $distCount موزع',
+              'popularity': views + (distCount * 10),
+              'action': 'add_to_catalog',
+              'category': 'trending',
+              'badge': views > 100 ? 'الأكثر مشاهدة' : 'مشاهدات عالية',
+              'views': views,
+              'distributor_count': distCount,
+              'search_score': 0,
+            });
+          }
+        }
+      } catch (e) {
+        print('❌ Error getting top viewed products: $e');
+        // Fallback: استخدام الطريقة القديمة بدون عمود views
+        try {
+          print('🔄 Using fallback method...');
+          final fallbackProducts = await _supabase
+              .from('products')
+              .select('id, name, description, company')
+              .limit(10);
+
+          for (var product in fallbackProducts) {
+            final existingProduct = await _supabase
+                .from('distributor_products')
+                .select('id')
+                .eq('distributor_id', userId)
+                .eq('product_id', product['id'])
+                .limit(1);
+
+            if (existingProduct.isEmpty) {
+              final distributorCount = await _supabase
+                  .from('distributor_products')
+                  .select('distributor_id')
+                  .eq('product_id', product['id'])
+                  .count();
+
+              final distCount = distributorCount.count;
+
+              recommendations.add({
+                'id': product['id'],
+                'name': product['name'] ?? 'منتج غير معروف',
+                'description': product['description'] ?? product['company'] ?? 'وصف غير متوفر',
+                'type': 'catalog_product',
+                'reason': 'منتج مشهور - يستخدمه $distCount موزع',
+                'popularity': distCount * 10,
+                'action': 'add_to_catalog',
+                'category': 'trending',
+                'badge': distCount > 3 ? 'مشهور' : 'مميز',
+                'views': 0,
+                'distributor_count': distCount,
+                'company': product['company'],
+                'search_score': 0,
+              });
+            }
+          }
+        } catch (fallbackError) {
+          print('❌ Fallback also failed: $fallbackError');
+        }
+      }
+
+      // 2. أشهر الأدوات الجراحية (بناءً على المشاهدات)
+      try {
+        print('🔧 Getting top viewed surgical tools not in user catalog...');
+        
+        final topSurgicalTools = await _supabase.rpc('get_top_viewed_surgical_tools', params: {
+          'exclude_user_id': userId,
+          'limit_count': 5,
+        });
+
+        if (topSurgicalTools != null && topSurgicalTools is List) {
+          for (var tool in topSurgicalTools) {
+            final views = tool['views'] ?? 0;
+            final distCount = tool['distributor_count'] ?? 0;
+
+            recommendations.add({
+              'id': tool['id'],
+              'name': tool['tool_name'] ?? 'أداة جراحية غير معروفة',
+              'description': 'أداة جراحية مشهورة',
+              'type': 'surgical_tool',
+              'reason': 'أداة جراحية مشهورة ($views مشاهدة) + يستخدمها $distCount موزع',
+              'popularity': views + (distCount * 10),
+              'action': 'add_surgical_tool',
+              'category': 'surgical',
+              'badge': views > 50 ? 'أداة مطلوبة' : 'أداة مفيدة',
+              'views': views,
+              'distributor_count': distCount,
+              'search_score': 0,
+            });
+          }
+        }
+      } catch (e) {
+        print('❌ Error getting top surgical tools: $e');
+      }
+
+      // 3. أشهر منتجات OCR (بناءً على المشاهدات)
+      try {
+        print('📱 Getting top viewed OCR products not in user catalog...');
+        
+        final topOcrProducts = await _supabase.rpc('get_top_viewed_ocr_products', params: {
+          'exclude_user_id': userId,
+          'limit_count': 3,
+        });
+
+        if (topOcrProducts != null && topOcrProducts is List) {
+          for (var product in topOcrProducts) {
+            final views = product['views'] ?? 0;
+            final distCount = product['distributor_count'] ?? 0;
+
+            recommendations.add({
+              'id': product['id'],
+              'name': product['product_name'] ?? 'منتج OCR غير معروف',
+              'description': 'منتج مضاف بواسطة OCR',
+              'type': 'ocr_product',
+              'reason': 'منتج OCR مشهور ($views مشاهدة) + يستخدمه $distCount موزع',
+              'popularity': views + (distCount * 8),
+              'action': 'add_ocr_product',
+              'category': 'popular',
+              'badge': views > 30 ? 'OCR مطلوب' : 'OCR مفيد',
+              'views': views,
+              'distributor_count': distCount,
+              'search_score': 0,
+            });
+          }
+        }
+      } catch (e) {
+        print('❌ Error getting top OCR products: $e');
+      }
+
+      // إزالة التكرارات وترتيب حسب الشعبية المركبة
+      Set<String> seenIds = {};
+      recommendations = recommendations.where((item) {
+        String id = item['id']?.toString() ?? '';
+        if (seenIds.contains(id)) return false;
+        seenIds.add(id);
+        return true;
+      }).toList();
+
+      recommendations.sort((a, b) {
+        int popularityA = a['popularity'] ?? 0;
+        int popularityB = b['popularity'] ?? 0;
+        return popularityB.compareTo(popularityA);
+      });
+
+      final finalRecommendations = recommendations.take(5).toList();
+
+      print('✅ Got ${finalRecommendations.length} smart recommendations based on views and search');
+      
+      for (var rec in finalRecommendations) {
+        print('🎯 ${rec['name']} - Views: ${rec['views']}, Search: ${rec['search_score']}, Distributors: ${rec['distributor_count']}, Score: ${rec['popularity']}');
+      }
+
+      return finalRecommendations;
+
+    } catch (e) {
+      print('❌ Error getting smart recommendations: $e');
+      return [];
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/dashboard/data/dashboard_repository.dart';
 import 'package:fieldawy_store/features/dashboard/data/analytics_repository.dart';
+import 'package:fieldawy_store/features/dashboard/data/analytics_repository_updated.dart';
 import 'package:fieldawy_store/features/dashboard/domain/dashboard_stats.dart';
 
 // Manual refresh counter - increment to trigger refresh
@@ -86,6 +87,15 @@ final trendsAnalyticsProvider = FutureProvider.autoDispose<Map<String, dynamic>>
   
   final repository = ref.watch(analyticsRepositoryProvider);
   return await repository.getTrendsAnalytics();
+});
+
+// NEW: Provider for smart recommendations based on views and search
+final smartRecommendationsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  // Watch the refresh counter to trigger updates
+  ref.watch(dashboardRefreshProvider);
+  
+  final repository = ref.watch(analyticsRepositoryUpdatedProvider);
+  return await repository.getSmartRecommendationsBasedOnViewsAndSearch();
 });
 
 // Helper provider to trigger refresh of all dashboard data

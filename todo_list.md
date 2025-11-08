@@ -1,0 +1,5 @@
+- [ ] قراءة وتحليل ملف trends_analytics_widget_updated.dart
+- [ ] تحديد الخطأ في السطر 644 وخطوط context
+- [ ] إصلاح type mismatch (num vs int) 
+- [ ] التأكد من صحة الحل
+- [ ] اختبار الكود

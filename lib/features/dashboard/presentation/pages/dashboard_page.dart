@@ -7,7 +7,6 @@ import 'package:fieldawy_store/features/dashboard/presentation/widgets/dashboard
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/quick_actions_panel.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/recent_products_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/top_products_widget.dart';
-import 'package:fieldawy_store/features/dashboard/presentation/widgets/alerts_notifications_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/regional_stats_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/smart_recommendations_widget.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/trends_analytics_widget_updated.dart';
@@ -482,8 +481,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       Expanded(
                         child: Column(
                           children: [
-                            const AlertsNotificationsWidget(),
-                            const SizedBox(height: 16),
                             const RegionalStatsWidget(),
                           ],
                         ),
@@ -496,8 +493,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       const RecentProductsWidget(),
                       const SizedBox(height: 16),
                       const SmartRecommendationsWidget(),
-                      const SizedBox(height: 16),
-                      const AlertsNotificationsWidget(),
                       const SizedBox(height: 16),
                       const TopProductsWidget(),
                       const SizedBox(height: 16),

@@ -2142,7 +2142,7 @@ class _ProductCatalogItem extends HookConsumerWidget {
                           onChanged: (value) {
                             // Debounce the input to update the state only when the user stops typing.
                             debounceTimer.value?.cancel();
-                            debounceTimer.value = Timer(const Duration(seconds: 3  ), () {
+                            debounceTimer.value = Timer(const Duration(seconds: 3), () {
                               final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
                               if (value.trim().isEmpty) {
                                 controller.setPrice(product.id, package, '0');

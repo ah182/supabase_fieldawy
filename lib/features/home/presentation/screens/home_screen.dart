@@ -132,7 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _searchController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce!.cancel();
-      _debounce = Timer(const Duration(milliseconds: 3000), () { // زيادة التأخير إلى 3 ثواني
+      _debounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
         if (mounted) {
           setState(() {
             _debouncedSearchQuery = _searchController.text;

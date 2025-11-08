@@ -89,10 +89,13 @@ class CoursesTab extends ConsumerWidget {
             itemCount: filteredCourses.length,
             itemBuilder: (context, index) {
               final course = filteredCourses[index];
-              return _CourseCardHorizontal(
-                course: course,
-                searchQuery: searchQuery,
+              return GestureDetector(
                 onTap: () => _showCourseDialog(context, ref, course),
+                child: _CourseCardHorizontal(
+                  course: course,
+                  searchQuery: searchQuery,
+                  onTap: () => _showCourseDialog(context, ref, course),
+                ),
               );
             },
             padding: const EdgeInsets.all(16.0),
@@ -391,10 +394,13 @@ class BooksTab extends ConsumerWidget {
             itemCount: filteredBooks.length,
             itemBuilder: (context, index) {
               final book = filteredBooks[index];
-              return _BookCard(
-                book: book,
-                searchQuery: searchQuery,
+              return GestureDetector(
                 onTap: () => _showBookDialog(context, ref, book),
+                child: _BookCard(
+                  book: book,
+                  searchQuery: searchQuery,
+                  onTap: () => _showBookDialog(context, ref, book),
+                ),
               );
             },
             padding:

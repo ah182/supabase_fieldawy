@@ -635,6 +635,29 @@ class DashboardRepository {
           .select('id, name, company')
           .limit(200);
 
+      // ⚡ OPTIMIZATION: Get ALL distributor_products data in ONE query
+      final allDistributorProducts = await _supabase
+          .from('distributor_products')
+          .select('product_id, views');
+
+      // Build a map of product stats from all distributor products
+      final productStatsMap = <String, Map<String, dynamic>>{};
+
+      for (var distProduct in allDistributorProducts) {
+        final productId = distProduct['product_id']?.toString();
+        if (productId == null) continue;
+
+        if (!productStatsMap.containsKey(productId)) {
+          productStatsMap[productId] = {
+            'global_views': 0,
+            'distributor_count': 0,
+          };
+        }
+
+        productStatsMap[productId]!['global_views'] += (distProduct['views'] ?? 0) as int;
+        productStatsMap[productId]!['distributor_count'] += 1;
+      }
+
       // Calculate stats for each product
       final productStats = <Map<String, dynamic>>[];
 
@@ -647,37 +670,24 @@ class DashboardRepository {
         final hasProductByName = distributorProductNames.contains(productName);
 
         if (!hasProductById && !hasProductByName && productName.isNotEmpty) {
-          // Get stats for this product
-          int globalViews = 0;
-          int distributorCount = 0;
+          // Get stats from our pre-built map
+          final stats = productStatsMap[productId];
 
-          try {
-            // Get distributor count and sum of views
-            final distributorData = await _supabase
-                .from('distributor_products')
-                .select('views')
-                .eq('product_id', productId);
+          if (stats != null) {
+            final globalViews = stats['global_views'] as int;
+            final distributorCount = stats['distributor_count'] as int;
 
-            distributorCount = distributorData.length;
-
-            // Sum all views from all distributors
-            for (var dist in distributorData) {
-              globalViews += (dist['views'] ?? 0) as int;
+            // Only add if product has some activity
+            if (distributorCount > 0 || globalViews > 0) {
+              productStats.add({
+                'id': productId,
+                'name': product['name'],
+                'company': product['company'],
+                'global_views': globalViews,
+                'distributor_count': distributorCount,
+                'score': (globalViews * 2) + (distributorCount * 100), // Ranking score
+              });
             }
-          } catch (e) {
-            print('Error getting product stats for ${product['name']}: $e');
-          }
-
-          // Only add if product has some activity
-          if (distributorCount > 0 || globalViews > 0) {
-            productStats.add({
-              'id': productId,
-              'name': product['name'],
-              'company': product['company'],
-              'global_views': globalViews,
-              'distributor_count': distributorCount,
-              'score': (globalViews * 2) + (distributorCount * 100), // Ranking score
-            });
           }
         }
       }

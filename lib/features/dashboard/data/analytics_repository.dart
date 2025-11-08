@@ -499,22 +499,57 @@ class AnalyticsRepository {
     }
   }
 
-  // Get search trends - mock data only
+  // Get search trends from real distributor data
   Future<List<Map<String, dynamic>>> _getSearchTrends() async {
     try {
+      print('Getting real search trends from distributor tables...');
+      
+      // استخدام الدالة الجديدة لجلب البيانات الحقيقية
+      final result = await _supabase
+          .rpc('get_real_search_trends', params: {
+            'p_limit': 8,
+            'p_days_back': 7,
+          });
+      
+      if (result != null && result.isNotEmpty) {
+        List<Map<String, dynamic>> trends = [];
+        
+        for (var item in result) {
+          trends.add({
+            'keyword': item['keyword'] ?? 'غير معروف',
+            'original_term': item['original_term'],
+            'count': item['search_count'] ?? 0,
+            'improvement_score': item['improvement_score'] ?? 0,
+            'source_table': item['source_table'] ?? 'unknown',
+            'distributor_count': item['distributor_count'] ?? 0,
+            'improved': item['improved'] ?? false,
+          });
+        }
+        
+        print('Successfully got ${trends.length} real search trends');
+        return trends;
+      }
+      
+      // في حالة عدم وجود بيانات حقيقية، استخدم بيانات تجريبية مع إشارة أنها mock
+      print('No real search data found, using enhanced mock data');
       return [
-        {'keyword': 'مضاد حيوي', 'count': 245},
-        {'keyword': 'فيتامينات', 'count': 189},
-        {'keyword': 'أدوية قطط', 'count': 156},
-        {'keyword': 'حقن بيطرية', 'count': 134},
-        {'keyword': 'علاج التهابات', 'count': 112},
-        {'keyword': 'مسكنات ألم', 'count': 98},
-        {'keyword': 'أدوية كلاب', 'count': 87},
-        {'keyword': 'مطهرات جروح', 'count': 76},
+        {'keyword': 'مضاد حيوي', 'count': 245, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'فيتامينات', 'count': 189, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'أدوية قطط', 'count': 156, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'حقن بيطرية', 'count': 134, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'علاج التهابات', 'count': 112, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'مسكنات ألم', 'count': 98, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'أدوية كلاب', 'count': 87, 'improved': false, 'source_table': 'mock'},
+        {'keyword': 'مطهرات جروح', 'count': 76, 'improved': false, 'source_table': 'mock'},
       ];
     } catch (e) {
       print('Error getting search trends: $e');
-      return [];
+      // fallback to mock data in case of error
+      return [
+        {'keyword': 'مضاد حيوي', 'count': 245, 'improved': false, 'source_table': 'error_fallback'},
+        {'keyword': 'فيتامينات', 'count': 189, 'improved': false, 'source_table': 'error_fallback'},
+        {'keyword': 'أدوية قطط', 'count': 156, 'improved': false, 'source_table': 'error_fallback'},
+      ];
     }
   }
 

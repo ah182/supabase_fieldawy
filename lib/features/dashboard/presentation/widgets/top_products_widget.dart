@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 
 class TopProductsWidget extends ConsumerWidget {
@@ -77,142 +78,645 @@ class TopProductsWidget extends ConsumerWidget {
     final views = product['views'] ?? 0;
     final price = product['price'] ?? 0;
     final source = product['source'] ?? 'catalog';
+    final productId = product['product_id']?.toString() ?? product['id']?.toString() ?? '';
 
     Color rankColor;
+    IconData rankIcon;
     switch (rank) {
       case 1:
         rankColor = Colors.amber;
+        rankIcon = Icons.emoji_events;
         break;
       case 2:
         rankColor = Colors.grey[400]!;
+        rankIcon = Icons.workspace_premium;
         break;
       case 3:
         rankColor = Colors.orange[300]!;
+        rankIcon = Icons.military_tech;
         break;
       default:
         rankColor = Colors.blue;
+        rankIcon = Icons.trending_up;
     }
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: rankColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            '#$rank',
-            style: TextStyle(
-              color: rankColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-        ),
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              product['name'] ?? 'منتج غير معروف',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          _buildSourceBadge(source),
-        ],
-      ),
-      subtitle: Text(
-        '$price ${'EGP'.tr()}',
-        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-      ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.1),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // Navigate to product details
+          },
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.visibility, size: 14, color: Colors.green),
-            const SizedBox(width: 4),
-            Text(
-              '$views',
-              style: const TextStyle(
-                color: Colors.green,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: rankColor.withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: rankColor.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              children: [
+                // Rank Badge + Product Image
+                Stack(
+                  children: [
+                    // Product Image
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: _getSourceColor(source).withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _getSourceColor(source).withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(9),
+                        child: _buildTopProductImage(productId, source),
+                      ),
+                    ),
+                    // Rank Badge Overlay
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: rankColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: rankColor.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: rank <= 3 
+                            ? Icon(rankIcon, size: 10, color: Colors.white)
+                            : Text(
+                                '$rank',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Product Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Product Name + Source Badge
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product['name'] ?? 'منتج غير معروف',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Color(0xFF1a1a1a),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildCompactSourceBadge(source),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 6),
+                      
+                      // Performance Stats Row
+                      Row(
+                        children: [
+                          // Views Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.visibility, size: 10, color: Colors.green[700]),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '$views',
+                                  style: TextStyle(
+                                    color: Colors.green[700],
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          const SizedBox(width: 8),
+                          
+                          // Price Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '$price ${'EGP'.tr()}',
+                              style: TextStyle(
+                                color: Colors.blue[700],
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          
+                          const Spacer(),
+                          
+                          // Performance Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: rankColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.trending_up, size: 10, color: rankColor),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _getPerformanceLabel(rank),
+                                  style: TextStyle(
+                                    color: rankColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSourceBadge(String source) {
-    String label;
-    Color color;
-    IconData icon;
+  Widget _buildTopProductImage(String productId, String source) {
+    return FutureBuilder<String?>(
+      future: _getTopProductImageFromDatabase(productId, source),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _getSourceColor(source).withOpacity(0.7),
+                ),
+              ),
+            ),
+          );
+        }
+        
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+          return Image.network(
+            snapshot.data!,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildTopPlaceholder(source);
+            },
+          );
+        }
+        
+        return _buildTopPlaceholder(source);
+      },
+    );
+  }
 
-    switch (source) {
-      case 'offer':
-        label = 'عرض';
-        color = Colors.red;
-        icon = Icons.local_offer;
-        break;
-      case 'course':
-        label = 'كورس';
-        color = Colors.purple;
-        icon = Icons.school;
-        break;
-      case 'book':
-        label = 'كتاب';
-        color = Colors.brown;
-        icon = Icons.menu_book;
-        break;
-      case 'surgical':
-        label = 'جراحي';
-        color = Colors.teal;
-        icon = Icons.medical_services;
-        break;
-      case 'ocr':
-        label = 'OCR';
-        color = Colors.orange;
-        icon = Icons.qr_code_scanner;
-        break;
-      default:
-        label = 'منتج';
-        color = Colors.blue;
-        icon = Icons.inventory;
-    }
-
+  Widget _buildTopPlaceholder(String source) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        gradient: LinearGradient(
+          colors: [
+            _getSourceColor(source).withOpacity(0.2),
+            _getSourceColor(source).withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          _getSourceIcon(source),
+          size: 20,
+          color: _getSourceColor(source).withOpacity(0.7),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _getTopProductImageFromDatabase(String productId, String source) async {
+    try {
+      print('🏆 Fetching top product image for ID: $productId, Source: $source');
+      
+      if (productId.isEmpty) {
+        print('⚠️ Product ID is empty');
+        return null;
+      }
+      
+      String? imageUrl;
+      
+      // محاولة جلب الصورة حسب نوع المصدر (نفس طريقة التوصيات)
+      switch (source.toLowerCase()) {
+        case 'catalog':
+        case 'product':
+        case 'products':
+          try {
+            // أولاً: محاولة البحث المباشر في products
+            final response = await Supabase.instance.client
+                .from('products')
+                .select('image_url, name')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found top catalog product: ${response.first['name']}, Image: $imageUrl');
+            } else {
+              // ثانياً: محاولة البحث في distributor_products مع JOIN
+              final distributorResponse = await Supabase.instance.client
+                  .from('distributor_products')
+                  .select('products!inner(image_url, name)')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
+                final product = distributorResponse.first['products'];
+                imageUrl = product['image_url']?.toString();
+                print('✅ Found top distributor product: ${product['name']}, Image: $imageUrl');
+              }
+            }
+          } catch (e) {
+            print('❌ Error fetching from products: $e');
+            // Fallback: محاولة استخراج UUID من المعرف المركب
+            try {
+              String actualProductId = productId;
+              if (productId.contains('_')) {
+                actualProductId = productId.split('_')[0];
+                print('🔧 Extracted top UUID: $actualProductId from: $productId');
+              }
+              
+              final fallbackResponse = await Supabase.instance.client
+                  .from('products')
+                  .select('image_url, name')
+                  .eq('id', actualProductId)
+                  .limit(1);
+              
+              if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
+                imageUrl = fallbackResponse.first['image_url']?.toString();
+                print('✅ Found top product (UUID extraction): ${fallbackResponse.first['name']}, Image: $imageUrl');
+              }
+            } catch (fallbackError) {
+              print('❌ Top product fallback failed: $fallbackError');
+            }
+          }
+          break;
+          
+        case 'surgical':
+        case 'surgical_tool':
+        case 'surgical_tools':
+          try {
+            // البحث في جدول distributor_surgical_tools مع join للجدول الرئيسي
+            final response = await Supabase.instance.client
+                .from('distributor_surgical_tools')
+                .select('surgical_tools!inner(image_url, tool_name)')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['surgical_tools'] != null) {
+              final surgicalTool = response.first['surgical_tools'];
+              imageUrl = surgicalTool['image_url']?.toString();
+              print('✅ Found top surgical tool: ${surgicalTool['tool_name']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from distributor_surgical_tools: $e');
+            // Fallback: محاولة البحث المباشر في surgical_tools
+            try {
+              final fallbackResponse = await Supabase.instance.client
+                  .from('surgical_tools')
+                  .select('image_url, tool_name')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
+                imageUrl = fallbackResponse.first['image_url']?.toString();
+                print('✅ Found top surgical tool (fallback): ${fallbackResponse.first['tool_name']}, Image: $imageUrl');
+              }
+            } catch (fallbackError) {
+              print('❌ Fallback also failed: $fallbackError');
+            }
+          }
+          break;
+          
+        case 'ocr':
+        case 'ocr_product':
+        case 'ocr_products':
+          try {
+            final response = await Supabase.instance.client
+                .from('ocr_products')
+                .select('image_url, product_name')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found top OCR product: ${response.first['product_name']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from ocr_products: $e');
+          }
+          break;
+          
+        case 'offer':
+        case 'offers':
+          try {
+            final response = await Supabase.instance.client
+                .from('offers')
+                .select('image_url, title')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found top offer: ${response.first['title']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from offers: $e');
+          }
+          break;
+          
+        case 'course':
+        case 'courses':
+          try {
+            final response = await Supabase.instance.client
+                .from('courses')
+                .select('image_url, title')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found top course: ${response.first['title']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from courses: $e');
+          }
+          break;
+          
+        case 'book':
+        case 'books':
+          try {
+            final response = await Supabase.instance.client
+                .from('books')
+                .select('image_url, title')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found top book: ${response.first['title']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from books: $e');
+          }
+          break;
+          
+        default:
+          print('🔍 Unknown source, trying all tables for top products...');
+          // البحث المتدرج في جميع الجداول
+          
+          // 1. محاولة المنتجات العادية
+          try {
+            final productsResponse = await Supabase.instance.client
+                .from('products')
+                .select('image_url, name')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (productsResponse.isNotEmpty && productsResponse.first['image_url'] != null) {
+              imageUrl = productsResponse.first['image_url'].toString();
+              print('✅ Found in products table: ${productsResponse.first['name']}');
+            } else {
+              // محاولة distributor_products
+              final distributorResponse = await Supabase.instance.client
+                  .from('distributor_products')
+                  .select('products!inner(image_url, name)')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
+                final product = distributorResponse.first['products'];
+                imageUrl = product['image_url']?.toString();
+                print('✅ Found in top distributor_products table: ${product['name']}');
+              } else {
+                // محاولة استخراج UUID
+                String actualProductId = productId;
+                if (productId.contains('_')) {
+                  actualProductId = productId.split('_')[0];
+                  print('🔧 Top fallback: Extracted UUID $actualProductId from: $productId');
+                  
+                  final uuidResponse = await Supabase.instance.client
+                      .from('products')
+                      .select('image_url, name')
+                      .eq('id', actualProductId)
+                      .limit(1);
+                  
+                  if (uuidResponse.isNotEmpty && uuidResponse.first['image_url'] != null) {
+                    imageUrl = uuidResponse.first['image_url'].toString();
+                    print('✅ Found in top products table (UUID): ${uuidResponse.first['name']}');
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            print('❌ Top products fallback failed: $e');
+          }
+          
+          // 2. الأدوات الجراحية
+          if (imageUrl == null) {
+            try {
+              final toolsResponse = await Supabase.instance.client
+                  .from('distributor_surgical_tools')
+                  .select('surgical_tools!inner(image_url, tool_name)')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (toolsResponse.isNotEmpty && toolsResponse.first['surgical_tools'] != null) {
+                final surgicalTool = toolsResponse.first['surgical_tools'];
+                imageUrl = surgicalTool['image_url'].toString();
+                print('✅ Found in distributor_surgical_tools table: ${surgicalTool['tool_name']}');
+              }
+            } catch (e) {
+              print('❌ Distributor surgical tools fallback failed: $e');
+              // Fallback للجدول الرئيسي
+              try {
+                final directResponse = await Supabase.instance.client
+                    .from('surgical_tools')
+                    .select('image_url, tool_name')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
+                  imageUrl = directResponse.first['image_url'].toString();
+                  print('✅ Found in surgical_tools table (direct): ${directResponse.first['tool_name']}');
+                }
+              } catch (directError) {
+                print('❌ Direct surgical tools fallback failed: $directError');
+              }
+            }
+          }
+          
+          // 3. العروض
+          if (imageUrl == null) {
+            try {
+              final offersResponse = await Supabase.instance.client
+                  .from('offers')
+                  .select('image_url, title')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (offersResponse.isNotEmpty && offersResponse.first['image_url'] != null) {
+                imageUrl = offersResponse.first['image_url'].toString();
+                print('✅ Found in offers table: ${offersResponse.first['title']}');
+              }
+            } catch (e) {
+              print('❌ Offers fallback failed: $e');
+            }
+          }
+          
+          // 4. الكورسات
+          if (imageUrl == null) {
+            try {
+              final coursesResponse = await Supabase.instance.client
+                  .from('courses')
+                  .select('image_url, title')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (coursesResponse.isNotEmpty && coursesResponse.first['image_url'] != null) {
+                imageUrl = coursesResponse.first['image_url'].toString();
+                print('✅ Found in courses table: ${coursesResponse.first['title']}');
+              }
+            } catch (e) {
+              print('❌ Courses fallback failed: $e');
+            }
+          }
+          
+          // 5. الكتب
+          if (imageUrl == null) {
+            try {
+              final booksResponse = await Supabase.instance.client
+                  .from('books')
+                  .select('image_url, title')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (booksResponse.isNotEmpty && booksResponse.first['image_url'] != null) {
+                imageUrl = booksResponse.first['image_url'].toString();
+                print('✅ Found in books table: ${booksResponse.first['title']}');
+              }
+            } catch (e) {
+              print('❌ Books fallback failed: $e');
+            }
+          }
+          
+          // 6. منتجات OCR
+          if (imageUrl == null) {
+            try {
+              final ocrResponse = await Supabase.instance.client
+                  .from('ocr_products')
+                  .select('image_url, product_name')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (ocrResponse.isNotEmpty && ocrResponse.first['image_url'] != null) {
+                imageUrl = ocrResponse.first['image_url'].toString();
+                print('✅ Found in ocr_products table: ${ocrResponse.first['product_name']}');
+              }
+            } catch (e) {
+              print('❌ OCR products fallback failed: $e');
+            }
+          }
+          break;
+      }
+      
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        print('🎉 Final top product image URL: $imageUrl');
+        return imageUrl;
+      } else {
+        print('⚠️ No image found for top product $productId');
+        return null;
+      }
+      
+    } catch (e) {
+      print('❌ Error fetching top product image: $e');
+      return null;
+    }
+  }
+
+  Widget _buildCompactSourceBadge(String source) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: _getSourceColor(source).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: _getSourceColor(source).withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          Icon(_getSourceIcon(source), size: 8, color: _getSourceColor(source)),
+          const SizedBox(width: 2),
           Text(
-            label,
+            _getSourceLabel(source),
             style: TextStyle(
-              color: color,
-              fontSize: 10,
+              color: _getSourceColor(source),
+              fontSize: 8,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -220,4 +724,47 @@ class TopProductsWidget extends ConsumerWidget {
       ),
     );
   }
+
+  String _getPerformanceLabel(int rank) {
+    switch (rank) {
+      case 1: return 'الأول';
+      case 2: return 'الثاني';
+      case 3: return 'الثالث';
+      default: return 'متميز';
+    }
+  }
+
+  Color _getSourceColor(String source) {
+    switch (source) {
+      case 'offer': return Colors.red;
+      case 'course': return Colors.purple;
+      case 'book': return Colors.brown;
+      case 'surgical': return Colors.teal;
+      case 'ocr': return Colors.orange;
+      default: return Colors.blue;
+    }
+  }
+
+  IconData _getSourceIcon(String source) {
+    switch (source) {
+      case 'offer': return Icons.local_offer;
+      case 'course': return Icons.school;
+      case 'book': return Icons.menu_book;
+      case 'surgical': return Icons.medical_services;
+      case 'ocr': return Icons.qr_code_scanner;
+      default: return Icons.inventory;
+    }
+  }
+
+  String _getSourceLabel(String source) {
+    switch (source) {
+      case 'offer': return 'عرض';
+      case 'course': return 'كورس';
+      case 'book': return 'كتاب';
+      case 'surgical': return 'جراحي';
+      case 'ocr': return 'OCR';
+      default: return 'منتج';
+    }
+  }
+
 }
