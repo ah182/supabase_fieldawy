@@ -7,42 +7,20 @@ import 'subscription_cache_service.dart';
 class DistributorSubscriptionService {
   static final _supabase = Supabase.instance.client;
 
-  /// Check if current user is subscribed to a distributor
+  /// Check if current user is subscribed to a distributor (from Hive)
   static Future<bool> isSubscribed(String distributorId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return false;
-
-      final response = await _supabase
-          .from('distributor_subscriptions')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('distributor_id', distributorId)
-          .maybeSingle();
-
-      return response != null;
+      return await SubscriptionCacheService.isSubscribedCached(distributorId);
     } catch (e) {
       print('Error checking subscription: $e');
       return false;
     }
   }
 
-  /// Subscribe to a distributor
+  /// Subscribe to a distributor (save to Hive only)
   static Future<bool> subscribe(String distributorId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      await _supabase.from('distributor_subscriptions').insert({
-        'user_id': userId,
-        'distributor_id': distributorId,
-      });
-
-      // Update local cache
       await SubscriptionCacheService.addSubscription(distributorId);
-
       return true;
     } catch (e) {
       print('Error subscribing to distributor: $e');
@@ -50,23 +28,10 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Unsubscribe from a distributor
+  /// Unsubscribe from a distributor (remove from Hive only)
   static Future<bool> unsubscribe(String distributorId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      await _supabase
-          .from('distributor_subscriptions')
-          .delete()
-          .eq('user_id', userId)
-          .eq('distributor_id', distributorId);
-
-      // Update local cache
       await SubscriptionCacheService.removeSubscription(distributorId);
-
       return true;
     } catch (e) {
       print('Error unsubscribing from distributor: $e');
@@ -90,51 +55,51 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Get all subscribed distributors for current user
+  /// Get all subscribed distributors for current user (from Hive)
   static Future<List<String>> getSubscribedDistributorIds() async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
-
-      final response = await _supabase
-          .from('distributor_subscriptions')
-          .select('distributor_id')
-          .eq('user_id', userId);
-
-      final distributorIds = (response as List)
-          .map((item) => item['distributor_id'] as String)
-          .toList();
-      
-      // Sync with local cache
-      await SubscriptionCacheService.syncWithServer(distributorIds);
-      
-      return distributorIds;
+      return await SubscriptionCacheService.getSubscriptions();
     } catch (e) {
       print('Error fetching subscribed distributors: $e');
       return [];
     }
   }
 
-  /// Get detailed list of subscribed distributors
+  /// Get detailed list of subscribed distributors from Hive cache
   static Future<List<Map<String, dynamic>>> getSubscribedDistributors() async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
+      // Get subscribed distributor IDs from Hive cache
+      final distributorIds = await SubscriptionCacheService.getSubscriptions();
+      
+      if (distributorIds.isEmpty) return [];
 
-      final response = await _supabase
-          .from('distributor_subscriptions')
-          .select('distributor_id, created_at, users!distributor_id(full_name, username)')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
+      // Get user details for all distributors in parallel
+      final futures = distributorIds.map((distributorId) async {
+        try {
+          final userResponse = await _supabase
+              .from('users')
+              .select('display_name')
+              .eq('id', distributorId)
+              .maybeSingle();
 
-      return (response as List).map((item) {
-        final user = item['users'];
-        return {
-          'distributor_id': item['distributor_id'],
-          'distributor_name': user?['full_name'] ?? user?['username'] ?? 'موزع',
-          'created_at': item['created_at'],
-        };
+          return {
+            'distributor_id': distributorId,
+            'distributor_name': userResponse?['display_name'] ?? 'موزع',
+            'created_at': null, // No creation date in Hive
+          };
+        } catch (e) {
+          // If we can't get user details, add with default name
+          print('Error fetching user details for $distributorId: $e');
+          return {
+            'distributor_id': distributorId,
+            'distributor_name': 'موزع',
+            'created_at': null,
+          };
+        }
       }).toList();
+
+      final results = await Future.wait(futures);
+      return results;
     } catch (e) {
       print('Error fetching subscribed distributors details: $e');
       return [];
@@ -165,19 +130,11 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Get subscription count for statistics
+  /// Get subscription count for statistics (from Hive)
   static Future<int> getSubscriptionCount() async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return 0;
-
-      final response = await _supabase
-          .from('distributor_subscriptions')
-          .select('id')
-          .eq('user_id', userId)
-          .count(CountOption.exact);
-
-      return response.count;
+      final subscriptions = await SubscriptionCacheService.getSubscriptions();
+      return subscriptions.length;
     } catch (e) {
       print('Error getting subscription count: $e');
       return 0;

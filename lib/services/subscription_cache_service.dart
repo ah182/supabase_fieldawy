@@ -22,8 +22,10 @@ class SubscriptionCacheService {
     try {
       await init();
       final box = Hive.box(_boxName);
-      await box.put(_subscriptionsKey, distributorIds);
-      print('✅ Saved ${distributorIds.length} subscriptions to cache');
+      // Remove duplicates before saving
+      final uniqueIds = distributorIds.toSet().toList();
+      await box.put(_subscriptionsKey, uniqueIds);
+      print('✅ Saved ${uniqueIds.length} unique subscriptions to cache');
     } catch (e) {
       print('Error saving subscriptions to cache: $e');
     }
@@ -37,8 +39,13 @@ class SubscriptionCacheService {
       final data = box.get(_subscriptionsKey);
       
       if (data is List) {
-        return List<String>.from(data);
+        final subscriptions = List<String>.from(data);
+        // Remove duplicates
+        final uniqueSubscriptions = subscriptions.toSet().toList();
+        print('📖 Read ${uniqueSubscriptions.length} unique subscriptions from cache');
+        return uniqueSubscriptions;
       }
+      print('📖 No subscriptions found in cache');
       return [];
     } catch (e) {
       print('Error getting subscriptions from cache: $e');
@@ -64,6 +71,9 @@ class SubscriptionCacheService {
       if (!current.contains(distributorId)) {
         current.add(distributorId);
         await saveSubscriptions(current);
+        print('✅ Added subscription for distributor: $distributorId');
+      } else {
+        print('ℹ️ Distributor $distributorId already subscribed');
       }
     } catch (e) {
       print('Error adding subscription to cache: $e');
