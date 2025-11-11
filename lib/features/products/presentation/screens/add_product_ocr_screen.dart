@@ -558,6 +558,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
             Navigator.pop(context, {
               'product_id': ocrProductId,
               'product_type': 'ocr_product',
+              'product_name': name,
+              'product_image': finalUrl,
             });
             return;
           } else {

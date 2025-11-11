@@ -677,9 +677,27 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           print('🔍 CATALOG: Extracted Product ID: $productId');
                           print('🔍 CATALOG: Product Type: $productType');
 
+                          // البحث عن معلومات المنتج (الاسم والصورة)
+                          String? productName;
+                          String? productImage;
+                          
+                          final provider = _tabController?.index == 0 ? productsProvider : ocrProductsProvider;
+                          final asyncValue = ref.read(provider);
+                          
+                          asyncValue.whenData((products) {
+                            final product = products.firstWhere(
+                              (p) => p.id == productId,
+                              orElse: () => products.first,
+                            );
+                            productName = product.name;
+                            productImage = product.imageUrl;
+                          });
+
                           Navigator.pop(context, {
                             'product_id': productId,
                             'product_type': productType,
+                            'product_name': productName ?? 'منتج',
+                            'product_image': productImage ?? '',
                           });
                         }
                       : () async {

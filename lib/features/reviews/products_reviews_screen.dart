@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'review_system.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
@@ -330,8 +331,9 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                   ),
                 ).then((selectedProduct) {
                   if (selectedProduct != null) {
-                    _createReviewRequestFromSelection(
-                      screenContext, // نستخدم screen context
+                    // عرض dialog التعليق بعد اختيار المنتج
+                    _showCommentDialog(
+                      screenContext,
                       ref,
                       selectedProduct,
                     );
@@ -359,8 +361,9 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                   ),
                 ).then((selectedProduct) {
                   if (selectedProduct != null) {
-                    _createReviewRequestFromSelection(
-                      screenContext, // نستخدم screen context
+                    // عرض dialog التعليق بعد اختيار المنتج
+                    _showCommentDialog(
+                      screenContext,
                       ref,
                       selectedProduct,
                     );
@@ -380,10 +383,123 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
     );
   }
 
+  // عرض dialog التعليق بعد اختيار المنتج
+  void _showCommentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> selectedProduct,
+  ) {
+    final commentController = TextEditingController();
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('أضف تعليقك'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // صورة المنتج
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: selectedProduct['product_image'] != null &&
+                          selectedProduct['product_image'].isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: selectedProduct['product_image'],
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: colorScheme.surfaceVariant,
+                            child: Icon(
+                              Icons.medication,
+                              size: 48,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: colorScheme.surfaceVariant,
+                          child: Icon(
+                            Icons.medication,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // اسم المنتج
+              Text(
+                selectedProduct['product_name'] ?? 'منتج',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 24),
+              
+              // حقل التعليق
+              TextField(
+                controller: commentController,
+                maxLines: 4,
+                maxLength: 300,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'تعليقك على المنتج (اختياري)',
+                  hintText: 'مثال: أريد معرفة جودة هذا المنتج وسعره في السوق',
+                  helperText: 'سيظهر تعليقك مع طلب التقييم',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                  prefixIcon: Icon(Icons.comment),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _createReviewRequestFromSelection(
+                context,
+                ref,
+                selectedProduct,
+                commentController.text.trim(),
+              );
+            },
+            icon: const Icon(Icons.send),
+            label: const Text('إرسال الطلب'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _createReviewRequestFromSelection(
     BuildContext context,
     WidgetRef ref,
     Map<String, dynamic> selectedProduct,
+    String requestComment, // جديد: التعليق
   ) async {
     // Debug: طباعة البيانات المُرسلة
     print('📦 Selected Product Data:');
@@ -417,6 +533,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
     final result = await service.createReviewRequest(
       productId: selectedProduct['product_id'],
       productType: selectedProduct['product_type'],
+      requestComment: requestComment.isEmpty ? null : requestComment, // جديد: إرسال التعليق
     );
     print('📥 Result: $result');
 
@@ -674,6 +791,51 @@ class ProductReviewCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
+
+              // تعليق طالب التقييم (إذا كان موجوداً)
+              if (request.requestComment != null && request.requestComment!.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.outline.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 18,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'تعليق طالب التقييم:',
+                              style: textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              request.requestComment!,
+                              style: textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // طالب التقييم والتاريخ وزر الحذف
               Row(
@@ -1103,6 +1265,53 @@ class _ProductReviewDetailsScreenState
                       ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                
+                // تعليق طالب التقييم (إذا كان موجوداً)
+                if (widget.request.requestComment != null && widget.request.requestComment!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceVariant.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colorScheme.outline.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 18,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'تعليق طالب التقييم:',
+                                style: textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.request.requestComment!,
+                                style: textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 
                 // الإحصائيات

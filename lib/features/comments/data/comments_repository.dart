@@ -16,6 +16,7 @@ class CommentsRepository {
   Future<List<Comment>> getComments({
     required String itemId,
     required CommentType type,
+    int? limit, // إضافة limit parameter اختياري
   }) async {
     try {
       String tableName;
@@ -36,7 +37,7 @@ class CommentsRepository {
           break;
       }
 
-      final response = await _supabase
+      var query = _supabase
           .from(tableName)
           .select('''
             *,
@@ -48,6 +49,13 @@ class CommentsRepository {
           ''')
           .eq(itemIdKey, itemId)
           .order('created_at', ascending: false);
+      
+      // تطبيق limit إذا تم تحديده
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+      
+      final response = await query;
 
       return (response as List)
           .map((json) {
@@ -253,6 +261,7 @@ class CommentsRepository {
   Stream<List<Comment>> watchComments({
     required String itemId,
     required CommentType type,
+    int? limit, // إضافة limit parameter اختياري
   }) {
     String tableName;
     String itemIdKey;
@@ -272,12 +281,18 @@ class CommentsRepository {
         break;
     }
 
-    return _supabase
+    var stream = _supabase
         .from(tableName)
         .stream(primaryKey: ['id'])
         .eq(itemIdKey, itemId)
-        .order('created_at', ascending: false)
-        .asyncMap((data) async {
+        .order('created_at', ascending: false);
+    
+    // تطبيق limit إذا تم تحديده
+    if (limit != null) {
+      stream = stream.limit(limit);
+    }
+    
+    return stream.asyncMap((data) async {
           // جلب بيانات المستخدمين لكل تعليق
           final Set<Comment> comments = {};
           

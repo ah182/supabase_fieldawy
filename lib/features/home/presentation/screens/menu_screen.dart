@@ -21,6 +21,9 @@ import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
+import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
+import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/mobile_admin_dashboard_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -57,7 +60,13 @@ class MenuScreen extends ConsumerWidget {
 
                   List<Widget> menuItems = [];
                   if (user.role == 'admin') {
-                    // Admin gets all items, remove duplicates by title
+                    // Admin gets admin dashboard + all other items
+                    menuItems = [
+                      _getAdminMenuItems(context),
+                      const Divider(color: Colors.white24, thickness: 1, height: 24),
+                    ];
+                    
+                    // Add all other items, remove duplicates by title
                     final allItems = [
                       ..._getDoctorMenuItems(context),
                       ..._getDistributorMenuItems(context),
@@ -71,7 +80,7 @@ class MenuScreen extends ConsumerWidget {
                         }
                       }
                     }
-                    menuItems = uniqueItems.values.toList();
+                    menuItems.addAll(uniqueItems.values);
                   } else if (user.role == 'doctor') {
                     menuItems = _getDoctorMenuItems(context);
                   } else if (user.role == 'distributor' || user.role == 'company') {
@@ -141,6 +150,14 @@ class MenuScreen extends ConsumerWidget {
                 builder: (context) => const DashboardPage()));
           }),
       _buildMenuItem(
+          icon: Icons.analytics_outlined,
+          title: 'Analytics',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const AnalyticsPage()));
+          }),
+      _buildMenuItem(
           icon: Icons.inventory_2_outlined, // أيقونة جديدة
           title: 'myMedicines'.tr(),
           onTap: () {
@@ -208,6 +225,14 @@ class MenuScreen extends ConsumerWidget {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => const ProductsWithReviewsScreen()));
+          }),
+      _buildMenuItem(
+          icon: Icons.analytics_outlined,
+          title: 'Analytics',
+          onTap: () {
+            ZoomDrawer.of(context)!.close();
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => const AnalyticsPage()));
           }),
       _buildMenuItem(
           icon: Icons.people_alt_outlined,
@@ -386,6 +411,19 @@ class MenuScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _getAdminMenuItems(BuildContext context) {
+    return _buildMenuItem(
+      icon: Icons.admin_panel_settings,
+      title: 'Admin Dashboard',
+      onTap: () {
+        ZoomDrawer.of(context)!.close();
+        // استخدام النسخة Mobile المناسبة للهواتف
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const MobileAdminDashboardScreen()));
+      },
     );
   }
 

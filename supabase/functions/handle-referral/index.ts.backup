@@ -70,45 +70,15 @@ serve(async (req) => {
       throw referralError
     }
 
-    // 3. Get the invited user's role to determine points
-    const { data: invitedUser, error: invitedUserError } = await supabaseAdmin
-      .from('users')
-      .select('role')
-      .eq('id', invited_id)
-      .single()
+    // 3. Award a point to the inviter
+    const { error: pointsError } = await supabaseAdmin.rpc('increment_user_points', { user_id_param: inviter_id, points_to_add: 1 });
 
-    if (invitedUserError) {
-      console.error(`Failed to get invited user role:`, invitedUserError);
-    }
 
-    const invitedRole = invitedUser?.role || 'doctor'; // default to doctor if role not found
-
-    // 4. Calculate points based on invited user's role
-    // Inviter gets: 1 point for doctor, 2 points for company/distributor
-    const inviterPoints = (invitedRole === 'company' || invitedRole === 'distributor') ? 2 : 1;
-    
-    // Invited user always gets 2 points
-    const invitedPoints = 2;
-
-    // 5. Award points to both users
-    // Award points to inviter
-    const { error: inviterPointsError } = await supabaseAdmin.rpc('increment_user_points', { 
-      user_id_param: inviter_id, 
-      points_to_add: inviterPoints 
-    });
-
-    if (inviterPointsError) {
-      console.error(`Failed to award ${inviterPoints} points to inviter ${inviter_id}:`, inviterPointsError);
-    }
-
-    // Award points to invited user
-    const { error: invitedPointsError } = await supabaseAdmin.rpc('increment_user_points', { 
-      user_id_param: invited_id, 
-      points_to_add: invitedPoints 
-    });
-
-    if (invitedPointsError) {
-      console.error(`Failed to award ${invitedPoints} points to invited user ${invited_id}:`, invitedPointsError);
+    if (pointsError) {
+      // It's important to handle this error, but the referral is already created.
+      // You might want to log this for manual correction.
+      console.error(`Failed to award points to user ${inviter_id}:`, pointsError);
+      // Still, we return a success response to the client as the referral was successful.
     }
 
     return new Response(JSON.stringify({ success: true, message: 'Referral successful!' }), {

@@ -62,11 +62,15 @@ class _NotificationManagerWidgetState
                       color: Colors.orange.shade700, size: 28),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Push Notification Manager',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                Expanded(
+                  child: Text(
+                    'Push Notification Manager',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

@@ -564,11 +564,12 @@ class _SurgicalToolDetailsScreenState
 
           const SizedBox(height: 16),
 
-          // قائمة التعليقات
+          // قائمة التعليقات (محددة بـ 5 تعليقات)
           StreamBuilder<List<Comment>>(
             stream: _commentsRepository.watchComments(
               itemId: widget.tool.id,
               type: CommentType.surgicalTool,
+              limit: 5, // تحديد 5 تعليقات فقط
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {

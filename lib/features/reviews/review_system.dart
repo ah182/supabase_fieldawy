@@ -40,6 +40,7 @@ class ReviewRequestModel {
   final String? closedReason;
   final bool isCommentsFull;
   final bool canAddComment;
+  final String? requestComment; // جديد: تعليق طالب التقييم
 
   ReviewRequestModel({
     required this.id,
@@ -61,6 +62,7 @@ class ReviewRequestModel {
     this.closedReason,
     required this.isCommentsFull,
     required this.canAddComment,
+    this.requestComment, // جديد: تعليق طالب التقييم
   });
 
   factory ReviewRequestModel.fromJson(Map<String, dynamic> json) {
@@ -88,6 +90,7 @@ class ReviewRequestModel {
       closedReason: json['closed_reason'] as String?,
       isCommentsFull: json['is_comments_full'] as bool? ?? false,
       canAddComment: json['can_add_comment'] as bool? ?? true,
+      requestComment: json['request_comment'] as String?, // جديد: تعليق طالب التقييم
     );
   }
 }
@@ -170,6 +173,7 @@ class ReviewService {
   Future<Map<String, dynamic>> createReviewRequest({
     required String productId,
     String productType = 'product',
+    String? requestComment, // جديد: تعليق طالب التقييم
   }) async {
     try {
       final response = await _supabase.rpc(
@@ -177,6 +181,7 @@ class ReviewService {
         params: {
           'p_product_id': productId,
           'p_product_type': productType,
+          'p_request_comment': requestComment, // جديد: إرسال التعليق
         },
       );
 
@@ -320,16 +325,16 @@ class ReviewService {
     int offset = 0,
   }) async {
     try {
-      final response = await _supabase
-          .from('review_requests_with_details')
-          .select()
-          .eq('status', 'active')
-          .order('requested_at', ascending: false)
-          .range(offset, offset + limit - 1);
+      // استخدام RPC function بدلاً من view
+      final response = await _supabase.rpc('get_active_review_requests');
 
-      return (response as List)
-          .map((json) => ReviewRequestModel.fromJson(json))
-          .toList();
+      if (response is List) {
+        return response
+            .map((json) => ReviewRequestModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+      
+      return [];
     } catch (e) {
       print('Error fetching active review requests: $e');
       return [];

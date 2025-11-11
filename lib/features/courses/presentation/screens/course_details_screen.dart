@@ -441,11 +441,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
           const SizedBox(height: 16),
 
-          // قائمة التعليقات
+          // قائمة التعليقات (محددة بـ 5 تعليقات)
           StreamBuilder<List<Comment>>(
             stream: _commentsRepository.watchComments(
               itemId: widget.course.id,
               type: CommentType.course,
+              limit: 5, // تحديد 5 تعليقات فقط
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {

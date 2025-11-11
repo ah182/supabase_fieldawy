@@ -124,25 +124,31 @@ class PendingApprovalsWidget extends ConsumerWidget {
                 // Pending counts
                 Row(
                   children: [
-                    _PendingCount(
-                      icon: Icons.medical_services,
-                      label: 'Doctors',
-                      count: pendingDoctors.length,
-                      color: Colors.green,
+                    Expanded(
+                      child: _PendingCount(
+                        icon: Icons.medical_services,
+                        label: 'Doctors',
+                        count: pendingDoctors.length,
+                        color: Colors.green,
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    _PendingCount(
-                      icon: Icons.local_shipping,
-                      label: 'Distributors',
-                      count: pendingDistributors.length,
-                      color: Colors.purple,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PendingCount(
+                        icon: Icons.local_shipping,
+                        label: 'Distributors',
+                        count: pendingDistributors.length,
+                        color: Colors.purple,
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    _PendingCount(
-                      icon: Icons.business,
-                      label: 'Companies',
-                      count: pendingCompanies.length,
-                      color: Colors.teal,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PendingCount(
+                        icon: Icons.business,
+                        label: 'Companies',
+                        count: pendingCompanies.length,
+                        color: Colors.teal,
+                    ),
                     ),
                   ],
                 ),
@@ -233,14 +239,20 @@ class _PendingCount extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Text(
-            '$label ($count)',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '$label ($count)',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontSize: 13,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

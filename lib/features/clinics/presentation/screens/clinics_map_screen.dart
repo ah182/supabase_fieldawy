@@ -403,11 +403,42 @@ class _ClinicDetailsSheet extends ConsumerWidget {
   final ClinicWithDoctorInfo clinic;
   const _ClinicDetailsSheet({required this.clinic});
 
-  Widget _buildInfoRow(BuildContext context, IconData icon, String title, String? value) {
-    if (value == null || value.isEmpty) return const SizedBox.shrink();
+  Widget _buildInfoRow(BuildContext context, IconData icon, String title, String? value, {bool showIfEmpty = false}) {
+    // إذا كانت القيمة فارغة وshowIfEmpty = false، لا تعرض الصف
+    if ((value == null || value.isEmpty) && !showIfEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    // إذا كانت القيمة فارغة وshowIfEmpty = true، اعرض "غير متوفر"
+    final displayValue = (value == null || value.isEmpty) ? 'غير متوفر' : value;
+    final isUnavailable = (value == null || value.isEmpty);
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: Theme.of(context).primaryColor, size: 22), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)), const SizedBox(height: 2), Text(value, style: const TextStyle(fontSize: 16))]))]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Theme.of(context).primaryColor, size: 22),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 2),
+                Text(
+                  displayValue,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isUnavailable ? Colors.grey : null,
+                    fontStyle: isUnavailable ? FontStyle.italic : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -446,9 +477,9 @@ class _ClinicDetailsSheet extends ConsumerWidget {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(clinic.clinicName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8), const Divider(),
-        _buildInfoRow(context, Icons.person_outline, 'Doctor', clinic.doctorName),
-        _buildInfoRow(context, Icons.location_on_outlined, 'Address', cleanedAddress),
-        _buildInfoRow(context, Icons.phone_outlined, 'Phone', clinic.clinicPhoneNumber),
+        _buildInfoRow(context, Icons.person_outline, 'الطبيب', clinic.doctorName),
+        _buildInfoRow(context, Icons.location_on_outlined, 'العنوان', cleanedAddress),
+        _buildInfoRow(context, Icons.phone_outlined, 'رقم الهاتف', clinic.clinicPhoneNumber, showIfEmpty: true),
         _buildWhatsAppRow(context, clinic.doctorWhatsappNumber),
         const SizedBox(height: 24),
         SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: const Icon(Icons.directions), label: const Text('Get Directions'), onPressed: () => _launchDirections(context), style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
