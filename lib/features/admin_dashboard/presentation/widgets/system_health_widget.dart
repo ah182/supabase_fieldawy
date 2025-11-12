@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+// ignore: unused_import
+import 'package:fieldawy_store/features/admin_dashboard/utils/async_value_helper.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 
 import 'package:fieldawy_store/features/admin_dashboard/data/activity_repository.dart';
@@ -134,75 +136,15 @@ class SystemHealthWidget extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: usersAsync.when(
-                    loading: () => _MetricCard(
-                      label: 'Database',
-                      status: 'Loading...',
-                      icon: Icons.storage,
-                      isHealthy: null,
-                    ),
-                    error: (err, stack) => _MetricCard(
-                      label: 'Database',
-                      status: 'Error',
-                      icon: Icons.storage,
-                      isHealthy: false,
-                    ),
-                    data: (users) => _MetricCard(
-                      label: 'Database',
-                      status: 'Healthy',
-                      icon: Icons.storage,
-                      isHealthy: true,
-                      subtitle: '${users.length} users',
-                    ),
-                  ),
+                  child: _buildDatabaseMetric(usersAsync, context),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: productsAsync.when(
-                    loading: () => _MetricCard(
-                      label: 'Products',
-                      status: 'Loading...',
-                      icon: Icons.inventory_2,
-                      isHealthy: null,
-                    ),
-                    error: (err, stack) => _MetricCard(
-                      label: 'Products',
-                      status: 'Error',
-                      icon: Icons.inventory_2,
-                      isHealthy: false,
-                    ),
-                    data: (products) => _MetricCard(
-                      label: 'Products',
-                      status: 'Healthy',
-                      icon: Icons.inventory_2,
-                      isHealthy: true,
-                      subtitle: '${products.length} items',
-                    ),
-                  ),
+                  child: _buildProductsMetric(productsAsync, context),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: activitiesAsync.when(
-                    loading: () => _MetricCard(
-                      label: 'Activity Logs',
-                      status: 'Loading...',
-                      icon: Icons.timeline,
-                      isHealthy: null,
-                    ),
-                    error: (err, stack) => _MetricCard(
-                      label: 'Activity Logs',
-                      status: 'Error',
-                      icon: Icons.timeline,
-                      isHealthy: false,
-                    ),
-                    data: (activities) => _MetricCard(
-                      label: 'Activity Logs',
-                      status: 'Healthy',
-                      icon: Icons.timeline,
-                      isHealthy: true,
-                      subtitle: '${activities.length} recent',
-                    ),
-                  ),
+                  child: _buildActivitiesMetric(activitiesAsync, context),
                 ),
               ],
             ),
@@ -226,38 +168,46 @@ class SystemHealthWidget extends ConsumerWidget {
     final List<Widget> alerts = [];
 
     // Check pending users
-    usersAsync.whenData((users) {
-      final pendingCount =
-          users.where((u) => u.accountStatus == 'pending_review').length;
-      if (pendingCount > 5) {
-        alerts.add(_AlertItem(
-          icon: Icons.people,
-          color: Colors.orange,
-          title: 'High number of pending user requests',
-          description: '$pendingCount users waiting for approval',
-          severity: 'Medium',
-        ));
-      }
-    });
+    usersAsync.safeWhen(
+      data: (users) {
+        final pendingCount =
+            users.where((u) => u.accountStatus == 'pending_review').length;
+        if (pendingCount > 5) {
+          alerts.add(_AlertItem(
+            icon: Icons.people,
+            color: Colors.orange,
+            title: 'High number of pending user requests',
+            description: '$pendingCount users waiting for approval',
+            severity: 'Medium',
+          ));
+        }
+      },
+      loading: () {},
+      error: (_, __) {},
+    );
 
     // Check expiring offers
-    offersAsync.whenData((offers) {
-      final now = DateTime.now();
-      final expiringSoon = offers
-          .where((o) =>
-              o.expirationDate.isAfter(now) &&
-              o.expirationDate.difference(now).inHours < 24)
-          .length;
-      if (expiringSoon > 0) {
-        alerts.add(_AlertItem(
-          icon: Icons.access_time,
-          color: Colors.orange,
-          title: 'Offers expiring soon',
-          description: '$expiringSoon offer(s) will expire within 24 hours',
-          severity: 'Low',
-        ));
-      }
-    });
+    offersAsync.safeWhen(
+      data: (offers) {
+        final now = DateTime.now();
+        final expiringSoon = offers
+            .where((o) =>
+                o.expirationDate.isAfter(now) &&
+                o.expirationDate.difference(now).inHours < 24)
+            .length;
+        if (expiringSoon > 0) {
+          alerts.add(_AlertItem(
+            icon: Icons.access_time,
+            color: Colors.orange,
+            title: 'Offers expiring soon',
+            description: '$expiringSoon offer(s) will expire within 24 hours',
+            severity: 'Low',
+          ));
+        }
+      },
+      loading: () {},
+      error: (_, __) {},
+    );
 
     if (alerts.isEmpty) {
       return Container(
@@ -448,3 +398,110 @@ class _AlertItem extends StatelessWidget {
     );
   }
 }
+
+// Helper functions
+Widget _buildDatabaseMetric(AsyncValue usersAsync, BuildContext context) {
+    if (usersAsync.isLoading && !usersAsync.hasValue) {
+      return _MetricCard(
+        label: 'Database',
+        status: 'Loading...',
+        icon: Icons.storage,
+        isHealthy: null,
+      );
+    }
+    if (usersAsync.hasError && !usersAsync.hasValue) {
+      return _MetricCard(
+        label: 'Database',
+        status: 'Error',
+        icon: Icons.storage,
+        isHealthy: false,
+      );
+    }
+    if (usersAsync.hasValue) {
+      final users = usersAsync.value;
+      return _MetricCard(
+        label: 'Database',
+        status: 'Healthy',
+        icon: Icons.storage,
+        isHealthy: true,
+        subtitle: '${users.length} users',
+      );
+    }
+    return _MetricCard(
+      label: 'Database',
+      status: 'Loading...',
+      icon: Icons.storage,
+      isHealthy: null,
+    );
+}
+
+Widget _buildProductsMetric(AsyncValue productsAsync, BuildContext context) {
+    if (productsAsync.isLoading && !productsAsync.hasValue) {
+      return _MetricCard(
+        label: 'Products',
+        status: 'Loading...',
+        icon: Icons.inventory_2,
+        isHealthy: null,
+      );
+    }
+    if (productsAsync.hasError && !productsAsync.hasValue) {
+      return _MetricCard(
+        label: 'Products',
+        status: 'Error',
+        icon: Icons.inventory_2,
+        isHealthy: false,
+      );
+    }
+    if (productsAsync.hasValue) {
+      final products = productsAsync.value;
+      return _MetricCard(
+        label: 'Products',
+        status: 'Healthy',
+        icon: Icons.inventory_2,
+        isHealthy: true,
+        subtitle: '${products.length} items',
+      );
+    }
+    return _MetricCard(
+      label: 'Products',
+      status: 'Loading...',
+      icon: Icons.inventory_2,
+      isHealthy: null,
+    );
+}
+
+Widget _buildActivitiesMetric(AsyncValue activitiesAsync, BuildContext context) {
+    if (activitiesAsync.isLoading && !activitiesAsync.hasValue) {
+      return _MetricCard(
+        label: 'Activity Logs',
+        status: 'Loading...',
+        icon: Icons.timeline,
+        isHealthy: null,
+      );
+    }
+    if (activitiesAsync.hasError && !activitiesAsync.hasValue) {
+      return _MetricCard(
+        label: 'Activity Logs',
+        status: 'Error',
+        icon: Icons.timeline,
+        isHealthy: false,
+      );
+    }
+    if (activitiesAsync.hasValue) {
+      final activities = activitiesAsync.value;
+      return _MetricCard(
+        label: 'Activity Logs',
+        status: 'Healthy',
+        icon: Icons.timeline,
+        isHealthy: true,
+        subtitle: '${activities.length} recent',
+      );
+    }
+    return _MetricCard(
+      label: 'Activity Logs',
+      status: 'Loading...',
+      icon: Icons.timeline,
+      isHealthy: null,
+    );
+}
+

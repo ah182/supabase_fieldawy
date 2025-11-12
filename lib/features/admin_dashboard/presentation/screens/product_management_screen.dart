@@ -319,7 +319,7 @@ class _CatalogProductDataSource extends DataTableSource {
       index: index,
       cells: [
         // Image
-        DataCell(_buildProductImage(product.imageUrl)),
+        DataCell(_buildProductImage(product.imageUrl, product)),
         // Name
         DataCell(
           SizedBox(
@@ -496,44 +496,97 @@ class _CatalogProductDataSource extends DataTableSource {
     );
   }
 
-  Widget _buildProductImage(String imageUrl) {
-    if (imageUrl.isEmpty) {
-      return Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: const Icon(Icons.inventory_2, size: 24, color: Colors.grey),
-      );
-    }
+  Widget _buildProductImage(String imageUrl, ProductModel product) {
+    final Widget imageWidget = imageUrl.isEmpty
+        ? Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Icon(Icons.inventory_2, size: 24, color: Colors.grey),
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+              ),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showProductDetailsDialog(product),
+        child: imageWidget,
+      ),
+    );
+  }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: imageUrl,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+  void _showProductDetailsDialog(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Product Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (product.imageUrl.isNotEmpty)
+                  Center(
+                    child: CachedNetworkImage(
+                      imageUrl: product.imageUrl,
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                _buildDetailRow('Product ID', product.id),
+                _buildDetailRow('Name', product.name),
+                _buildDetailRow('Category', product.action ?? 'N/A'),
+                _buildDetailRow('Company', product.company ?? 'N/A'),
+                _buildDetailRow('Distributor', 'N/A (Catalog Product)'),
+                _buildDetailRow(
+                  'Available Packages',
+                  product.availablePackages.isNotEmpty 
+                      ? product.availablePackages.join(', ') 
+                      : 'N/A',
+                ),
+              ],
             ),
           ),
         ),
-        errorWidget: (context, url, error) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -628,7 +681,7 @@ class _DistributorProductDataSource extends DataTableSource {
       index: index,
       cells: [
         // Image
-        DataCell(_buildProductImage(product.imageUrl)),
+        DataCell(_buildProductImage(product.imageUrl, product)),
         // Name
         DataCell(
           SizedBox(
@@ -728,44 +781,93 @@ class _DistributorProductDataSource extends DataTableSource {
     );
   }
 
-  Widget _buildProductImage(String imageUrl) {
-    if (imageUrl.isEmpty) {
-      return Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: const Icon(Icons.inventory_2, size: 24, color: Colors.grey),
-      );
-    }
+  Widget _buildProductImage(String imageUrl, ProductModel product) {
+    final Widget imageWidget = imageUrl.isEmpty
+        ? Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Icon(Icons.inventory_2, size: 24, color: Colors.grey),
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+              ),
+            ),
+          );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: imageUrl,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showProductDetailsDialog(product),
+        child: imageWidget,
+      ),
+    );
+  }
+
+  void _showProductDetailsDialog(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Product Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (product.imageUrl.isNotEmpty)
+                  Center(
+                    child: CachedNetworkImage(
+                      imageUrl: product.imageUrl,
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                _buildDetailRow('Product ID', product.id),
+                _buildDetailRow('Name', product.name),
+                _buildDetailRow('Distributor', product.distributorId ?? 'N/A'),
+                _buildDetailRow('Package', product.selectedPackage ?? 'N/A'),
+                _buildDetailRow('Price', '${product.price?.toStringAsFixed(2) ?? 'N/A'} EGP'),
+                _buildDetailRow('Category', product.action ?? 'N/A'),
+                _buildDetailRow('Company', product.company ?? 'N/A'),
+              ],
             ),
           ),
         ),
-        errorWidget: (context, url, error) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -944,7 +1046,7 @@ class _BooksDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= books.length) return null;
     final book = books[index];
-    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(book.imageUrl)), DataCell(SizedBox(width: 200, child: Text(book.name, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(book.author)), DataCell(Text(book.price.toStringAsFixed(2))), DataCell(Text(book.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(book)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(book)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(book))]))]);
+    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(book.imageUrl, book)), DataCell(SizedBox(width: 200, child: Text(book.name, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(book.author)), DataCell(Text(book.price.toStringAsFixed(2))), DataCell(Text(book.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(book)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(book)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(book))]))]);
   }
   
   void _showEditDialog(Book book) {
@@ -1026,10 +1128,82 @@ class _BooksDataSource extends DataTableSource {
     );
   }
   
-  Widget _buildImage(String url) {
-    if (url.isEmpty) return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.menu_book, size: 24));
-    return ClipRRect(borderRadius: BorderRadius.circular(4), child: CachedNetworkImage(imageUrl: url, width: 50, height: 50, fit: BoxFit.cover, placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]), errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image))));
+  Widget _buildImage(String url, Book book) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.menu_book, size: 24))
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
+              errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(book),
+        child: imageWidget,
+      ),
+    );
   }
+
+  void _showDetailsDialog(Book book) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Book Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (book.imageUrl.isNotEmpty)
+                  Center(child: CachedNetworkImage(imageUrl: book.imageUrl, width: 250, height: 250, fit: BoxFit.contain)),
+                const SizedBox(height: 16),
+                _buildDetailRow('Book ID', book.id),
+                _buildDetailRow('Name', book.name),
+                _buildDetailRow('Author', book.author),
+                _buildDetailRow('Price', '${book.price.toStringAsFixed(2)} EGP'),
+                _buildDetailRow('Phone', book.phone),
+                _buildDetailRow('Distributor', 'N/A'),
+                const SizedBox(height: 8),
+                Text('Description:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(book.description),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
   void _showDetails(Book book) {
     showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Book Details'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [if (book.imageUrl.isNotEmpty) Center(child: CachedNetworkImage(imageUrl: book.imageUrl, width: 200, height: 200)), const SizedBox(height: 16), Text('Name: ${book.name}', style: const TextStyle(fontWeight: FontWeight.bold)), Text('Author: ${book.author}'), Text('Price: ${book.price.toStringAsFixed(2)} EGP'), Text('Phone: ${book.phone}'), Text('Description: ${book.description}')])), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))]));
   }
@@ -1103,7 +1277,7 @@ class _CoursesDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= courses.length) return null;
     final course = courses[index];
-    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(course.imageUrl)), DataCell(SizedBox(width: 250, child: Text(course.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(course.price.toStringAsFixed(2))), DataCell(Text(course.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(course)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(course)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(course))]))]);
+    return DataRow.byIndex(index: index, cells: [DataCell(_buildImage(course.imageUrl, course)), DataCell(SizedBox(width: 250, child: Text(course.title, overflow: TextOverflow.ellipsis, maxLines: 2))), DataCell(Text(course.price.toStringAsFixed(2))), DataCell(Text(course.phone)), DataCell(Row(mainAxisSize: MainAxisSize.min, children: [IconButton(icon: const Icon(Icons.visibility, size: 20), tooltip: 'View', onPressed: () => _showDetails(course)), IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.blue), tooltip: 'Edit', onPressed: () => _showEditDialog(course)), IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'Delete', onPressed: () => _confirmDelete(course))]))]);
   }
   
   void _showEditDialog(Course course) {
@@ -1180,10 +1354,81 @@ class _CoursesDataSource extends DataTableSource {
     );
   }
   
-  Widget _buildImage(String url) {
-    if (url.isEmpty) return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.school, size: 24));
-    return ClipRRect(borderRadius: BorderRadius.circular(4), child: CachedNetworkImage(imageUrl: url, width: 50, height: 50, fit: BoxFit.cover, placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]), errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image))));
+  Widget _buildImage(String url, Course course) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.school, size: 24))
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
+              errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(course),
+        child: imageWidget,
+      ),
+    );
   }
+
+  void _showDetailsDialog(Course course) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Course Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (course.imageUrl.isNotEmpty)
+                  Center(child: CachedNetworkImage(imageUrl: course.imageUrl, width: 250, height: 250, fit: BoxFit.contain)),
+                const SizedBox(height: 16),
+                _buildDetailRow('Course ID', course.id),
+                _buildDetailRow('Title', course.title),
+                _buildDetailRow('Price', '${course.price.toStringAsFixed(2)} EGP'),
+                _buildDetailRow('Phone', course.phone),
+                _buildDetailRow('Distributor', 'N/A'),
+                const SizedBox(height: 8),
+                Text('Description:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(course.description),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
   void _showDetails(Course course) {
     showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Course Details'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [if (course.imageUrl.isNotEmpty) Center(child: CachedNetworkImage(imageUrl: course.imageUrl, width: 200, height: 200)), const SizedBox(height: 16), Text('Title: ${course.title}', style: const TextStyle(fontWeight: FontWeight.bold)), Text('Price: ${course.price.toStringAsFixed(2)} EGP'), Text('Phone: ${course.phone}'), Text('Description: ${course.description}')])), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))]));
   }
@@ -1456,7 +1701,7 @@ class _VetSuppliesDataSource extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: [
-        DataCell(_buildImage(supply.imageUrl)),
+        DataCell(_buildImage(supply.imageUrl, supply)),
         DataCell(SizedBox(width: 200, child: Text(supply.name, overflow: TextOverflow.ellipsis, maxLines: 2))),
         DataCell(Text(supply.price.toStringAsFixed(2))),
         DataCell(Text(supply.phone)),
@@ -1493,19 +1738,79 @@ class _VetSuppliesDataSource extends DataTableSource {
     );
   }
 
-  Widget _buildImage(String url) {
-    if (url.isEmpty) {
-      return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.medical_services, size: 24));
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: url,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
-        errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+  Widget _buildImage(String url, VetSupply supply) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.medical_services, size: 24))
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
+              errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(supply),
+        child: imageWidget,
+      ),
+    );
+  }
+
+  void _showDetailsDialog(VetSupply supply) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Vet Supply Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (supply.imageUrl.isNotEmpty)
+                  Center(child: CachedNetworkImage(imageUrl: supply.imageUrl, width: 250, height: 250, fit: BoxFit.contain)),
+                const SizedBox(height: 16),
+                _buildDetailRow('Supply ID', supply.id),
+                _buildDetailRow('Name', supply.name),
+                _buildDetailRow('Price', '${supply.price.toStringAsFixed(2)} EGP'),
+                _buildDetailRow('Phone', supply.phone),
+                _buildDetailRow('Status', supply.status),
+                _buildDetailRow('Views', supply.viewsCount.toString()),
+                _buildDetailRow('Distributor', 'N/A'),
+                const SizedBox(height: 8),
+                Text('Description:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(supply.description),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
@@ -1795,6 +2100,7 @@ class _OffersTabState extends ConsumerState<_OffersTab> {
                       header: Text('Offers (${offers.length})'),
                       rowsPerPage: 10,
                       columns: const [
+                        DataColumn(label: Text('Image')),
                         DataColumn(label: Text('Product ID')),
                         DataColumn(label: Text('Type')),
                         DataColumn(label: Text('Price (EGP)')),
@@ -1829,6 +2135,7 @@ class _OffersDataSource extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: [
+        DataCell(_buildImage(offer.imageUrl ?? '', offer)),
         DataCell(SizedBox(width: 150, child: Text(offer.productId, overflow: TextOverflow.ellipsis))),
         DataCell(Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1870,6 +2177,116 @@ class _OffersDataSource extends DataTableSource {
           ],
         )),
       ],
+    );
+  }
+
+  Widget _buildImage(String url, Offer offer) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(
+            width: 50,
+            height: 50,
+            color: Colors.grey[200],
+            child: const Icon(Icons.local_offer, size: 24, color: Colors.grey),
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+              ),
+            ),
+          );
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(offer),
+        child: imageWidget,
+      ),
+    );
+  }
+
+  void _showDetailsDialog(Offer offer) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Offer Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (offer.imageUrl != null && offer.imageUrl!.isNotEmpty)
+                  Center(
+                    child: CachedNetworkImage(
+                      imageUrl: offer.imageUrl!,
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                _buildDetailRow('Offer ID', offer.id),
+                _buildDetailRow('Product ID', offer.productId),
+                _buildDetailRow('Type', offer.isOcr ? 'OCR' : 'Catalog'),
+                _buildDetailRow('Price', '${offer.price.toStringAsFixed(2)} EGP'),
+                _buildDetailRow('Package', offer.package ?? 'N/A'),
+                _buildDetailRow('Expiration', DateFormat('yyyy-MM-dd').format(offer.expirationDate)),
+                _buildDetailRow('Status', offer.isExpired ? 'Expired' : 'Active'),
+                if (offer.description != null && offer.description!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Description:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(offer.description!),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
     );
   }
 
@@ -2133,7 +2550,7 @@ class _SurgicalToolsDataSource extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: [
-        DataCell(_buildImage(tool.imageUrl ?? '')),
+        DataCell(_buildImage(tool.imageUrl ?? '', tool)),
         DataCell(SizedBox(width: 150, child: Text(tool.toolName ?? 'N/A', overflow: TextOverflow.ellipsis, maxLines: 2))),
         DataCell(Text(tool.company ?? 'N/A')),
         DataCell(SizedBox(width: 120, child: Text(tool.distributorName, overflow: TextOverflow.ellipsis))),
@@ -2162,19 +2579,77 @@ class _SurgicalToolsDataSource extends DataTableSource {
     );
   }
 
-  Widget _buildImage(String url) {
-    if (url.isEmpty) {
-      return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.healing, size: 24));
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: url,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
-        errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+  Widget _buildImage(String url, DistributorSurgicalTool tool) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.healing, size: 24))
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 50, height: 50, color: Colors.grey[200]),
+              errorWidget: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(tool),
+        child: imageWidget,
+      ),
+    );
+  }
+
+  void _showDetailsDialog(DistributorSurgicalTool tool) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Surgical Tool Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (tool.imageUrl != null && tool.imageUrl!.isNotEmpty)
+                  Center(child: CachedNetworkImage(imageUrl: tool.imageUrl!, width: 250, height: 250, fit: BoxFit.contain)),
+                const SizedBox(height: 16),
+                _buildDetailRow('Tool ID', tool.id),
+                _buildDetailRow('Tool Name', tool.toolName ?? 'N/A'),
+                _buildDetailRow('Company', tool.company ?? 'N/A'),
+                _buildDetailRow('Distributor', tool.distributorName),
+                _buildDetailRow('Price', '${tool.price.toStringAsFixed(2)} EGP'),
+                const SizedBox(height: 8),
+                Text('Description:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(tool.description),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
@@ -2408,7 +2883,7 @@ class _OcrProductsDataSource extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: [
-        DataCell(_buildImage(product['image_url']?.toString() ?? '')),
+        DataCell(_buildImage(product['image_url']?.toString() ?? '', product)),
         DataCell(SizedBox(width: 150, child: Text(product['ocr_product_id'] ?? 'N/A', overflow: TextOverflow.ellipsis))),
         DataCell(SizedBox(width: 120, child: Text(product['distributor_name'] ?? 'N/A', overflow: TextOverflow.ellipsis))),
         DataCell(Text(product['price']?.toStringAsFixed(2) ?? 'N/A')),
@@ -2442,40 +2917,105 @@ class _OcrProductsDataSource extends DataTableSource {
     );
   }
 
-  Widget _buildImage(String url) {
-    if (url.isEmpty) {
-      return Container(
-        width: 50,
-        height: 50,
-        color: Colors.grey[200],
-        child: const Icon(Icons.qr_code_scanner, size: 24, color: Colors.grey),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: url,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+  Widget _buildImage(String url, Map<String, dynamic> product) {
+    final Widget imageWidget = url.isEmpty
+        ? Container(
+            width: 50,
+            height: 50,
+            color: Colors.grey[200],
+            child: const Icon(Icons.qr_code_scanner, size: 24, color: Colors.grey),
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+              ),
+            ),
+          );
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showDetailsDialog(product),
+        child: imageWidget,
+      ),
+    );
+  }
+
+  void _showDetailsDialog(Map<String, dynamic> product) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('OCR Product Details'),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (product['image_url'] != null && product['image_url'].toString().isNotEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: CachedNetworkImage(
+                        imageUrl: product['image_url'],
+                        width: 250,
+                        height: 250,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                _buildDetailRow('Product ID', product['ocr_product_id'] ?? 'N/A'),
+                _buildDetailRow('OCR Product ID', product['ocr_product_id'] ?? 'N/A'),
+                _buildDetailRow('Distributor', product['distributor_name'] ?? 'N/A'),
+                _buildDetailRow('Price', product['price'] != null ? '${product['price'].toStringAsFixed(2)} EGP' : 'N/A'),
+                _buildDetailRow('Old Price', product['old_price'] != null ? '${product['old_price'].toStringAsFixed(2)} EGP' : 'N/A'),
+                if (product['expiration_date'] != null)
+                  _buildDetailRow('Expiration', DateFormat('yyyy-MM-dd').format(DateTime.parse(product['expiration_date']))),
+              ],
             ),
           ),
         ),
-        errorWidget: (_, __, ___) => Container(
-          width: 50,
-          height: 50,
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
-        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
@@ -2651,3 +3191,5 @@ class _OcrProductsDataSource extends DataTableSource {
   @override
   int get selectedRowCount => 0;
 }
+
+

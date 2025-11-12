@@ -7,7 +7,8 @@ class OffersRepository {
   // Admin: Get all offers
   Future<List<Offer>> adminGetAllOffers() async {
     try {
-      final response = await _supabase
+      // 1. جلب جميع الـ offers
+      final offersResponse = await _supabase
           .from('offers')
           .select('''
             id,
@@ -22,8 +23,67 @@ class OffersRepository {
           ''')
           .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => Offer.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> offersData = offersResponse as List<dynamic>;
+      
+      if (offersData.isEmpty) {
+        return [];
+      }
+
+      // 2. جمع product_ids الفريدة
+      final productIds = offersData
+          .where((o) => o['is_ocr'] == false) // فقط catalog products
+          .map((o) => o['product_id'].toString())
+          .toSet()
+          .toList();
+
+      // 3. جلب الصور من جدول products
+      Map<String, String> productImages = {};
+      if (productIds.isNotEmpty) {
+        try {
+          final productsResponse = await _supabase
+              .from('products')
+              .select('id, image_url')
+              .inFilter('id', productIds);
+
+          final List<dynamic> productsData = productsResponse as List<dynamic>;
+          for (var product in productsData) {
+            productImages[product['id'].toString()] = product['image_url']?.toString() ?? '';
+          }
+        } catch (e) {
+          print('Error fetching product images: $e');
+        }
+      }
+
+      // 4. جلب الصور من جدول ocr_products (إن وجد)
+      final ocrProductIds = offersData
+          .where((o) => o['is_ocr'] == true)
+          .map((o) => o['product_id'].toString())
+          .toSet()
+          .toList();
+
+      if (ocrProductIds.isNotEmpty) {
+        try {
+          final ocrResponse = await _supabase
+              .from('ocr_products')
+              .select('id, image_url')
+              .inFilter('id', ocrProductIds);
+
+          final List<dynamic> ocrData = ocrResponse as List<dynamic>;
+          for (var product in ocrData) {
+            productImages[product['id'].toString()] = product['image_url']?.toString() ?? '';
+          }
+        } catch (e) {
+          print('Error fetching OCR product images: $e');
+        }
+      }
+
+      // 5. دمج البيانات
+      return offersData.map((json) {
+        final offerData = json as Map<String, dynamic>;
+        final productId = offerData['product_id'].toString();
+        offerData['image_url'] = productImages[productId];
+        return Offer.fromJson(offerData);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to fetch all offers: $e');
     }

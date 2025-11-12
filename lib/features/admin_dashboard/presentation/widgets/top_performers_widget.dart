@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/admin_dashboard/data/analytics_repository.dart';
+import 'package:fieldawy_store/features/admin_dashboard/utils/async_value_helper.dart';
 
 class TopPerformersWidget extends ConsumerStatefulWidget {
   const TopPerformersWidget({super.key});
@@ -122,7 +123,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
     if (_searchQuery.isNotEmpty) {
       // Search mode
       final searchAsync = ref.watch(searchProductStatsProvider(_searchQuery));
-      return searchAsync.when(
+      return searchAsync.safeWhen(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
         data: (products) => _buildProductsList(products, isSearch: true),
@@ -130,7 +131,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
     } else {
       // Top 10 mode
       final topAsync = ref.watch(topProductsByViewsProvider(10));
-      return topAsync.when(
+      return topAsync.safeWhen(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
         data: (products) => _buildProductsList(products),
@@ -233,7 +234,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
     if (_searchQuery.isNotEmpty) {
       // Search mode
       final searchAsync = ref.watch(searchUserStatsProvider(_searchQuery));
-      return searchAsync.when(
+      return searchAsync.safeWhen(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
         data: (users) => _buildUsersList(users, isSearch: true),
@@ -242,7 +243,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
       // Top 10 mode
       final topAsync = ref.watch(topUsersByActivityProvider(
           TopUsersParams(role: null, limit: 10)));
-      return topAsync.when(
+      return topAsync.safeWhen(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: ${err.toString()}')),
         data: (users) => _buildUsersList(users),
@@ -306,9 +307,9 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
                 children: [
                   _getRoleChip(user.role),
                   const SizedBox(width: 8),
-                  Icon(Icons.search, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.inventory_2, size: 14, color: Colors.blue[600]),
                   const SizedBox(width: 4),
-                  Text('${user.totalSearches} searches'),
+                  Text('${user.totalProducts} products'),
                   const SizedBox(width: 12),
                   Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[600]),
                   const SizedBox(width: 4),
@@ -322,14 +323,14 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${user.totalActivity}',
+                '${user.totalProducts}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
                 ),
               ),
               Text(
-                'Total Activity',
+                'Products',
                 style: TextStyle(fontSize: 10, color: Colors.grey[600]),
               ),
             ],
@@ -365,7 +366,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -446,10 +447,8 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
               _DetailRow('Email', user.email ?? 'N/A'),
               _DetailRow('Role', user.role.toUpperCase()),
               const Divider(),
-              _DetailRow('Total Searches', '${user.totalSearches}'),
-              _DetailRow('Total Views', '${user.totalViews}'),
               _DetailRow('Total Products', '${user.totalProducts}'),
-              _DetailRow('Total Activity', '${user.totalActivity}'),
+              _DetailRow('Views on Products', '${user.totalViews}'),
               const Divider(),
               _DetailRow('Last Activity', user.lastActivityAt.toString()),
             ],
@@ -491,3 +490,5 @@ class _DetailRow extends StatelessWidget {
     );
   }
 }
+
+

@@ -23,7 +23,6 @@ import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_scr
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
-import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/mobile_admin_dashboard_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -420,9 +419,9 @@ class MenuScreen extends ConsumerWidget {
       title: 'Admin Dashboard',
       onTap: () {
         ZoomDrawer.of(context)!.close();
-        // استخدام النسخة Mobile المناسبة للهواتف
+        // استخدام النسخة Web المناسبة للإدارة
         Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => const MobileAdminDashboardScreen()));
+            builder: (context) => const AdminDashboardScreen()));
       },
     );
   }

@@ -10,20 +10,29 @@ class PendingApprovalsWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(allUsersListProvider);
 
-    return usersAsync.when(
-      loading: () => const Card(
+    // Handle loading
+    if (usersAsync.isLoading && !usersAsync.hasValue) {
+      return const Card(
         child: Padding(
           padding: EdgeInsets.all(24.0),
           child: Center(child: CircularProgressIndicator()),
         ),
-      ),
-      error: (err, stack) => Card(
+      );
+    }
+
+    // Handle error
+    if (usersAsync.hasError && !usersAsync.hasValue) {
+      return Card(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Text('Error: ${err.toString()}'),
+          child: Text('Error: ${usersAsync.error.toString()}'),
         ),
-      ),
-      data: (users) {
+      );
+    }
+
+    // Handle data
+    if (usersAsync.hasValue) {
+      final users = usersAsync.value!;
         final pendingUsers = users
             .where((u) => u.accountStatus == 'pending_review')
             .toList();
@@ -187,7 +196,14 @@ class PendingApprovalsWidget extends ConsumerWidget {
             ),
           ),
         );
-      },
+    }
+
+    // Fallback
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 

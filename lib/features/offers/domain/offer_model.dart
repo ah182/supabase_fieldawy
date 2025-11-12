@@ -13,6 +13,7 @@ class Offer {
   // Optional fields for joined data
   final String? productName;
   final String? userName;
+  final String? imageUrl;
 
   Offer({
     required this.id,
@@ -27,6 +28,7 @@ class Offer {
     this.updatedAt,
     this.productName,
     this.userName,
+    this.imageUrl,
   });
 
   factory Offer.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class Offer {
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
       productName: json['product_name'] as String?,
       userName: json['user_name'] as String?,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -60,6 +63,7 @@ class Offer {
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       if (productName != null) 'product_name': productName,
       if (userName != null) 'user_name': userName,
+      if (imageUrl != null) 'image_url': imageUrl,
     };
   }
 
@@ -78,6 +82,7 @@ class Offer {
     DateTime? updatedAt,
     String? productName,
     String? userName,
+    String? imageUrl,
   }) {
     return Offer(
       id: id ?? this.id,
@@ -92,6 +97,7 @@ class Offer {
       updatedAt: updatedAt,
       productName: productName ?? this.productName,
       userName: userName ?? this.userName,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }

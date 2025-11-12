@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 
 class GeographicDistributionWidget extends ConsumerWidget {
   const GeographicDistributionWidget({super.key});
@@ -48,32 +49,48 @@ class GeographicDistributionWidget extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             // Content
-            usersAsync.when(
-              loading: () => const SizedBox(
-                height: 400,
-                child: Center(child: CircularProgressIndicator()),
+            _buildContent(usersAsync, ref, context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(AsyncValue<List<UserModel>> usersAsync, WidgetRef ref, BuildContext context) {
+    // Handle loading state
+    if (usersAsync.isLoading && !usersAsync.hasValue) {
+      return const SizedBox(
+        height: 400,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Handle error state
+    if (usersAsync.hasError && !usersAsync.hasValue) {
+      return SizedBox(
+        height: 400,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Error loading data'),
+              TextButton(
+                onPressed: () {
+                  ref.invalidate(allUsersListProvider);
+                },
+                child: const Text('Retry'),
               ),
-              error: (err, stack) => SizedBox(
-                height: 400,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      const Text('Error loading data'),
-                      TextButton(
-                        onPressed: () {
-                          ref.invalidate(allUsersListProvider);
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              data: (users) {
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Handle data state
+    if (usersAsync.hasValue) {
+      final users = usersAsync.value!;
                 // Calculate distribution by governorate
                 final Map<String, Map<String, int>> govDistribution = {};
                 int totalWithGov = 0;
@@ -227,11 +244,12 @@ class GeographicDistributionWidget extends ConsumerWidget {
                     ),
                   ],
                 );
-              },
-            ),
-          ],
-        ),
-      ),
+    }
+
+    // Fallback - should never reach here
+    return const SizedBox(
+      height: 400,
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }

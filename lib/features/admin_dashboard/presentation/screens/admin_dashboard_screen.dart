@@ -1,5 +1,6 @@
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:fieldawy_store/features/admin_dashboard/utils/async_value_helper.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/pending_approvals_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/quick_actions_panel.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/recent_activity_timeline.dart';
@@ -38,7 +39,7 @@ class AdminDashboardScreen extends ConsumerWidget {
             mainAxisSpacing: 16,
             childAspectRatio: 1.5,
             children: [
-              usersCountAsync.when(
+              usersCountAsync.safeWhen(
                 loading: () => const _StatCard(
                   title: 'Total Users',
                   value: '...',
@@ -58,7 +59,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   color: Colors.blue,
                 ),
               ),
-              doctorsCountAsync.when(
+              doctorsCountAsync.safeWhen(
                 loading: () => const _StatCard(
                   title: 'Doctors',
                   value: '...',
@@ -78,7 +79,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   color: Colors.green,
                 ),
               ),
-              distributorsCountAsync.when(
+              distributorsCountAsync.safeWhen(
                 loading: () => const _StatCard(
                   title: 'Distributors',
                   value: '...',
@@ -98,7 +99,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   color: Colors.purple,
                 ),
               ),
-              companiesCountAsync.when(
+              companiesCountAsync.safeWhen(
                 loading: () => const _StatCard(
                   title: 'Companies',
                   value: '...',
@@ -118,7 +119,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   color: Colors.teal,
                 ),
               ),
-              productsAsync.when(
+              productsAsync.safeWhen(
                 loading: () => const _StatCard(
                   title: 'Total Products',
                   value: '...',
@@ -289,3 +290,6 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+
+

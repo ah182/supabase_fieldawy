@@ -172,10 +172,19 @@ class _AdvancedSearchWidgetState extends ConsumerState<AdvancedSearchWidget> {
   Widget _buildUsersSection() {
     final usersAsync = ref.watch(allUsersListProvider);
 
-    return usersAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Text('Error: ${err.toString()}'),
-      data: (users) {
+    // Handle loading
+    if (usersAsync.isLoading && !usersAsync.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Handle error
+    if (usersAsync.hasError && !usersAsync.hasValue) {
+      return Text('Error: ${usersAsync.error.toString()}');
+    }
+
+    // Handle data
+    if (usersAsync.hasValue) {
+      final users = usersAsync.value!;
         final filteredUsers = users.where((user) {
           final query = _searchQuery.toLowerCase();
           return (user.displayName?.toLowerCase().contains(query) ?? false) ||
@@ -213,17 +222,27 @@ class _AdvancedSearchWidgetState extends ConsumerState<AdvancedSearchWidget> {
             const Divider(height: 32),
           ],
         );
-      },
-    );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildProductsSection() {
     final productsAsync = ref.watch(adminAllProductsProvider);
 
-    return productsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Text('Error: ${err.toString()}'),
-      data: (products) {
+    // Handle loading
+    if (productsAsync.isLoading && !productsAsync.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Handle error
+    if (productsAsync.hasError && !productsAsync.hasValue) {
+      return Text('Error: ${productsAsync.error.toString()}');
+    }
+
+    // Handle data
+    if (productsAsync.hasValue) {
+      final products = productsAsync.value!;
         final filteredProducts = products.where((product) {
           final query = _searchQuery.toLowerCase();
           return product.name.toLowerCase().contains(query) ||
@@ -260,8 +279,9 @@ class _AdvancedSearchWidgetState extends ConsumerState<AdvancedSearchWidget> {
               ),
           ],
         );
-      },
-    );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 
