@@ -4,7 +4,6 @@ import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/use
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/top_performers_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/advanced_search_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/geographic_distribution_widget.dart';
-import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/offers_tracker_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/system_health_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/performance_monitor_widget.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/error_logs_viewer.dart';
@@ -54,9 +53,6 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Offers Tracker
-          const OffersTrackerWidget(),
           const SizedBox(height: 24),
           // Performance & Errors
           Row(

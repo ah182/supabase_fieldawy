@@ -8,7 +8,7 @@ export default {
     // CORS Headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
 
@@ -17,7 +17,22 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // Only accept POST requests
+    const url = new URL(request.url);
+    
+    // 🎯 Custom Notification Endpoint (من Dashboard)
+    if (url.pathname === '/send-custom-notification' && request.method === 'POST') {
+      return handleCustomNotification(request, env, corsHeaders);
+    }
+    
+    // Health check endpoint
+    if (url.pathname === '/health' && request.method === 'GET') {
+      return new Response(JSON.stringify({ status: 'ok', service: 'fieldawy-notifications' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Only accept POST requests for webhook
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { 
         status: 405,
@@ -774,4 +789,148 @@ function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
   
   // إرجاع true إذا كان هناك تغييرات وكانت فقط على views أو views_count أو updated_at
   return hasChanges && onlyViewsChanged;
+}
+
+// =====================================================
+// 🎯 Custom Notifications Handler (من Dashboard)
+// =====================================================
+
+async function handleCustomNotification(request, env, corsHeaders) {
+  try {
+    const { title, message, tokens } = await request.json();
+
+    // Validation
+    if (!title || !message || !tokens || tokens.length === 0) {
+      return new Response(JSON.stringify({
+        error: 'Missing required fields',
+        required: ['title', 'message', 'tokens']
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`📤 Sending custom notification to ${tokens.length} devices`);
+    console.log(`📝 Title: ${title}`);
+    console.log(`📄 Message: ${message}`);
+
+    // Get Firebase access token
+    if (!env.FIREBASE_SERVICE_ACCOUNT) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT not configured');
+    }
+
+    const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(serviceAccount);
+
+    // Send notifications (batch: 500 at a time)
+    const results = await sendBatchNotifications(
+      tokens,
+      title,
+      message,
+      accessToken,
+      serviceAccount.project_id
+    );
+
+    console.log(`✅ Success: ${results.success}, ❌ Failed: ${results.failure}`);
+
+    return new Response(JSON.stringify({
+      success: results.success,
+      failure: results.failure,
+      total: tokens.length
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Error sending custom notification:', error);
+    return new Response(JSON.stringify({
+      error: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// إرسال Batch Notifications
+async function sendBatchNotifications(tokens, title, message, accessToken, projectId) {
+  let successCount = 0;
+  let failureCount = 0;
+
+  // FCM HTTP v1 يدعم multicast لـ 500 token
+  const batchSize = 500;
+  
+  for (let i = 0; i < tokens.length; i += batchSize) {
+    const batch = tokens.slice(i, i + batchSize);
+    
+    try {
+      // استخدام multicast للـ batch
+      const promises = batch.map(token => 
+        sendSingleNotification(token, title, message, accessToken, projectId)
+      );
+      
+      const results = await Promise.allSettled(promises);
+      
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value === true) {
+          successCount++;
+        } else {
+          failureCount++;
+        }
+      });
+      
+      console.log(`  Batch ${Math.floor(i / batchSize) + 1}: ✅ ${successCount} ❌ ${failureCount}`);
+      
+    } catch (error) {
+      console.error(`Batch ${i} failed:`, error);
+      failureCount += batch.length;
+    }
+  }
+
+  return { success: successCount, failure: failureCount };
+}
+
+// إرسال إشعار لـ token واحد
+async function sendSingleNotification(token, title, message, accessToken, projectId) {
+  try {
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    
+    const fcmMessage = {
+      message: {
+        token: token,
+        // ✅ data only - لتجنب تكرار الإشعار
+        // notification سيتم عرضها من التطبيق نفسه
+        data: {
+          title: title,
+          body: message,
+          type: 'custom',
+          screen: 'home',
+        },
+        android: {
+          priority: 'high',
+        },
+      }
+    };
+
+    const response = await fetch(fcmUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(fcmMessage),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Token failed: ${error}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Token send error:`, error);
+    return false;
+  }
 }

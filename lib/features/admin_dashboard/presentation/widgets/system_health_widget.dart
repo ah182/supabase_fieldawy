@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
-// ignore: unused_import
-import 'package:fieldawy_store/features/admin_dashboard/utils/async_value_helper.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
-
 import 'package:fieldawy_store/features/admin_dashboard/data/activity_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -164,22 +161,24 @@ class SystemHealthWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildAlerts(WidgetRef ref, usersAsync, offersAsync) {
+  Widget _buildAlerts(WidgetRef ref, AsyncValue usersAsync, AsyncValue offersAsync) {
     final List<Widget> alerts = [];
 
     // Check pending users
-    usersAsync.safeWhen(
+    usersAsync.when(
       data: (users) {
-        final pendingCount =
-            users.where((u) => u.accountStatus == 'pending_review').length;
-        if (pendingCount > 5) {
-          alerts.add(_AlertItem(
-            icon: Icons.people,
-            color: Colors.orange,
-            title: 'High number of pending user requests',
-            description: '$pendingCount users waiting for approval',
-            severity: 'Medium',
-          ));
+        if (users != null && users is List) {
+          final pendingCount =
+              users.where((u) => u.accountStatus == 'pending_review').length;
+          if (pendingCount > 5) {
+            alerts.add(_AlertItem(
+              icon: Icons.people,
+              color: Colors.orange,
+              title: 'High number of pending user requests',
+              description: '$pendingCount users waiting for approval',
+              severity: 'Medium',
+            ));
+          }
         }
       },
       loading: () {},
@@ -187,22 +186,32 @@ class SystemHealthWidget extends ConsumerWidget {
     );
 
     // Check expiring offers
-    offersAsync.safeWhen(
+    offersAsync.when(
       data: (offers) {
-        final now = DateTime.now();
-        final expiringSoon = offers
-            .where((o) =>
-                o.expirationDate.isAfter(now) &&
-                o.expirationDate.difference(now).inHours < 24)
-            .length;
-        if (expiringSoon > 0) {
-          alerts.add(_AlertItem(
-            icon: Icons.access_time,
-            color: Colors.orange,
-            title: 'Offers expiring soon',
-            description: '$expiringSoon offer(s) will expire within 24 hours',
-            severity: 'Low',
-          ));
+        if (offers != null && offers is List && offers.isNotEmpty) {
+          try {
+            final now = DateTime.now();
+            final expiringSoon = offers.where((o) {
+              if (o is Map && o.containsKey('expiration_date')) {
+                final expDate = DateTime.tryParse(o['expiration_date'].toString());
+                return expDate != null &&
+                    expDate.isAfter(now) &&
+                    expDate.difference(now).inHours < 24;
+              }
+              return false;
+            }).length;
+            if (expiringSoon > 0) {
+              alerts.add(_AlertItem(
+                icon: Icons.access_time,
+                color: Colors.orange,
+                title: 'Offers expiring soon',
+                description: '$expiringSoon offer(s) will expire within 24 hours',
+                severity: 'Low',
+              ));
+            }
+          } catch (e) {
+            // Ignore errors in offer processing
+          }
         }
       },
       loading: () {},

@@ -1,109 +1,121 @@
-# تعليمات تطبيق النقر على الصور في باقي التابات
+# ✅ عرض صور المستندات في Pending Approvals
 
-## التعديلات المكتملة:
-✅ Catalog Products Tab
-✅ Distributor Products Tab
-✅ Books Tab
-✅ Courses Tab
+## ما تم عمله:
 
-## التابات التي تحتاج تعديل:
-- [ ] Jobs Tab
-- [ ] VetSupplies Tab
-- [ ] Offers Tab
-- [ ] Surgical Tools Tab  
-- [ ] OCR Products Tab
+عند الضغط على أيقونة المستند 📄 في **Pending Approvals** section، تظهر الصورة في نافذة منبثقة!
 
-## الخطوات المطلوبة لكل تاب:
+---
 
-### 1. في DataRow - تحديث استدعاء _buildImage
+## 🎨 المميزات:
+
+### ✅ Dialog احترافي:
+- **Header** مع عنوان "User Document"
+- زر **Close** (X) لإغلاق النافذة
+- تصميم نظيف وأنيق
+
+### ✅ عرض الصورة:
+- **Loading indicator** أثناء التحميل
+- **InteractiveViewer** للزوم (Zoom in/out)
+- **Error handling** إذا فشل التحميل
+
+### ✅ التفاعل:
+- **Zoom:** استخدم العجلة أو Pinch gesture
+- **Pan:** اسحب الصورة للتحرك
+- **Min Scale:** 0.5x (تصغير)
+- **Max Scale:** 4.0x (تكبير)
+
+---
+
+## 🚀 الاستخدام:
+
+1. افتح **Dashboard** tab
+2. في **Pending Approvals** section
+3. شوف المستخدمين اللي عندهم مستندات (أيقونة 📄)
+4. اضغط على الأيقونة
+5. **🎉 الصورة تظهر في نافذة!**
+
+---
+
+## 📸 الكود:
+
 ```dart
-// قبل
-DataCell(_buildImage(item.imageUrl))
+// عند الضغط على أيقونة المستند
+IconButton(
+  icon: const Icon(Icons.description, size: 20),
+  onPressed: () {
+    PendingApprovalsWidget._showDocumentDialog(context, user.documentUrl!);
+  },
+  tooltip: 'View Document',
+)
 
-// بعد
-DataCell(_buildImage(item.imageUrl, item))
-```
-
-### 2. تحديث دالة _buildImage لإضافة Parameter ثاني و InkWell
-```dart
-// قبل
-Widget _buildImage(String url) {
-  if (url.isEmpty) return Container(...);
-  return ClipRRect(...);
-}
-
-// بعد
-Widget _buildImage(String url, ItemType item) {
-  final Widget imageWidget = url.isEmpty
-      ? Container(...)
-      : ClipRRect(...);
-  
-  return InkWell(
-    onTap: () => _showDetailsDialog(item),
-    child: imageWidget,
-  );
-}
-```
-
-### 3. إضافة _showDetailsDialog جديدة
-```dart
-void _showDetailsDialog(ItemType item) {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Item Details'),
-      content: SingleChildScrollView(
-        child: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // صورة كبيرة
-              if (item.imageUrl.isNotEmpty)
-                Center(child: CachedNetworkImage(imageUrl: item.imageUrl, width: 250, height: 250, fit: BoxFit.contain)),
-              const SizedBox(height: 16),
-              
-              // التفاصيل المطلوبة
-              _buildDetailRow('ID', item.id),
-              _buildDetailRow('Name', item.name),
-              _buildDetailRow('Price', item.price != null ? '${item.price.toStringAsFixed(2)} EGP' : 'N/A'),
-              _buildDetailRow('Distributor', item.distributorId ?? 'N/A'),
-              // ...باقي التفاصيل
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-      ],
+// Dialog يعرض الصورة
+showDialog(
+  context: context,
+  builder: (context) => Dialog(
+    child: InteractiveViewer(
+      minScale: 0.5,
+      maxScale: 4.0,
+      child: Image.network(documentUrl),
     ),
-  );
-}
+  ),
+);
 ```
 
-### 4. إضافة _buildDetailRow helper (إذا لم تكن موجودة)
-```dart
-Widget _buildDetailRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4.0),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        Expanded(child: Text(value)),
-      ],
-    ),
-  );
-}
+---
+
+## 🔧 التعامل مع الأخطاء:
+
+### إذا فشل تحميل الصورة:
+```
+❌ Failed to load document
+[Open in new tab] ← زر لفتح الرابط
 ```
 
-## ملاحظات مهمة:
-- Jobs Tab: لا يوجد `distributor`, استخدم 'N/A'
-- VetSupplies Tab: لديه `status`, يمكن عرضه
-- Offers Tab: يعرض `productId` بدلاً من الاسم  
-- Surgical Tools: لديه `distributorName` و `toolName`
-- OCR Products: البيانات من `Map<String, dynamic>`
+### أثناء التحميل:
+```
+⏳ Loading... (circular progress indicator)
+```
+
+---
+
+## 🎯 النشر:
+
+```bash
+cd D:\fieldawy_store
+
+# Build
+flutter build web --release
+
+# Deploy
+firebase deploy --only hosting
+```
+
+---
+
+## ✨ النتيجة:
+
+### قبل:
+```
+📄 [أيقونة لا تعمل]
+```
+
+### بعد:
+```
+📄 [اضغط هنا]
+  ↓
+🖼️ [صورة المستند بحجم كبير مع Zoom!]
+```
+
+---
+
+## 📋 الملفات المعدلة:
+
+- ✅ `pending_approvals_widget.dart`
+  - أضفت `_showDocumentDialog()` function
+  - ربطتها بـ IconButton
+  - استخدمت `InteractiveViewer` للزوم
+  - أضفت error handling
+
+---
+
+**جرب Build و Deploy الآن! 🚀**

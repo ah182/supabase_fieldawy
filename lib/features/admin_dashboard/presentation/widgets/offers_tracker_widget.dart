@@ -313,14 +313,23 @@ class _OfferItem extends StatelessWidget {
     required this.isExpiringSoon,
   });
 
-  final offer;
+  final Map<String, dynamic> offer;
   final bool isActive;
   final bool isExpiringSoon;
 
   @override
   Widget build(BuildContext context) {
-    final timeRemaining = offer.expirationDate.difference(DateTime.now());
-    final timeAgo = timeago.format(offer.expirationDate);
+    final expDate = offer['expiration_date'];
+    final expirationDate = expDate != null 
+        ? DateTime.parse(expDate.toString())
+        : DateTime.now();
+    final timeRemaining = expirationDate.difference(DateTime.now());
+    final timeAgo = timeago.format(expirationDate);
+
+    final title = offer['title']?.toString() ?? 'Untitled Offer';
+    final description = offer['description']?.toString();
+    final distributorName = offer['distributor_name']?.toString() ?? 'Unknown';
+    final discount = offer['discount'];
 
     return Card(
       elevation: isExpiringSoon ? 4 : 1,
@@ -362,16 +371,16 @@ class _OfferItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    offer.title,
+                    title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (offer.description != null)
+                  if (description != null)
                     Text(
-                      offer.description!,
+                      description,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -385,10 +394,10 @@ class _OfferItem extends StatelessWidget {
                       Icon(Icons.person, size: 14, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        offer.distributorName,
+                        distributorName,
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
-                      if (offer.discount != null) ...[
+                      if (discount != null) ...[
                         const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -398,7 +407,7 @@ class _OfferItem extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${offer.discount}% OFF',
+                            '$discount% OFF',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,

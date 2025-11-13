@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationManagerWidget extends ConsumerStatefulWidget {
@@ -22,15 +24,36 @@ class _NotificationManagerWidgetState
   bool _isSending = false;
   
   final List<String> _roles = ['doctor', 'distributor', 'company'];
+  
+  // المحافظات بالعربية (نفس الأسماء في قاعدة البيانات)
   final List<String> _governorates = [
-    'Cairo',
-    'Alexandria',
-    'Giza',
-    'Qalyubia',
-    'Dakahlia',
-    'Sharqia',
-    'Gharbia',
-    // Add more governorates
+    'القاهرة',
+    'الإسكندرية',
+    'الجيزة',
+    'القليوبية',
+    'الدقهلية',
+    'الشرقية',
+    'الغربية',
+    'المنوفية',
+    'البحيرة',
+    'كفر الشيخ',
+    'دمياط',
+    'بورسعيد',
+    'الإسماعيلية',
+    'السويس',
+    'المنيا',
+    'بني سويف',
+    'الفيوم',
+    'أسيوط',
+    'سوهاج',
+    'قنا',
+    'الأقصر',
+    'أسوان',
+    'البحر الأحمر',
+    'الوادي الجديد',
+    'مطروح',
+    'شمال سيناء',
+    'جنوب سيناء',
   ];
 
   @override
@@ -295,9 +318,34 @@ class _NotificationManagerWidgetState
         return;
       }
 
-      // Send via FCM (you need to implement FCM server endpoint)
-      // For now, just save to database
-      await Supabase.instance.client.from('notifications_sent').insert({
+      // Send via Cloudflare Worker (Production Ready!)
+      // ✅ مهم: لازم يكون /send-custom-notification في النهاية!
+      final serverUrl = 'https://notification-webhook.ah3181997-1e7.workers.dev/send-custom-notification';
+      
+      // للاختبار المحلي: استخدم localhost
+      // final serverUrl = 'http://localhost:3000/send-custom-notification';
+      
+      final response = await http.post(
+        Uri.parse(serverUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': _titleController.text,
+          'message': _messageController.text,
+          'tokens': tokens,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to send notification: ${response.body}');
+      }
+
+      final result = jsonDecode(response.body);
+      final sent = result['success'] ?? 0;
+      final failed = result['failure'] ?? 0;
+
+      // Save to database for history
+      final supabase = Supabase.instance.client;
+      await supabase.from('notifications_sent').insert({
         'title': _titleController.text,
         'message': _messageController.text,
         'target_type': _targetType,
@@ -310,7 +358,7 @@ class _NotificationManagerWidgetState
         'sent_at': DateTime.now().toIso8601String(),
       });
 
-      _showSuccess('Notification sent to ${tokens.length} users!');
+      _showSuccess('Notification sent! ✅ $sent sent, ❌ $failed failed');
       
       // Clear form
       _titleController.clear();
@@ -331,21 +379,84 @@ class _NotificationManagerWidgetState
     final supabase = Supabase.instance.client;
     
     try {
-      var query = supabase.from('users').select('fcm_token');
+      // Step 1: Get user IDs based on target
+      List<String> userIds = [];
       
-      if (_targetType == 'role') {
-        query = query.eq('role', _selectedRole!);
+      if (_targetType == 'all') {
+        // Get all users
+        final usersResult = await supabase
+            .from('users')
+            .select('id');
+        userIds = (usersResult as List)
+            .map((user) => user['id'] as String)
+            .toList();
+      } else if (_targetType == 'role') {
+        // Get users by role
+        final usersResult = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', _selectedRole!);
+        userIds = (usersResult as List)
+            .map((user) => user['id'] as String)
+            .toList();
       } else if (_targetType == 'governorate') {
-        query = query.eq('governorate', _selectedGovernorate!);
+        // Get users by governorate
+        // ✅ governorates هو JSONB array
+        print('🔍 Searching for governorate: $_selectedGovernorate');
+        
+        // جلب كل المستخدمين وفلترتهم في Flutter
+        // (لأن JSONB contains قد لا يعمل بشكل صحيح)
+        final allUsersResult = await supabase
+            .from('users')
+            .select('id, governorates');
+        
+        print('📊 Total users: ${(allUsersResult as List).length}');
+        
+        // فلترة المستخدمين الذين عندهم المحافظة المختارة
+        final filteredUsers = (allUsersResult as List).where((user) {
+          final governorates = user['governorates'];
+          if (governorates is List) {
+            return governorates.contains(_selectedGovernorate);
+          }
+          return false;
+        }).toList();
+        
+        print('📊 Filtered users: ${filteredUsers.length}');
+        if (filteredUsers.isNotEmpty) {
+          print('📝 Sample: ${filteredUsers[0]}');
+        }
+        
+        userIds = filteredUsers
+            .map((user) => user['id'] as String)
+            .toList();
       }
       
-      final result = await query;
-      return (result as List)
-          .map((user) => user['fcm_token'] as String?)
-          .where((token) => token != null && token.isNotEmpty)
-          .cast<String>()
-          .toList();
+      if (userIds.isEmpty) {
+        return [];
+      }
+      
+      // Step 2: Get FCM tokens from user_tokens table
+      // ✅ Get only the latest token per user to avoid duplicates
+      final tokensResult = await supabase
+          .from('user_tokens')
+          .select('user_id, token, updated_at')
+          .inFilter('user_id', userIds)
+          .order('updated_at', ascending: false);
+      
+      // ✅ Remove duplicates: keep only the latest token per user
+      final Map<String, String> uniqueTokens = {};
+      for (var row in tokensResult as List) {
+        final userId = row['user_id'] as String;
+        final token = row['token'] as String?;
+        
+        if (token != null && token.isNotEmpty && !uniqueTokens.containsKey(userId)) {
+          uniqueTokens[userId] = token;
+        }
+      }
+      
+      return uniqueTokens.values.toList();
     } catch (e) {
+      print('Error getting tokens: $e');
       return [];
     }
   }

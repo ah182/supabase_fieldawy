@@ -230,6 +230,100 @@ class PendingApprovalsWidget extends ConsumerWidget {
       debugPrint('Error rejecting user: $e');
     }
   }
+
+  static void _showDocumentDialog(BuildContext context, String documentUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.description, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'User Document',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
+              // Image
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Image.network(
+                      documentUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 48, color: Colors.red),
+                              const SizedBox(height: 16),
+                              const Text('Failed to load document'),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  // Open in new tab
+                                  // ignore: avoid_print
+                                  print('Open URL: $documentUrl');
+                                },
+                                child: const Text('Open in new tab'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PendingCount extends StatelessWidget {
@@ -250,9 +344,9 @@ class _PendingCount extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -327,7 +421,7 @@ class _UserPendingItem extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.description, size: 20),
               onPressed: () {
-                // View document
+                PendingApprovalsWidget._showDocumentDialog(context, user.documentUrl!);
               },
               tooltip: 'View Document',
             ),

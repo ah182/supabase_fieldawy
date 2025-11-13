@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/admin_dashboard/data/analytics_repository.dart';
-import 'package:fieldawy_store/features/admin_dashboard/utils/async_value_helper.dart';
 import 'package:intl/intl.dart';
 
 class UserGrowthAnalytics extends ConsumerStatefulWidget {
@@ -74,7 +73,7 @@ class _UserGrowthAnalyticsState extends ConsumerState<UserGrowthAnalytics> {
             ),
             const SizedBox(height: 24),
             // Charts
-            growthAsync.safeWhen(
+            growthAsync.when(
               loading: () => const SizedBox(
                 height: 300,
                 child: Center(child: CircularProgressIndicator()),
