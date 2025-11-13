@@ -1,17 +1,35 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/domain/dashboard_stats.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/authentication/application/auth_user_provider.dart';
 
 class DashboardRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final CachingService _cache;
+
+  DashboardRepository(this._cache);
 
   // Get comprehensive dashboard statistics
   Future<DashboardStats> getDashboardStats() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return DashboardStats.empty();
+
+    // استخدام Stale-While-Revalidate للحصول على استجابة سريعة مع تحديث في الخلفية
+    return await _cache.staleWhileRevalidate<DashboardStats>(
+      key: 'dashboard_stats_$userId',
+      duration: CacheDurations.medium, // 30 دقيقة
+      staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
+      fetchFromNetwork: () => _fetchDashboardStats(userId),
+      fromCache: (data) {
+        return DashboardStats.fromJson(Map<String, dynamic>.from(data));
+      },
+    );
+  }
+
+  Future<DashboardStats> _fetchDashboardStats(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return DashboardStats.empty();
 
       // Get total products from distributor_products (main catalog products)
       final distributorProductsCount = await _supabase
@@ -177,7 +195,7 @@ class DashboardRepository {
         monthlyGrowth = 100.0;
       }
 
-      return DashboardStats(
+      final stats = DashboardStats(
         totalProducts: distributorProductsCount.count + ocrProductsCount.count + surgicalToolsCount.count + vetSuppliesCount.count,
         activeOffers: offersCount.count,
         totalViews: totalViews, // NOW READING FROM ALL TABLES!
@@ -189,6 +207,11 @@ class DashboardRepository {
         averageRating: 4.5, // Placeholder - will be calculated from reviews
         totalCustomers: 0, // Will be implemented when customer tracking is available
       );
+      
+      // Cache as JSON
+      _cache.set('dashboard_stats_$userId', stats.toJson(), duration: CacheDurations.medium);
+      
+      return stats;
     } catch (e) {
       print('Error getting dashboard stats: $e');
       return DashboardStats.empty();
@@ -197,9 +220,21 @@ class DashboardRepository {
 
   // Get recent products from all sources - WITH VIEWS
   Future<List<Map<String, dynamic>>> getRecentProducts() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Stale-While-Revalidate للمنتجات الحديثة
+    return await _cache.staleWhileRevalidate<List<Map<String, dynamic>>>(
+      key: 'recent_products_$userId',
+      duration: CacheDurations.short, // 15 دقيقة
+      staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
+      fetchFromNetwork: () => _fetchRecentProducts(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRecentProducts(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
 
       List<Map<String, dynamic>> allProducts = [];
 
@@ -354,7 +389,12 @@ class DashboardRepository {
         return bDate.compareTo(aDate);
       });
 
-      return allProducts.take(5).toList();
+      final result = allProducts.take(5).toList();
+      
+      // Cache the result
+      _cache.set('recent_products_$userId', result, duration: CacheDurations.short);
+      
+      return result;
     } catch (e) {
       print('Error getting recent products: $e');
       return [];
@@ -363,9 +403,20 @@ class DashboardRepository {
 
   // Get top performing products (by views from ALL sources)
   Future<List<Map<String, dynamic>>> getTopProducts() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Cache-First للمنتجات الأعلى مشاهدة (تتغير ببطء)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'top_products_$userId',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: () => _fetchTopProducts(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchTopProducts(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
 
       List<Map<String, dynamic>> topProducts = [];
 
@@ -560,7 +611,12 @@ class DashboardRepository {
 
       // Sort by views and take top 10
       topProducts.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
-      return topProducts.take(10).toList();
+      final result = topProducts.take(10).toList();
+      
+      // Cache the result
+      _cache.set('top_products_$userId', result, duration: CacheDurations.long);
+      
+      return result;
     } catch (e) {
       print('Error getting top products: $e');
       return [];
@@ -569,9 +625,20 @@ class DashboardRepository {
 
   // Get global top products that distributor doesn't own
   Future<List<Map<String, dynamic>>> getGlobalTopProductsNotOwned() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Cache-First للتوصيات العالمية (تتغير ببطء)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'global_top_products_$userId',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: () => _fetchGlobalTopProducts(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchGlobalTopProducts(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
 
       // Get distributor's product IDs from both regular and OCR products
       final distributorProductIds = <String>{};
@@ -699,6 +766,10 @@ class DashboardRepository {
       final recommendations = productStats.take(10).toList();
 
       print('Found ${recommendations.length} recommendations');
+      
+      // Cache the result
+      _cache.set('global_top_products_$userId', recommendations, duration: CacheDurations.long);
+      
       return recommendations;
     } catch (e) {
       print('Error getting global top products: $e');
@@ -708,9 +779,20 @@ class DashboardRepository {
 
   // Get products expiring soon from distributor_ocr_products
   Future<List<Map<String, dynamic>>> getExpiringProducts() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Cache-First للمنتجات المنتهية (تتغير ببطء)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'expiring_products_$userId',
+      duration: CacheDurations.medium, // 30 دقيقة
+      fetchFromNetwork: () => _fetchExpiringProducts(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchExpiringProducts(String userId) async {
+    try{
 
       final oneYearFromNow = DateTime.now().add(const Duration(days: 365));
       
@@ -732,7 +814,7 @@ class DashboardRepository {
           .limit(5);
 
       // Transform the data
-      return products.map<Map<String, dynamic>>((product) {
+      final result = products.map<Map<String, dynamic>>((product) {
         final ocrProduct = product['ocr_products'] as Map<String, dynamic>?;
         return {
           'id': product['id'],
@@ -741,6 +823,11 @@ class DashboardRepository {
           'expiry_date': product['expiration_date'],
         };
       }).toList();
+      
+      // Cache the result
+      _cache.set('expiring_products_$userId', result, duration: CacheDurations.medium);
+      
+      return result;
     } catch (e) {
       print('Error getting expiring products: $e');
       return [];
@@ -749,9 +836,20 @@ class DashboardRepository {
 
   // Get monthly sales data for charts
   Future<List<Map<String, dynamic>>> getMonthlySalesData() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Cache-First للبيانات الشهرية (تتغير مرة يومياً)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'monthly_sales_$userId',
+      duration: CacheDurations.veryLong, // 24 ساعة
+      fetchFromNetwork: () => _fetchMonthlySalesData(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchMonthlySalesData(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
 
       final now = DateTime.now();
       List<Map<String, dynamic>> monthlyData = [];
@@ -786,6 +884,9 @@ class DashboardRepository {
         });
       }
       
+      // Cache the result
+      _cache.set('monthly_sales_$userId', monthlyData, duration: CacheDurations.veryLong);
+      
       return monthlyData;
     } catch (e) {
       print('Error getting monthly sales data: $e');
@@ -795,9 +896,20 @@ class DashboardRepository {
 
   // Get regional statistics - Real data based on product views
   Future<List<Map<String, dynamic>>> getRegionalStats() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Cache-First للإحصائيات الإقليمية (تتغير ببطء)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'regional_stats_$userId',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: () => _fetchRegionalStats(userId),
+      fromCache: (data) => (data as List<dynamic>).map((e) => Map<String, dynamic>.from(e)).toList(),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRegionalStats(String userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
 
       // Get all product IDs for this distributor from all sources
       List<String> productIds = [];
@@ -911,7 +1023,12 @@ class DashboardRepository {
       result.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
 
       // Return top 10 regions
-      return result.take(10).toList();
+      final topRegions = result.take(10).toList();
+      
+      // Cache the result
+      _cache.set('regional_stats_$userId', topRegions, duration: CacheDurations.long);
+      
+      return topRegions;
     } catch (e) {
       print('Error getting regional stats: $e');
       return [];
@@ -925,8 +1042,25 @@ class DashboardRepository {
     ];
     return months[month];
   }
+
+  /// حذف كاش Dashboard عند تحديث البيانات
+  /// يجب استدعاء هذه الدالة عند إضافة/تعديل/حذف المنتجات
+  void invalidateDashboardCache() {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    // حذف جميع الكاش المتعلق بـ Dashboard
+    _cache.invalidate('dashboard_stats_$userId');
+    _cache.invalidate('recent_products_$userId');
+    _cache.invalidate('top_products_$userId');
+    _cache.invalidate('global_top_products_$userId');
+    _cache.invalidate('expiring_products_$userId');
+    _cache.invalidate('monthly_sales_$userId');
+    _cache.invalidate('regional_stats_$userId');
+  }
 }
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
-  return DashboardRepository();
+  final cache = ref.watch(cachingServiceProvider);
+  return DashboardRepository(cache);
 });

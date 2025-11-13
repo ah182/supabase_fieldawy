@@ -1,15 +1,30 @@
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AnalyticsRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final CachingService _cache;
 
-  // Get advanced views analytics for current user
+  AnalyticsRepository(this._cache);
+
+  // Get advanced views analytics for current user (مع الكاش)
   Future<Map<String, dynamic>> getAdvancedViewsAnalytics() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return _getEmptyViewsAnalytics();
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return _getEmptyViewsAnalytics();
 
+    // استخدام Stale-While-Revalidate
+    return await _cache.staleWhileRevalidate<Map<String, dynamic>>(
+      key: 'advanced_views_analytics_$userId',
+      duration: CacheDurations.short, // 15 دقيقة
+      staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
+      fetchFromNetwork: () => _fetchAdvancedViewsAnalytics(userId),
+      fromCache: (data) => Map<String, dynamic>.from(data),
+    );
+  }
+
+  Future<Map<String, dynamic>> _fetchAdvancedViewsAnalytics(String userId) async {
+    try {
       // Get hourly views data (last 24 hours)
       final hourlyViews = await _getHourlyViews(userId);
       
@@ -22,23 +37,39 @@ class AnalyticsRepository {
       // Get geographic distribution
       final geographic = await _getGeographicViews(userId);
 
-      return {
+      final result = {
         'hourlyViews': hourlyViews,
         'statistics': statistics,
         'topViewedToday': topViewedToday,
         'geographic': geographic,
       };
+
+      // Cache the result
+      _cache.set('advanced_views_analytics_$userId', result, duration: CacheDurations.short);
+
+      return result;
     } catch (e) {
       print('Error getting advanced views analytics: $e');
       return _getEmptyViewsAnalytics();
     }
   }
 
-  // Get global trends analytics - SIMPLIFIED VERSION
+  // Get global trends analytics - SIMPLIFIED VERSION (مع الكاش)
   Future<Map<String, dynamic>> getTrendsAnalytics() async {
+    final userId = _supabase.auth.currentUser?.id;
+    
+    // استخدام Stale-While-Revalidate (البيانات تتغير بسرعة متوسطة)
+    return await _cache.staleWhileRevalidate<Map<String, dynamic>>(
+      key: 'trends_analytics_${userId ?? "guest"}',
+      duration: CacheDurations.short, // 15 دقيقة
+      staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
+      fetchFromNetwork: () => _fetchTrendsAnalytics(userId),
+      fromCache: (data) => Map<String, dynamic>.from(data),
+    );
+  }
+
+  Future<Map<String, dynamic>> _fetchTrendsAnalytics(String? userId) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      
       // Get globally trending products - using direct database queries
       final trending = await _getGlobalTrendingProductsSimplified(userId);
       
@@ -48,12 +79,17 @@ class AnalyticsRepository {
       // Get personalized recommendations - simplified
       final recommendations = await _getPersonalizedRecommendationsSimplified(userId);
 
-      return {
+      final result = {
         'trending': trending,
         'categories': [], // REMOVED: No more category trends
         'searches': searches,
         'recommendations': recommendations,
       };
+
+      // Cache the result
+      _cache.set('trends_analytics_${userId ?? "guest"}', result, duration: CacheDurations.short);
+
+      return result;
     } catch (e) {
       print('Error getting trends analytics: $e');
       return _getEmptyTrendsAnalytics();
@@ -659,8 +695,20 @@ class AnalyticsRepository {
       'recommendations': <Map<String, dynamic>>[],
     };
   }
+
+  /// حذف كاش Analytics
+  void invalidateAnalyticsCache() {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId != null) {
+      _cache.invalidate('advanced_views_analytics_$userId');
+      _cache.invalidate('trends_analytics_$userId');
+    }
+    _cache.invalidate('trends_analytics_guest');
+    print('🧹 Analytics cache invalidated');
+  }
 }
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
-  return AnalyticsRepository();
+  final cache = ref.watch(cachingServiceProvider);
+  return AnalyticsRepository(cache);
 });

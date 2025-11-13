@@ -1,9 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/products/data/surgical_tools_home_repository.dart';
 
-/// مزود يعرض جميع الأدوات الجراحية من جميع الموزعين
+/// مزود يعرض جميع الأدوات الجراحية من جميع الموزعين (مع الكاش)
 final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async {
+  final repository = ref.watch(surgicalToolsHomeRepositoryProvider);
+  return repository.getAllSurgicalTools();
+});
+
+/// النسخة القديمة بدون كاش (محفوظة للتوافق)
+/* final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async {
   final supabase = Supabase.instance.client;
   
   // جلب جميع الأدوات الجراحية من جميع الموزعين
@@ -59,4 +65,4 @@ final surgicalToolsHomeProvider = FutureProvider<List<ProductModel>>((ref) async
   }
 
   return tools;
-});
+}); */

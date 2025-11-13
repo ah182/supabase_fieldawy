@@ -5,12 +5,16 @@ import 'package:fieldawy_store/core/localization/language_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
+import 'package:fieldawy_store/features/books/data/books_repository.dart'; // للـ booksRepositoryProvider
 import 'package:fieldawy_store/features/books/domain/book_model.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
+import 'package:fieldawy_store/features/courses/data/courses_repository.dart'; // للـ coursesRepositoryProvider
 import 'package:fieldawy_store/features/courses/domain/course_model.dart';
 import 'package:fieldawy_store/features/jobs/application/job_offers_provider.dart';
+import 'package:fieldawy_store/features/jobs/data/job_offers_repository.dart'; // للـ jobOffersRepositoryProvider
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
+import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/offers/application/offers_provider.dart';
 import 'package:fieldawy_store/features/offers/domain/offer_model.dart';

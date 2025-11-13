@@ -1,14 +1,29 @@
 import 'package:fieldawy_store/features/leaderboard/domain/season_model.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LeaderboardRepository {
   final SupabaseClient _client;
+  final CachingService _cache;
 
-  LeaderboardRepository(this._client);
+  LeaderboardRepository(this._client, this._cache);
 
   Future<List<UserModel>> getLeaderboard() async {
+    // استخدام Cache-First للـ Leaderboard (يتغير ببطء)
+    return await _cache.cacheFirst<List<UserModel>>(
+      key: 'leaderboard_top_100',
+      duration: CacheDurations.medium, // 30 دقيقة
+      fetchFromNetwork: _fetchLeaderboard,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => UserModel.fromMap(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<UserModel>> _fetchLeaderboard() async {
     try {
       final response = await _client
           .from('users')
@@ -24,6 +39,10 @@ class LeaderboardRepository {
       for (int i = 0; i < users.length; i++) {
         users[i] = users[i].copyWith(rank: i + 1);
       }
+
+      // Cache as JSON List
+      final jsonList = users.map((u) => u.toMap()).toList();
+      _cache.set('leaderboard_top_100', jsonList, duration: CacheDurations.medium);
 
       return users;
     } catch (e) {
@@ -80,6 +99,15 @@ class LeaderboardRepository {
   }
 
   Future<LeaderboardSeason?> getCurrentSeason() async {
+    // استخدام Cache-First للموسم الحالي
+    return await _cache.cacheFirst<LeaderboardSeason?>(
+      key: 'current_leaderboard_season',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: _fetchCurrentSeason,
+    );
+  }
+
+  Future<LeaderboardSeason?> _fetchCurrentSeason() async {
     try {
       final response = await _client
           .from('leaderboard_seasons')
@@ -152,5 +180,6 @@ class LeaderboardRepository {
 
 final leaderboardRepositoryProvider = Provider<LeaderboardRepository>((ref) {
   final client = Supabase.instance.client;
-  return LeaderboardRepository(client);
+  final cache = ref.watch(cachingServiceProvider);
+  return LeaderboardRepository(client, cache);
 });

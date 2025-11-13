@@ -1,17 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fieldawy_store/features/products/domain/product_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/products/data/expire_drugs_repository.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
+export 'package:fieldawy_store/features/products/data/expire_drugs_repository.dart' show ExpireDrugItem;
 
-class ExpireDrugItem {
-  final ProductModel product;
-  final DateTime? expirationDate;
-  final bool? isOcr;
-  ExpireDrugItem({required this.product, required this.expirationDate, this.isOcr});
-}
-
-/// مزود يعرض المنتجات التي لها تاريخ صلاحية من جميع الموزعين (للصفحة الرئيسية)
+/// مزود يعرض المنتجات التي لها تاريخ صلاحية من جميع الموزعين (مع الكاش)
 final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
+  final repository = ref.watch(expireDrugsRepositoryProvider);
+  return repository.getAllExpireDrugs();
+});
+
+/// مزود يعرض المنتجات التي لها تاريخ صلاحية للمستخدم الحالي فقط (مع الكاش)
+final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
+  final userId = ref.watch(authServiceProvider).currentUser?.id;
+  if (userId == null) {
+    return [];
+  }
+  
+  final repository = ref.watch(expireDrugsRepositoryProvider);
+  return repository.getMyExpireDrugs(userId);
+});
+
+/// النسخة القديمة بدون كاش (محفوظة للتوافق)
+/* final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
   final supabase = Supabase.instance.client;
   
   // جلب جميع المنتجات من distributor_products (من جميع الموزعين)
@@ -117,10 +127,10 @@ final expireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
   }
 
   return items;
-});
+}); */
 
-/// مزود يعرض المنتجات التي لها تاريخ صلاحية للمستخدم الحالي فقط (لصفحة My Expire Products)
-final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
+/*
+final myExpireDrugsProviderOld = FutureProvider<List<ExpireDrugItem>>((ref) async {
   final supabase = Supabase.instance.client;
   
   // جلب معرف المستخدم الحالي
@@ -233,4 +243,4 @@ final myExpireDrugsProvider = FutureProvider<List<ExpireDrugItem>>((ref) async {
   }
 
   return items;
-});
+}); */

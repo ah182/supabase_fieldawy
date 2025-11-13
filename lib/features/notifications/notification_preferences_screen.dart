@@ -1,8 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fieldawy_store/services/notification_preferences_service.dart';
+import 'package:fieldawy_store/features/notifications/data/notification_preferences_repository.dart';
+// ignore: unused_import
+import 'package:fieldawy_store/features/notifications/application/notification_preferences_provider.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
+// ignore: unnecessary_import
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -56,7 +59,10 @@ class _NotificationPreferencesScreenState
   Future<void> _loadPreferences() async {
     setState(() => _isLoading = true);
     try {
-      final prefs = await NotificationPreferencesService.getPreferences();
+      // استخدام Repository مع الكاش
+      final repository = ref.read(notificationPreferencesRepositoryProvider);
+      final prefs = await repository.getPreferences();
+      
       setState(() {
         _priceActionEnabled = prefs['price_action'] ?? true;
         _expireSoonEnabled = prefs['expire_soon'] ?? true;
@@ -81,112 +87,19 @@ class _NotificationPreferencesScreenState
   Future<void> _loadSubscribedDistributors() async {
     setState(() => _isLoadingDistributors = true);
     try {
-      // Get distributor IDs from Hive
-      final distributorIds = await DistributorSubscriptionService.getSubscribedDistributorIds();
+      // استخدام Repository مع الكاش
+      final repository = ref.read(notificationPreferencesRepositoryProvider);
+      final distributors = await repository.getSubscribedDistributors();
       
-      // Remove duplicates from IDs
-      final uniqueDistributorIds = distributorIds.toSet().toList();
+      print('📦 Loaded ${distributors.length} subscribed distributors from cache');
       
-      print('📋 Loading ${uniqueDistributorIds.length} subscribed distributors: $uniqueDistributorIds');
-      
-      if (uniqueDistributorIds.isEmpty) {
-        setState(() {
-          _subscribedDistributors = [];
-          _isLoadingDistributors = false;
-        });
-        return;
-      }
-      
-      // Fetch full distributor details for each ID from users table directly
-      final supabase = Supabase.instance.client;
-      
-      // Fetch all distributors in one query for better performance
-      try {
-        final usersResponse = await supabase
-            .from('users')
-            .select()
-            .inFilter('id', uniqueDistributorIds);
-        
-        print('🔍 Fetched ${(usersResponse as List).length} users from database');
-        
-        final distributorsMap = <String, DistributorModel>{};
-        
-        for (final userRow in usersResponse) {
-          try {
-            final id = userRow['id'] as String;
-            
-            // Safely extract values with null checks
-            final displayName = userRow['display_name'] as String? ?? 'موزع';
-            final email = userRow['email'] as String?;
-            final photoUrl = userRow['photo_url'] as String?;
-            final whatsappNumber = userRow['whatsapp_number'] as String?;
-            final companyName = userRow['company_name'] as String?;
-            final distributorType = userRow['distributor_type'] as String? ?? 
-                                   (companyName != null ? 'company' : 'individual');
-            
-            // Parse governorates and centers
-            List<String> governorates = [];
-            if (userRow['governorates'] != null) {
-              if (userRow['governorates'] is List) {
-                governorates = (userRow['governorates'] as List).cast<String>();
-              }
-            }
-            
-            List<String> centers = [];
-            if (userRow['centers'] != null) {
-              if (userRow['centers'] is List) {
-                centers = (userRow['centers'] as List).cast<String>();
-              }
-            }
-            
-            final distributor = DistributorModel(
-              id: id,
-              displayName: displayName,
-              email: email,
-              photoURL: photoUrl,
-              governorates: governorates,
-              centers: centers,
-              productCount: 0,
-              distributorType: distributorType,
-              whatsappNumber: whatsappNumber,
-              companyName: companyName,
-            );
-            
-            distributorsMap[id] = distributor;
-            print('✅ Loaded: $displayName ($id) - Type: $distributorType');
-          } catch (e) {
-            print('❌ Error parsing user row: $e');
-            continue;
-          }
-        }
-        
-        // Convert to list maintaining the order of uniqueDistributorIds
-        final validDistributors = uniqueDistributorIds
-            .where((id) => distributorsMap.containsKey(id))
-            .map((id) => distributorsMap[id]!)
-            .toList();
-        
-        print('📦 Loaded ${validDistributors.length} valid distributors');
-        for (var d in validDistributors) {
-          print('   - ${d.displayName} (${d.id})');
-        }
-        
-        setState(() {
-          _subscribedDistributors = validDistributors.map((d) => {
-            'distributor_id': d.id,
-            'distributor_model': d,
-          }).toList();
-          _isLoadingDistributors = false;
-        });
-      } catch (e) {
-        print('❌ Error fetching distributors: $e');
-        setState(() => _isLoadingDistributors = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ في تحميل الموزعين: $e')),
-          );
-        }
-      }
+      setState(() {
+        _subscribedDistributors = distributors.map((d) => {
+          'distributor_id': d.id,
+          'distributor_model': d,
+        }).toList();
+        _isLoadingDistributors = false;
+      });
     } catch (e) {
       print('❌ Error in _loadSubscribedDistributors: $e');
       setState(() => _isLoadingDistributors = false);
@@ -200,7 +113,10 @@ class _NotificationPreferencesScreenState
 
   Future<void> _updatePreference(String type, bool value) async {
     try {
-      await NotificationPreferencesService.updatePreference(type, value);
+      // استخدام Repository مع invalidation
+      final repository = ref.read(notificationPreferencesRepositoryProvider);
+      await repository.updatePreference(type, value);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -243,6 +159,10 @@ class _NotificationPreferencesScreenState
       try {
         final success = await DistributorSubscriptionService.unsubscribe(distributorId);
         if (success && mounted) {
+          // Invalidate cache بعد إلغاء الاشتراك
+          final repository = ref.read(notificationPreferencesRepositoryProvider);
+          repository.invalidateCache();
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم إلغاء الاشتراك بنجاح'),

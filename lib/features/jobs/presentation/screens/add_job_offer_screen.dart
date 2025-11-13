@@ -1,7 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/features/jobs/application/job_offers_provider.dart';
+import 'package:fieldawy_store/features/jobs/data/job_offers_repository.dart';
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:flutter/material.dart';
+// ignore: unnecessary_import
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';

@@ -1,15 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fieldawy_store/features/products/domain/product_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/products/data/offers_home_repository.dart';
 
-class OfferItem {
-  final ProductModel product;
-  final DateTime? expirationDate;
-  OfferItem({required this.product, this.expirationDate});
-}
+export 'package:fieldawy_store/features/products/data/offers_home_repository.dart' show OfferItem;
 
-/// مزود يعرض جميع العروض من جميع المستخدمين
+/// مزود يعرض جميع العروض من جميع المستخدمين (مع الكاش)
 final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
+  final repository = ref.watch(offersHomeRepositoryProvider);
+  return repository.getAllOffers();
+});
+
+/// النسخة القديمة بدون كاش (محفوظة للتوافق)
+/* final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
   final supabase = Supabase.instance.client;
   
   // جلب جميع العروض من جميع المستخدمين
@@ -120,4 +121,4 @@ final offersHomeProvider = FutureProvider<List<OfferItem>>((ref) async {
   }
 
   return offers;
-});
+}); */

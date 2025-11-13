@@ -1,17 +1,37 @@
 import 'package:fieldawy_store/features/books/domain/book_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class BooksRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final CachingService _cache;
+
+  BooksRepository(this._cache);
 
   /// Get all books
   Future<List<Book>> getAllBooks() async {
+    // استخدام Cache-First للكتب (تتغير ببطء)
+    return await _cache.cacheFirst<List<Book>>(
+      key: 'all_books',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: _fetchAllBooks,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Book.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Book>> _fetchAllBooks() async {
     try {
       final response = await _supabase.rpc('get_all_books');
       
       if (response == null) return [];
       
       final List<dynamic> data = response as List<dynamic>;
+      // Cache as JSON List instead of Book objects
+      _cache.set('all_books', data, duration: CacheDurations.long);
       return data.map((json) => Book.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to load books: $e');
@@ -20,12 +40,33 @@ class BooksRepository {
 
   /// Get current user's books
   Future<List<Book>> getMyBooks() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Stale-While-Revalidate لكتب المستخدم
+    return await _cache.staleWhileRevalidate<List<Book>>(
+      key: 'my_books_$userId',
+      duration: CacheDurations.medium, // 30 دقيقة
+      staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
+      fetchFromNetwork: _fetchMyBooks,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Book.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Book>> _fetchMyBooks() async {
     try {
       final response = await _supabase.rpc('get_my_books');
       
       if (response == null) return [];
       
       final List<dynamic> data = response as List<dynamic>;
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId != null) {
+        _cache.set('my_books_$userId', data, duration: CacheDurations.medium);
+      }
       return data.map((json) => Book.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to load my books: $e');
@@ -50,6 +91,9 @@ class BooksRepository {
         'p_phone': phone,
         'p_image_url': imageUrl,
       });
+      
+      // حذف الكاش بعد الإضافة
+      _invalidateBooksCache();
       
       return response as String;
     } catch (e) {
@@ -78,6 +122,9 @@ class BooksRepository {
         'p_image_url': imageUrl,
       });
       
+      // حذف الكاش بعد التعديل
+      _invalidateBooksCache();
+      
       return response as bool;
     } catch (e) {
       throw Exception('Failed to update book: $e');
@@ -91,10 +138,20 @@ class BooksRepository {
         'p_book_id': bookId,
       });
       
+      // حذف الكاش بعد الحذف
+      _invalidateBooksCache();
+      
       return response as bool;
     } catch (e) {
       throw Exception('Failed to delete book: $e');
     }
+  }
+
+  /// حذف كاش الكتب
+  void _invalidateBooksCache() {
+    _cache.invalidate('all_books');
+    _cache.invalidateWithPrefix('my_books_');
+    print('🧹 Books cache invalidated');
   }
 
   /// Increment book views
@@ -137,6 +194,9 @@ class BooksRepository {
           .delete()
           .eq('id', bookId);
       
+      // حذف الكاش
+      _invalidateBooksCache();
+      
       return true;
     } catch (e) {
       throw Exception('Failed to delete book: $e');
@@ -164,9 +224,18 @@ class BooksRepository {
           })
           .eq('id', bookId);
       
+      // حذف الكاش
+      _invalidateBooksCache();
+      
       return true;
     } catch (e) {
       throw Exception('Failed to update book: $e');
     }
   }
 }
+
+// Provider
+final booksRepositoryProvider = Provider<BooksRepository>((ref) {
+  final cache = ref.watch(cachingServiceProvider);
+  return BooksRepository(cache);
+});

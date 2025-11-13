@@ -30,8 +30,8 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       distributorId: fields[10] as String?,
       createdAt: fields[11] as DateTime?,
       selectedPackage: fields[12] as String?,
-      isFavorite: (fields[13] as bool?) ?? false,
-      views: (fields[14] as int?) ?? 0,
+      isFavorite: fields[13] as bool,
+      views: fields[14] as int,
       surgicalToolId: fields[15] as String?,
     );
   }

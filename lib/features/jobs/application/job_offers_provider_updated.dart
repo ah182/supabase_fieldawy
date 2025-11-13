@@ -2,9 +2,8 @@ import 'package:fieldawy_store/features/jobs/data/job_offers_repository.dart';
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final jobOffersRepositoryProvider = Provider<JobOffersRepository>((ref) {
-  return JobOffersRepository();
-});
+// استخدام Provider من repository نفسه (يحتوي على cache)
+// final jobOffersRepositoryProvider متوفر في job_offers_repository.dart
 
 final allJobOffersProvider = FutureProvider<List<JobOffer>>((ref) async {
   final repository = ref.watch(jobOffersRepositoryProvider);

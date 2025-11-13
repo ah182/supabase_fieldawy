@@ -53,4 +53,19 @@ class DashboardStats {
       totalCustomers: 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total_products': totalProducts,
+      'active_offers': activeOffers,
+      'total_views': totalViews,
+      'total_orders': totalOrders,
+      'monthly_growth': monthlyGrowth,
+      'total_revenue': totalRevenue,
+      'pending_orders': pendingOrders,
+      'completed_orders': completedOrders,
+      'average_rating': averageRating,
+      'total_customers': totalCustomers,
+    };
+  }
 }

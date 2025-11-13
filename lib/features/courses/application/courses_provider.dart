@@ -3,9 +3,8 @@ import 'package:fieldawy_store/features/courses/domain/course_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Repository Provider
-final coursesRepositoryProvider = Provider<CoursesRepository>((ref) {
-  return CoursesRepository();
-});
+// استخدام Provider من repository نفسه (يحتوي على cache)
+// final coursesRepositoryProvider متوفر في courses_repository.dart
 
 // All Courses Provider
 final allCoursesProvider = FutureProvider<List<Course>>((ref) async {

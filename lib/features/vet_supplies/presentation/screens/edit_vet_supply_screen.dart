@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
+import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/services/cloudinary_service.dart';
 import 'package:flutter/material.dart';

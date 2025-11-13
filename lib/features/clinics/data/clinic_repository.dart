@@ -1,22 +1,45 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/clinic_model.dart';
 
 class ClinicRepository {
   final SupabaseClient _client;
+  final CachingService _cache;
 
-  ClinicRepository({required SupabaseClient client}) : _client = client;
+  ClinicRepository({required SupabaseClient client, required CachingService cache}) 
+      : _client = client,
+        _cache = cache;
 
   // New method to get all clinics with doctor info from the view
   Future<List<ClinicWithDoctorInfo>> getAllClinicsWithDoctorInfo() async {
+    // استخدام Cache-First للعيادات (تتغير نادراً)
+    return await _cache.cacheFirst<List<ClinicWithDoctorInfo>>(
+      key: 'all_clinics_with_doctor_info',
+      duration: CacheDurations.veryLong, // 24 ساعة
+      fetchFromNetwork: _fetchAllClinicsWithDoctorInfo,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => ClinicWithDoctorInfo.fromMap(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<ClinicWithDoctorInfo>> _fetchAllClinicsWithDoctorInfo() async {
     try {
       final response = await _client
           .from('clinics_with_doctor_info')
           .select()
           .order('created_at', ascending: false);
 
-      final clinics = (response as List)
-          .map((json) => ClinicWithDoctorInfo.fromMap(json))
+      // Convert to JSON list first
+      final List<dynamic> jsonList = response as List<dynamic>;
+      
+      // Cache as JSON List
+      _cache.set('all_clinics_with_doctor_info', jsonList, duration: CacheDurations.veryLong);
+      
+      final clinics = jsonList
+          .map((json) => ClinicWithDoctorInfo.fromMap(json as Map<String, dynamic>))
           .toList();
       
       return clinics;
@@ -83,6 +106,10 @@ class ClinicRepository {
         'p_address': address,
         'p_phone_number': phoneNumber,
       });
+      
+      // حذف الكاش بعد التحديث
+      _invalidateClinicsCache();
+      
       return true;
     } catch (e) {
       print('❌ Error upserting clinic: $e');
@@ -90,10 +117,21 @@ class ClinicRepository {
     }
   }
 
+  /// حذف كاش العيادات
+  void _invalidateClinicsCache() {
+    _cache.invalidate('all_clinics_with_doctor_info');
+    _cache.invalidateWithPrefix('clinic_by_user_');
+    print('🧹 Clinics cache invalidated');
+  }
+
   // Delete clinic
   Future<bool> deleteClinic(String userId) async {
     try {
       await _client.from('clinics').delete().eq('user_id', userId);
+      
+      // حذف الكاش بعد الحذف
+      _invalidateClinicsCache();
+      
       return true;
     } catch (e) {
       print('Error deleting clinic: $e');
@@ -129,7 +167,8 @@ class ClinicRepository {
 // Providers
 final clinicRepositoryProvider = Provider<ClinicRepository>((ref) {
   final supabaseClient = Supabase.instance.client;
-  return ClinicRepository(client: supabaseClient);
+  final cache = ref.watch(cachingServiceProvider);
+  return ClinicRepository(client: supabaseClient, cache: cache);
 });
 
 // Provider for the new view

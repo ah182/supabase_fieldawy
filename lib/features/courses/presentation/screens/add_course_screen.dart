@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
+import 'package:fieldawy_store/features/courses/data/courses_repository.dart';
 import 'package:fieldawy_store/services/cloudinary_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';

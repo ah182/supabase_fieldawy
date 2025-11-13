@@ -1,11 +1,29 @@
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class VetSuppliesRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final CachingService _cache;
+
+  VetSuppliesRepository(this._cache);
 
   // Get all active vet supplies
   Future<List<VetSupply>> getAllVetSupplies() async {
+    // استخدام Cache-First للمستلزمات البيطرية (تتغير ببطء)
+    return await _cache.cacheFirst<List<VetSupply>>(
+      key: 'all_vet_supplies',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: _fetchAllVetSupplies,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<VetSupply>> _fetchAllVetSupplies() async {
     try {
       final response = await _supabase.rpc('get_all_vet_supplies');
       
@@ -14,7 +32,11 @@ class VetSuppliesRepository {
       }
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => VetSupply.fromJson(json as Map<String, dynamic>)).toList();
+      
+      // Cache as JSON
+      _cache.set('all_vet_supplies', data, duration: CacheDurations.long);
+      
+      return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
     } catch (e) {
       throw Exception('Failed to fetch vet supplies: $e');
     }
@@ -22,12 +44,26 @@ class VetSuppliesRepository {
 
   // Get current user's vet supplies
   Future<List<VetSupply>> getMyVetSupplies() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
 
+    // استخدام Stale-While-Revalidate لمستلزمات المستخدم
+    return await _cache.staleWhileRevalidate<List<VetSupply>>(
+      key: 'my_vet_supplies_$userId',
+      duration: CacheDurations.medium, // 30 دقيقة
+      staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
+      fetchFromNetwork: () => _fetchMyVetSupplies(userId),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<VetSupply>> _fetchMyVetSupplies(String userId) async {
+    try {
       final response = await _supabase.rpc('get_my_vet_supplies', params: {
         'p_user_id': userId,
       });
@@ -37,7 +73,11 @@ class VetSuppliesRepository {
       }
 
       final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => VetSupply.fromJson(json as Map<String, dynamic>)).toList();
+      
+      // Cache as JSON
+      _cache.set('my_vet_supplies_$userId', data, duration: CacheDurations.medium);
+      
+      return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
     } catch (e) {
       throw Exception('Failed to fetch my vet supplies: $e');
     }
@@ -59,6 +99,9 @@ class VetSuppliesRepository {
         'p_image_url': imageUrl,
         'p_phone': phone,
       });
+
+      // حذف الكاش بعد الإضافة
+      _invalidateVetSuppliesCache();
 
       return response as String;
     } catch (e) {
@@ -85,6 +128,9 @@ class VetSuppliesRepository {
         'p_phone': phone,
       });
 
+      // حذف الكاش بعد التعديل
+      _invalidateVetSuppliesCache();
+
       return true;
     } catch (e) {
       throw Exception('Failed to update vet supply: $e');
@@ -98,10 +144,20 @@ class VetSuppliesRepository {
         'p_supply_id': id,
       });
 
+      // حذف الكاش بعد الحذف
+      _invalidateVetSuppliesCache();
+
       return true;
     } catch (e) {
       throw Exception('Failed to delete vet supply: $e');
     }
+  }
+
+  /// حذف كاش المستلزمات البيطرية
+  void _invalidateVetSuppliesCache() {
+    _cache.invalidate('all_vet_supplies');
+    _cache.invalidateWithPrefix('my_vet_supplies_');
+    print('🧹 Vet supplies cache invalidated');
   }
 
   // Increment views count
@@ -200,9 +256,18 @@ class VetSuppliesRepository {
           })
           .eq('id', id);
 
+      // حذف الكاش بعد التعديل
+      _invalidateVetSuppliesCache();
+
       return true;
     } catch (e) {
       throw Exception('Failed to update vet supply: $e');
     }
   }
 }
+
+// Provider
+final vetSuppliesRepositoryProvider = Provider<VetSuppliesRepository>((ref) {
+  final cache = ref.watch(cachingServiceProvider);
+  return VetSuppliesRepository(cache);
+});

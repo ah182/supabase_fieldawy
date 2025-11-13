@@ -359,17 +359,17 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> getAllProducts() async {
-    const cacheKey = 'all_products_catalog';
-    final cachedData = _cache.get<List<dynamic>>(cacheKey);
-    if (cachedData != null) {
-      _refreshAllProductsInBackground();
-      return cachedData.map((item) => item as ProductModel).toList();
-    }
-    return _fetchAllProductsFromServer();
+    // استخدام Stale-While-Revalidate للحصول على استجابة سريعة
+    // البيانات من الكتالوج العام نادراً ما تتغير
+    return await _cache.staleWhileRevalidate<List<ProductModel>>(
+      key: 'all_products_catalog',
+      duration: CacheDurations.veryLong, // 24 ساعة
+      staleTime: const Duration(hours: 12), // تحديث بعد 12 ساعة
+      fetchFromNetwork: _fetchAllProductsFromServer,
+    );
   }
 
   Future<List<ProductModel>> _fetchAllProductsFromServer() async {
-    const cacheKey = 'all_products_catalog';
     try {
       final response = await _supabase.functions.invoke('get-products');
 
@@ -382,8 +382,6 @@ class ProductRepository {
           .map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row)))
           .toList();
 
-      _cache.set(cacheKey, products, duration: const Duration(days: 365));
-
       return products;
     } catch (e) {
       print('Error fetching products from server: $e');
@@ -391,28 +389,23 @@ class ProductRepository {
     }
   }
 
-  void _refreshAllProductsInBackground() {
-    _fetchAllProductsFromServer().catchError((e) {
-      print('Background product refresh failed: $e');
-      return <ProductModel>[];
-    });
-  }
-
   Future<List<ProductModel>> getAllDistributorProducts(
       {bool bypassCache = false}) async {
-    const cacheKey = 'all_distributor_products';
-    if (!bypassCache) {
-      final cachedData = _cache.get<List<dynamic>>(cacheKey);
-      if (cachedData != null) {
-        _refreshAllDistributorProductsInBackground();
-        return cachedData.map((item) => item as ProductModel).toList();
-      }
+    // إذا كان bypassCache = true، نجلب من الشبكة مباشرة
+    if (bypassCache) {
+      return _fetchAllDistributorProductsFromServer();
     }
-    return _fetchAllDistributorProductsFromServer();
+
+    // استخدام Stale-While-Revalidate للحصول على استجابة سريعة
+    return await _cache.staleWhileRevalidate<List<ProductModel>>(
+      key: 'all_distributor_products',
+      duration: CacheDurations.medium, // 30 دقيقة
+      staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
+      fetchFromNetwork: _fetchAllDistributorProductsFromServer,
+    );
   }
 
   Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
-    const cacheKey = 'all_distributor_products';
     try {
       // Call Edge Function instead of direct queries for better performance
       final response = await _supabase.functions.invoke('get-all-distributor-products');
@@ -466,8 +459,6 @@ class ProductRepository {
           return null;
         }
       }).whereType<ProductModel>().toList();
-
-      _cache.set(cacheKey, products, duration: const Duration(minutes: 30));
 
       return products;
     } catch (e) {
@@ -589,13 +580,6 @@ class ProductRepository {
       print('Error in fallback direct queries: $e');
       return [];
     }
-  }
-
-  void _refreshAllDistributorProductsInBackground() {
-    _fetchAllDistributorProductsFromServer().catchError((e) {
-      print('Background distributor product refresh failed: $e');
-      return <ProductModel>[];
-    });
   }
 
   /// Admin: Get ALL products (Catalog + Distributor) for admin panel
@@ -881,6 +865,16 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> getMyOcrProducts(String distributorId) async {
+    // استخدام Stale-While-Revalidate لمنتجات OCR الخاصة بالموزع
+    return await _cache.staleWhileRevalidate<List<ProductModel>>(
+      key: 'my_ocr_products_$distributorId',
+      duration: CacheDurations.short, // 15 دقيقة
+      staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
+      fetchFromNetwork: () => _fetchMyOcrProducts(distributorId),
+    );
+  }
+
+  Future<List<ProductModel>> _fetchMyOcrProducts(String distributorId) async {
     try {
       // Fetch distributor OCR products for this specific distributor
       final distributorOcrResponse = await _supabase
@@ -1052,9 +1046,21 @@ class ProductRepository {
 
     _invalidationTimer = Timer(const Duration(milliseconds: 100), () {
       try {
+        // حذف كاش المنتجات
+        _cache.invalidate('all_products_catalog');
+        _cache.invalidate('all_distributor_products');
         _cache.invalidateWithPrefix('distributor_products_');
-        _cache.invalidate('allDistributorProducts');
         _cache.invalidateWithPrefix('my_products_');
+        _cache.invalidateWithPrefix('my_ocr_products_');
+        
+        // حذف كاش العروض
+        _cache.invalidateWithPrefix('my_offers_');
+        _cache.invalidateWithPrefix('my_offers_with_products_');
+        
+        // حذف كاش الأدوات الجراحية
+        _cache.invalidateWithPrefix('my_surgical_tools_');
+        
+        print('🧹 Product cache invalidated successfully');
       } catch (e) {
         print('Error during cache invalidation: $e');
       }
@@ -1122,6 +1128,16 @@ class ProductRepository {
   }
 
   Future<List<OfferModel>> getMyOffers(String userId) async {
+    // استخدام Stale-While-Revalidate للعروض (تتغير بشكل متكرر)
+    return await _cache.staleWhileRevalidate<List<OfferModel>>(
+      key: 'my_offers_$userId',
+      duration: CacheDurations.short, // 15 دقيقة
+      staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
+      fetchFromNetwork: () => _fetchMyOffers(userId),
+    );
+  }
+
+  Future<List<OfferModel>> _fetchMyOffers(String userId) async {
     try {
       final response = await _supabase
           .from('offers')
@@ -1155,6 +1171,15 @@ class ProductRepository {
   }
 
   Future<List<Map<String, dynamic>>> getMyOffersWithProducts(String userId) async {
+    // استخدام Cache-First للعروض مع المنتجات (تحتوي على بيانات مفصلة)
+    return await _cache.cacheFirst<List<Map<String, dynamic>>>(
+      key: 'my_offers_with_products_$userId',
+      duration: CacheDurations.short, // 15 دقيقة
+      fetchFromNetwork: () => _fetchMyOffersWithProducts(userId),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchMyOffersWithProducts(String userId) async {
     try {
       // حذف العروض المنتهية منذ أكثر من 7 أيام قبل جلب القائمة
       await deleteExpiredOffers();

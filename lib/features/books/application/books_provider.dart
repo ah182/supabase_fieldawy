@@ -3,9 +3,8 @@ import 'package:fieldawy_store/features/books/domain/book_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Repository Provider
-final booksRepositoryProvider = Provider<BooksRepository>((ref) {
-  return BooksRepository();
-});
+// استخدام Provider من repository نفسه (يحتوي على cache)
+// final booksRepositoryProvider متوفر في books_repository.dart
 
 // All Books Provider
 final allBooksProvider = FutureProvider<List<Book>>((ref) async {

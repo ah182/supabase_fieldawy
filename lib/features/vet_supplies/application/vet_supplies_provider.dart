@@ -2,10 +2,7 @@ import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repositor
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Repository Provider
-final vetSuppliesRepositoryProvider = Provider<VetSuppliesRepository>((ref) {
-  return VetSuppliesRepository();
-});
+// Repository Provider تم نقله إلى vet_supplies_repository.dart
 
 // All Vet Supplies Notifier
 class AllVetSuppliesNotifier extends StateNotifier<AsyncValue<List<VetSupply>>> {

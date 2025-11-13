@@ -1,17 +1,37 @@
 import 'package:fieldawy_store/features/courses/domain/course_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CoursesRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final CachingService _cache;
+
+  CoursesRepository(this._cache);
 
   /// Get all courses
   Future<List<Course>> getAllCourses() async {
+    // استخدام Cache-First للكورسات (تتغير ببطء)
+    return await _cache.cacheFirst<List<Course>>(
+      key: 'all_courses',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: _fetchAllCourses,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Course.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Course>> _fetchAllCourses() async {
     try {
       final response = await _supabase.rpc('get_all_courses');
       
       if (response == null) return [];
       
       final List<dynamic> data = response as List<dynamic>;
+      // Cache as JSON List instead of Course objects
+      _cache.set('all_courses', data, duration: CacheDurations.long);
       return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to load courses: $e');
@@ -20,12 +40,33 @@ class CoursesRepository {
 
   /// Get current user's courses
   Future<List<Course>> getMyCourses() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // استخدام Stale-While-Revalidate لكورسات المستخدم
+    return await _cache.staleWhileRevalidate<List<Course>>(
+      key: 'my_courses_$userId',
+      duration: CacheDurations.medium, // 30 دقيقة
+      staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
+      fetchFromNetwork: _fetchMyCourses,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Course.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Course>> _fetchMyCourses() async {
     try {
       final response = await _supabase.rpc('get_my_courses');
       
       if (response == null) return [];
       
       final List<dynamic> data = response as List<dynamic>;
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId != null) {
+        _cache.set('my_courses_$userId', data, duration: CacheDurations.medium);
+      }
       return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to load my courses: $e');
@@ -48,6 +89,9 @@ class CoursesRepository {
         'p_phone': phone,
         'p_image_url': imageUrl,
       });
+      
+      // حذف الكاش بعد الإضافة
+      _invalidateCoursesCache();
       
       return response as String;
     } catch (e) {
@@ -74,6 +118,9 @@ class CoursesRepository {
         'p_image_url': imageUrl,
       });
       
+      // حذف الكاش بعد التعديل
+      _invalidateCoursesCache();
+      
       return response as bool;
     } catch (e) {
       throw Exception('Failed to update course: $e');
@@ -87,10 +134,20 @@ class CoursesRepository {
         'p_course_id': courseId,
       });
       
+      // حذف الكاش بعد الحذف
+      _invalidateCoursesCache();
+      
       return response as bool;
     } catch (e) {
       throw Exception('Failed to delete course: $e');
     }
+  }
+
+  /// حذف كاش الكورسات
+  void _invalidateCoursesCache() {
+    _cache.invalidate('all_courses');
+    _cache.invalidateWithPrefix('my_courses_');
+    print('🧹 Courses cache invalidated');
   }
 
   /// Increment course views
@@ -129,6 +186,10 @@ class CoursesRepository {
   Future<bool> adminDeleteCourse(String courseId) async {
     try {
       await _supabase.from('vet_courses').delete().eq('id', courseId);
+      
+      // حذف الكاش
+      _invalidateCoursesCache();
+      
       return true;
     } catch (e) {
       throw Exception('Failed to delete course: $e');
@@ -154,9 +215,18 @@ class CoursesRepository {
           })
           .eq('id', courseId);
       
+      // حذف الكاش
+      _invalidateCoursesCache();
+      
       return true;
     } catch (e) {
       throw Exception('Failed to update course: $e');
     }
   }
 }
+
+// Provider
+final coursesRepositoryProvider = Provider<CoursesRepository>((ref) {
+  final cache = ref.watch(cachingServiceProvider);
+  return CoursesRepository(cache);
+});

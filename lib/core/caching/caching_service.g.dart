@@ -19,17 +19,20 @@ class CacheEntryAdapter extends TypeAdapter<CacheEntry> {
     return CacheEntry(
       fields[0] as dynamic,
       fields[1] as DateTime,
+      fields[2] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CacheEntry obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.data)
       ..writeByte(1)
-      ..write(obj.expiryTime);
+      ..write(obj.expiryTime)
+      ..writeByte(2)
+      ..write(obj.createdAt);
   }
 
   @override
