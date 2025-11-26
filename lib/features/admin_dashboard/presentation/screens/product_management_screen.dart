@@ -17,8 +17,10 @@ import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_pr
 import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/offers/application/offers_provider.dart';
+import 'package:fieldawy_store/features/offers/data/offers_repository.dart'; // للـ offersRepositoryProvider
 import 'package:fieldawy_store/features/offers/domain/offer_model.dart';
 import 'package:fieldawy_store/features/surgical_tools/application/surgical_tools_provider.dart';
+import 'package:fieldawy_store/features/surgical_tools/data/surgical_tools_repository.dart'; // للـ surgicalToolsRepositoryProvider
 import 'package:fieldawy_store/features/surgical_tools/domain/surgical_tool_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

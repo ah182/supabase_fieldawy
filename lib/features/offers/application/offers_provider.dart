@@ -2,10 +2,7 @@ import 'package:fieldawy_store/features/offers/data/offers_repository.dart';
 import 'package:fieldawy_store/features/offers/domain/offer_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Repository Provider
-final offersRepositoryProvider = Provider<OffersRepository>((ref) {
-  return OffersRepository();
-});
+// Repository Provider is now defined in offers_repository.dart
 
 // ===== ADMIN PROVIDERS =====
 

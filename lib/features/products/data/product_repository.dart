@@ -808,6 +808,17 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> getOcrProducts() async {
+    // استخدام Stale-While-Revalidate للحصول على استجابة سريعة
+    // البيانات من كتالوج OCR العام نادراً ما تتغير
+    return await _cache.staleWhileRevalidate<List<ProductModel>>(
+      key: 'all_ocr_products_catalog',
+      duration: CacheDurations.veryLong, // 24 ساعة
+      staleTime: const Duration(hours: 12), // تحديث بعد 12 ساعة
+      fetchFromNetwork: _fetchOcrProductsFromServer,
+    );
+  }
+
+  Future<List<ProductModel>> _fetchOcrProductsFromServer() async {
     try {
       // Fetch all OCR products from the ocr_products table
       final ocrProductsResponse = await _supabase
@@ -1048,6 +1059,7 @@ class ProductRepository {
       try {
         // حذف كاش المنتجات
         _cache.invalidate('all_products_catalog');
+        _cache.invalidate('all_ocr_products_catalog');
         _cache.invalidate('all_distributor_products');
         _cache.invalidateWithPrefix('distributor_products_');
         _cache.invalidateWithPrefix('my_products_');

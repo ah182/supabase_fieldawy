@@ -1,11 +1,33 @@
 import 'package:fieldawy_store/features/offers/domain/offer_model.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OffersRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase;
+  final CachingService _cache;
+
+  OffersRepository({
+    required SupabaseClient supabase,
+    required CachingService cache,
+  })  : _supabase = supabase,
+        _cache = cache;
 
   // Admin: Get all offers
   Future<List<Offer>> adminGetAllOffers() async {
+    // استخدام Cache-First للعروض (تتغير ببطء نسبياً)
+    return await _cache.cacheFirst<List<Offer>>(
+      key: 'admin_all_offers',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: _fetchAllOffers,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Offer.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Offer>> _fetchAllOffers() async {
     try {
       // 1. جلب جميع الـ offers
       final offersResponse = await _supabase
@@ -78,12 +100,17 @@ class OffersRepository {
       }
 
       // 5. دمج البيانات
-      return offersData.map((json) {
-        final offerData = json as Map<String, dynamic>;
+      final result = offersData.map((json) {
+        final offerData = Map<String, dynamic>.from(json as Map<String, dynamic>);
         final productId = offerData['product_id'].toString();
         offerData['image_url'] = productImages[productId];
-        return Offer.fromJson(offerData);
+        return offerData;
       }).toList();
+      
+      // Cache as JSON List
+      _cache.set('admin_all_offers', result, duration: CacheDurations.long);
+      
+      return result.map((json) => Offer.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to fetch all offers: $e');
     }
@@ -96,6 +123,9 @@ class OffersRepository {
           .from('offers')
           .delete()
           .eq('id', id);
+
+      // حذف الكاش بعد الحذف
+      _invalidateOffersCache();
 
       return true;
     } catch (e) {
@@ -162,9 +192,27 @@ class OffersRepository {
           })
           .eq('id', id);
 
+      // حذف الكاش بعد التعديل
+      _invalidateOffersCache();
+
       return true;
     } catch (e) {
       throw Exception('Failed to update offer: $e');
     }
   }
+
+  /// حذف كاش العروض
+  void _invalidateOffersCache() {
+    _cache.invalidate('admin_all_offers');
+    print('🧹 Offers cache invalidated');
+  }
 }
+
+// Provider
+final offersRepositoryProvider = Provider<OffersRepository>((ref) {
+  final cache = ref.watch(cachingServiceProvider);
+  return OffersRepository(
+    supabase: Supabase.instance.client,
+    cache: cache,
+  );
+});

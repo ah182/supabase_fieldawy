@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -100,8 +101,13 @@ class UserGrowthData {
 
 class AnalyticsRepository {
   final SupabaseClient _supabase;
+  final CachingService _cache;
 
-  AnalyticsRepository({required SupabaseClient supabase}) : _supabase = supabase;
+  AnalyticsRepository({
+    required SupabaseClient supabase,
+    required CachingService cache,
+  })  : _supabase = supabase,
+        _cache = cache;
 
   // =====================================================
   // Top Performers
@@ -109,6 +115,19 @@ class AnalyticsRepository {
 
   // Get top products by views
   Future<List<ProductPerformanceStats>> getTopProductsByViews({int limit = 10}) async {
+    // استخدام Cache-First للإحصائيات (تتغير ببطء)
+    return await _cache.cacheFirst<List<ProductPerformanceStats>>(
+      key: 'top_products_by_views_$limit',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: () => _fetchTopProductsByViews(limit),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => ProductPerformanceStats.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<ProductPerformanceStats>> _fetchTopProductsByViews(int limit) async {
     try {
       // جلب جميع المشاهدات بدون limit لحساب الإجمالي الصحيح
       // نستخدم limit كبير بدلاً من بدون limit لتجنب مشاكل الأداء
@@ -206,6 +225,22 @@ class AnalyticsRepository {
         }
       }
 
+      // Cache as JSON (convert to Map for caching)
+      final jsonResults = results.map((stat) => {
+        'product_id': stat.productId,
+        'product_name': stat.productName,
+        'company': stat.company,
+        'price': stat.price,
+        'distributor_id': stat.distributorId,
+        'distributor_name': stat.distributorName,
+        'total_views': stat.totalViews,
+        'doctor_views': stat.doctorViews,
+        'last_viewed_at': stat.lastViewedAt?.toIso8601String(),
+        'distributor_count': stat.distributorCount,
+      }).toList();
+      
+      _cache.set('top_products_by_views_$limit', jsonResults, duration: CacheDurations.long);
+
       return results;
     } catch (e) {
       throw Exception('Failed to fetch top products: $e');
@@ -217,6 +252,19 @@ class AnalyticsRepository {
     String? role,
     int limit = 10,
   }) async {
+    // استخدام Cache-First للمستخدمين النشطين
+    return await _cache.cacheFirst<List<UserActivityStats>>(
+      key: 'top_users_by_activity_${role ?? 'all'}_$limit',
+      duration: CacheDurations.long, // ساعتين
+      fetchFromNetwork: () => _fetchTopUsersByActivity(role, limit),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => UserActivityStats.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<UserActivityStats>> _fetchTopUsersByActivity(String? role, int limit) async {
     try {
       // 1. جلب منتجات الموزعين (Distributor Products)
       List<dynamic> distributorProductsData = [];
@@ -408,6 +456,19 @@ class AnalyticsRepository {
         }
       }
 
+      // Cache as JSON
+      final jsonResults = results.map((stat) => {
+        'user_id': stat.userId,
+        'display_name': stat.displayName,
+        'email': stat.email,
+        'role': stat.role,
+        'total_views': stat.totalViews,
+        'total_products': stat.totalProducts,
+        'last_activity_at': stat.lastActivityAt.toIso8601String(),
+      }).toList();
+      
+      _cache.set('top_users_by_activity_${role ?? 'all'}_$limit', jsonResults, duration: CacheDurations.long);
+
       return results;
     } catch (e) {
       throw Exception('Failed to fetch top users: $e');
@@ -416,6 +477,19 @@ class AnalyticsRepository {
 
   // Search user stats by name or email
   Future<List<UserActivityStats>> searchUserStats(String query) async {
+    // استخدام Cache-First للبحث (مع كاش قصير)
+    return await _cache.cacheFirst<List<UserActivityStats>>(
+      key: 'search_user_stats_$query',
+      duration: CacheDurations.short, // 15 دقيقة
+      fetchFromNetwork: () => _fetchSearchUserStats(query),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => UserActivityStats.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<UserActivityStats>> _fetchSearchUserStats(String query) async {
     try {
       // البحث في جدول users مباشرة
       final usersResponse = await _supabase
@@ -479,6 +553,20 @@ class AnalyticsRepository {
       }
 
       results.sort((a, b) => b.totalViews.compareTo(a.totalViews));
+      
+      // Cache results
+      final jsonResults = results.map((stat) => {
+        'user_id': stat.userId,
+        'display_name': stat.displayName,
+        'email': stat.email,
+        'role': stat.role,
+        'total_views': stat.totalViews,
+        'total_products': stat.totalProducts,
+        'last_activity_at': stat.lastActivityAt.toIso8601String(),
+      }).toList();
+      
+      _cache.set('search_user_stats_$query', jsonResults, duration: CacheDurations.short);
+      
       return results;
     } catch (e) {
       throw Exception('Failed to search user stats: $e');
@@ -487,6 +575,19 @@ class AnalyticsRepository {
 
   // Search product stats by name
   Future<List<ProductPerformanceStats>> searchProductStats(String query) async {
+    // استخدام Cache-First للبحث عن المنتجات
+    return await _cache.cacheFirst<List<ProductPerformanceStats>>(
+      key: 'search_product_stats_$query',
+      duration: CacheDurations.short, // 15 دقيقة
+      fetchFromNetwork: () => _fetchSearchProductStats(query),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => ProductPerformanceStats.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<ProductPerformanceStats>> _fetchSearchProductStats(String query) async {
     try {
       // البحث في جدول products مباشرة - نجرب أعمدة مختلفة
       List<dynamic> productsData = [];
@@ -554,6 +655,23 @@ class AnalyticsRepository {
       }
 
       results.sort((a, b) => b.totalViews.compareTo(a.totalViews));
+      
+      // Cache results
+      final jsonResults = results.map((stat) => {
+        'product_id': stat.productId,
+        'product_name': stat.productName,
+        'company': stat.company,
+        'price': stat.price,
+        'distributor_id': stat.distributorId,
+        'distributor_name': stat.distributorName,
+        'total_views': stat.totalViews,
+        'doctor_views': stat.doctorViews,
+        'last_viewed_at': stat.lastViewedAt?.toIso8601String(),
+        'distributor_count': stat.distributorCount,
+      }).toList();
+      
+      _cache.set('search_product_stats_$query', jsonResults, duration: CacheDurations.short);
+      
       return results;
     } catch (e) {
       throw Exception('Failed to search product stats: $e');
@@ -765,7 +883,11 @@ class AnalyticsRepository {
 // =====================================================
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
-  return AnalyticsRepository(supabase: Supabase.instance.client);
+  final cache = ref.watch(cachingServiceProvider);
+  return AnalyticsRepository(
+    supabase: Supabase.instance.client,
+    cache: cache,
+  );
 });
 
 // Top Products

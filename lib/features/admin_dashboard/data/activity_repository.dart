@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -53,11 +54,29 @@ class ActivityLog {
 // Activity Repository
 class ActivityRepository {
   final SupabaseClient _supabase;
+  final CachingService _cache;
 
-  ActivityRepository({required SupabaseClient supabase}) : _supabase = supabase;
+  ActivityRepository({
+    required SupabaseClient supabase,
+    required CachingService cache,
+  })  : _supabase = supabase,
+        _cache = cache;
 
   // Get recent activities (last N activities)
   Future<List<ActivityLog>> getRecentActivities({int limit = 20}) async {
+    // استخدام Cache-First للأنشطة الحديثة (كاش قصير جداً)
+    return await _cache.cacheFirst<List<ActivityLog>>(
+      key: 'recent_activities_$limit',
+      duration: CacheDurations.veryShort, // 5 دقائق
+      fetchFromNetwork: () => _fetchRecentActivities(limit),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => ActivityLog.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<ActivityLog>> _fetchRecentActivities(int limit) async {
     try {
       final response = await _supabase
           .from('activity_logs')
@@ -66,6 +85,10 @@ class ActivityRepository {
           .limit(limit);
 
       final List<dynamic> data = response as List<dynamic>;
+      
+      // Cache as JSON List
+      _cache.set('recent_activities_$limit', data, duration: CacheDurations.veryShort);
+      
       return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to fetch recent activities: $e');
@@ -74,6 +97,19 @@ class ActivityRepository {
 
   // Get activities by type
   Future<List<ActivityLog>> getActivitiesByType(String activityType, {int limit = 20}) async {
+    // استخدام Cache-First للأنشطة حسب النوع
+    return await _cache.cacheFirst<List<ActivityLog>>(
+      key: 'activities_by_type_${activityType}_$limit',
+      duration: CacheDurations.veryShort, // 5 دقائق
+      fetchFromNetwork: () => _fetchActivitiesByType(activityType, limit),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => ActivityLog.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<ActivityLog>> _fetchActivitiesByType(String activityType, int limit) async {
     try {
       final response = await _supabase
           .from('activity_logs')
@@ -83,6 +119,10 @@ class ActivityRepository {
           .limit(limit);
 
       final List<dynamic> data = response as List<dynamic>;
+      
+      // Cache as JSON List
+      _cache.set('activities_by_type_${activityType}_$limit', data, duration: CacheDurations.veryShort);
+      
       return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       throw Exception('Failed to fetch activities by type: $e');
@@ -178,7 +218,11 @@ class ActivityRepository {
 
 // Providers
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
-  return ActivityRepository(supabase: Supabase.instance.client);
+  final cache = ref.watch(cachingServiceProvider);
+  return ActivityRepository(
+    supabase: Supabase.instance.client,
+    cache: cache,
+  );
 });
 
 final recentActivitiesProvider = FutureProvider<List<ActivityLog>>((ref) {

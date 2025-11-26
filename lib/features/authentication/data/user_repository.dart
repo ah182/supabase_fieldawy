@@ -189,6 +189,19 @@ class UserRepository {
 
   // Get all users with specific role
   Future<List<UserModel>> getUsersByRole(String role) async {
+    // استخدام Cache-First للمستخدمين حسب الدور
+    return await _cache.cacheFirst<List<UserModel>>(
+      key: 'users_by_role_$role',
+      duration: CacheDurations.medium, // 30 دقيقة
+      fetchFromNetwork: () => _fetchUsersByRole(role),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => UserModel.fromMap(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<UserModel>> _fetchUsersByRole(String role) async {
     try {
       final response = await _client
           .from('users')
@@ -196,9 +209,12 @@ class UserRepository {
           .eq('role', role)
           .order('created_at', ascending: false);
       
-      return (response as List)
-          .map((json) => UserModel.fromMap(json))
-          .toList();
+      final List<dynamic> data = response as List;
+      
+      // Cache as JSON List
+      _cache.set('users_by_role_$role', data, duration: CacheDurations.medium);
+      
+      return data.map((json) => UserModel.fromMap(json)).toList();
     } catch (e) {
       print('Error fetching users by role: $e');
       return [];
@@ -207,15 +223,31 @@ class UserRepository {
 
   // Get all users
   Future<List<UserModel>> getAllUsers() async {
+    // استخدام Cache-First للمستخدمين (تتغير ببطء)
+    return await _cache.cacheFirst<List<UserModel>>(
+      key: 'all_users',
+      duration: CacheDurations.medium, // 30 دقيقة
+      fetchFromNetwork: _fetchAllUsers,
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => UserModel.fromMap(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<UserModel>> _fetchAllUsers() async {
     try {
       final response = await _client
           .from('users')
           .select()
           .order('created_at', ascending: false);
       
-      return (response as List)
-          .map((json) => UserModel.fromMap(json))
-          .toList();
+      final List<dynamic> data = response as List;
+      
+      // Cache as JSON List
+      _cache.set('all_users', data, duration: CacheDurations.medium);
+      
+      return data.map((json) => UserModel.fromMap(json)).toList();
     } catch (e) {
       print('Error fetching all users: $e');
       return [];
@@ -226,8 +258,10 @@ class UserRepository {
   Future<bool> deleteUser(String userId) async {
     try {
       await _client.from('users').delete().eq('id', userId);
-      _cache.invalidate('user_$userId');
-      _cache.invalidate('distributors');
+      
+      // حذف الكاش بعد الحذف
+      _invalidateUsersCache(userId);
+      
       return true;
     } catch (e) {
       print('Error deleting user: $e');
@@ -241,8 +275,10 @@ class UserRepository {
       await _client.from('users').update({
         'role': newRole,
       }).eq('id', userId);
-      _cache.invalidate('user_$userId');
-      _cache.invalidate('distributors');
+      
+      // حذف الكاش بعد التحديث
+      _invalidateUsersCache(userId);
+      
       return true;
     } catch (e) {
       print('Error updating user role: $e');
@@ -344,6 +380,22 @@ class UserRepository {
       // In case of error, assume they were invited to avoid showing the screen repeatedly.
       return true;
     }
+  }
+
+  /// حذف كاش المستخدمين
+  void _invalidateUsersCache(String? userId) {
+    // حذف كاش المستخدم المحدد
+    if (userId != null) {
+      _cache.invalidate('user_$userId');
+    }
+    
+    // حذف كاش القوائم
+    _cache.invalidate('all_users');
+    _cache.invalidateWithPrefix('users_by_role_');
+    _cache.invalidate('distributors');
+    _cache.invalidate('doctors');
+    
+    print('🧹 Users cache invalidated');
   }
 } // Added this closing brace for UserRepository class
 
