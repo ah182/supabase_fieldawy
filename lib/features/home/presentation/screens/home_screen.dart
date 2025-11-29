@@ -30,6 +30,7 @@ import 'package:fieldawy_store/features/products/application/expire_drugs_provid
 import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
+import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 
 
 
@@ -240,24 +241,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }).toList();
   }
 
-  void _navigateToDistributor(String distributorId) async {
+  void _navigateToDistributor(String distributorIdOrName) async {
     if (_hasNavigatedToDistributor) return;
     
-    print('📍 التنقل لصفحة الموزع: $distributorId');
+    print('📍 التنقل لصفحة الموزع: $distributorIdOrName');
     
     // التأكد من أن context متاح
     if (!mounted) return;
     
-    // الحصول على اسم الموزع من Supabase
     try {
       final supabase = Supabase.instance.client;
-      final response = await supabase
-          .from('users')
-          .select('display_name')
-          .eq('id', distributorId)
-          .maybeSingle();
       
-      final distributorName = response?['display_name'] ?? 'Distributor';
+      // التحقق مما إذا كان المدخل UUID
+      final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+          .hasMatch(distributorIdOrName);
+          
+      String resolvedId = distributorIdOrName;
+      String resolvedName = 'Distributor';
+      
+      if (isUuid) {
+        // إذا كان UUID، نجلب الاسم
+        final response = await supabase
+            .from('users')
+            .select('display_name')
+            .eq('id', distributorIdOrName)
+            .maybeSingle();
+        resolvedName = response?['display_name'] ?? 'Distributor';
+      } else {
+        // إذا كان اسماً، نجلب الـ UUID
+        // في حالة "gamal ahmed"، هذا هو المسار الصحيح
+        final response = await supabase
+            .from('users')
+            .select('id, display_name')
+            .eq('display_name', distributorIdOrName)
+            .maybeSingle();
+            
+        if (response != null) {
+          resolvedId = response['id'];
+          resolvedName = response['display_name'];
+        } else {
+            print('❌ لم يتم العثور على موزع بهذا الاسم: $distributorIdOrName');
+            _hasNavigatedToDistributor = false;
+            // يمكن إضافة SnackBar هنا لإبلاغ المستخدم
+            return;
+        }
+      }
       
       if (!mounted) return;
       
@@ -265,8 +293,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => DistributorProductsScreen(
-            distributorId: distributorId,
-            distributorName: distributorName,
+            distributorId: resolvedId,
+            distributorName: resolvedName,
           ),
         ),
       );
@@ -587,26 +615,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                      GestureDetector(
+                        onTap: () {
+                          if (product.distributorId != null) {
+                            Navigator.of(context).pop(); // Close the dialog
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => DrawerWrapper(
+                                  distributorId: product.distributorId,
+                                ),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            product.distributorId ?? 'موزع غير معروف',
+                            style: TextStyle(
+                              color: theme.colorScheme.onPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          product.distributorId ?? 'موزع غير معروف',
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -1569,7 +1612,7 @@ class PriceUpdateTab extends ConsumerWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 8.0,
           mainAxisSpacing: 8.0,
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.6,
         ),
         itemCount: 6,
         itemBuilder: (context, index) => const ProductCardShimmer(),
@@ -1621,7 +1664,7 @@ class PriceUpdateTab extends ConsumerWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
-              childAspectRatio: 0.75,
+              childAspectRatio: 0.6,
             ),
             itemCount: filteredProducts.length,
             itemBuilder: (context, index) {

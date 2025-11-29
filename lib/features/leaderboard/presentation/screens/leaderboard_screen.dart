@@ -4,11 +4,15 @@ import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/leaderboard/application/leaderboard_provider.dart';
 import 'package:fieldawy_store/features/leaderboard/presentation/screens/fortune_wheel_screen.dart';
+import 'package:fieldawy_store/features/leaderboard/presentation/screens/referral_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
+import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 
 class LeaderboardScreen extends HookConsumerWidget {
   const LeaderboardScreen({super.key});
@@ -59,6 +63,190 @@ class LeaderboardScreen extends HookConsumerWidget {
     );
   }
 
+  Future<void> _showEnterReferralCodeDialog(BuildContext context, WidgetRef ref) async {
+    await showDialog(
+      context: context,
+      builder: (context) => const ReferralEntryDialog(),
+    );
+  }
+
+  Future<void> _showLeaderboardRulesDialog(BuildContext context, String? referralCode) async {
+    final theme = Theme.of(context);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.emoji_events_rounded,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'معلومات الليدربورد',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'كود دعوتك هو',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () {
+                        if (referralCode != null) {
+                          Clipboard.setData(ClipboardData(text: referralCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم نسخ الكود')),
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.primary,
+                            style: BorderStyle.values[1], // dashed logic simplified
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              referralCode ?? 'جاري التحميل...',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.copy,
+                                size: 16, color: theme.colorScheme.primary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildRuleItem(
+                context,
+                Icons.person_add_alt_1_rounded,
+                'يمكنك دعوة المستخدمين الآخرين لتحصل على نقاط:',
+                [
+                  'الدعوة إلى طبيب: تحصل على 1 نقطة وهو 2 نقطة',
+                  'الدعوة إلى موزع: تحصل على 2 نقطة وهو 2 نقطة',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildRuleItem(
+                context,
+                Icons.update_rounded,
+                'تجديد الموسم:',
+                [
+                  'الموسم يتجدد كل 30 يوماً',
+                  'يتم تسليم الجوائز في الموسم الجديد مباشرة لأول 5 مراكز عن طريق عجلة الحظ لكل مركز',
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRuleItem(BuildContext context, IconData icon, String title,
+      List<String> points) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...points.map((point) => Padding(
+              padding: const EdgeInsets.only(bottom: 4, right: 28),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: CircleAvatar(
+                      radius: 2,
+                      backgroundColor: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      point,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.8),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+
   void _showRewardsBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -82,6 +270,8 @@ class LeaderboardScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final seasonAsync = ref.watch(currentSeasonProvider);
     final leaderboardData = ref.watch(leaderboardProvider);
+    final userDataAsync = ref.watch(userDataProvider);
+    final wasInvitedAsync = ref.watch(wasInvitedProvider);
     final theme = Theme.of(context);
     final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
     
@@ -93,6 +283,23 @@ class LeaderboardScreen extends HookConsumerWidget {
     final ghostText = useState<String>('');
     final fullSuggestion = useState<String>('');
     
+    // Auto-show rules dialog once
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final referralCode = userDataAsync.value?.referralCode;
+        // Only show if we have the referral code (meaning data is loaded)
+        if (referralCode != null) {
+           // Small delay to ensure UI is ready
+           Future.delayed(const Duration(milliseconds: 500), () {
+             if (context.mounted) {
+                _showLeaderboardRulesDialog(context, referralCode);
+             }
+           });
+        }
+      });
+      return null;
+    }, [userDataAsync.value?.referralCode]); // Run when referral code becomes available
+
     useEffect(() {
       Timer? debounce;
       void listener() {
@@ -168,6 +375,26 @@ class LeaderboardScreen extends HookConsumerWidget {
           elevation: 0,
           backgroundColor: Colors.transparent,
           foregroundColor: theme.colorScheme.onSurface,
+          actions: [
+            wasInvitedAsync.when(
+              data: (wasInvited) => !wasInvited 
+                  ? IconButton(
+                      icon: const Icon(Icons.person_add_alt_1_rounded),
+                      tooltip: 'Enter Referral Code',
+                      onPressed: () => _showEnterReferralCodeDialog(context, ref),
+                    )
+                  : const SizedBox.shrink(),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+            IconButton(
+              onPressed: () {
+                final referralCode = userDataAsync.value?.referralCode;
+                _showLeaderboardRulesDialog(context, referralCode);
+              },
+              icon: const Icon(Icons.info_outline_rounded),
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(70),
             child: Column(

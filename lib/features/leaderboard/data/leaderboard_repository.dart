@@ -11,16 +11,8 @@ class LeaderboardRepository {
   LeaderboardRepository(this._client, this._cache);
 
   Future<List<UserModel>> getLeaderboard() async {
-    // استخدام Cache-First للـ Leaderboard (يتغير ببطء)
-    return await _cache.cacheFirst<List<UserModel>>(
-      key: 'leaderboard_top_100',
-      duration: CacheDurations.medium, // 30 دقيقة
-      fetchFromNetwork: _fetchLeaderboard,
-      fromCache: (data) {
-        final List<dynamic> jsonList = data as List<dynamic>;
-        return jsonList.map((json) => UserModel.fromMap(Map<String, dynamic>.from(json))).toList();
-      },
-    );
+    // إلغاء الكاش، الجلب مباشرة من الشبكة
+    return await _fetchLeaderboard();
   }
 
   Future<List<UserModel>> _fetchLeaderboard() async {
@@ -99,12 +91,8 @@ class LeaderboardRepository {
   }
 
   Future<LeaderboardSeason?> getCurrentSeason() async {
-    // استخدام Cache-First للموسم الحالي
-    return await _cache.cacheFirst<LeaderboardSeason?>(
-      key: 'current_leaderboard_season',
-      duration: CacheDurations.long, // ساعتين
-      fetchFromNetwork: _fetchCurrentSeason,
-    );
+    // إلغاء الكاش، الجلب مباشرة من الشبكة
+    return await _fetchCurrentSeason();
   }
 
   Future<LeaderboardSeason?> _fetchCurrentSeason() async {

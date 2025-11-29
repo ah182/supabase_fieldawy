@@ -148,14 +148,7 @@ class MenuScreen extends ConsumerWidget {
             Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => const DashboardPage()));
           }),
-      _buildMenuItem(
-          icon: Icons.analytics_outlined,
-          title: 'Analytics',
-          onTap: () {
-            ZoomDrawer.of(context)!.close();
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const AnalyticsPage()));
-          }),
+     
       _buildMenuItem(
           icon: Icons.inventory_2_outlined, // أيقونة جديدة
           title: 'myMedicines'.tr(),

@@ -6,6 +6,7 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'dart:ui' as ui;
 
 /// Dialog لعرض تفاصيل منتج عادي
@@ -209,26 +210,41 @@ class _ProductDialogState extends State<_ProductDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                      GestureDetector(
+                        onTap: () {
+                          if (widget.product.distributorId != null) {
+                            Navigator.of(context).pop(); // Close the dialog
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => DrawerWrapper(
+                                  distributorId: widget.product.distributorId,
+                                ),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            widget.product.distributorId ?? 'موزع غير معروف',
+                            style: TextStyle(
+                              color: theme.colorScheme.onPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          widget.product.distributorId ?? 'موزع غير معروف',
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -781,31 +797,44 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       ),
                       const Spacer(),
                       if (widget.offer.distributorId != null && widget.offer.distributorId!.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.store_outlined,
-                                size: 14,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                widget.offer.distributorId!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).pop(); // Close the dialog
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => DrawerWrapper(
+                                  distributorId: widget.offer.distributorId,
                                 ),
                               ),
-                            ],
+                              (route) => false,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.store_outlined,
+                                  size: 14,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.offer.distributorId!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                     ],
@@ -1308,26 +1337,39 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                         ),
                       ),
                       if (widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).pop(); // Close the dialog
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => DrawerWrapper(
+                                  distributorId: widget.tool.distributorId,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Text(
-                            widget.tool.distributorId!,
-                            style: TextStyle(
-                              color: theme.colorScheme.onPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              (route) => false,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              widget.tool.distributorId!,
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),

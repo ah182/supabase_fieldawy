@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import "package:collection/collection.dart";
 import "package:fieldawy_store/core/caching/caching_service.dart";
 // lib/features/distributors/presentation/screens/distributor_products_screen.dart
@@ -8,8 +10,10 @@ import "dart:async";
 import "package:cached_network_image/cached_network_image.dart";
 import "package:easy_localization/easy_localization.dart";
 import "package:fieldawy_store/features/distributors/domain/distributor_model.dart";
-// ignore: unused_import
+
 import "package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart";
+import "package:fieldawy_store/features/orders/presentation/screens/distributor_order_details_screen.dart";
+import "package:fieldawy_store/features/orders/application/orders_provider.dart";
 import "package:fieldawy_store/features/products/data/product_repository.dart";
 import "package:flutter/material.dart";
 import "package:flutter_hooks/flutter_hooks.dart";
@@ -22,7 +26,9 @@ import "../../../products/domain/product_model.dart";
 import "package:awesome_snackbar_content/awesome_snackbar_content.dart";
 import "package:fieldawy_store/features/products/application/favorites_provider.dart";
 import "package:fieldawy_store/main.dart";
-import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
+import "package:font_awesome_flutter/font_awesome_flutter.dart";
+import "package:fieldawy_store/features/authentication/domain/user_model.dart";
+import "package:fieldawy_store/services/distributor_subscription_service.dart";
 
 
 /* -------------------------------------------------------------------------- */
@@ -135,6 +141,286 @@ class DistributorProductsScreen extends HookConsumerWidget {
       throw StateError('Distributor name is required but was not provided');
     }
     return name;
+  }
+
+  // دالة لجلب تفاصيل الموزع الكاملة
+  Future<DistributorModel?> _fetchDistributorDetails(String id) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase.functions.invoke('get-distributors');
+      
+      if (response.data != null) {
+        final List<dynamic> data = response.data;
+        final distributorData = data.firstWhereOrNull((d) => d['id'] == id);
+        
+        if (distributorData != null) {
+          return DistributorModel.fromMap(Map<String, dynamic>.from(distributorData));
+        }
+      }
+    } catch (e) {
+      print('Error fetching distributor details: $e');
+    }
+    return null;
+  }
+
+  // عرض تفاصيل الموزع
+  void _showDistributorDetails(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
+    
+    DistributorModel? currentDistributor = distributor;
+    
+    // إذا لم يكن لدينا كائن الموزع الكامل، نحاول جلبه
+    if (currentDistributor == null) {
+      // إظهار مؤشر تحميل
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      currentDistributor = await _fetchDistributorDetails(_distributorId);
+      
+      // إغلاق مؤشر التحميل
+      if (context.mounted) Navigator.of(context).pop();
+      
+      if (currentDistributor == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('failedToLoadDistributorDetails'.tr())),
+          );
+        }
+        return;
+      }
+    }
+
+    if (context.mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) =>
+            _buildDistributorDetailsDialog(context, theme, currentDistributor!),
+      );
+    }
+  }
+
+  Widget _buildDistributorDetailsDialog(
+      BuildContext context, ThemeData theme, DistributorModel distributor) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: distributor.photoURL != null &&
+                            distributor.photoURL!.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: distributor.photoURL!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const Center(
+                                child: ImageLoadingIndicator(size: 32)),
+                            errorWidget: (context, url, error) => Icon(
+                                Icons.person_rounded,
+                                size: 40,
+                                color: theme.colorScheme.onSurfaceVariant),
+                          )
+                        : Icon(Icons.person_rounded,
+                            size: 40,
+                            color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  distributor.displayName,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (distributor.companyName != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      distributor.companyName!,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: theme.colorScheme.outline.withOpacity(0.2)),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildDetailListTile(
+                  theme,
+                  Icons.email_rounded,
+                  'email'.tr(),
+                  distributor.email ?? 'notAvailable'.tr(),
+                ),
+                _buildDetailListTile(
+                  theme,
+                  Icons.inventory_2_rounded,
+                  'numberOfProducts'.tr(),
+                  'productCount'
+                      .tr(args: [distributor.productCount.toString()]),
+                ),
+                _buildDetailListTile(
+                  theme,
+                  Icons.business_rounded,
+                  'distributorType'.tr(),
+                  distributor.distributorType == 'company'
+                      ? 'distributionCompany'.tr()
+                      : 'individualDistributor'.tr(),
+                ),
+                if (distributor.whatsappNumber != null &&
+                    distributor.whatsappNumber!.isNotEmpty)
+                  _buildDetailListTile(
+                    theme,
+                    FontAwesomeIcons.whatsapp,
+                    'whatsapp'.tr(),
+                    distributor.whatsappNumber!,
+                  ),
+              ],
+            ),
+          ),
+          // زر الواتساب فقط (تم إزالة زر عرض المنتجات)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _openWhatsApp(context, distributor);
+                },
+                icon: const FaIcon(FontAwesomeIcons.whatsapp,
+                    color: Colors.white, size: 20),
+                label: Text('contactViaWhatsapp'.tr()), // أو أي نص مناسب
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailListTile(
+      ThemeData theme, IconData icon, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openWhatsApp(
+      BuildContext context, DistributorModel distributor) async {
+    final phoneNumber = distributor.whatsappNumber;
+
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('phoneNumberNotAvailable'.tr()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final message = Uri.encodeComponent('whatsappInquiry'.tr());
+    final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
+
+    try {
+      final uri = Uri.parse(whatsappUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch WhatsApp';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('couldNotOpenWhatsApp'.tr()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          action: SnackBarAction(
+            label: 'ok'.tr(),
+            onPressed: () {},
+          ),
+        ),
+      );
+    }
   }
 
   // دالة مساعدة لحساب نقاط الأولوية في البحث
@@ -682,6 +968,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
       };
     }, [searchController]);
 
+    final order = ref.watch(orderProvider);
+    final distributorOrderItems = order.where((item) => item.product.distributorId == _distributorName).toList();
+
     return GestureDetector(
       onTap: () {
         if (!productsAsync.isLoading) {
@@ -689,11 +978,37 @@ class DistributorProductsScreen extends HookConsumerWidget {
         }
       },
       child: Scaffold(
+        floatingActionButton: distributorOrderItems.isNotEmpty
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DistributorOrderDetailsScreen(
+                        distributorName: _distributorName,
+                        products: distributorOrderItems,
+                      ),
+                    ),
+                  );
+                },
+                label: Text('viewOrder'.tr()),
+                icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              )
+            : null,
         appBar: AppBar(
           title: Text('منتجات $_distributorName'),
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline_rounded),
+              tooltip: 'distributorDetails'.tr(),
+              onPressed: () => _showDistributorDetails(context, ref),
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(kToolbarHeight + 15.0),
             child: Column(
