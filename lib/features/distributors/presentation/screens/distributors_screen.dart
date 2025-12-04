@@ -6,6 +6,7 @@ import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+
 // ignore: unnecessary_import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -18,7 +19,9 @@ import 'package:fieldawy_store/features/distributors/presentation/screens/distri
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'dart:async';
+import 'package:fieldawy_store/services/subscription_cache_service.dart';
 
 final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
@@ -510,6 +513,7 @@ final sliverAppBar = SliverAppBar(
                             distributor.photoURL!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
+                            cacheManager: CustomImageCacheManager(),
                             fit: BoxFit.cover,
                             placeholder: (context, url) => const Center(
                                 child: ImageLoadingIndicator(size: 32)),
@@ -583,14 +587,85 @@ final sliverAppBar = SliverAppBar(
                             : 'bothMethods'.tr(),
                   ),
                 if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
-                  _buildDetailListTile(
-                    theme,
-                    Icons.map_rounded,
-                    'Coverage Areas'.tr(),
-                    '${distributor.governorates!.join(", ")}' + 
-                    (distributor.centers != null && distributor.centers!.isNotEmpty 
-                      ? '\n(${distributor.centers!.join(", ")})' 
-                      : ''),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.map_rounded, color: theme.colorScheme.primary, size: 20),
+                            ),
+                            const SizedBox(width: 16),
+                            Text(
+                              'Coverage Areas'.tr(),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 16.0, left: 56.0), // Indent to align with text
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: distributor.governorates!.map((gov) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    gov,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                )).toList(),
+                              ),
+                              if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: distributor.centers!.map((center) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      center,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.secondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  )).toList(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 if (distributor.whatsappNumber != null &&
                     distributor.whatsappNumber!.isNotEmpty)
@@ -916,15 +991,29 @@ class _DistributorCard extends HookWidget {
     final isLoading = useState(false);
     final subscribersCountLocal = useState(distributor.subscribersCount);
 
+
+
+// ... (Rest of imports)
+
+// ... (Inside _DistributorCard build method)
+
     // Load initial subscription state
     useEffect(() {
       Future<void> loadSubscription() async {
-        final subscribed = await DistributorSubscriptionService.isSubscribed(distributor.id);
-        isSubscribed.value = subscribed;
+        try {
+          // Ensure cache is initialized
+          await SubscriptionCacheService.init();
+          final subscribed = await DistributorSubscriptionService.isSubscribed(distributor.id);
+          if (context.mounted) {
+            isSubscribed.value = subscribed;
+          }
+        } catch (e) {
+          print('Error loading subscription for ${distributor.id}: $e');
+        }
       }
       loadSubscription();
       return null;
-    }, []);
+    }, []); // Empty dependency array ensures this runs once on mount
 
     return Container(
       decoration: BoxDecoration(
@@ -961,6 +1050,7 @@ class _DistributorCard extends HookWidget {
                             distributor.photoURL!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
+                            cacheManager: CustomImageCacheManager(),
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(
                               decoration: BoxDecoration(
@@ -1166,7 +1256,7 @@ class _DistributorCard extends HookWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                                color: theme.colorScheme.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -1175,13 +1265,13 @@ class _DistributorCard extends HookWidget {
                                   Icon(
                                     Icons.notifications_active_rounded,
                                     size: 11,
-                                    color: Colors.orange.shade700,
+                                    color: theme.colorScheme.primary,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${subscribersCountLocal.value}',
                                     style: theme.textTheme.labelMedium?.copyWith(
-                                      color: Colors.orange.shade700,
+                                      color: theme.colorScheme.primary,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,
                                     ),

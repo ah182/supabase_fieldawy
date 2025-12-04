@@ -21,6 +21,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart'; // Required for temporary path
 import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -112,6 +113,7 @@ class ProfileScreen extends ConsumerWidget {
                                           userModel.photoUrl!.isNotEmpty
                                       ? CachedNetworkImage(
                                           imageUrl: userModel.photoUrl!,
+                                          cacheManager: CustomImageCacheManager(), // Use custom cache manager
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) =>
                                               Container(

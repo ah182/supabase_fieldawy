@@ -804,6 +804,13 @@ class ProductReviewCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final service = ref.read(reviewServiceProvider);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isMyReview = currentUserId != null && currentUserId == review.userId;
+    
+    print('🔍 Debug Review Card:');
+    print('   - Review Owner ID: ${review.userId}');
+    print('   - Current User ID: $currentUserId');
+    print('   - Is My Review? $isMyReview (Report button hidden if true)');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -866,61 +873,36 @@ class ProductReviewCard extends ConsumerWidget {
                   ),
                 ),
                 // Menu Button (Three Dots)
-                SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: PopupMenuButton<String>(
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                    tooltip: 'خيارات',
-                    onSelected: (value) {
-                      if (value == 'report') {
-                        _showReportDialog(context, ref, review.id);
-                      } else if (value == 'delete') {
-                        _confirmDeleteReview(context, ref, review.id);
-                      }
-                    },
-                    itemBuilder: (context) {
-                      final currentUserId =
-                          Supabase.instance.client.auth.currentUser?.id;
-                      final isMyReview =
-                          currentUserId != null && currentUserId == review.userId;
-
-                      if (isMyReview) {
-                        return [
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline,
-                                    size: 18, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('حذف التقييم',
-                                    style: TextStyle(
-                                        fontSize: 14, color: Colors.red)),
-                              ],
-                            ),
+                if (isMyReview)
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                      tooltip: 'خيارات',
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          _confirmDeleteReview(context, ref, review.id);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline,
+                                  size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('حذف التقييم',
+                                  style: TextStyle(
+                                      fontSize: 14, color: Colors.red)),
+                            ],
                           ),
-                        ];
-                      } else {
-                        return [
-                          const PopupMenuItem(
-                            value: 'report',
-                            child: Row(
-                              children: [
-                                Icon(Icons.flag_outlined,
-                                    size: 18, color: Colors.orange),
-                                SizedBox(width: 8),
-                                Text('إبلاغ عن محتوى مسيء',
-                                    style: TextStyle(fontSize: 14)),
-                              ],
-                            ),
-                          ),
-                        ];
-                      }
-                    },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
 
@@ -938,9 +920,10 @@ class ProductReviewCard extends ConsumerWidget {
               ),
             ],
 
-            // 4. Actions (Helpful)
+            // 4. Actions (Helpful & Report)
             const SizedBox(height: 12),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton.icon(
                   onPressed: () async {
@@ -959,6 +942,23 @@ class ProductReviewCard extends ConsumerWidget {
                   label: Text(
                     'مفيد (${review.helpfulCount})',
                     style: textTheme.bodySmall,
+                  ),
+                ),
+                // Report Button
+                TextButton.icon(
+                  onPressed: isMyReview 
+                      ? null 
+                      : () => _showReportDialog(context, ref, review.id),
+                  icon: Icon(
+                    Icons.flag_outlined,
+                    size: 18, 
+                    color: isMyReview ? Colors.grey.withOpacity(0.3) : Colors.red,
+                  ),
+                  label: Text(
+                    'إبلاغ',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: isMyReview ? Colors.grey.withOpacity(0.3) : Colors.red,
+                    ),
                   ),
                 ),
               ],

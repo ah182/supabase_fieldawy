@@ -366,6 +366,7 @@ class ProductRepository {
       duration: CacheDurations.veryLong, // 24 ساعة
       staleTime: const Duration(hours: 12), // تحديث بعد 12 ساعة
       fetchFromNetwork: _fetchAllProductsFromServer,
+      fromCache: (data) => List<ProductModel>.from(data),
     );
   }
 
@@ -402,6 +403,7 @@ class ProductRepository {
       duration: CacheDurations.medium, // 30 دقيقة
       staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
       fetchFromNetwork: _fetchAllDistributorProductsFromServer,
+      fromCache: (data) => List<ProductModel>.from(data),
     );
   }
 
@@ -815,6 +817,7 @@ class ProductRepository {
       duration: CacheDurations.veryLong, // 24 ساعة
       staleTime: const Duration(hours: 12), // تحديث بعد 12 ساعة
       fetchFromNetwork: _fetchOcrProductsFromServer,
+      fromCache: (data) => List<ProductModel>.from(data),
     );
   }
 
@@ -882,6 +885,7 @@ class ProductRepository {
       duration: CacheDurations.short, // 15 دقيقة
       staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
       fetchFromNetwork: () => _fetchMyOcrProducts(distributorId),
+      fromCache: (data) => List<ProductModel>.from(data),
     );
   }
 
@@ -1146,6 +1150,7 @@ class ProductRepository {
       duration: CacheDurations.short, // 15 دقيقة
       staleTime: const Duration(minutes: 5), // تحديث بعد 5 دقائق
       fetchFromNetwork: () => _fetchMyOffers(userId),
+      fromCache: (data) => List<OfferModel>.from(data),
     );
   }
 
@@ -1188,6 +1193,7 @@ class ProductRepository {
       key: 'my_offers_with_products_$userId',
       duration: CacheDurations.short, // 15 دقيقة
       fetchFromNetwork: () => _fetchMyOffersWithProducts(userId),
+      fromCache: (data) => (data as List).map((e) => Map<String, dynamic>.from(e)).toList(),
     );
   }
 

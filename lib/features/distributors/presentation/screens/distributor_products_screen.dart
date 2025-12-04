@@ -263,17 +263,23 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                if (distributor.companyName != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      distributor.companyName!,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                      textAlign: TextAlign.center,
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    distributor.distributorType == 'company'
+                        ? 'distributionCompany'.tr()
+                        : 'individualDistributor'.tr(),
+                    style: TextStyle(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -282,12 +288,98 @@ class DistributorProductsScreen extends HookConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildDetailListTile(
-                  theme,
-                  Icons.email_rounded,
-                  'email'.tr(),
-                  distributor.email ?? 'notAvailable'.tr(),
-                ),
+                if (distributor.distributionMethod != null)
+                  _buildDetailListTile(
+                    theme,
+                    Icons.local_shipping_rounded,
+                    'distributionMethod'.tr(),
+                    distributor.distributionMethod == 'direct_distribution'
+                        ? 'directDistribution'.tr()
+                        : distributor.distributionMethod == 'order_delivery'
+                            ? 'orderDelivery'.tr()
+                            : 'both'.tr(),
+                  ),
+                if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.map_rounded, color: theme.colorScheme.primary, size: 20),
+                            ),
+                            const SizedBox(width: 16),
+                            Text(
+                              'Coverage Areas'.tr(),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 56.0), // Indent to align with text
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: distributor.governorates!.map((gov) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    gov,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                )).toList(),
+                              ),
+                              if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: distributor.centers!.map((center) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      center,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.secondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  )).toList(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _buildDetailListTile(
                   theme,
                   Icons.inventory_2_rounded,
@@ -295,49 +387,34 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   'productCount'
                       .tr(args: [distributor.productCount.toString()]),
                 ),
-                _buildDetailListTile(
-                  theme,
-                  Icons.business_rounded,
-                  'distributorType'.tr(),
-                  distributor.distributorType == 'company'
-                      ? 'distributionCompany'.tr()
-                      : 'individualDistributor'.tr(),
-                ),
-                if (distributor.whatsappNumber != null &&
-                    distributor.whatsappNumber!.isNotEmpty)
-                  _buildDetailListTile(
-                    theme,
-                    FontAwesomeIcons.whatsapp,
-                    'whatsapp'.tr(),
-                    distributor.whatsappNumber!,
-                  ),
               ],
             ),
           ),
-          // زر الواتساب فقط (تم إزالة زر عرض المنتجات)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _openWhatsApp(context, distributor);
-                },
-                icon: const FaIcon(FontAwesomeIcons.whatsapp,
-                    color: Colors.white, size: 20),
-                label: Text('contactViaWhatsapp'.tr()), // أو أي نص مناسب
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          if (distributor.whatsappNumber != null &&
+              distributor.whatsappNumber!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await _openWhatsApp(context, distributor);
+                  },
+                  icon: const FaIcon(FontAwesomeIcons.whatsapp,
+                      color: Colors.white, size: 20),
+                  label: Text('contactViaWhatsapp'.tr()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

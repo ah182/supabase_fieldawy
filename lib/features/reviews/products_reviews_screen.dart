@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:flutter/material.dart';
+// ignore: unnecessary_import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -9,7 +11,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'review_system.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
-import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
+import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // ============================================================================
 // 🌟 MAIN SCREEN: المنتجات اللي عليها طلبات تقييم
@@ -1730,24 +1737,28 @@ class ReviewDetailCard extends ConsumerWidget {
             Row(
               children: [
                 // صورة المعلق
-                CircleAvatar(
-                  radius: 18,
-                  backgroundImage: review.userPhoto != null
-                      ? NetworkImage(review.userPhoto!)
-                      : null,
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: review.userPhoto == null
-                      ? Text(
-                          review.userName.isNotEmpty
-                              ? review.userName[0].toUpperCase()
-                              : '؟',
-                          style: TextStyle(
-                            color: colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        )
-                      : null,
+                InkWell(
+                  onTap: () => _showUserDetails(context, ref, review.userId),
+                  borderRadius: BorderRadius.circular(18),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundImage: review.userPhoto != null
+                        ? NetworkImage(review.userPhoto!)
+                        : null,
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: review.userPhoto == null
+                        ? Text(
+                            review.userName.isNotEmpty
+                                ? review.userName[0].toUpperCase()
+                                : '؟',
+                            style: TextStyle(
+                              color: colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 // اسم المعلق والتاريخ
@@ -1755,13 +1766,16 @@ class ReviewDetailCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        review.userName.isEmpty ? 'مستخدم' : review.userName,
-                        style: textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      InkWell(
+                        onTap: () => _showUserDetails(context, ref, review.userId),
+                        child: Text(
+                          review.userName.isEmpty ? 'مستخدم' : review.userName,
+                          style: textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Row(
@@ -1948,6 +1962,16 @@ class ReviewDetailCard extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
                     ),
                   ),
+                ] else ...[
+                  // زر الإبلاغ (للمستخدمين الآخرين)
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => _showReportDialog(context, ref, review.id),
+                    icon: const Icon(Icons.flag_outlined, size: 18, color: Colors.grey),
+                    tooltip: 'إبلاغ عن محتوى مسيء',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
                 ],
               ],
             ),
@@ -2014,6 +2038,483 @@ class ReviewDetailCard extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  void _showUserDetails(BuildContext context, WidgetRef ref, String userId) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final userModel = await ref.read(userRepositoryProvider).getUser(userId);
+      
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading
+        if (userModel != null) {
+          _showUserBottomSheet(context, userModel);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تعذر تحميل بيانات المستخدم')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ: $e')),
+        );
+      }
+    }
+  }
+
+  void _showUserBottomSheet(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    // ignore: unused_local_variable
+    final isDoctor = user.role == 'doctor';
+    final isDistributor = user.role == 'distributor' || user.role == 'company';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7, // Increased height
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: user.photoUrl != null
+                        ? CachedNetworkImageProvider(user.photoUrl!)
+                        : null,
+                    child: user.photoUrl == null
+                        ? const Icon(Icons.person, size: 40)
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    user.displayName ?? 'مستخدم',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _getRoleLabel(user.role),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: theme.colorScheme.outline.withOpacity(0.2)),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (isDistributor && user.distributionMethod != null)
+                    _buildDetailTile(
+                      theme,
+                      Icons.local_shipping,
+                      'طريقة التوزيع',
+                      _getDistributionMethodLabel(user.distributionMethod!),
+                    ),
+                  if (user.governorates != null && user.governorates!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                isDistributor ? 'مناطق التغطية' : 'الموقع',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: user.governorates!.map((gov) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                gov,
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                          if (user.centers != null && user.centers!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: user.centers!.map((center) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.3)),
+                                ),
+                                child: Text(
+                                  center,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.secondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  if (user.whatsappNumber != null && user.whatsappNumber!.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _openWhatsApp(context, user.whatsappNumber!),
+                        icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
+                        label: const Text('تواصل عبر واتساب', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  if (isDistributor) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          final distributor = DistributorModel(
+                            id: user.id,
+                            displayName: user.displayName ?? '',
+                            photoURL: user.photoUrl,
+                            email: user.email,
+                            distributorType: user.role,
+                            whatsappNumber: user.whatsappNumber,
+                            governorates: user.governorates,
+                            centers: user.centers,
+                            distributionMethod: user.distributionMethod,
+                          );
+                          
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DistributorProductsScreen(
+                                distributor: distributor,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.inventory_2),
+                        label: const Text('عرض المنتجات'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailTile(ThemeData theme, IconData icon, String title, String value, {VoidCallback? onTap}) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+      ),
+      title: Text(title, style: theme.textTheme.bodySmall),
+      subtitle: Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+      onTap: onTap,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  String _getRoleLabel(String role) {
+    switch (role) {
+      case 'doctor': return 'طبيب بيطري'.tr();
+      case 'distributor': return 'موزع فردي'.tr();
+      case 'company': return 'شركة توزيع'.tr();
+      default: return role;
+    }
+  }
+
+  String _getDistributionMethodLabel(String method) {
+    switch (method) {
+      case 'direct_distribution': return 'توزيع مباشر'.tr();
+      case 'order_delivery': return 'توصيل طلبات'.tr();
+      case 'both': return 'توزيع وتوصيل'.tr();
+      default: return method;
+    }
+  }
+
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final url = 'https://wa.me/20$cleanPhone';
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا يمكن فتح واتساب')),
+          );
+        }
+      }
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
+    final reasons = [
+      'محتوى غير لائق / مسيء',
+      'رسائل مزعجة (Spam)',
+      'معلومات مضللة',
+      'تحرش أو تنمر',
+      'أخرى',
+    ];
+    String selectedReason = reasons[0];
+    final descriptionController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.flag_rounded, color: Colors.red),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'إبلاغ عن محتوى',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'ساعدنا في الحفاظ على بيئة آمنة. ما المشكلة في هذا التقييم؟',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Reasons List
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: reasons.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 20, endIndent: 20),
+                  itemBuilder: (context, index) {
+                    final reason = reasons[index];
+                    final isSelected = selectedReason == reason;
+                    return RadioListTile<String>(
+                      title: Text(
+                        reason,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Theme.of(context).primaryColor : null,
+                        ),
+                      ),
+                      value: reason,
+                      groupValue: selectedReason,
+                      activeColor: Theme.of(context).primaryColor,
+                      onChanged: (value) => setState(() => selectedReason = value!),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    );
+                  },
+                ),
+              ),
+              // Description Field
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: TextField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'أضف تفاصيل إضافية (اختياري)...',
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              // Actions
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                          );
+
+                          final service = ref.read(reviewServiceProvider);
+                          final result = await service.reportReview(
+                            reviewId: reviewId,
+                            reason: selectedReason,
+                            description: descriptionController.text.trim().isEmpty 
+                                ? null 
+                                : descriptionController.text.trim(),
+                          );
+
+                          if (context.mounted) {
+                             if (result['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
