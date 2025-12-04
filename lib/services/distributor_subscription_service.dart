@@ -17,10 +17,23 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Subscribe to a distributor (save to Hive only)
+  /// Subscribe to a distributor (save to Hive + Increment server count)
   static Future<bool> subscribe(String distributorId) async {
     try {
       await SubscriptionCacheService.addSubscription(distributorId);
+      
+      // زيادة العداد في السيرفر
+      try {
+        await _supabase.rpc('increment_subscribers', params: {'user_id': distributorId});
+      } catch (e) {
+        // Fallback: تحديث يدوي إذا فشل RPC
+        try {
+          final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
+          final currentCount = (user['subscribers_count'] as int?) ?? 0;
+          await _supabase.from('users').update({'subscribers_count': currentCount + 1}).eq('id', distributorId);
+        } catch (_) {}
+      }
+      
       return true;
     } catch (e) {
       print('Error subscribing to distributor: $e');
@@ -28,10 +41,24 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Unsubscribe from a distributor (remove from Hive only)
+  /// Unsubscribe from a distributor (remove from Hive + Decrement server count)
   static Future<bool> unsubscribe(String distributorId) async {
     try {
       await SubscriptionCacheService.removeSubscription(distributorId);
+      
+      // إنقاص العداد في السيرفر
+      try {
+        await _supabase.rpc('decrement_subscribers', params: {'user_id': distributorId});
+      } catch (e) {
+        // Fallback
+        try {
+          final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
+          final currentCount = (user['subscribers_count'] as int?) ?? 0;
+          final newCount = (currentCount - 1) < 0 ? 0 : (currentCount - 1);
+          await _supabase.from('users').update({'subscribers_count': newCount}).eq('id', distributorId);
+        } catch (_) {}
+      }
+      
       return true;
     } catch (e) {
       print('Error unsubscribing from distributor: $e');

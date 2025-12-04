@@ -27,8 +27,16 @@ class Governorate {
 class GovernorateSelectionScreen extends HookConsumerWidget {
   final UserRole role;
   final Function(List<String> governorates, List<String> centers)? onContinue;
+  final List<String>? initialGovernorates;
+  final List<String>? initialCenters;
 
-  const GovernorateSelectionScreen({super.key, required this.role, this.onContinue});
+  const GovernorateSelectionScreen({
+    super.key,
+    required this.role,
+    this.onContinue,
+    this.initialGovernorates,
+    this.initialCenters,
+  });
 
   Future<List<Governorate>> _loadGovernorates(BuildContext context) async {
     final String response =
@@ -51,8 +59,10 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
     final governoratesFuture = useMemoized(() => _loadGovernorates(context));
     final snapshot = useFuture(governoratesFuture);
 
-    final selectedGovernorates = useState<Set<String>>({});
-    final selectedCenters = useState<Set<String>>({});
+    final selectedGovernorates =
+        useState<Set<String>>(Set.from(initialGovernorates ?? []));
+    final selectedCenters =
+        useState<Set<String>>(Set.from(initialCenters ?? []));
 
     final showHintArrow = useState<bool>(false);
     final hasShownHintOnce = useState<bool>(false);

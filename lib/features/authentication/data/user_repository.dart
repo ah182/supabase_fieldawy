@@ -63,9 +63,10 @@ class UserRepository {
     required String whatsappNumber,
     required List<String> governorates,
     required List<String> centers,
+    String? distributionMethod,
   }) async {
     try {
-      await _client.from('users').update({
+      final updateData = {
         'role': role,
         'document_url': documentUrl,
         'display_name': displayName,
@@ -73,7 +74,13 @@ class UserRepository {
         'governorates': governorates,
         'centers': centers,
         'is_profile_complete': true, // الأهم: تغيير حالة اكتمال الملف
-      }).eq('id', id); // شرط التحديث: حيث id = القيمة المعطاة
+      };
+
+      if (distributionMethod != null) {
+        updateData['distribution_method'] = distributionMethod;
+      }
+
+      await _client.from('users').update(updateData).eq('id', id); // شرط التحديث: حيث id = القيمة المعطاة
       _cache.invalidate('distributors'); // This is for distributors, not user.
 
       // Invalidate the user cache after updating the profile
@@ -92,17 +99,43 @@ class UserRepository {
     required String whatsappNumber,
     required List<String> governorates,
     required List<String> centers,
+    String? role,
+    String? distributionMethod,
   }) async {
     try {
-      await _client.from('users').update({
+      final Map<String, dynamic> updateData = {
         'display_name': displayName,
         'whatsapp_number': whatsappNumber,
         'governorates': governorates,
         'centers': centers,
-      }).eq('id', id);
+      };
+      
+      if (role != null) {
+        updateData['role'] = role;
+      }
+      
+      if (distributionMethod != null) {
+        updateData['distribution_method'] = distributionMethod;
+      }
+
+      await _client.from('users').update(updateData).eq('id', id);
       _cache.invalidate('user_$id');
     } catch (e) {
       print('Error updating user profile in Supabase: $e');
+      rethrow;
+    }
+  }
+
+  // Update user profile image
+  Future<void> updateProfileImage(String userId, String photoUrl) async {
+    try {
+      await _client.from('users').update({
+        'photo_url': photoUrl,
+      }).eq('id', userId);
+      
+      _cache.invalidate('user_$userId');
+    } catch (e) {
+      print('Error updating profile image in Supabase: $e');
       rethrow;
     }
   }
@@ -379,6 +412,42 @@ class UserRepository {
       print('Error checking if user was invited: $e');
       // In case of error, assume they were invited to avoid showing the screen repeatedly.
       return true;
+    }
+  }
+
+  /// زيادة عدد المشتركين لمستخدم معين
+  Future<void> incrementSubscribers(String userId) async {
+    try {
+      await _client.rpc('increment_subscribers', params: {'user_id': userId});
+      // لا نقوم بحذف الكاش هنا لتجنب تحميل القائمة بالكامل، 
+      // التحديث المحلي في الواجهة كافٍ للسرعة
+    } catch (e) {
+      print('Error incrementing subscribers: $e');
+      // في حال فشل الـ RPC (لم يتم إنشاؤه بعد)، نحاول التحديث اليدوي كبديل مؤقت
+      await _manualUpdateSubscribers(userId, 1);
+    }
+  }
+
+  /// إنقاص عدد المشتركين لمستخدم معين
+  Future<void> decrementSubscribers(String userId) async {
+    try {
+      await _client.rpc('decrement_subscribers', params: {'user_id': userId});
+    } catch (e) {
+      print('Error decrementing subscribers: $e');
+       await _manualUpdateSubscribers(userId, -1);
+    }
+  }
+
+  // دالة بديلة يدوية (غير ذرية) في حال عدم وجود RPC
+  Future<void> _manualUpdateSubscribers(String userId, int change) async {
+    try {
+      final user = await _client.from('users').select('subscribers_count').eq('id', userId).single();
+      final currentCount = (user['subscribers_count'] as int?) ?? 0;
+      final newCount = (currentCount + change) < 0 ? 0 : (currentCount + change);
+      
+      await _client.from('users').update({'subscribers_count': newCount}).eq('id', userId);
+    } catch (e) {
+      print('Error manually updating subscribers: $e');
     }
   }
 

@@ -15,6 +15,12 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart'; // Required for temporary path
+import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
+import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -139,19 +145,12 @@ class ProfileScreen extends ConsumerWidget {
                                         ),
                                 ),
                               ),
-                              // زر التعديل
+                                // زر التعديل
                               Positioned(
                                 bottom: 0,
                                 right: 0,
                                 child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => EditProfileScreen(
-                                            userModel: userModel),
-                                      ),
-                                    );
-                                  },
+                                  onTap: () => _pickAndUploadImage(context, ref, userModel.id, userModel.photoUrl),
                                   child: Container(
                                     width: 32,
                                     height: 32,
@@ -171,7 +170,7 @@ class ProfileScreen extends ConsumerWidget {
                                       ],
                                     ),
                                     child: const Icon(
-                                      Icons.edit_rounded,
+                                      Icons.camera_alt_rounded,
                                       color: Colors.white,
                                       size: 16,
                                     ),
@@ -219,33 +218,103 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                           const SizedBox(height: 8),
-                          if (userModel.email != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.email_rounded,
-                                    size: 14,
-                                    color: colorScheme.onPrimaryContainer,
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (userModel.distributionMethod != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.tertiaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    userModel.email!,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onPrimaryContainer,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.local_shipping_rounded,
+                                        size: 14,
+                                        color: colorScheme.onTertiaryContainer,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        userModel.distributionMethod == 'direct_distribution'
+                                            ? 'directDistribution'.tr()
+                                            : userModel.distributionMethod == 'order_delivery'
+                                                ? 'orderDelivery'.tr()
+                                                : userModel.distributionMethod == 'both' 
+                                                    ? 'bothMethods'.tr()
+                                                    : userModel.distributionMethod!,
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onTertiaryContainer,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              
+                              if (userModel.subscribersCount != null && userModel.subscribersCount! > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.people_alt_rounded,
+                                        size: 14,
+                                        color: Colors.orange.shade800,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${userModel.subscribersCount} ${'subscribers'.tr()}',
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: Colors.orange.shade900,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              if (userModel.distributionMethod == null && userModel.email != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.email_rounded,
+                                        size: 14,
+                                        color: colorScheme.onPrimaryContainer,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        userModel.email!,
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onPrimaryContainer,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 32),
 
                           // --- Options List محسنة ---
@@ -329,6 +398,18 @@ class ProfileScreen extends ConsumerWidget {
                                     );
                                   },
                                 ),
+                                Divider(
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                  color: colorScheme.outline.withOpacity(0.2),
+                                ),
+                                _buildProfileOption(
+                                  icon: Icons.delete_forever_rounded,
+                                  title: 'deleteAccount'.tr(),
+                                  isDestructive: true,
+                                  onTap: () => _confirmDeleteAccount(context, ref),
+                                ),
                               ],
                             ),
                           ),
@@ -345,6 +426,158 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _pickAndUploadImage(
+      BuildContext context, WidgetRef ref, String userId, String? currentPhotoUrl) async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        // imageQuality: 70, // تمت إزالتها لتسريع الاستجابة، سيتم الرفع كما هي
+      );
+
+      if (pickedFile != null) {
+        // إظهار مؤشر التحميل فوراً
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // تأخير بسيط جداً للسماح للـ Dialog بالظهور ورسمه قبل بدء العمليات الثقيلة
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        final storageService = ref.read(storageServiceProvider);
+
+        // محاولة حذف الصورة القديمة
+        if (currentPhotoUrl != null) {
+          final oldPublicId = storageService.extractPublicId(currentPhotoUrl);
+          if (oldPublicId != null) {
+             storageService.deleteImage(oldPublicId).then((success) {
+               if (!success) print('⚠️ Failed to delete old profile image');
+             });
+          }
+        }
+
+        // ضغط الصورة قبل الرفع
+        File fileToUpload = File(pickedFile.path);
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final targetPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          
+          final compressedFile = await FlutterImageCompress.compressAndGetFile(
+            pickedFile.path,
+            targetPath,
+            quality: 70, // جودة الضغط
+            minWidth: 1024, // تقليل الأبعاد إذا كانت كبيرة جداً
+            minHeight: 1024,
+          );
+
+          if (compressedFile != null) {
+            fileToUpload = File(compressedFile.path);
+          }
+        } catch (e) {
+          print('Error compressing image: $e');
+          // في حال فشل الضغط، نستمر بالصورة الأصلية
+        }
+
+        // رفع الصورة (المضغوطة أو الأصلية)
+        final downloadUrl = await storageService.uploadDocument(fileToUpload, 'profile_images');
+
+        if (downloadUrl != null) {
+          // تحديث رابط الصورة في قاعدة البيانات
+          final userRepository = ref.read(userRepositoryProvider);
+          await userRepository.updateProfileImage(userId, downloadUrl);
+          
+          // تحديث البيانات في الواجهة
+          // ignore: unused_result
+          ref.refresh(userDataProvider);
+
+          if (context.mounted) {
+            Navigator.of(context).pop(); // إغلاق مؤشر التحميل
+            ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(content: Text('profileUpdated'.tr())),
+            );
+          }
+        } else {
+          if (context.mounted) {
+             Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('imageUploadFailed'.tr())),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+         // التأكد من إغلاق الـ Dialog إذا كان مفتوحاً
+        if (Navigator.canPop(context)) {
+             Navigator.of(context).pop(); 
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('deleteAccount'.tr()),
+        content: Text('deleteAccountConfirmation'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: Text('delete'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        final authService = ref.read(authServiceProvider);
+        await authService.deleteAccount(); // Assuming this method exists
+
+        if (context.mounted) {
+          Navigator.of(context).pop(); // Close loading dialog
+          // Navigate to login screen and clear stack
+           Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.of(context).pop(); // Close loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting account: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildProfileOption({

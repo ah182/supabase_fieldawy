@@ -35,13 +35,14 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       referralCode: fields[15] as String?,
       points: fields[16] as int?,
       rank: fields[17] as int?,
+      distributionMethod: fields[18] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserModel obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +78,9 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       ..writeByte(16)
       ..write(obj.points)
       ..writeByte(17)
-      ..write(obj.rank);
+      ..write(obj.rank)
+      ..writeByte(18)
+      ..write(obj.distributionMethod);
   }
 
   @override

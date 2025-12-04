@@ -4,138 +4,22 @@ import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-/// نتيجة رفع مؤقت
-class TempUploadResult {
-  final String secureUrl;
-  final String publicId;
-  const TempUploadResult({required this.secureUrl, required this.publicId});
-}
-
-/// كاش محلي للصور المؤقتة
-class TempImageCache {
-  static const _key = 'temp_images';
-
-  /// حفظ publicId جديد
-  static Future<void> addTempImage(String publicId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> list = prefs.getStringList(_key) ?? [];
-    list.add(publicId);
-    await prefs.setStringList(_key, list);
-  }
-
-  /// قراءة كل الصور المؤقتة
-  static Future<List<String>> getTempImages() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_key) ?? [];
-  }
-
-  /// حذف publicId واحد من التخزين
-  static Future<void> removeTempImage(String publicId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> list = prefs.getStringList(_key) ?? [];
-    list.remove(publicId);
-    await prefs.setStringList(_key, list);
-  }
-}
 
 class StorageService {
   static const _cloudName = 'dk8twnfrk';
   static const _apiKey = '554622557218694';
   static const _apiSecret = 'vFNW9PX3Rt-4ARIBFPnO4qqhV9I';
 
-  final CloudinaryPublic _cloudinaryFinal = CloudinaryPublic(
+  final CloudinaryPublic _cloudinaryDocuments = CloudinaryPublic(
     _cloudName,
-    'background_removal',
+    'fieldawy_unsigned_temp',
     cache: false,
   );
-
-  /// رفع الصورة مؤقتًا Signed + Auto-delete بعد دقيقة
-  Future<TempUploadResult?> uploadTempImage(File image) async {
-    try {
-      final timestamp =
-          (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
-      final folder = 'temp';
-      final paramsToSign = 'folder=$folder&timestamp=$timestamp$_apiSecret';
-      final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
-
-      final uri =
-          Uri.parse('https://api.cloudinary.com/v1_1/$_cloudName/image/upload');
-
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['folder'] = folder
-        ..fields['timestamp'] = timestamp
-        ..fields['api_key'] = _apiKey
-        ..fields['signature'] = signature
-        ..files.add(await http.MultipartFile.fromPath('file', image.path));
-
-      final response = await request.send();
-      final respStr = await response.stream.bytesToString();
-
-      if (response.statusCode == 200) {
-        final jsonResp = jsonDecode(respStr);
-
-        final result = TempUploadResult(
-          secureUrl: jsonResp['secure_url'],
-          publicId: jsonResp['public_id'],
-        );
-
-        // حفظ الصورة مؤقتًا في الكاش
-        await TempImageCache.addTempImage(result.publicId);
-
-        // حذف الصورة بعد دقيقة واحدة (background task)
-        Future.delayed(const Duration(minutes: 1), () {
-          deleteTempImage(result.publicId);
-        });
-
-        return result;
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// رفع الصورة نهائيًا مع transformations
-  Future<String?> uploadFinalImage(
-    File image, {
-    String transformation = 'c_fill,g_auto,h_720,w_1280,e_background_removal,f_png,q_auto',
-  }) async {
-    try {
-      final resp = await _cloudinaryFinal.uploadFile(
-        CloudinaryFile.fromFile(
-          image.path,
-          resourceType: CloudinaryResourceType.Image,
-        ),
-      );
-
-      const marker = '/upload/';
-      final i = resp.secureUrl.indexOf(marker);
-      if (i != -1) {
-        return resp.secureUrl.replaceFirst(marker, '$marker$transformation/');
-      }
-      return resp.secureUrl;
-    } catch (e) {
-      print('❌ Final upload error: $e');
-      return null;
-    }
-  }
-
-  /// بناء رابط Preview معدل
-  String buildPreviewUrl(String secureUrl,
-      {String transformation = 'c_fill,g_auto,h_720,w_1280,e_background_removal,f_png,q_auto'}) {
-    const marker = '/upload/';
-    final i = secureUrl.indexOf(marker);
-    if (i == -1) return secureUrl;
-    return secureUrl.replaceFirst(marker, '$marker$transformation/');
-  }
 
   /// رفع مستند في فولدر محدد
   Future<String?> uploadDocument(File image, String folderName) async {
     try {
-      final response = await _cloudinaryFinal.uploadFile(
+      final response = await _cloudinaryDocuments.uploadFile(
         CloudinaryFile.fromFile(
           image.path,
           resourceType: CloudinaryResourceType.Image,
@@ -152,38 +36,80 @@ class StorageService {
     }
   }
 
-  /// حذف الصورة المؤقتة عن طريق publicId
-  Future<bool> deleteTempImage(String publicId) async {
+  /// حذف صورة من Cloudinary باستخدام Signed API
+  Future<bool> deleteImage(String publicId) async {
     try {
-      final url = Uri.parse(
-          'https://api.cloudinary.com/v1_1/$_cloudName/resources/image/upload?public_ids[]=$publicId');
-      final response = await http.delete(
-        url,
-        headers: {
-          'Authorization':
-              'Basic ' + base64Encode(utf8.encode('$_apiKey:$_apiSecret')),
+      final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+      
+      // التوقيع مطلوب لعملية الحذف
+      final paramsToSign = 'public_id=$publicId&timestamp=$timestamp$_apiSecret';
+      final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
+
+      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$_cloudName/image/destroy');
+
+      final response = await http.post(
+        uri,
+        body: {
+          'public_id': publicId,
+          'timestamp': timestamp,
+          'api_key': _apiKey,
+          'signature': signature,
         },
       );
 
       if (response.statusCode == 200) {
-        print('✅ Temp image deleted successfully');
-        await TempImageCache.removeTempImage(publicId);
-        return true;
+        final jsonResp = jsonDecode(response.body);
+        if (jsonResp['result'] == 'ok') {
+          print('✅ Image deleted successfully: $publicId');
+          return true;
+        }
       }
-
-      print('Delete failed: ${response.body}');
+      
+      print('❌ Failed to delete image. Code: ${response.statusCode}, Body: ${response.body}');
       return false;
     } catch (e) {
-      print('Error deleting temp image: $e');
+      print('❌ Error deleting image: $e');
       return false;
     }
   }
 
-  /// مسح كل الصور المؤقتة من الكاش (عند بداية تشغيل التطبيق)
-  Future<void> cleanupTempImages() async {
-    final tempImages = await TempImageCache.getTempImages();
-    for (final id in tempImages) {
-      await deleteTempImage(id);
+  /// استخراج Public ID من رابط الصورة
+  String? extractPublicId(String url) {
+    try {
+      // نتأكد أن الرابط من كلاوديناري
+      if (!url.contains('cloudinary.com')) return null;
+
+      // مثال للرابط:
+      // https://res.cloudinary.com/dk8twnfrk/image/upload/v1733311111/profile_images/abc123_xyz.jpg
+      
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments;
+      
+      // عادة الـ Public ID يبدأ بعد 'upload' و الـ version (v12345...)
+      // pathSegments قد تكون: [dk8twnfrk, image, upload, v1733..., profile_images, abc.jpg]
+      
+      int uploadIndex = pathSegments.indexOf('upload');
+      if (uploadIndex == -1 || uploadIndex + 1 >= pathSegments.length) return null;
+
+      // نتخطى 'upload' وأي جزء يبدأ بـ 'v' وأرقام (version)
+      int startIndex = uploadIndex + 1;
+      if (pathSegments[startIndex].startsWith('v') && 
+          RegExp(r'^v\d+$').hasMatch(pathSegments[startIndex])) {
+        startIndex++;
+      }
+
+      // نجمع الباقي ونحذف الامتداد
+      final publicIdWithExtension = pathSegments.sublist(startIndex).join('/');
+      final dotIndex = publicIdWithExtension.lastIndexOf('.');
+      
+      if (dotIndex != -1) {
+        return publicIdWithExtension.substring(0, dotIndex);
+      }
+      
+      return publicIdWithExtension;
+    } catch (e) {
+      print('Error extracting public ID: $e');
+      return null;
     }
   }
 }

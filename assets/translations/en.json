@@ -109,6 +109,8 @@
     "EGP": "EGP",
     "edit": "Edit",
     "delete": "Delete",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirmation": "Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.",
     "An error occurred:": "An error occurred:",
   "app_title": "Fieldawy Store",
   "continue": "Continue",

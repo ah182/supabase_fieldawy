@@ -61,6 +61,12 @@ class UserModel {
   @HiveField(17)
   final int? rank;
 
+  @HiveField(18)
+  final String? distributionMethod;
+
+  @HiveField(19)
+  final int? subscribersCount;
+
   UserModel({
     required this.id,
     this.displayName,
@@ -80,6 +86,8 @@ class UserModel {
     this.referralCode,
     this.points,
     this.rank,
+    this.distributionMethod,
+    this.subscribersCount,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -104,6 +112,8 @@ class UserModel {
       referralCode: map['referral_code'],
       points: map['points'] ?? 0,
       rank: map['rank'],
+      distributionMethod: map['distribution_method'],
+      subscribersCount: map['subscribers_count'] ?? 0,
     );
   }
 
@@ -127,6 +137,8 @@ class UserModel {
       'referral_code': referralCode,
       'points': points ?? 0,
       'rank': rank,
+      'distribution_method': distributionMethod,
+      'subscribers_count': subscribersCount ?? 0,
     };
   }
 
@@ -149,6 +161,8 @@ class UserModel {
     String? referralCode,
     int? points,
     int? rank,
+    String? distributionMethod,
+    int? subscribersCount,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -169,6 +183,8 @@ class UserModel {
       referralCode: referralCode ?? this.referralCode,
       points: points ?? this.points,
       rank: rank ?? this.rank,
+      distributionMethod: distributionMethod ?? this.distributionMethod,
+      subscribersCount: subscribersCount ?? this.subscribersCount,
     );
   }
 }

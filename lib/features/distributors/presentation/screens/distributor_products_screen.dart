@@ -847,85 +847,18 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           width: 1,
                         ),
                       ),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'لمزيد من المعلومات يرجى تنزيل تطبيق',
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontSize: 16,
-                                    color: theme.colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                          Expanded(
+                            child: Text(
+                             'لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye ',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontSize: 16,
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: () async {
-                              final url = Uri.parse(
-                                  'https://apkpure.net/ar/vet-eye/com.fieldawy.veteye/download/7.5.1');
-                              try {
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url,
-                                      mode: LaunchMode.externalApplication);
-                                }
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    elevation: 0,
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: Colors.transparent,
-                                    content: AwesomeSnackbarContent(
-                                      title: 'تنبيه',
-                                      message: 'تعذر فتح الرابط',
-                                      contentType: ContentType.warning,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(25),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        theme.colorScheme.primary.withAlpha(77),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.download_outlined,
-                                    color: theme.colorScheme.onPrimary,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Vet Eye',
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: theme.colorScheme.onPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ],

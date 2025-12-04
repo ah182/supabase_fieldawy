@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -277,86 +279,18 @@ class CustomProductDialog extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: Column(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'لمزيد من المعلومات يرجى تنزيل تطبيق',
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      fontSize: 16,
-                                      color: theme.colorScheme.onSurface,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                            Expanded(
+                              child: Text(
+                                 'لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye ',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontSize: 16,
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            GestureDetector(
-                              onTap: () async {
-                                final url = Uri.parse(
-                                    'https://apkpure.net/ar/vet-eye/com.fieldawy.veteye/download/7.5.1');
-                                try {
-                                  if (await launchUrl(url,
-                                      mode: LaunchMode.externalApplication)) {
-                                    // Successfully opened URL
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        elevation: 0,
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: Colors.transparent,
-                                        content: AwesomeSnackbarContent(
-                                          title: 'تنبيه',
-                                          message: 'تعذر فتح الرابط',
-                                          contentType: ContentType.warning,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(25),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: theme.colorScheme.primary
-                                          .withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.download_outlined,
-                                      color: theme.colorScheme.onPrimary,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Vet Eye',
-                                      style:
-                                          theme.textTheme.titleMedium?.copyWith(
-                                        color: theme.colorScheme.onPrimary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ],

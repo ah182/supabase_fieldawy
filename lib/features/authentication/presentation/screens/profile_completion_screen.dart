@@ -48,6 +48,7 @@ class _ProfileCompletionScreenState
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   final TextEditingController _phoneController = TextEditingController();
+  String? _selectedDistributionMethod;
 
   @override
   void initState() {
@@ -66,7 +67,15 @@ class _ProfileCompletionScreenState
 
   Future<void> _submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
-
+    
+    // التحقق من اختيار طريقة التوزيع للشركات والموزعين
+    if ((widget.selectedRole == 'company' || widget.selectedRole == 'distributor') && 
+        _selectedDistributionMethod == null) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('pleaseSelectDistributionMethod'.tr())),
+      );
+      return;
+    }
 
     _showLoadingDialog();
 
@@ -85,6 +94,7 @@ class _ProfileCompletionScreenState
             whatsappNumber: _phoneController.text.trim(),
             governorates: widget.governorates,
             centers: widget.centers,
+            distributionMethod: _selectedDistributionMethod,
           );
 
       ref.invalidate(userDataProvider);
@@ -183,7 +193,68 @@ class _ProfileCompletionScreenState
                   return null;
                 },
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+
+              // إظهار خيارات التوزيع فقط للشركات والموزعين
+              if (widget.selectedRole == 'company' || widget.selectedRole == 'distributor') ...[
+                 Text(
+                  'distributionMethod'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.bold, 
+                    color: Color.fromARGB(255, 34, 40, 85)
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: Text('directDistribution'.tr()),
+                        value: 'direct_distribution',
+                        groupValue: _selectedDistributionMethod,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedDistributionMethod = value;
+                          });
+                        },
+                        activeColor: Colors.blueAccent,
+                      ),
+                      Divider(height: 1, color: Colors.grey.shade200),
+                      RadioListTile<String>(
+                        title: Text('orderDelivery'.tr()),
+                        value: 'order_delivery',
+                        groupValue: _selectedDistributionMethod,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedDistributionMethod = value;
+                          });
+                        },
+                         activeColor: Colors.blueAccent,
+                      ),
+                       Divider(height: 1, color: Colors.grey.shade200),
+                      RadioListTile<String>(
+                        title: Text('bothMethods'.tr()),
+                        value: 'both',
+                        groupValue: _selectedDistributionMethod,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedDistributionMethod = value;
+                          });
+                        },
+                         activeColor: Colors.blueAccent,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ] else 
+                const SizedBox(height: 40),
 
               /// زر الحفظ أو اللودر
               _buildGradientButton(

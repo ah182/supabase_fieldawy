@@ -30,7 +30,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/language_provider.dart';
-import 'features/authentication/data/storage_service.dart';
+
 import 'services/app_state_manager.dart';
 import 'services/fcm_token_service.dart';
 import 'services/notification_preferences_service.dart';
@@ -878,7 +878,11 @@ Future<void> main() async {
 
   // pdfrxFlutterInitialize(); // Not needed in pdfrx 1.3.5
   await EasyLocalization.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("⚠️ Failed to load .env file: $e");
+  }
   await Hive.initFlutter();
 
  
@@ -981,7 +985,6 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
       print('⚠️ Supabase initialization failed (likely offline): $e');
       // Continue initialization even if Supabase fails (for offline mode)
     }
-    unawaited(StorageService().cleanupTempImages());
     
     // ✅ إعداد FCM Token Service لحفظ Token في Supabase
     _setupFCMTokenService();

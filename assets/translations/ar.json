@@ -107,6 +107,8 @@
     "EGP": "جنيه",
     "edit": "تعديل",
     "delete": "حذف",
+    "deleteAccount": "حذف الحساب",
+    "deleteAccountConfirmation": "هل أنت متأكد أنك تريد حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه وسيؤدي إلى حذف جميع بياناتك نهائيًا.",
     "An error occurred:": "حدث خطأ:",
     "select_governorates_and_centers": "اختر المحافظات والمراكز التي تغطيها",
     "logout": "تسجيل الخروج",

@@ -294,6 +294,38 @@ class ReviewService {
   }
 
   // ========================================
+  // REPORT REVIEW
+  // ========================================
+  Future<Map<String, dynamic>> reportReview({
+    required String reviewId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      final response = await _supabase.rpc(
+        'report_review',
+        params: {
+          'p_review_id': reviewId,
+          'p_reason': reason,
+          'p_description': description,
+        },
+      );
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+
+      return {'success': true, 'message': 'تم إرسال البلاغ بنجاح'};
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'exception',
+        'message': e.toString(),
+      };
+    }
+  }
+
+  // ========================================
   // DELETE MY REVIEW REQUEST
   // ========================================
   Future<Map<String, dynamic>> deleteMyReviewRequest(String requestId) async {
@@ -775,13 +807,16 @@ class ProductReviewCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User info + Rating
+            // 1. Header Row: User Info + Menu
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 20,
@@ -793,21 +828,26 @@ class ProductReviewCard extends ConsumerWidget {
                       : null,
                 ),
                 const SizedBox(width: 12),
+                // User Name and Date
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(
-                            review.userName,
-                            style: textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: Text(
+                              review.userName,
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (review.isVerifiedPurchase) ...[
                             const SizedBox(width: 4),
-                            Icon(
+                            const Icon(
                               Icons.verified,
                               size: 16,
                               color: Colors.blue,
@@ -815,6 +855,7 @@ class ProductReviewCard extends ConsumerWidget {
                           ],
                         ],
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         _formatDate(review.createdAt),
                         style: textTheme.bodySmall?.copyWith(
@@ -824,11 +865,71 @@ class ProductReviewCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                RatingStars(rating: review.rating.toDouble()),
+                // Menu Button (Three Dots)
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.more_vert, color: Colors.grey),
+                    tooltip: 'خيارات',
+                    onSelected: (value) {
+                      if (value == 'report') {
+                        _showReportDialog(context, ref, review.id);
+                      } else if (value == 'delete') {
+                        _confirmDeleteReview(context, ref, review.id);
+                      }
+                    },
+                    itemBuilder: (context) {
+                      final currentUserId =
+                          Supabase.instance.client.auth.currentUser?.id;
+                      final isMyReview =
+                          currentUserId != null && currentUserId == review.userId;
+
+                      if (isMyReview) {
+                        return [
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline,
+                                    size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('حذف التقييم',
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ];
+                      } else {
+                        return [
+                          const PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.flag_outlined,
+                                    size: 18, color: Colors.orange),
+                                SizedBox(width: 8),
+                                Text('إبلاغ عن محتوى مسيء',
+                                    style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                        ];
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
 
-            // Comment
+            const SizedBox(height: 8),
+
+            // 2. Rating Stars
+            RatingStars(rating: review.rating.toDouble()),
+
+            // 3. Comment
             if (review.hasComment && review.comment != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -837,18 +938,16 @@ class ProductReviewCard extends ConsumerWidget {
               ),
             ],
 
-            // Actions
+            // 4. Actions (Helpful)
             const SizedBox(height: 12),
             Row(
               children: [
-                // Helpful button
                 TextButton.icon(
                   onPressed: () async {
                     await service.voteReviewHelpful(
                       reviewId: review.id,
                       isHelpful: true,
                     );
-                    // Refresh data
                     ref.invalidate(productReviewsProvider);
                   },
                   icon: Icon(
@@ -870,7 +969,134 @@ class ProductReviewCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _confirmDeleteReview(BuildContext context, WidgetRef ref, String reviewId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف التقييم'),
+        content: const Text('هل أنت متأكد من أنك تريد حذف تقييمك؟ لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
 
+    if (confirm == true) {
+      final service = ref.read(reviewServiceProvider);
+      await service.deleteMyReview(reviewId);
+      ref.invalidate(productReviewsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حذف التقييم بنجاح')),
+        );
+      }
+    }
+  }
+
+  void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
+    final reasons = [
+      'محتوى غير لائق / مسيء',
+      'رسائل مزعجة (Spam)',
+      'معلومات مضللة',
+      'تحرش أو تنمر',
+      'أخرى',
+    ];
+    String selectedReason = reasons[0];
+    final descriptionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('إبلاغ عن تقييم'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('ساعدنا في فهم المشكلة. ما الخطأ في هذا التقييم؟'),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'السبب',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => selectedReason = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'تفاصيل إضافية (اختياري)',
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+                
+                // Show loading
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                );
+
+                final service = ref.read(reviewServiceProvider);
+                final result = await service.reportReview(
+                  reviewId: reviewId,
+                  reason: selectedReason,
+                  description: descriptionController.text.trim().isEmpty 
+                      ? null 
+                      : descriptionController.text.trim(),
+                );
+
+                if (context.mounted) {
+                   if (result['success'] == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('إرسال البلاغ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();

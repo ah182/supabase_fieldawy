@@ -14,6 +14,8 @@ class DistributorModel {
   final String? whatsappNumber;
   final List<String>? governorates;
   final List<String>? centers;
+  final int subscribersCount;
+  final String? distributionMethod;
 
   DistributorModel({
     required this.id,
@@ -28,6 +30,8 @@ class DistributorModel {
     this.whatsappNumber,
     this.governorates,
     this.centers,
+    this.subscribersCount = 0,
+    this.distributionMethod,
   });
 
   factory DistributorModel.fromMap(Map<String, dynamic> data) {
@@ -54,6 +58,8 @@ class DistributorModel {
       centers: data['centers'] != null 
           ? List<String>.from(data['centers']) 
           : null,
+      subscribersCount: data['subscribers_count'] ?? 0,
+      distributionMethod: data['distribution_method'] ?? data['distributionMethod'],
     );
   }
 }

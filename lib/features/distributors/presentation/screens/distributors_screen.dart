@@ -571,6 +571,27 @@ final sliverAppBar = SliverAppBar(
                       ? 'distributionCompany'.tr()
                       : 'individualDistributor'.tr(),
                 ),
+                if (distributor.distributionMethod != null)
+                  _buildDetailListTile(
+                    theme,
+                    Icons.local_shipping_rounded,
+                    'distributionMethod'.tr(),
+                    distributor.distributionMethod == 'direct_distribution'
+                        ? 'directDistribution'.tr()
+                        : distributor.distributionMethod == 'order_delivery'
+                            ? 'orderDelivery'.tr()
+                            : 'bothMethods'.tr(),
+                  ),
+                if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
+                  _buildDetailListTile(
+                    theme,
+                    Icons.map_rounded,
+                    'Coverage Areas'.tr(),
+                    '${distributor.governorates!.join(", ")}' + 
+                    (distributor.centers != null && distributor.centers!.isNotEmpty 
+                      ? '\n(${distributor.centers!.join(", ")})' 
+                      : ''),
+                  ),
                 if (distributor.whatsappNumber != null &&
                     distributor.whatsappNumber!.isNotEmpty)
                   _buildDetailListTile(
@@ -893,6 +914,7 @@ class _DistributorCard extends HookWidget {
     final isCompany = distributor.distributorType == 'company';
     final isSubscribed = useState<bool?>(null);
     final isLoading = useState(false);
+    final subscribersCountLocal = useState(distributor.subscribersCount);
 
     // Load initial subscription state
     useEffect(() {
@@ -1138,6 +1160,35 @@ class _DistributorCard extends HookWidget {
                               ],
                             ),
                           ),
+                          // عداد المشتركين
+                          if (subscribersCountLocal.value > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_active_rounded,
+                                    size: 11,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${subscribersCountLocal.value}',
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -1146,11 +1197,13 @@ class _DistributorCard extends HookWidget {
                 // أيقونة الجرس للاشتراك
                 if (isSubscribed.value != null)
                   Container(
+                    width: 33,
+                    height: 33,
                     decoration: BoxDecoration(
                       color: isSubscribed.value!
-                          ? theme.colorScheme.primary.withOpacity(0.12)
+                          ? theme.colorScheme.primary // لون صلب عند الاشتراك
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10), // تعديل الانحناء
                       border: isSubscribed.value!
                           ? null
                           : Border.all(
@@ -1159,19 +1212,16 @@ class _DistributorCard extends HookWidget {
                             ),
                     ),
                     child: IconButton(
-                      iconSize: 18,
-                      padding: const EdgeInsets.all(8),
-                      constraints: const BoxConstraints(
-                        minWidth: 34,
-                        minHeight: 34,
-                      ),
+                      iconSize: 16,
+                      padding: EdgeInsets.zero, // إزالة الحواشي ليتناسب مع الكونتينر الصغير
+                      constraints: const BoxConstraints(), // إزالة القيود الافتراضية
                       icon: Icon(
                         isSubscribed.value!
                             ? Icons.notifications_active_rounded
-                            : Icons.notifications_off_outlined,
+                            : Icons.notifications_none_rounded, // تغيير الأيقونة لتكون أجمل
                         color: isSubscribed.value!
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface.withOpacity(0.5),
+                            ? Colors.white // أيقونة بيضاء عند الاشتراك
+                            : theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                       onPressed: isLoading.value
                           ? null
@@ -1182,6 +1232,15 @@ class _DistributorCard extends HookWidget {
 
                               if (success && context.mounted) {
                                 isSubscribed.value = !isSubscribed.value!;
+                                
+                                // تحديث العداد محلياً
+                                if (isSubscribed.value!) {
+                                  subscribersCountLocal.value++;
+                                } else {
+                                  if (subscribersCountLocal.value > 0) {
+                                    subscribersCountLocal.value--;
+                                  }
+                                }
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
