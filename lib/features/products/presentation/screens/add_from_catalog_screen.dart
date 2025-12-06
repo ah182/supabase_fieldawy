@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert'; // Added for jsonDecode
 
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
@@ -20,6 +21,8 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:fieldawy_store/features/products/presentation/screens/bulk_add_review_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:fieldawy_store/services/ocr_service.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final CatalogContext catalogContext;
@@ -103,6 +106,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   String? _lastOcrShuffledQuery; // For OCR catalog search
   bool _isSaving = false;
   bool _isProcessingFile = false;
+  bool _isOcrLoading = false;
 
   @override
   void initState() {
@@ -137,7 +141,372 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     super.dispose();
   }
 
+  Future<bool> _showTipsDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- العنوان ---
+            const Text(
+              "تحويل الصورة إلى بيانات",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "صورالورقة بوضوح واجعلها في شكل جدول كما هو موضح ادناه باللغة الانجليزية، وسيتولى الذكاء الاصطناعي الباقي! 🚀\nسيتم استخراج البيانات (اسم الدواء، الحجم، السعر) تلقائياً وتنظيمها في جدول لتوفير وقتك ومجهودك.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 24),
+
+            // --- المحاكاة البصرية (صورة -> جدول) ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.receipt_long_rounded, size: 40, color: Colors.blueGrey),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(Icons.arrow_forward_rounded, color: Theme.of(context).primaryColor),
+                ),
+                const Icon(Icons.table_chart_rounded, size: 40, color: Colors.green),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // --- الجدول التوضيحي (Responsive Table) ---
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Table(
+                  columnWidths: const {
+                    0: FlexColumnWidth(2), // Name (Wider)
+                    1: FlexColumnWidth(1.5), // Pack
+                    2: FlexColumnWidth(1), // Price
+                  },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  border: TableBorder(
+                    horizontalInside: BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  children: [
+                    // Header Row
+                    TableRow(
+                      decoration: BoxDecoration(color: Colors.grey.shade100),
+                      children: const [
+                        Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                        Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                        Padding(padding: EdgeInsets.all(10), child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                      ],
+                    ),
+                    // Data Rows
+                    _buildTableRow("Diflam", "100ml vial", "45"),
+                    _buildTableRow("Histacure", "100ml vial", "130"),
+                    _buildTableRow("Antoplex", "100ml vial", "600"),
+                    _buildTableRow("Gentacure", "50ml vial", "125"),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            // --- الأزرار ---
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("إلغاء"),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    label: const Text("تصوير"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ) ?? false;
+  }
+
+  TableRow _buildTableRow(String name, String pack, String price) {
+    return TableRow(
+      children: [
+        Padding(padding: const EdgeInsets.all(10), child: Text(name, style: const TextStyle(fontSize: 12))),
+        Padding(padding: const EdgeInsets.all(10), child: Text(pack, style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
+        Padding(padding: const EdgeInsets.all(10), child: Text(price, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))),
+      ],
+    );
+  }
+
+  Future<void> _pickAndProcessImage() async {
+    // 1. التحقق من حد الاستخدام (Rate Limit)
+    final remaining = OcrService.getRemainingCooldown();
+    if (remaining.inSeconds > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.timer, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('يرجى الانتظار ${remaining.inSeconds} ثانية قبل المسح التالي'),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 2. عرض الدليل البصري قبل البدء
+    final bool proceed = await _showTipsDialog();
+    if (!proceed) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      // عرض خيار للمستخدم لاختيار الكاميرا أو المعرض
+      final source = await showDialog<ImageSource>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('اختر مصدر الصورة'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('الكاميرا'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text('المعرض'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (source == null) return;
+
+      final XFile? image = await picker.pickImage(source: source);
+
+      if (image != null && mounted) {
+        setState(() {
+          _isOcrLoading = true;
+        });
+
+        File file = File(image.path);
+        OcrService service = OcrService();
+        
+        // استخراج النص (JSON)
+        String? jsonResult = await service.extractTextFromImage(file);
+
+        if (mounted) {
+          setState(() {
+            _isOcrLoading = false;
+          });
+
+          if (jsonResult != null && jsonResult.isNotEmpty) {
+            try {
+              // تنظيف النص من علامات Markdown إذا وجدت (Gemini يحب إضافتها)
+              String cleanJson = jsonResult.replaceAll('```json', '').replaceAll('```', '').trim();
+              
+              final List<dynamic> decodedList = jsonDecode(cleanJson);
+              final List<ExtractedItem> extractedItems = [];
+
+              for (var item in decodedList) {
+                // استخراج السعر وتنظيفه من أي رموز عملات
+                String priceStr = item['price']?.toString() ?? '0';
+                // إبقاء الأرقام والنقطة فقط
+                priceStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
+                
+                extractedItems.add(ExtractedItem(
+                  name: item['medicine_name']?.toString() ?? '',
+                  package: item['package']?.toString() ?? '',
+                  price: double.tryParse(priceStr) ?? 0.0,
+                ));
+              }
+
+              if (extractedItems.isNotEmpty) {
+                // الانتقال لشاشة المراجعة (نفس سلوك الإكسل)
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => BulkAddReviewScreen(extractedItems: extractedItems),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('لم يتم العثور على منتجات واضحة في الصورة')),
+                );
+              }
+
+            } catch (e) {
+              print("OCR Parsing Error: $e");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('فشل في قراءة البيانات: تأكد من وضوح الصورة')),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('فشل استخراج النص من الصورة'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print("OCR Error: $e");
+      if (mounted) {
+        setState(() {
+          _isOcrLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ أثناء المعالجة: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool> _showExcelTipsDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- العنوان ---
+            const Text(
+              "استيراد ملف Excel",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "يجب أن يكون ملف الإكسل منظماً بنفس تنسيق الجدول أدناه (باللغة الإنجليزية) لضمان قراءة البيانات بشكل صحيح.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+
+            // --- المحاكاة البصرية (ملف -> جدول) ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(FontAwesomeIcons.fileExcel, size: 40, color: Colors.green),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(Icons.arrow_forward_rounded, color: Theme.of(context).primaryColor),
+                ),
+                const Icon(Icons.table_chart_rounded, size: 40, color: Colors.blueGrey),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // --- الجدول التوضيحي (Responsive Table) ---
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Table(
+                  columnWidths: const {
+                    0: FlexColumnWidth(2), // Name (Wider)
+                    1: FlexColumnWidth(1.5), // Pack
+                    2: FlexColumnWidth(1), // Price
+                  },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  border: TableBorder(
+                    horizontalInside: BorderSide(color: Colors.grey.shade200, width: 1),
+                  ),
+                  children: [
+                    // Header Row
+                    TableRow(
+                      decoration: BoxDecoration(color: Colors.grey.shade100),
+                      children: const [
+                        Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                        Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                        Padding(padding: EdgeInsets.all(10), child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                      ],
+                    ),
+                    // Data Rows
+                    _buildTableRow("Diflam", "100ml vial", "45"),
+                    _buildTableRow("Histacure", "100ml vial", "130"),
+                    _buildTableRow("Antoplex", "100ml vial", "600"),
+                    _buildTableRow("Gentacure", "50ml vial", "125"),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            // --- الأزرار ---
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("إلغاء"),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.upload_file, size: 15),
+                    label: const Text("اختيار"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ) ?? false;
+  }
+
   Future<void> _pickExcelFile() async {
+    // عرض الدليل البصري قبل اختيار الملف
+    final bool proceed = await _showExcelTipsDialog();
+    if (!proceed) return;
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -425,6 +794,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
               ],
             ),
             actions: [
+              // زر الـ OCR الجديد
+              IconButton(
+                icon: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
+                onPressed: _pickAndProcessImage,
+                tooltip: 'Scan text from image',
+              ),
               IconButton(
                 icon: const FaIcon(FontAwesomeIcons.fileExcel, color: Colors.green),
                 onPressed: _pickExcelFile,
@@ -1318,6 +1693,23 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   color: Colors.black.withOpacity(0.5),
                   child: const Center(
                     child: CircularProgressIndicator(),
+                  ),
+                ),
+              if (_isOcrLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'جاري استخراج النص من الصورة...',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               // Floating Stats Widget

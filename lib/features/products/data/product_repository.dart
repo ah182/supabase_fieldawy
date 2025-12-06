@@ -257,6 +257,7 @@ class ProductRepository {
                     : null,
                 selectedPackage: row['package'] as String?,
                 distributorId: row['distributor_name'] as String?,
+                views: (row['views'] as int?) ?? 0,
               );
             }
             return null;
@@ -338,6 +339,7 @@ class ProductRepository {
                 availablePackages: [ocrProductDoc['package']?.toString() ?? ''],
                 selectedPackage: ocrProductDoc['package']?.toString() ?? '',
                 isFavorite: false,
+                views: (row['views'] as int?) ?? 0,
               );
             }
             return null;
@@ -512,6 +514,7 @@ class ProductRepository {
                       : null,
                   selectedPackage: row['package'] as String?,
                   distributorId: row['distributor_name'] as String?,
+                  views: (row['views'] as int?) ?? 0,
                 );
               }
               return null;
@@ -612,7 +615,7 @@ class ProductRepository {
       final distProductsResponse = await _supabase
           .from('distributor_products')
           .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name')
+              'product_id, price, old_price, price_updated_at, package, distributor_name, views')
           .order('price_updated_at', ascending: false);
 
       if (distProductsResponse.isNotEmpty) {
@@ -641,6 +644,7 @@ class ProductRepository {
                       : null,
                   selectedPackage: row['package'] as String?,
                   distributorId: row['distributor_name'] as String?,
+                  views: (row['views'] as int?) ?? 0,
                 );
               }
               return null;
@@ -894,7 +898,7 @@ class ProductRepository {
       // Fetch distributor OCR products for this specific distributor
       final distributorOcrResponse = await _supabase
           .from('distributor_ocr_products')
-          .select('ocr_product_id, price, created_at')
+          .select('ocr_product_id, price, created_at, views')
           .eq('distributor_id', distributorId)
           .order('created_at', ascending: false);
 
@@ -953,6 +957,7 @@ class ProductRepository {
                     : null,
                 availablePackages: [ocrProduct['package']?.toString() ?? ''],
                 selectedPackage: ocrProduct['package']?.toString() ?? '',
+                views: (distRow['views'] as int?) ?? 0,
               );
             }
             return null;
@@ -1899,6 +1904,7 @@ final internalAllProductsProvider =
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: row['package'] as String?,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           );
         }
         return null;
@@ -1958,6 +1964,7 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
             price: (row['price'] as num?)?.toDouble(),
             selectedPackage: row['package'] as String?,
             distributorId: row['distributor_name'] as String?,
+            views: (row['views'] as int?) ?? 0,
           );
         }
         return null;

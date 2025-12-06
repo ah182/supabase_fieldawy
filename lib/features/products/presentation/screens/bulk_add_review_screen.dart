@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 
 // A simple model to hold the extracted data
@@ -17,6 +19,7 @@ class ExtractedItem {
   String? imageUrl;
   bool isOcrMatch;
   ProductModel? matchedProduct; // Store the whole matched product
+  List<ProductModel> suggestions; // List of similar products
 
   ExtractedItem({
     required this.name,
@@ -27,6 +30,7 @@ class ExtractedItem {
     this.imageUrl,
     this.isOcrMatch = false,
     this.matchedProduct,
+    this.suggestions = const [],
   });
 }
 
@@ -59,37 +63,59 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
 
     for (final item in _items) {
       final query = item.name.toLowerCase();
-      ProductModel? bestMatch;
-      double bestScore = 0.0;
-      bool isOcr = false;
+      
+      // قائمة لتخزين كل النتائج المحتملة مع درجاتها
+      final List<Map<String, dynamic>> potentialMatches = [];
 
-      // Search Main Catalog
+      // 1. البحث في الكتالوج الرئيسي
       for (final product in mainCatalog) {
-        final score = _calculateScore(query, product.name);
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = product;
-          isOcr = false;
+        final score = _calculateSimilarity(query, product.name.toLowerCase());
+        if (score > 0.3) { // تخزين أي تطابق فوق 30%
+          potentialMatches.add({
+            'product': product,
+            'score': score,
+            'isOcr': false,
+          });
         }
       }
 
-      // Search OCR Catalog
+      // 2. البحث في كتالوج OCR
       for (final product in ocrCatalog) {
-        final score = _calculateScore(query, product.name);
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = product;
-          isOcr = true;
+        final score = _calculateSimilarity(query, product.name.toLowerCase());
+        if (score > 0.3) {
+          potentialMatches.add({
+            'product': product,
+            'score': score,
+            'isOcr': true,
+          });
         }
       }
 
-      if (bestScore > 0.4) { // Acceptance threshold
-        item.matchedProduct = bestMatch;
-        item.matchedProductId = bestMatch!.id;
-        item.imageUrl = bestMatch.imageUrl;
-        item.isOcrMatch = isOcr;
+      // ترتيب النتائج حسب التشابه
+      potentialMatches.sort((a, b) => b['score'].compareTo(a['score']));
+
+      if (potentialMatches.isNotEmpty) {
+        final bestMatch = potentialMatches.first;
+        // إذا كان التطابق قوياً جداً، نختاره تلقائياً
+        if (bestMatch['score'] > 0.6) { // عتبة القبول التلقائي
+          item.matchedProduct = bestMatch['product'];
+          item.matchedProductId = bestMatch['product'].id;
+          item.imageUrl = bestMatch['product'].imageUrl;
+          item.name = bestMatch['product'].name; // <--- تحديث الاسم تلقائياً للاسم الرسمي
+          item.isOcrMatch = bestMatch['isOcr'];
+          item.isSelected = true;
+        } else {
+          // إذا كان التطابق ضعيفاً، نضعه في الاقتراحات ولا نختار تلقائياً
+          item.isSelected = false;
+        }
+
+        // تعبئة قائمة الاقتراحات (أفضل 5 نتائج)
+        item.suggestions = potentialMatches
+            .take(5)
+            .map((m) => m['product'] as ProductModel)
+            .toList();
       } else {
-        item.isSelected = false; // Deselect not-found items
+        item.isSelected = false;
       }
     }
 
@@ -101,12 +127,30 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
     }
   }
 
-  double _calculateScore(String query, String candidate) {
-    final lowerCandidate = candidate.toLowerCase();
-    if (lowerCandidate == query) return 1.0;
-    if (lowerCandidate.contains(query)) return 0.8;
-    if (query.contains(lowerCandidate)) return 0.5;
-    return 0.0;
+  // دالة بسيطة لحساب التشابه (Levenshtein-based approximate)
+  // تعيد قيمة بين 0.0 (مختلف تماماً) و 1.0 (متطابق تماماً)
+  double _calculateSimilarity(String s1, String s2) {
+    if (s1 == s2) return 1.0;
+    if (s1.isEmpty || s2.isEmpty) return 0.0;
+
+    // تحسين: إذا كان أحدهما يحتوي على الآخر
+    if (s1.contains(s2) || s2.contains(s1)) {
+      // نعطي وزن أكبر للطول النسبي
+      double ratio = s1.length < s2.length 
+          ? s1.length / s2.length 
+          : s2.length / s1.length;
+      return 0.5 + (0.5 * ratio); // نتيجة بين 0.5 و 1.0
+    }
+
+    int matches = 0;
+    int length = s1.length > s2.length ? s1.length : s2.length;
+    int minLength = s1.length < s2.length ? s1.length : s2.length;
+
+    for (int i = 0; i < minLength; i++) {
+      if (s1[i] == s2[i]) matches++;
+    }
+
+    return matches / length;
   }
 
   Future<void> _saveConfirmedItems() async {
@@ -315,11 +359,21 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
               itemBuilder: (context, index) {
                 final item = _items[index];
                 return _ReviewItemCard(
-                  key: ValueKey(item), // Use stable object key
+                  // 🔑 مفتاح يعتمد على الاسم والمعرف لضمان إعادة البناء عند التغيير
+                  key: ValueKey('${item.name}_${item.matchedProductId ?? "none"}'), 
                   item: item,
                   onSelectionChanged: (isSelected) {
                     setState(() {
                       item.isSelected = isSelected;
+                    });
+                  },
+                  onManualMatch: (ProductModel selectedProduct) {
+                    setState(() {
+                      item.matchedProduct = selectedProduct;
+                      item.matchedProductId = selectedProduct.id;
+                      item.imageUrl = selectedProduct.imageUrl;
+                      item.name = selectedProduct.name; // تحديث الاسم
+                      item.isSelected = true;
                     });
                   },
                 );
@@ -420,17 +474,71 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
   }
 }
 
-class _ReviewItemCard extends StatelessWidget {
+class _ReviewItemCard extends StatefulWidget {
   final ExtractedItem item;
   final ValueChanged<bool> onSelectionChanged;
+  final ValueChanged<ProductModel> onManualMatch;
 
-  const _ReviewItemCard(
-      {super.key, required this.item, required this.onSelectionChanged});
+  const _ReviewItemCard({
+    super.key,
+    required this.item,
+    required this.onSelectionChanged,
+    required this.onManualMatch,
+  });
+
+  @override
+  State<_ReviewItemCard> createState() => _ReviewItemCardState();
+}
+
+class _ReviewItemCardState extends State<_ReviewItemCard> {
+  late TextEditingController _nameController;
+  late TextEditingController _packageController;
+  late TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.item.name);
+    _packageController = TextEditingController(text: widget.item.package);
+    _priceController = TextEditingController(text: widget.item.price.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReviewItemCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Force update controllers if the item properties change externally
+    // This is crucial when manual match updates the item name in the parent
+    if (widget.item.name != _nameController.text) {
+      _nameController.text = widget.item.name;
+      // تحريك المؤشر للنهاية لتجنب مشاكل الكتابة
+      _nameController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _nameController.text.length),
+      );
+    }
+    if (widget.item.package != _packageController.text) {
+      _packageController.text = widget.item.package;
+    }
+    if (widget.item.price.toString() != _priceController.text) {
+       // Check to avoid resetting if user is typing a number (e.g. "1." -> "1.0")
+       // Only update if the numeric value is actually different and valid
+       if (double.tryParse(_priceController.text) != widget.item.price) {
+          _priceController.text = widget.item.price.toString();
+       }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _packageController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool canBeSelected = item.matchedProductId != null;
+    final bool canBeSelected = widget.item.matchedProductId != null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -440,13 +548,13 @@ class _ReviewItemCard extends StatelessWidget {
             : theme.colorScheme.surfaceVariant.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: item.isSelected && canBeSelected
+          color: widget.item.isSelected && canBeSelected
               ? theme.colorScheme.primary.withOpacity(0.5)
               : theme.colorScheme.outline.withOpacity(0.2),
-          width: item.isSelected && canBeSelected ? 2 : 1,
+          width: widget.item.isSelected && canBeSelected ? 2 : 1,
         ),
         boxShadow: [
-          if (item.isSelected && canBeSelected)
+          if (widget.item.isSelected && canBeSelected)
             BoxShadow(
               color: theme.colorScheme.primary.withOpacity(0.1),
               blurRadius: 8,
@@ -460,7 +568,7 @@ class _ReviewItemCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: item.isSelected && canBeSelected
+              color: widget.item.isSelected && canBeSelected
                   ? theme.colorScheme.primaryContainer.withOpacity(0.3)
                   : null,
               borderRadius: const BorderRadius.vertical(
@@ -472,10 +580,10 @@ class _ReviewItemCard extends StatelessWidget {
                 Transform.scale(
                   scale: 1.2,
                   child: Checkbox(
-                    value: item.isSelected,
+                    value: widget.item.isSelected,
                     onChanged: canBeSelected
                         ? (value) {
-                            onSelectionChanged(value ?? false);
+                            widget.onSelectionChanged(value ?? false);
                           }
                         : null,
                     shape: RoundedRectangleBorder(
@@ -498,7 +606,7 @@ class _ReviewItemCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        item.name,
+                        widget.item.name,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -518,28 +626,28 @@ class _ReviewItemCard extends StatelessWidget {
               children: [
                 _buildTextField(
                   context,
+                  controller: _nameController,
                   label: 'Product Name',
                   icon: Icons.medication,
-                  initialValue: item.name,
-                  onChanged: (value) => item.name = value,
+                  onChanged: (value) => widget.item.name = value,
                 ),
                 const SizedBox(height: 12),
                 _buildTextField(
                   context,
+                  controller: _packageController,
                   label: 'Package',
                   icon: Icons.inventory_2_outlined,
-                  initialValue: item.package,
-                  onChanged: (value) => item.package = value,
+                  onChanged: (value) => widget.item.package = value,
                 ),
                 const SizedBox(height: 12),
                 _buildTextField(
                   context,
+                  controller: _priceController,
                   label: 'Price (EGP)',
                   icon: Icons.attach_money,
-                  initialValue: item.price.toString(),
                   keyboardType: TextInputType.number,
                   onChanged: (value) =>
-                      item.price = double.tryParse(value) ?? 0.0,
+                      widget.item.price = double.tryParse(value) ?? 0.0,
                 ),
               ],
             ),
@@ -547,7 +655,7 @@ class _ReviewItemCard extends StatelessWidget {
           // Match result
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: _buildMatchResult(context, item),
+            child: _buildMatchResult(context, widget.item),
           ),
         ],
       ),
@@ -556,16 +664,16 @@ class _ReviewItemCard extends StatelessWidget {
 
   Widget _buildTextField(
     BuildContext context, {
+    required TextEditingController controller,
     required String label,
     required IconData icon,
-    required String initialValue,
     required ValueChanged<String> onChanged,
     TextInputType? keyboardType,
   }) {
     final theme = Theme.of(context);
 
     return TextFormField(
-      initialValue: initialValue,
+      controller: controller,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
@@ -598,211 +706,238 @@ class _ReviewItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMatchResult(BuildContext context, ExtractedItem item) {
-    final theme = Theme.of(context);
+  void _openManualSearchDialog(BuildContext context, WidgetRef ref) async {
+    final mainCatalog = await ref.read(productsProvider.future);
+    final ocrCatalog = await ref.read(ocrProductsProvider.future);
+    
+    // دمج الكتالوجين للبحث
+    final allProducts = [...mainCatalog, ...ocrCatalog];
 
-    if (item.matchedProduct == null) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.orange[100]!.withOpacity(0.5),
-              Colors.orange[50]!.withOpacity(0.3),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.orange.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
-                shape: BoxShape.circle,
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // فلترة المنتجات
+            final filtered = query.isEmpty 
+                ? [] 
+                : allProducts.where((p) => p.name.toLowerCase().contains(query.toLowerCase())).take(50).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+                child: Column(
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن اسم المنتج الصحيح...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          query = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: filtered.isEmpty && query.isNotEmpty
+                          ? const Center(child: Text('لا توجد نتائج'))
+                          : filtered.isEmpty && query.isEmpty 
+                              ? const Center(child: Text('ابدأ الكتابة للبحث'))
+                              : ListView.separated(
+                                  itemCount: filtered.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (ctx, index) {
+                                    final product = filtered[index];
+                                    return ListTile(
+                                      title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      subtitle: Text(product.company ?? ''),
+                                      leading: product.imageUrl.isNotEmpty
+                                          ? CircleAvatar(backgroundImage: NetworkImage(product.imageUrl))
+                                          : const CircleAvatar(child: Icon(Icons.medication)),
+                                      onTap: () {
+                                        widget.onManualMatch(product);
+                                        Navigator.pop(context);
+                                      },
+                                    );
+                                  },
+                                ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Icon(
-                Icons.warning_amber,
-                color: Colors.orange,
-                size: 24,
-              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMatchResult(BuildContext context, ExtractedItem item) {
+    // نحتاج للـ ref هنا لاستدعاء البحث
+    return Consumer(
+      builder: (context, ref, child) {
+        final theme = Theme.of(context);
+
+        if (item.matchedProduct == null) {
+          // حالة عدم التطابق
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50]!.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'No Match Found',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ... الكود السابق للقائمة المنسدلة إذا وجدت اقتراحات ...
+                if (item.suggestions.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.lightbulb_outline, color: Colors.orange, size: 20),
+                      const SizedBox(width: 8),
+                      const Text('اقتراحات:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<ProductModel>(
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.orange.shade200)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    hint: const Text('اختر منتج مشابه...'),
+                    items: item.suggestions.map((suggestion) {
+                      return DropdownMenuItem<ProductModel>(
+                        value: suggestion,
+                        child: Text(suggestion.name, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                      );
+                    }).toList(),
+                    onChanged: (ProductModel? newValue) {
+                      if (newValue != null) widget.onManualMatch(newValue);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Center(child: Text("- أو -", style: TextStyle(color: Colors.grey))),
+                  const SizedBox(height: 8),
+                ] else ...[
+                   Row(
+                    children: [
+                      const Icon(Icons.warning_amber, color: Colors.orange, size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('لم يتم العثور على منتج مطابق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // زر البحث اليدوي (الحل الجذري)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openManualSearchDialog(context, ref),
+                    icon: const Icon(Icons.search),
+                    label: const Text('بحث يدوي في الكتالوج'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange[800],
+                      side: BorderSide(color: Colors.orange[800]!),
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'This item will be ignored during save.',
-                    style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // حالة التطابق (Match Found)
+        final bool isOcr = item.isOcrMatch;
+        final Color chipColor = isOcr ? theme.colorScheme.secondaryContainer : theme.colorScheme.primaryContainer;
+        final Color chipTextColor = isOcr ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onPrimaryContainer;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.green[100]!.withOpacity(0.5), Colors.green[50]!.withOpacity(0.3)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('تم التطابق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 14)),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: chipColor, borderRadius: BorderRadius.circular(12)),
+                    child: Text(isOcr ? 'OCR' : 'Main', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: chipTextColor)),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final bool isOcr = item.isOcrMatch;
-    final Color chipBackgroundColor = isOcr
-        ? theme.colorScheme.secondaryContainer
-        : theme.colorScheme.primaryContainer;
-    final Color chipForegroundColor = isOcr
-        ? theme.colorScheme.onSecondaryContainer
-        : theme.colorScheme.onPrimaryContainer;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.green[100]!.withOpacity(0.5),
-            Colors.green[50]!.withOpacity(0.3),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.green.withOpacity(0.3),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Match Found',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Product matched in catalog',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: chipBackgroundColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: chipForegroundColor.withOpacity(0.4),
-                  ),
-                ),
-                child: Text(
-                  isOcr ? 'OCR' : 'Main',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: chipForegroundColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  AddFromCatalogScreen.showProductDetailDialog(context, item.matchedProduct!);
-                },
+              const SizedBox(height: 12),
+              // زر لتغيير المنتج حتى لو كان مطابقاً
+              InkWell(
+                onTap: () => _openManualSearchDialog(context, ref),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  width: 60,
-                  height: 60,
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.white.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
-                    ),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: item.imageUrl ?? '',
-                      fit: BoxFit.contain,
-                      errorWidget: (context, url, error) => const Icon(
-                        Icons.medication,
-                        size: 32,
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: CachedNetworkImage(
+                          imageUrl: item.imageUrl ?? '',
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.contain,
+                          errorWidget: (context, url, error) => const Icon(Icons.medication),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.matchedProduct!.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            Text('اضغط للتغيير', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.edit, size: 16, color: Colors.grey),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Matched Product:',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.matchedProduct!.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
