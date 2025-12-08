@@ -1057,10 +1057,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     return RepaintBoundary(
                       child: _KeepAlive(
                         child: ViewTrackingProductCard(
+                          key: ValueKey('${product.id}_search'), // مفتاح فريد لضمان إعادة إنشاء الحالة عند تغير المنتج
                           product: product,
                           searchQuery: _debouncedSearchQuery,
-                          productType: 'home',
-                          trackViewOnVisible: true, // حساب المشاهدة عند الظهور
+                          productType: 'search_result', // نوع مخصص للبحث لتتبع المشاهدات بشكل مستقل
+                          trackViewOnVisible: true, // تفعيل تتبع المشاهدة عند الظهور في البحث
                           onTap: () {
                             // تتبع النقرة على المنتج إذا كان هناك بحث نشط
                             if (_currentSearchId != null && _debouncedSearchQuery.isNotEmpty) {

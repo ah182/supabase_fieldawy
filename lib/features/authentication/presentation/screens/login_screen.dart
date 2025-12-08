@@ -161,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.25), // خلفية داكنة شفافة
+                        color: Colors.transparent, // خلفية شفافة بالكامل
                         borderRadius: BorderRadius.circular(30), // حواف دائرية بالكامل
                         border: Border.all(
                           color: Colors.white.withOpacity(0.15), // حدود خفيفة

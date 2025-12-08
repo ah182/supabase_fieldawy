@@ -26,6 +26,21 @@ class ProductRepository {
     }
   }
 
+  // New Unified View Tracking Method
+  Future<bool> trackUnifiedView({required String productType, required String productId, String? distributorName}) async {
+    try {
+      final response = await _supabase.rpc('increment_unified_view', params: {
+        'p_type': productType,
+        'p_id': productId,
+        'p_distributor_name': distributorName,
+      });
+      return response as bool;
+    } catch (e) {
+      print('Error tracking view: $e');
+      return false;
+    }
+  }
+
   Future<void> updateProductExpirationAndPrice({
     required String distributorId,
     required String productId,
@@ -445,6 +460,7 @@ class ProductRepository {
                   ? DateTime.tryParse(data['priceUpdatedAt'])
                   : null,
               distributorId: data['distributorId']?.toString(),
+              views: (data['views'] as num?)?.toInt() ?? 0,
             );
           } else {
             // Regular product - use fromMap
@@ -456,6 +472,7 @@ class ProductRepository {
                   : null,
               selectedPackage: data['selectedPackage']?.toString(),
               distributorId: data['distributorId']?.toString(),
+              views: (data['views'] as num?)?.toInt() ?? 0,
             );
           }
         } catch (e) {

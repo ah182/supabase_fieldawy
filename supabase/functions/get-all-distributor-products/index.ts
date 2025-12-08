@@ -65,6 +65,7 @@ serve(async (req) => {
               priceUpdatedAt: row.price_updated_at,
               selectedPackage: row.package,
               distributorId: row.distributor_name,
+              views: row.views,
             };
           }
           return null;
@@ -116,6 +117,7 @@ serve(async (req) => {
               priceUpdatedAt: row.price_updated_at,
               selectedPackage: ocrProductData.package,
               distributorId: row.distributor_name,
+              views: row.views,
             };
           }
           return null;

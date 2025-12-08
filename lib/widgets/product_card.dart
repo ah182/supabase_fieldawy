@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui' as ui;
 
 // Set لتتبع المنتجات التي تم حساب مشاهداتها لتجنب التكرار
+// ignore: unused_element
 final Set<String> _viewedProducts = {};
 
 // Helper function to check if a string is a valid UUID
@@ -33,79 +34,81 @@ String _formatViewsCount(int views) {
   }
 }
 
-// دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offers)
-// تستخدم النظام الجديد الذي يسجل في product_views
-void _incrementProductViews(String productId, {String? distributorId, String? productType}) {
+// دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offer)
+// تستخدم النظام الجديد الذي يسجل في الجداول المحددة
+void _incrementProductViews(ProductModel product, {String? productType}) {
   try {
-    print('🔵 [_incrementProductViews] ========== START ==========');
-    print('🔵 [_incrementProductViews] Product ID: $productId');
-    print('🔵 [_incrementProductViews] Product Type: $productType');
-    print('🔵 [_incrementProductViews] Distributor ID: $distributorId');
+    String productId = product.id;
+    String? distributorId = product.distributorId;
+    String type = productType ?? 'home'; // Default to a generic type
 
-    // تحديد نوع المنتج
-    String type = 'regular';
-
-    if (productType == 'offers') {
-      type = 'offer';
-      print('🔵 [_incrementProductViews] Detected as OFFER');
-    } else if (productType == 'surgical') {
-      type = 'surgical';
-      print('🔵 [_incrementProductViews] Detected as SURGICAL');
-    } else if (productType == 'ocr') {
-      type = 'ocr';
-      print('🔵 [_incrementProductViews] Detected as OCR');
-    } else {
-      print('🔵 [_incrementProductViews] Checking if UUID...');
-      // تحقق من صيغة الـ ID
-      if (_isValidUUID(productId)) {
-        print('🔵 [_incrementProductViews] Is UUID - checking if OCR...');
-        // قد يكون OCR، نحتاج للتحقق
-        Supabase.instance.client
-            .from('distributor_ocr_products')
-            .select('id')
-            .eq('ocr_product_id', productId)
-            .limit(1)
-            .then((ocrResponse) {
-          if (ocrResponse.isNotEmpty) {
-            print('🔵 [_incrementProductViews] Confirmed as OCR product');
-            _trackView(productId, 'ocr');
-          } else {
-            print('🔵 [_incrementProductViews] Not OCR - treating as REGULAR');
-            _trackView(productId, 'regular');
-          }
-        }).catchError((error) {
-          print('❌ [_incrementProductViews] Error checking OCR: $error');
-          print('🔵 [_incrementProductViews] Fallback to REGULAR');
-          _trackView(productId, 'regular');
-        });
-        return; // الخروج لأننا سنتابع في then
-      } else {
-        print('🔵 [_incrementProductViews] Not UUID - treating as REGULAR');
-      }
+    // 1. التحقق من الأنواع الصريحة أولاً
+    if (type == 'offer' || type == 'offers' || type == 'surgical' || type == 'ocr' || type == 'regular') {
+      // إذا كان النوع صريحاً ومباشراً، استخدمه
+       _trackView(productId, type, distributorName: distributorId);
+       return;
     }
 
-    // تسجيل المشاهدة
-    print('🔵 [_incrementProductViews] Final type: $type');
-    print('🔵 [_incrementProductViews] Calling _trackView...');
-    _trackView(productId, type);
-    print('🔵 [_incrementProductViews] ========== END ==========');
+    // 2. إذا كان النوع عاماً (مثل 'home', 'expire_soon'), نبدأ منطق التخمين
+    if (product.surgicalToolId != null) {
+      // الأولوية القصوى للأدوات الجراحية إذا كان لديها surgicalToolId
+      _trackView(product.surgicalToolId!, 'surgical', distributorName: distributorId);
+      return;
+    }
+
+    if (_isValidUUID(productId)) {
+      // للمعرفات UUID، نبحث في الجداول المحتملة
+      Supabase.instance.client
+          .from('distributor_ocr_products')
+          .select('id')
+          .eq('ocr_product_id', productId)
+          .maybeSingle()
+          .then((ocrResponse) {
+        if (ocrResponse != null) {
+          _trackView(productId, 'ocr', distributorName: distributorId);
+        } else {
+          // إذا لم يكن OCR، تحقق من Surgical
+          Supabase.instance.client
+              .from('distributor_surgical_tools')
+              .select('id')
+              .eq('id', productId) // Surgical يستخدم Row ID
+              .maybeSingle()
+              .then((surgicalResponse) {
+            if (surgicalResponse != null) {
+              _trackView(productId, 'surgical', distributorName: distributorId);
+            } else {
+              // الملاذ الأخير: اعتبره Regular (لأن Row ID قد يكون UUID)
+              _trackView(productId, 'regular', distributorName: distributorId);
+            }
+          });
+        }
+      }).catchError((_) {
+        // في حالة حدوث خطأ، نعتبره Regular كخيار آمن
+         _trackView(productId, 'regular', distributorName: distributorId);
+      });
+    } else {
+      // إذا لم يكن UUID، فهو بالتأكيد Regular
+      _trackView(productId, 'regular', distributorName: distributorId);
+    }
 
   } catch (e) {
     print('❌ [_incrementProductViews] EXCEPTION: $e');
-    print('❌ [_incrementProductViews] Stack trace: ${StackTrace.current}');
   }
 }
 
 // دالة مساعدة لتسجيل المشاهدة
-Future<void> _trackView(String productId, String productType) async {
+Future<void> _trackView(String productId, String productType, {String? distributorName}) async {
   print('🟢 [_trackView] Starting to track view...');
   print('🟢 [_trackView] Product ID: $productId');
   print('🟢 [_trackView] Product Type: $productType');
+  print('🟢 [_trackView] Distributor: $distributorName');
 
   try {
-    final response = await Supabase.instance.client.rpc('track_product_view', params: {
-      'p_product_id': productId,
-      'p_product_type': productType,
+    // استخدام الدالة الموحدة الجديدة increment_unified_view
+    final response = await Supabase.instance.client.rpc('increment_unified_view', params: {
+      'p_type': productType,
+      'p_id': productId,
+      'p_distributor_name': distributorName,
     });
 
     print('✅ [_trackView] View tracked successfully!');
@@ -153,21 +156,29 @@ class ViewTrackingProductCard extends ConsumerStatefulWidget {
 }
 
 class _ViewTrackingProductCardState extends ConsumerState<ViewTrackingProductCard> {
-  bool _hasBeenViewed = false;
+  bool _hasTriggeredVisibility = false;
 
-  void _trackView() {
-    if (_hasBeenViewed) return;
-    
+  void _trackView({bool isClick = false}) {
+    // إذا كان هذا تتبع ظهور (ليس نقر) وتم تتبعه مسبقاً لهذا الكارت، نتجاهل
+    if (!isClick && _hasTriggeredVisibility) return;
+
+    // إذا كان تتبع ظهور، نضع العلامة لمنع التكرار
+    if (!isClick) _hasTriggeredVisibility = true;
+
+    // مفتاح لتمييز المنتج
+    // ignore: unused_local_variable
     final productKey = '${widget.product.id}_${widget.productType}';
-    if (_viewedProducts.contains(productKey)) return;
     
-    _hasBeenViewed = true;
-    _viewedProducts.add(productKey);
+    // ملاحظة: قمنا بإزالة التحقق الصارم من _viewedProducts للسماح باحتساب 
+    // مشاهدة النقر "بالإضافة" لمشاهدة الظهور كما طلب المستخدم.
+    // لكن لمنع الـ Spamming من التمرير السريع المتكرر، نعتمد على _hasTriggeredVisibility
+    // ولمنع الـ Spamming من النقر المتكرر، يمكننا الاعتماد على منطق بسيط هنا أو تركه مفتوحاً
     
-    // زيادة المشاهدات (دعم Regular, OCR, و Surgical products)
+    print('👀 View Tracking Triggered (${isClick ? "CLICK" : "VISIBILITY"}) for: ${widget.product.name}');
+
+    // زيادة المشاهدات
     _incrementProductViews(
-      widget.product.id,
-      distributorId: widget.product.distributorId,
+      widget.product,
       productType: widget.productType,
     );
   }
@@ -175,11 +186,14 @@ class _ViewTrackingProductCardState extends ConsumerState<ViewTrackingProductCar
   @override
   Widget build(BuildContext context) {
     if (!widget.trackViewOnVisible) {
-      // إذا لم يكن التتبع التلقائي مفعلاً، أرجع ProductCard عادي
+      // إذا لم يكن التتبع التلقائي مفعلاً، أرجع ProductCard مع تتبع النقر فقط
       return ProductCard(
         product: widget.product,
         searchQuery: widget.searchQuery,
-        onTap: widget.onTap,
+        onTap: () {
+          _trackView(isClick: true);
+          widget.onTap();
+        },
         showPriceChange: widget.showPriceChange,
         overlayBadge: widget.overlayBadge,
         statusBadge: widget.statusBadge,
@@ -189,19 +203,22 @@ class _ViewTrackingProductCardState extends ConsumerState<ViewTrackingProductCar
       );
     }
 
-    // استخدام VisibilityDetector لتتبع المشاهدة عند الظهور
+    // استخدام VisibilityDetector لتتبع المشاهدة عند الظهور بنسبة 50%
     return VisibilityDetector(
       key: Key('product_${widget.product.id}_${widget.productType}'),
       onVisibilityChanged: (info) {
         // عندما يكون المنتج ظاهر بنسبة 50% أو أكثر
-        if (info.visibleFraction >= 0.5 && !_hasBeenViewed) {
-          _trackView();
+        if (info.visibleFraction >= 0.5 && !_hasTriggeredVisibility) {
+           _trackView(isClick: false);
         }
       },
       child: ProductCard(
         product: widget.product,
         searchQuery: widget.searchQuery,
-        onTap: widget.onTap,
+        onTap: () {
+          _trackView(isClick: true); // تتبع النقر دائماً
+          widget.onTap();
+        },
         showPriceChange: widget.showPriceChange,
         overlayBadge: widget.overlayBadge,
         statusBadge: widget.statusBadge,
