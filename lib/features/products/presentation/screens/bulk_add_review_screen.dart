@@ -492,35 +492,86 @@ class _ReviewItemCard extends StatefulWidget {
 
 class _ReviewItemCardState extends State<_ReviewItemCard> {
   late TextEditingController _nameController;
-  late TextEditingController _packageController;
+  late TextEditingController _packageDescController;
   late TextEditingController _priceController;
+  
+  String? _selectedPackageType;
+
+  final List<String> _packageTypes = [
+    'tab',
+    'caps',
+    'syrup',
+    'susp',
+    'vial',
+    'amp',
+    'bottle',
+    'sachet',
+    'cream',
+    'gel',
+    'oint',
+    'spray',
+    'drops',
+    'supp',
+    'eff',
+    'piece',
+  ];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.item.name);
-    _packageController = TextEditingController(text: widget.item.package);
     _priceController = TextEditingController(text: widget.item.price.toString());
+    
+    // Try to parse package string into type and description
+    _parsePackage(widget.item.package);
+  }
+
+  void _parsePackage(String packageStr) {
+    String lower = packageStr.toLowerCase();
+    String? foundType;
+    
+    // Find matching type
+    for (var type in _packageTypes) {
+      if (lower.contains(type)) {
+        foundType = type;
+        break;
+      }
+    }
+    
+    // Default to first type if not found, or keep null if strict
+    _selectedPackageType = foundType ?? _packageTypes.first;
+    
+    // Remove type from description to avoid duplication in UI
+    String desc = packageStr;
+    if (foundType != null) {
+      desc = desc.replaceAll(RegExp(foundType, caseSensitive: false), '').trim();
+    }
+    _packageDescController = TextEditingController(text: desc);
+  }
+
+  void _updateItemPackage() {
+    if (_selectedPackageType != null) {
+      widget.item.package = '${_packageDescController.text} $_selectedPackageType'.trim();
+    } else {
+      widget.item.package = _packageDescController.text;
+    }
   }
 
   @override
   void didUpdateWidget(covariant _ReviewItemCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Force update controllers if the item properties change externally
-    // This is crucial when manual match updates the item name in the parent
     if (widget.item.name != _nameController.text) {
       _nameController.text = widget.item.name;
-      // تحريك المؤشر للنهاية لتجنب مشاكل الكتابة
-      _nameController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _nameController.text.length),
-      );
     }
-    if (widget.item.package != _packageController.text) {
-      _packageController.text = widget.item.package;
+    
+    // If package changed externally (e.g. manual match), re-parse
+    if (widget.item.package != '${_packageDescController.text} $_selectedPackageType'.trim()) {
+       if (widget.item.package != oldWidget.item.package) {
+          _parsePackage(widget.item.package);
+       }
     }
+
     if (widget.item.price.toString() != _priceController.text) {
-       // Check to avoid resetting if user is typing a number (e.g. "1." -> "1.0")
-       // Only update if the numeric value is actually different and valid
        if (double.tryParse(_priceController.text) != widget.item.price) {
           _priceController.text = widget.item.price.toString();
        }
@@ -530,7 +581,7 @@ class _ReviewItemCardState extends State<_ReviewItemCard> {
   @override
   void dispose() {
     _nameController.dispose();
-    _packageController.dispose();
+    _packageDescController.dispose();
     _priceController.dispose();
     super.dispose();
   }
@@ -632,12 +683,50 @@ class _ReviewItemCardState extends State<_ReviewItemCard> {
                   onChanged: (value) => widget.item.name = value,
                 ),
                 const SizedBox(height: 12),
-                _buildTextField(
-                  context,
-                  controller: _packageController,
-                  label: 'Package',
-                  icon: Icons.inventory_2_outlined,
-                  onChanged: (value) => widget.item.package = value,
+                // Package Row (Type + Description)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 40,
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedPackageType,
+                        isExpanded: true, // Important to prevent overflow inside dropdown
+                        decoration: InputDecoration(
+                          labelText: 'Type',
+                          prefixIcon: Icon(FontAwesomeIcons.boxOpen, size: 16, color: Colors.grey[600]),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                        ),
+                        items: _packageTypes.map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+                        )).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedPackageType = val;
+                            _updateItemPackage();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 50,
+                      child: _buildTextField(
+                        context,
+                        controller: _packageDescController,
+                        label: 'package', 
+                        icon: Icons.description,
+                        onChanged: (value) => _updateItemPackage(),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 _buildTextField(
