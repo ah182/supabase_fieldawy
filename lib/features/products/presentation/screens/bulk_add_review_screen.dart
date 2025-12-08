@@ -124,6 +124,7 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
       setState(() {
         _isMatching = false;
       });
+      _showVerificationWarning();
     }
   }
 
@@ -152,6 +153,85 @@ class _BulkAddReviewScreenState extends ConsumerState<BulkAddReviewScreen> {
 
     return matches / length;
   }
+
+  void _showVerificationWarning() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'مراجعة البيانات',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'يرجى التأكد من صحة البيانات المستخرجة قبل اعتمادها، خاصة:',
+              style: TextStyle(fontSize: 15, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            _buildWarningItem(Icons.medication_outlined, 'اسم المنتج ومطابقته', Colors.blue),
+            const SizedBox(height: 12),
+            _buildWarningItem(Icons.attach_money, 'سعر المنتج', Colors.green),
+            const SizedBox(height: 12),
+            _buildWarningItem(FontAwesomeIcons.boxOpen, 'حجم ونوع العبوة', Colors.purple),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('فهمت، سأقوم بالمراجعة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarningItem(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(text, style: TextStyle(color: color.withOpacity(0.9), fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+
 
   Future<void> _saveConfirmedItems() async {
     setState(() { _isSaving = true; });

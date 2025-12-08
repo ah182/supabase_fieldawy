@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -25,12 +27,15 @@ class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool isFromOfferScreen;
   final bool isFromSurgicalTools;
   final bool isFromReviewRequest;
+  final ProductModel? productToEdit; // Added parameter
+
   const AddProductOcrScreen({
     super.key,
     this.showExpirationDate = true,
     this.isFromOfferScreen = false,
     this.isFromSurgicalTools = false,
     this.isFromReviewRequest = false,
+    this.productToEdit, // Initialize
   });
 
   @override
@@ -42,6 +47,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   File? _originalImage;
   Uint8List? _processedImageBytes;
   File? _processedImageFile;
+  String? _existingImageUrl; // To hold existing image URL
 
   bool _isProcessing = false;
   bool _isSaving = false;
@@ -71,11 +77,21 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     'drops',
   ];
   String? _selectedPackageType;
-  String _selectedStatus = 'جديد'; // للأدوات الجراحية
+  String _selectedStatus = 'جديد';
 
   @override
   void initState() {
     super.initState();
+    
+    if (widget.productToEdit != null) {
+      _initializeForEdit();
+    }
+
+    // Show instructions dialog when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showInstructionsDialog();
+    });
+
     _nameController.addListener(_validateForm);
     _companyController.addListener(_validateForm);
     _activePrincipleController.addListener(_validateForm);
@@ -85,24 +101,90 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _descriptionController.addListener(_validateForm);
   }
 
+  Future<void> _showInstructionsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.blue),
+            const SizedBox(width: 10),
+            const Text('تعليمات هامة', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text('📸 يرجى تصوير المنتج بوضوح ومن زاوية مناسبة.'),
+            SizedBox(height: 8),
+            Text('🔍 تأكد من أن جميع بيانات المنتج واضحة في الصورة.'),
+            SizedBox(height: 8),
+            Text('✍️ يرجى مراجعة البيانات المستخرجة بدقة قبل الحفظ أو التعديل.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('فهمت'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _initializeForEdit() {
+    final product = widget.productToEdit!;
+    _nameController.text = product.name;
+    _companyController.text = product.company ?? '';
+    _activePrincipleController.text = product.activePrinciple ?? '';
+    _existingImageUrl = product.imageUrl;
+    
+    // Try to parse package
+    final package = product.package ?? '';
+    String foundType = '';
+    for (final type in _packageTypes) {
+      if (package.toLowerCase().contains(type)) {
+        foundType = type;
+        break;
+      }
+    }
+    if (foundType.isNotEmpty) {
+      _selectedPackageType = foundType;
+      _packageController.text = package.replaceAll(foundType, '').trim();
+    } else {
+      _packageController.text = package;
+    }
+    
+    // Trigger validation initially
+    WidgetsBinding.instance.addPostFrameCallback((_) => _validateForm());
+  }
+
   void _validateForm() {
     bool isValid;
-    
+    final hasImage = _processedImageBytes != null || (_existingImageUrl != null && _existingImageUrl!.isNotEmpty);
+
     if (widget.isFromReviewRequest) {
-      // من صفحة التقييمات: الاسم + الشركة + المادة الفعالة فقط
-      isValid = _processedImageBytes != null &&
+      isValid = hasImage &&
           _nameController.text.isNotEmpty &&
           _companyController.text.isNotEmpty &&
           _activePrincipleController.text.isNotEmpty;
     } else if (widget.isFromSurgicalTools) {
-      // للأدوات الجراحية: الاسم + السعر + الوصف إجباري
-      isValid = _processedImageBytes != null &&
+      isValid = hasImage &&
           _nameController.text.isNotEmpty &&
           _priceController.text.isNotEmpty &&
           _descriptionController.text.isNotEmpty;
+    } else if (widget.productToEdit != null) {
+       // For editing, price and expiration date are hidden, so we don't validate them.
+       isValid = hasImage &&
+          _nameController.text.isNotEmpty &&
+          _companyController.text.isNotEmpty &&
+          _activePrincipleController.text.isNotEmpty &&
+          _packageController.text.isNotEmpty &&
+          _selectedPackageType != null;
     } else {
-      // للمنتجات العادية
-      isValid = _processedImageBytes != null &&
+      isValid = hasImage &&
           _nameController.text.isNotEmpty &&
           _companyController.text.isNotEmpty &&
           _activePrincipleController.text.isNotEmpty &&
@@ -571,8 +653,12 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         throw Exception('Failed to add product: userId=${userId != null}, ocrProductId=$ocrProductId');
       }
       
-      final price = double.tryParse(_priceController.text);
-      if (price == null) throw Exception('Invalid price format');
+      // Price is only required for new products (not editing) and not from review request
+      double? price;
+      if (widget.productToEdit == null && !widget.isFromReviewRequest) {
+        price = double.tryParse(_priceController.text);
+        if (price == null) throw Exception('Invalid price format');
+      }
 
       if (_selectedPackageType != null &&
           !package
@@ -587,8 +673,42 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       final distributorName = userData?.displayName ?? 'Unknown Distributor';
 
       if (userId != null) {
+        if (widget.productToEdit != null) {
+          // ============================================
+          // تحديث المنتج (Update)
+          // ============================================
+          final success = await productRepo.updateOcrProduct(
+            ocrProductId: widget.productToEdit!.id,
+            distributorId: userId,
+            name: name,
+            company: company,
+            activePrinciple: activePrinciple,
+            package: package,
+            imageUrl: finalUrl,
+          );
+
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                elevation: 0,
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.transparent,
+                content: AwesomeSnackbarContent(
+                  title: 'نجاح',
+                  message: 'Product updated successfully!',
+                  contentType: ContentType.success,
+                ),
+              ),
+            );
+            Navigator.of(context).pop();
+            return;
+          } else {
+             throw Exception('Failed to update product');
+          }
+        }
+
         // ============================================
-        // الأدوات الجراحية
+        // الأدوات الجراحية (Add)
         // ============================================
         if (widget.isFromSurgicalTools) {
           final description = _descriptionController.text;
@@ -608,7 +728,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               distributorName: distributorName,
               surgicalToolId: surgicalToolId,
               description: description,
-              price: price,
+              price: price!,
               status: _selectedStatus,
             );
 
@@ -669,7 +789,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 productId: ocrProductId,
                 isOcr: true,
                 userId: userId,
-                price: price,
+                price: price!,
                 expirationDate: offerExpirationDate,
                 package: package,
               );
@@ -694,7 +814,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       builder: (context) => OfferDetailScreen(
                         offerId: offerId,
                         productName: name,
-                        price: price,
+                        price: price!,
                         expirationDate: offerExpirationDate,
                       ),
                     ),
@@ -708,7 +828,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 distributorId: userId,
                 distributorName: distributorName,
                 ocrProductId: ocrProductId,
-                price: price,
+                price: price!,
                 expirationDate: expirationDate, // null إذا قادم من my_products
               );
             }
@@ -801,7 +921,11 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 baseColor: Colors.white,
               )
             : Text(
-                widget.isFromReviewRequest ? 'تأكيد الاختيار' : 'Save Product',
+                widget.isFromReviewRequest 
+                    ? 'تأكيد الاختيار' 
+                    : widget.productToEdit != null 
+                        ? 'Update Product' 
+                        : 'Save Product',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -813,7 +937,9 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isFromSurgicalTools ? 'Add Surgical Tool' : 'Add New Product',
+          widget.productToEdit != null
+              ? 'تحديث منتج'
+              : (widget.isFromSurgicalTools ? 'Add Surgical Tool' : 'Add New Product'),
           style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -900,6 +1026,16 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         child: Image.memory(
                           _processedImageBytes!,
                           fit: BoxFit.contain,
+                        ),
+                      )
+                    else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                      SizedBox(
+                        height: 250,
+                        child: CachedNetworkImage(
+                          imageUrl: _existingImageUrl!,
+                          fit: BoxFit.contain,
+                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) => const Icon(Icons.error),
                         ),
                       )
                     else
@@ -1114,8 +1250,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       const SizedBox(height: 16),
                     ],
                     
-                    // السعر - إجباري دائماً (مخفي عند isFromReviewRequest)
-                    if (!widget.isFromReviewRequest) ...[
+                    // السعر - إجباري دائماً (مخفي عند isFromReviewRequest وعند التعديل productToEdit != null)
+                    if (!widget.isFromReviewRequest && widget.productToEdit == null) ...[
                       _buildTextField(
                           'Price',
                           Icons.attach_money,
@@ -1127,8 +1263,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       const SizedBox(height: 16),
                     ],
                     
-                    // Expiration Date - حسب showExpirationDate
-                    if (widget.showExpirationDate)
+                    // Expiration Date - حسب showExpirationDate (مخفي عند التعديل productToEdit != null)
+                    if (widget.showExpirationDate && widget.productToEdit == null)
                       _buildTextField(
                         'Expiration Date',
                         Icons.calendar_today,

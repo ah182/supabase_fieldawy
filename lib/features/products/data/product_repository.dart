@@ -777,6 +777,41 @@ class ProductRepository {
     return null;
   }
 
+  Future<bool> updateOcrProduct({
+    required String ocrProductId,
+    required String distributorId,
+    String? name,
+    String? company,
+    String? activePrinciple,
+    String? package,
+    String? imageUrl,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['product_name'] = name;
+      if (company != null) updates['product_company'] = company;
+      if (activePrinciple != null) updates['active_principle'] = activePrinciple;
+      if (package != null) updates['package'] = package;
+      if (imageUrl != null) updates['image_url'] = imageUrl;
+
+      if (updates.isEmpty) return false;
+
+      await _supabase
+          .from('ocr_products')
+          .update(updates)
+          .match({
+            'id': ocrProductId,
+            'distributor_id': distributorId,
+          });
+
+      _scheduleCacheInvalidation();
+      return true;
+    } catch (e) {
+      print('Error updating OCR product: $e');
+      return false;
+    }
+  }
+
   Future<void> addDistributorOcrProduct({
     required String distributorId,
     required String distributorName,
@@ -864,7 +899,7 @@ class ProductRepository {
           package: row['package']?.toString() ?? '',
           imageUrl: imageUrl,
           price: null, // OCR products don't have price in main table
-          distributorId: row['distributor_name']?.toString(),
+          distributorId: row['distributor_id']?.toString(),
           createdAt: row['created_at'] != null
               ? DateTime.tryParse(row['created_at'].toString())
               : null,

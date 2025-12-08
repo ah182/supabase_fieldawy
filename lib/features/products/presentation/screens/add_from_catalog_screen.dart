@@ -1,4 +1,7 @@
+// ignore_for_file: unused_import
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert'; // Added for jsonDecode
 
@@ -21,8 +24,11 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:fieldawy_store/features/products/presentation/screens/bulk_add_review_screen.dart';
+// ignore: duplicate_import
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:fieldawy_store/services/ocr_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final CatalogContext catalogContext;
@@ -107,6 +113,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   bool _isSaving = false;
   bool _isProcessingFile = false;
   bool _isOcrLoading = false;
+  bool _hasShownOcrWarning = false;
 
   @override
   void initState() {
@@ -119,6 +126,14 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       if (mounted) {
         // إخفاء الكيبورد عند تغيير التاب
         FocusScope.of(context).unfocus();
+
+        // عرض تحذير عند فتح تاب OCR لأول مرة
+        if (_tabController!.index == 1 && !_hasShownOcrWarning) {
+          _hasShownOcrWarning = true;
+          // استخدام Future.delayed لضمان عدم تداخل الـ build
+          Future.delayed(Duration.zero, () => _showOcrWarningDialog());
+        }
+
         if (_searchController.text.isEmpty) {
           setState(() {
             _ghostText = '';
@@ -131,6 +146,70 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     });
     _lastShuffledQuery = null; // مش اتعمل شفل لحد دلوقتي
     _lastOcrShuffledQuery = null; // OCR catalog
+  }
+
+  void _showOcrWarningDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange[800], size: 28),
+            const SizedBox(width: 12),
+            const Text(
+              'تنبيه هام',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'المنتجات في هذا القسم (OCR) تمت إضافتها بواسطة مستخدمين آخرين.',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: const Text(
+                'قد تحتوي البيانات على بعض الأخطاء غير المقصودة.\n\n'
+                'يرجى التأكد بدقة من:\n'
+                '• اسم المنتج\n'
+                '• صورة المنتج\n'
+                '• المادة الفعالة\n'
+                '• حجم العبوة\n\n'
+                'وذلك قبل إضافتها إلى كتالوجك الخاص.',
+                style: TextStyle(fontSize: 14, height: 1.5),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.orange[800],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text('فهمت، سأقوم بالمراجعة', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -704,14 +783,39 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         );
         return newOcrProductId;
       }
-    } catch (e) {
-      print('Error checking/creating OCR product: $e');
-      return null;
+        } catch (e) {
+          print('Error checking/creating OCR product: $e');
+          return null;
+        }
+      }
+    
+      Future<void> _showEditProductDialog(ProductModel product, String currentPackage) async {
+    // الانتقال إلى شاشة AddProductOcrScreen في وضع التعديل
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddProductOcrScreen(
+          productToEdit: product,
+          // تمرير بقية المعاملات حسب الحاجة، هنا نفترض الإعدادات الافتراضية مناسبة
+          isFromOfferScreen: widget.isFromOfferScreen,
+          isFromReviewRequest: widget.isFromReviewRequest,
+        ),
+      ),
+    );
+
+    // تحديث القائمة إذا تم التعديل بنجاح
+    if (result == true || result != null) { // Assuming AddProductOcrScreen returns something on success
+      if (mounted) {
+        ref.invalidate(ocrProductsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث المنتج بنجاح')),
+        );
+      }
     }
   }
-
-  @override
-  Widget build(BuildContext context) {
+  
+    @override
+    Widget build(BuildContext context) {
     final allProductsAsync = ref.watch(productsProvider);
     final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
 
@@ -1083,11 +1187,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                       if (_tabController?.index == 1) {
                         // OCR Tab
                         try {
-                          final userModel =
-                              await ref.read(userDataProvider.future);
+                          final userModel = await ref.read(userDataProvider.future);
                           final distributorId = userModel?.id;
-                          final distributorName =
-                              userModel?.displayName ?? 'اسم غير معروف';
+                          final distributorName = userModel?.displayName ?? 'اسم غير معروف';
 
                           if (distributorId == null) {
                             throw Exception('User not authenticated');
@@ -1101,22 +1203,21 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                             final String package = item['package'];
                             final String key = '${product.id}_$package';
 
-                                                          final isSelectedNow = ref
-                                                            .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                                            .prices
-                                                            .containsKey(key);
-                            
-                                                        if (isSelectedNow) {
-                                                          final price = ref
-                                                                  .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                                                  .prices[key] ??
-                                                              0.0;
-                                                          final expirationDate = ref
-                                                              .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                                              .expirationDates[key];
+                            final isSelectedNow = ref
+                                .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                .prices
+                                .containsKey(key);
+
+                            if (isSelectedNow) {
+                              final price = ref
+                                      .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                      .prices[key] ??
+                                  0.0;
+                              final expirationDate = ref
+                                  .read(catalogSelectionControllerProvider(widget.catalogContext))
+                                  .expirationDates[key];
                               if (price > 0) {
-                                String? ocrProductId =
-                                    await _checkOrCreateOcrProduct(
+                                String? ocrProductId = await _checkOrCreateOcrProduct(
                                   ref,
                                   distributorId,
                                   distributorName,
@@ -1128,8 +1229,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   ocrProductsToAdd.add({
                                     'ocrProductId': ocrProductId,
                                     'price': price,
-                                    'expiration_date':
-                                        expirationDate?.toIso8601String(),
+                                    'expiration_date': expirationDate?.toIso8601String(),
                                     'package': package,
                                   });
                                   keysToClear.add(key);
@@ -1143,33 +1243,34 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                               // حفظ في جدول offers
                               final List<String> offerIds = [];
                               final List<Map<String, dynamic>> offerDetails = [];
-                              
+
                               for (var item in ocrProductsToAdd) {
                                 final offerId = await ref.read(productRepositoryProvider).addOffer(
-                                  productId: item['ocrProductId'],
-                                  isOcr: true,
-                                  userId: distributorId,
-                                  price: item['price'],
-                                  expirationDate: item['expiration_date'] != null 
-                                      ? DateTime.parse(item['expiration_date'])
-                                      : DateTime.now().add(const Duration(days: 365)),
-                                  package: item['package'],
-                                );
+                                      productId: item['ocrProductId'],
+                                      isOcr: true,
+                                      userId: distributorId,
+                                      price: item['price'],
+                                      expirationDate: item['expiration_date'] != null
+                                          ? DateTime.parse(item['expiration_date'])
+                                          : DateTime.now().add(const Duration(days: 365)),
+                                      package: item['package'],
+                                    );
                                 if (offerId != null) {
                                   offerIds.add(offerId);
                                   offerDetails.add(item);
                                 }
                               }
 
-                              ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearSelections(keysToClear);
+                              ref
+                                  .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                                  .clearSelections(keysToClear);
 
                               if (context.mounted) {
                                 if (offerIds.length == 1) {
                                   // منتج واحد - نفتح صفحة offer_detail_screen
                                   final firstKey = keysToClear.first;
                                   final firstProduct = _ocrCatalogShuffledDisplayItems.firstWhere(
-                                    (item) => '${item['product'].id}_${item['package']}' == firstKey
-                                  );
+                                      (item) => '${item['product'].id}_${item['package']}' == firstKey);
                                   final productName = firstProduct['product'].name;
                                   final price = offerDetails[0]['price'];
                                   final expirationDate = offerDetails[0]['expiration_date'] != null
@@ -1205,17 +1306,14 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                               }
                             } else {
                               // الحفظ العادي في distributor_ocr_products
-                              await ref
-                                  .read(productRepositoryProvider)
-                                  .addMultipleDistributorOcrProducts(
+                              await ref.read(productRepositoryProvider).addMultipleDistributorOcrProducts(
                                     distributorId: distributorId,
                                     distributorName: distributorName,
                                     ocrProducts: ocrProductsToAdd,
                                   );
 
                               ref
-                                  .read(
-                                      catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                                  .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
                                   .clearSelections(keysToClear);
 
                               if (context.mounted) {
@@ -1226,8 +1324,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     backgroundColor: Colors.transparent,
                                     content: AwesomeSnackbarContent(
                                       title: 'نجاح',
-                                      message:
-                                          'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
+                                      message: 'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
                                       contentType: ContentType.success,
                                     ),
                                   ),
@@ -1244,8 +1341,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   backgroundColor: Colors.transparent,
                                   content: AwesomeSnackbarContent(
                                     title: 'تنبيه',
-                                    message:
-                                        'الرجاء تحديد منتجات بأسعار صحيحة',
+                                    message: 'الرجاء تحديد منتجات بأسعار صحيحة',
                                     contentType: ContentType.warning,
                                   ),
                                 ),
@@ -1261,8 +1357,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                 backgroundColor: Colors.transparent,
                                 content: AwesomeSnackbarContent(
                                   title: 'خطأ',
-                                  message:
-                                      'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
+                                  message: 'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
                                   contentType: ContentType.failure,
                                 ),
                               ),
@@ -1271,8 +1366,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                         }
                       } else {
                         // Main Catalog Tab
-                        final mainCatalogKeys =
-                            _mainCatalogShuffledDisplayItems.map((item) {
+                        final mainCatalogKeys = _mainCatalogShuffledDisplayItems.map((item) {
                           final ProductModel product = item['product'];
                           final String package = item['package'];
                           return '${product.id}_$package';
@@ -1282,31 +1376,31 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           // حفظ في جدول offers
                           final userModel = await ref.read(userDataProvider.future);
                           final userId = userModel?.id;
-                          
+
                           if (userId != null) {
                             final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
                             final List<String> offerIds = [];
                             final List<Map<String, dynamic>> offerDetails = [];
-                            
+
                             for (var item in _mainCatalogShuffledDisplayItems) {
                               final ProductModel product = item['product'];
                               final String package = item['package'];
                               final String key = '${product.id}_$package';
-                              
+
                               if (selection.prices.containsKey(key)) {
                                 final price = selection.prices[key] ?? 0.0;
-                                final expirationDate = selection.expirationDates[key] ?? 
+                                final expirationDate = selection.expirationDates[key] ??
                                     DateTime.now().add(const Duration(days: 365));
-                                
+
                                 if (price > 0) {
                                   final offerId = await ref.read(productRepositoryProvider).addOffer(
-                                    productId: product.id,
-                                    isOcr: false,
-                                    userId: userId,
-                                    price: price,
-                                    expirationDate: expirationDate,
-                                    package: package,
-                                  );
+                                        productId: product.id,
+                                        isOcr: false,
+                                        userId: userId,
+                                        price: price,
+                                        expirationDate: expirationDate,
+                                        package: package,
+                                      );
                                   if (offerId != null) {
                                     offerIds.add(offerId);
                                     offerDetails.add({
@@ -1318,9 +1412,11 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                 }
                               }
                             }
-                            
-                            ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearSelections(mainCatalogKeys);
-                            
+
+                            ref
+                                .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                                .clearSelections(mainCatalogKeys);
+
                             if (context.mounted) {
                               if (offerIds.length == 1) {
                                 // منتج واحد - نفتح صفحة offer_detail_screen
@@ -1357,8 +1453,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final success = await ref
                               .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
                               .saveSelections(
-                                  keysToSave: mainCatalogKeys,
-                                  withExpiration: widget.showExpirationDate);
+                                  keysToSave: mainCatalogKeys, withExpiration: widget.showExpirationDate);
 
                           if (success && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -1382,8 +1477,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                 backgroundColor: Colors.transparent,
                                 content: AwesomeSnackbarContent(
                                   title: 'تنبيه',
-                                  message:
-                                      'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
+                                  message: 'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
                                   contentType: ContentType.warning,
                                 ),
                               ),
@@ -1638,6 +1732,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final item = _ocrCatalogShuffledDisplayItems[index];
                           final ProductModel product = item['product'];
                           final String package = item['package'];
+                          final currentUserId = ref.watch(userDataProvider).value?.id;
+                          final canEdit = currentUserId != null && product.distributorId == currentUserId;
+
                           return _ProductCatalogItem(
                                   key: ValueKey('${product.id}_$package'),
                                   catalogContext: widget.catalogContext,
@@ -1646,7 +1743,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                   showExpirationDate:
                                       widget.showExpirationDate,
                                   singleSelection: widget.isFromOfferScreen || widget.isFromReviewRequest,
-                                  hidePrice: widget.isFromReviewRequest);
+                                  hidePrice: widget.isFromReviewRequest,
+                                  canEdit: canEdit,
+                                  onEdit: () => _showEditProductDialog(product, package),
+                          );
                         },
                       );
                     },
@@ -2361,6 +2461,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
   final bool showExpirationDate;
   final bool singleSelection;
   final bool hidePrice;
+  final bool canEdit;
+  final VoidCallback? onEdit;
 
   const _ProductCatalogItem({
     super.key,
@@ -2370,6 +2472,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
     this.showExpirationDate = false,
     this.singleSelection = false,
     this.hidePrice = false,
+    this.canEdit = false,
+    this.onEdit,
   });
 
   @override
@@ -2500,14 +2604,33 @@ class _ProductCatalogItem extends HookConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // === تحسين اسم المنتج بحجم أصغر ===
-                    Text(
-                      product.name,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                        ),
+                        if (canEdit && onEdit != null)
+                          InkWell(
+                            onTap: onEdit,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.edit_note_rounded,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     // === تحسين الباكدج ===

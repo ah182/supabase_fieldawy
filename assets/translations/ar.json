@@ -69,7 +69,7 @@
     "distributors": "الموزعين",
     "searchDistributor": "البحث عن موزع...",
     "totalDistributors": "إجمالي الموزعين",
-    "totalProducts": "إجمالي المنتجات",
+    
     "verified": "موثق",
     "loadingDistributors": "جارٍ تحميل الموزعين...",
     "errorLoadingDistributors": "خطأ في تحميل الموزعين",
@@ -94,7 +94,7 @@
     "couldNotOpenWhatsApp": "تعذر فتح الواتساب. تأكد من تثبيت التطبيق.",
     "ok": "حسناً",
     "noResultsFor": "لا توجد نتائج للبحث عن \"{}\"",
-    "secureLogin": "Your Fieldawy Family Here",
+    "secureLogin": "جميع الخدمات البيطرية في مكان واحد ",
     "loggingIn": "جارٍ تسجيل الدخول...",
     "backToLogin": "العودة لتسجيل الدخول",
     "english": "English",
@@ -169,7 +169,7 @@
     "addYourFirstJob": "أضف عرضك الأول",
     "jobDetails": "تفاصيل الوظيفة",
     "postedBy": "نُشر بواسطة",
-    "views": "مشاهدة",
+   
     "contactViaWhatsApp": "تواصل عبر واتساب",
     "editJobOffer": "تعديل عرض التوظيف",
     "updateJobOffer": "تحديث عرض التوظيف",
@@ -219,7 +219,7 @@
     "customers": "عملاء",
     "customer": "عميل",
     "order": "طلب",
-    "orders": "طلبات",
+  
     "unknownRegion": "منطقة غير معروفة",
     "errorLoadingStats": "خطأ في تحميل الإحصائيات",
     "lastUpdated": "آخر تحديث:",

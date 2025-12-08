@@ -1094,6 +1094,7 @@ class _ProductReviewDetailsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(productReviewsProvider);
       ref.invalidate(activeReviewRequestsProvider);
+      _showReviewInstructions(); // Show the instructions dialog
     });
     
     // Auto refresh كل 30 ثانية للحصول على تحديثات من المستخدمين الآخرين
@@ -1103,6 +1104,76 @@ class _ProductReviewDetailsScreenState
         ref.invalidate(activeReviewRequestsProvider);
       }
     });
+  }
+
+  void _showReviewInstructions() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Row(
+          children: [
+            Icon(FontAwesomeIcons.handHoldingHeart, color: Theme.of(context).colorScheme.primary, size: 24),
+            const SizedBox(width: 12),
+            const Text(
+              'ميثاق الأمانة',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+              ),
+              child: const Text(
+                'قال الله تعالى:\n{ وَالَّذِينَ لَا يَشْهَدُونَ الزُّورَ وَإِذَا مَرُّوا بِاللَّغْوِ مَرُّوا كِرَامًا }',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  
+                  height: 1.8,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'أخي الكريم، تقييمك لهذا المنتج أمانة ستُسأل عنها أمام الله.',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'يرجى التقييم بأمانة وعدل، وعن تجربة حقيقية للمنتج، لضمان مصلحة الجميع.',
+              style: TextStyle(fontSize: 14, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Colors.green[700],
+              ),
+              child: const Text('اللهم إني بلغت.. أتعهد بالصدق', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   @override

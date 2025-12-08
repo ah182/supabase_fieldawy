@@ -86,6 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     // --- لا يوجد أي تغييرات هنا في واجهة المستخدم ---
     final size = MediaQuery.of(context).size;
     final textTheme = Theme.of(context).textTheme;
+    // ignore: unused_local_variable
     final colorScheme = Theme.of(context).colorScheme;
 
     bool isSmallScreen = size.width < 600;
@@ -158,29 +159,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     SizedBox(height: size.height * 0.05),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                          horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.20),
-                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.black.withOpacity(0.25), // خلفية داكنة شفافة
+                        borderRadius: BorderRadius.circular(30), // حواف دائرية بالكامل
                         border: Border.all(
-                          color: colorScheme.primary.withOpacity(0.5),
+                          color: Colors.white.withOpacity(0.15), // حدود خفيفة
                           width: 1,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.people_outline,
-                            size: 16,
-                            color: Colors.white,
+                          // دائرة خلف الأيقونة لإبرازها
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.verified_rounded, // أيقونة التوثيق/الجودة
+                              size: 22,
+                              color: Color(0xFF89CFF0), // لون بيبي بلو
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'secureLogin'.tr(),
-                            style: textTheme.bodySmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(width: 12),
+                          // النص
+                          Flexible(
+                            child: Text(
+                              'secureLogin'.tr(),
+                              textAlign: TextAlign.center, // توسيط النص
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13, // تصغير حجم الخط
+                                height: 1.3, // مسافة مناسبة بين السطرين
+                                letterSpacing: 0.5, // تباعد خفيف بين الحروف
+                                shadows: [
+                                  const Shadow(
+                                    offset: Offset(0, 1),
+                                    blurRadius: 2.0,
+                                    color: Color.fromARGB(150, 0, 0, 0),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],

@@ -251,6 +251,7 @@ class OCRProductModel {
       imageUrl: imageUrl,
       createdAt: createdAt,
       selectedPackage: package,
+      distributorId: distributorId,
     );
   }
 }
