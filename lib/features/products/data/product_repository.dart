@@ -156,6 +156,7 @@ class ProductRepository {
                       : null,
                   selectedPackage: distributorProductRow['package'] as String?,
                   distributorId: distributorProductRow['distributor_name'] as String?,
+                  distributorUuid: distributorProductRow['distributor_id'] as String?,
                   views: (distributorProductRow['views'] as int?) ?? 0,
                 ));
               }
@@ -226,6 +227,7 @@ class ProductRepository {
                         ? DateTime.tryParse(row['price_updated_at'])
                         : null,
                     distributorId: row['distributor_name'] as String?,
+                    distributorUuid: row['distributor_id'] as String?,
                     views: (row['views'] as int?) ?? 0,
                   ));
                 }
@@ -272,6 +274,7 @@ class ProductRepository {
                     : null,
                 selectedPackage: row['package'] as String?,
                 distributorId: row['distributor_name'] as String?,
+                distributorUuid: row['distributor_id'] as String?,
                 views: (row['views'] as int?) ?? 0,
               );
             }
@@ -348,6 +351,7 @@ class ProductRepository {
                     ? DateTime.tryParse(row['price_updated_at'])
                     : null,
                 distributorId: distributorName,
+                distributorUuid: row['distributor_id'] as String?,
                 createdAt: row['created_at'] != null
                     ? DateTime.tryParse(row['created_at'].toString())
                     : null,
@@ -416,7 +420,7 @@ class ProductRepository {
 
     // استخدام Stale-While-Revalidate للحصول على استجابة سريعة
     return await _cache.staleWhileRevalidate<List<ProductModel>>(
-      key: 'all_distributor_products',
+      key: 'all_distributor_products_v2',
       duration: CacheDurations.medium, // 30 دقيقة
       staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
       fetchFromNetwork: _fetchAllDistributorProductsFromServer,
@@ -460,6 +464,7 @@ class ProductRepository {
                   ? DateTime.tryParse(data['priceUpdatedAt'])
                   : null,
               distributorId: data['distributorId']?.toString(),
+              distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
               views: (data['views'] as num?)?.toInt() ?? 0,
             );
           } else {
@@ -472,6 +477,7 @@ class ProductRepository {
                   : null,
               selectedPackage: data['selectedPackage']?.toString(),
               distributorId: data['distributorId']?.toString(),
+              distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
               views: (data['views'] as num?)?.toInt() ?? 0,
             );
           }
@@ -503,7 +509,7 @@ class ProductRepository {
       final distProductsResponse = await _supabase
           .from('distributor_products')
           .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name, views');
+              'product_id, price, old_price, price_updated_at, package, distributor_name, distributor_id, views');
 
       if (distProductsResponse.isNotEmpty) {
         final productIds = distProductsResponse
@@ -531,6 +537,7 @@ class ProductRepository {
                       : null,
                   selectedPackage: row['package'] as String?,
                   distributorId: row['distributor_name'] as String?,
+                  distributorUuid: row['distributor_id'] as String?,
                   views: (row['views'] as int?) ?? 0,
                 );
               }
@@ -548,7 +555,7 @@ class ProductRepository {
       final distOcrProductsResponse = await _supabase
           .from('distributor_ocr_products')
           .select(
-              'ocr_product_id, price, old_price, price_updated_at, distributor_name, views');
+              'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views');
 
       if (distOcrProductsResponse.isNotEmpty) {
         final ocrProductIds = distOcrProductsResponse
@@ -584,6 +591,7 @@ class ProductRepository {
                       ? DateTime.tryParse(row['price_updated_at'])
                       : null,
                   distributorId: row['distributor_name'] as String?,
+                  distributorUuid: row['distributor_id'] as String?,
                   views: (row['views'] as int?) ?? 0,
                 );
               }
@@ -1004,6 +1012,7 @@ class ProductRepository {
                 imageUrl: imageUrl,
                 price: (distRow['price'] as num?)?.toDouble(),
                 distributorId: ocrProduct['distributor_name']?.toString(),
+                distributorUuid: distributorId,
                 createdAt: distRow['created_at'] != null
                     ? DateTime.tryParse(distRow['created_at'].toString())
                     : null,

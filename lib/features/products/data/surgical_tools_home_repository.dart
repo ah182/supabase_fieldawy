@@ -13,7 +13,7 @@ class SurgicalToolsHomeRepository {
   Future<List<ProductModel>> getAllSurgicalTools() async {
     // استخدام Cache-First للأدوات الجراحية (تتغير ببطء)
     return await _cache.cacheFirst<List<ProductModel>>(
-      key: 'all_surgical_tools_home',
+      key: 'all_surgical_tools_home_v3',
       duration: CacheDurations.long, // ساعتين
       fetchFromNetwork: _fetchAllSurgicalTools,
       fromCache: (data) {
@@ -33,6 +33,7 @@ class SurgicalToolsHomeRepository {
           price,
           status,
           distributor_name,
+          distributor_id,
           created_at,
           views,
           surgical_tools (
@@ -62,6 +63,7 @@ class SurgicalToolsHomeRepository {
               : '',
           price: (row['price'] as num?)?.toDouble(),
           distributorId: row['distributor_name']?.toString(),
+          distributorUuid: row['distributor_id']?.toString(),
           createdAt: row['created_at'] != null
               ? DateTime.tryParse(row['created_at'].toString())
               : null,

@@ -290,6 +290,7 @@
       "delivery": "Order Delivery",
       "both": "Both Methods",
       "coverage_areas": "Coverage Areas",
+      "location": "Location",
       "whatsapp": "WhatsApp",
       "not_available": "Not Available",
       "phone_not_available": "Phone number is not available for this distributor",
@@ -372,6 +373,9 @@
         "package": "Package",
         "price": "Price",
         "distributor": "Distributor"
+      },
+      "card": {
+        "badge": "Offer"
       }
   },
     "books_feature": {
@@ -507,6 +511,7 @@
         "price_error": "Failed to update price. Please try again.",
         "invalid_price": "Please enter a valid price",
         "error_occurred": "Error: {error}",
+        "distributor_only_feature": "This feature is available for distributors only.",
         "add_options": {
             "expire_soon": "Add Expiring Drugs",
             "expire_desc": "Add drugs nearing expiration",

@@ -15,6 +15,7 @@ import "package:fieldawy_store/features/distributors/presentation/screens/distri
 import "package:fieldawy_store/features/orders/presentation/screens/distributor_order_details_screen.dart";
 import "package:fieldawy_store/features/orders/application/orders_provider.dart";
 import "package:fieldawy_store/features/products/data/product_repository.dart";
+import "package:fieldawy_store/widgets/distributor_details_sheet.dart";
 import "package:flutter/material.dart";
 import "package:flutter_hooks/flutter_hooks.dart";
 import "package:hooks_riverpod/hooks_riverpod.dart";
@@ -82,6 +83,7 @@ final distributorProductsProvider =
           oldPrice: (d['oldPrice'] as num?)?.toDouble(),
           priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
           distributorId: d['distributorId']?.toString(),
+          distributorUuid: distributorId,
         );
       } else {
         // Regular product - use fromMap for snake_case fields
@@ -91,6 +93,7 @@ final distributorProductsProvider =
           priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
           selectedPackage: d['selectedPackage']?.toString(),
           distributorId: d['distributorId']?.toString(),
+          distributorUuid: distributorId,
         );
       }
     } catch (e) {
@@ -681,29 +684,49 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      // Badge اسم الموزع
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withAlpha(77),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                      // Badge اسم الموزع والأيقونة
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => DistributorDetailsSheet.show(context, _distributorId),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.location_on,
+                                size: 20,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          _distributorName,
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withAlpha(77),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              _distributorName,
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

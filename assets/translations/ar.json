@@ -181,7 +181,7 @@
         "tabs": {
             "home": "الرئيسية",
             "price_action": "تحديث الأسعار",
-            "expire_soon": "قرب الانتهاء",
+            "expire_soon": "قريب الانتهاء",
             "surgical": "جراحة وتشخيص",
             "offers": "العروض",
             "courses": "كورسات",
@@ -288,6 +288,7 @@
         "delivery": "توصيل طلبات",
         "both": "كلا الطريقتين",
         "coverage_areas": "مناطق التغطية",
+        "location": "الموقع",
         "whatsapp": "واتساب",
         "not_available": "غير متوفر",
         "phone_not_available": "رقم الهاتف غير متوفر لهذا الموزع",
@@ -766,6 +767,9 @@
             "package": "العبوة",
             "price": "السعر",
             "distributor": "الموزع"
+        },
+        "card": {
+            "badge": "عرض"
         }
     },
     "settings_feature": {
@@ -925,6 +929,7 @@
         "price_error": "فشل تحديث السعر. يرجى المحاولة مرة أخرى.",
         "invalid_price": "الرجاء إدخال سعر صحيح",
         "error_occurred": "حدث خطأ: {error}",
+        "distributor_only_feature": "هذه الميزة متاحة للموزعين فقط.",
         "add_options": {
             "expire_soon": "إضافة أدوية قريبة الانتهاء",
             "expire_desc": "أضف الأدوية التي قاربت صلاحيتها على الانتهاء",

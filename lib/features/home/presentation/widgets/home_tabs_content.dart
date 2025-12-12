@@ -1090,7 +1090,7 @@ class OffersTab extends ConsumerWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'offers.dialog.special_offer'.tr(),
+                        'offers.card.badge'.tr(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,

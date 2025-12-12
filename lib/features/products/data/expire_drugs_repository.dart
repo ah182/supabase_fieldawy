@@ -43,7 +43,7 @@ class ExpireDrugsRepository {
   Future<List<ExpireDrugItem>> getAllExpireDrugs() async {
     // استخدام Stale-While-Revalidate (البيانات تتغير بشكل متوسط)
     return await _cache.staleWhileRevalidate<List<ExpireDrugItem>>(
-      key: 'all_expire_drugs',
+      key: 'all_expire_drugs_v2',
       duration: CacheDurations.medium, // 30 دقيقة
       staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
       fetchFromNetwork: _fetchAllExpireDrugs,
@@ -117,6 +117,7 @@ class ExpireDrugsRepository {
               price: (row['price'] as num?)?.toDouble(),
               selectedPackage: row['package'] as String?,
               distributorId: row['distributor_name'] as String?,
+              distributorUuid: row['distributor_id'] as String?,
               views: (row['views'] as int?) ?? 0,
             ),
             expirationDate: expirationDate,
@@ -146,6 +147,7 @@ class ExpireDrugsRepository {
               price: (row['price'] as num?)?.toDouble(),
               selectedPackage: selectedPackage,
               distributorId: row['distributor_name'] as String?,
+              distributorUuid: row['distributor_id'] as String?,
               views: (row['views'] as int?) ?? 0,
             ),
             expirationDate: expirationDate,
@@ -242,6 +244,7 @@ class ExpireDrugsRepository {
               price: (row['price'] as num?)?.toDouble(),
               selectedPackage: row['package'] as String?,
               distributorId: row['distributor_name'] as String?,
+              distributorUuid: row['distributor_id'] as String?,
               views: (row['views'] as int?) ?? 0,
             ),
             expirationDate: expirationDate,
@@ -271,6 +274,7 @@ class ExpireDrugsRepository {
               price: (row['price'] as num?)?.toDouble(),
               selectedPackage: selectedPackage,
               distributorId: row['distributor_name'] as String?,
+              distributorUuid: row['distributor_id'] as String?,
               views: (row['views'] as int?) ?? 0,
             ),
             expirationDate: expirationDate,

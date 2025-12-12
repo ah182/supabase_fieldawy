@@ -12,7 +12,7 @@ class JobOffersRepository {
   Future<List<JobOffer>> getAllJobOffers() async {
     // استخدام Cache-First للوظائف (تتغير ببطء)
     return await _cache.cacheFirst<List<JobOffer>>(
-      key: 'all_job_offers',
+      key: 'all_job_offers_v2',
       duration: CacheDurations.long, // ساعتين
       fetchFromNetwork: _fetchAllJobOffers,
       fromCache: (data) {
@@ -24,13 +24,54 @@ class JobOffersRepository {
 
   Future<List<JobOffer>> _fetchAllJobOffers() async {
     try {
-      final response = await _supabase.rpc('get_all_job_offers');
-      
-      if (response == null) return [];
+      // 1. Fetch raw job offers
+      final response = await _supabase
+          .from('job_offers')
+          .select()
+          .order('created_at', ascending: false);
       
       final List<dynamic> data = response as List<dynamic>;
-      _cache.set('all_job_offers', data, duration: CacheDurations.long);
-      return data.map((json) => JobOffer.fromJson(json as Map<String, dynamic>)).toList();
+      
+      // 2. Extract User IDs
+      final userIds = data
+          .map((json) => json['user_id']?.toString())
+          .where((id) => id != null)
+          .toSet()
+          .toList();
+      
+      // 3. Fetch User Details from public.users
+      Map<String, Map<String, dynamic>> userMap = {};
+      if (userIds.isNotEmpty) {
+        // Cast to List<Object> to satisfy inFilter
+        final usersResponse = await _supabase
+            .from('users')
+            .select('id, display_name, photo_url')
+            .inFilter('id', userIds.cast<Object>());
+            
+        for (var user in usersResponse) {
+          userMap[user['id'].toString()] = user;
+        }
+      }
+      
+      // 4. Map to JobOffer with user details
+      final jobOffers = data.map((json) {
+        final userId = json['user_id']?.toString();
+        final userData = userId != null ? userMap[userId] : null;
+        
+        final flattened = Map<String, dynamic>.from(json);
+        if (userData != null) {
+          flattened['user_name'] = userData['display_name'];
+          flattened['user_photo'] = userData['photo_url'];
+        } else {
+           flattened['user_name'] = 'مستخدم';
+        }
+        return JobOffer.fromJson(flattened);
+      }).toList();
+
+      final jsonList = jobOffers.map((j) => j.toJson()).toList();
+      _cache.set('all_job_offers_v2', jsonList, duration: CacheDurations.long);
+      
+      return jobOffers;
     } catch (e) {
       throw Exception('Failed to fetch job offers: $e');
     }
@@ -64,8 +105,29 @@ class JobOffersRepository {
       if (response == null) return [];
       
       final List<dynamic> data = response as List<dynamic>;
-      _cache.set('my_job_offers_$userId', data, duration: CacheDurations.medium);
-      return data.map((json) => JobOffer.fromJson(json as Map<String, dynamic>)).toList();
+      
+      // Fetch User Details (Current User)
+      Map<String, dynamic>? userData;
+      final userResponse = await _supabase
+          .from('users')
+          .select('display_name, photo_url')
+          .eq('id', userId)
+          .maybeSingle();
+          
+      userData = userResponse;
+
+      final jobOffers = data.map((json) {
+        final flattened = Map<String, dynamic>.from(json);
+        if (userData != null) {
+          flattened['user_name'] = userData['display_name'];
+          flattened['user_photo'] = userData['photo_url'];
+        }
+        return JobOffer.fromJson(flattened);
+      }).toList();
+
+      final jsonList = jobOffers.map((j) => j.toJson()).toList();
+      _cache.set('my_job_offers_$userId', jsonList, duration: CacheDurations.medium);
+      return jobOffers;
     } catch (e) {
       throw Exception('Failed to fetch my job offers: $e');
     }
@@ -132,7 +194,7 @@ class JobOffersRepository {
 
   /// حذف كاش الوظائف
   void _invalidateJobOffersCache() {
-    _cache.invalidate('all_job_offers');
+    _cache.invalidate('all_job_offers_v2');
     _cache.invalidateWithPrefix('my_job_offers_');
     print('🧹 Job offers cache invalidated');
   }

@@ -2,6 +2,7 @@ class JobOffer {
   final String id;
   final String userId;
   final String? userName;
+  final String? userPhotoUrl;
   final String title;
   final String description;
   final String phone;
@@ -14,6 +15,7 @@ class JobOffer {
     required this.id,
     required this.userId,
     this.userName,
+    this.userPhotoUrl,
     required this.title,
     required this.description,
     required this.phone,
@@ -28,6 +30,7 @@ class JobOffer {
       id: json['id'] as String,
       userId: json['user_id'] as String,
       userName: json['user_name'] as String?,
+      userPhotoUrl: json['user_photo'] as String?,
       title: json['title'] as String,
       description: json['description'] as String,
       phone: json['phone'] as String,
@@ -43,6 +46,7 @@ class JobOffer {
       'id': id,
       'user_id': userId,
       'user_name': userName,
+      'user_photo': userPhotoUrl,
       'title': title,
       'description': description,
       'phone': phone,
@@ -57,6 +61,7 @@ class JobOffer {
     String? id,
     String? userId,
     String? userName,
+    String? userPhotoUrl,
     String? title,
     String? description,
     String? phone,
@@ -69,6 +74,7 @@ class JobOffer {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
+      userPhotoUrl: userPhotoUrl ?? this.userPhotoUrl,
       title: title ?? this.title,
       description: description ?? this.description,
       phone: phone ?? this.phone,

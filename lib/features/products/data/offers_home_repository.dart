@@ -36,7 +36,7 @@ class OffersHomeRepository {
   Future<List<OfferItem>> getAllOffers() async {
     // استخدام Cache-First للعروض (تتغير بشكل متوسط)
     return await _cache.cacheFirst<List<OfferItem>>(
-      key: 'all_offers_home',
+      key: 'all_offers_home_v2',
       duration: CacheDurations.medium, // 30 دقيقة
       fetchFromNetwork: _fetchAllOffers,
       fromCache: (data) {
@@ -113,6 +113,7 @@ class OffersHomeRepository {
                   : '',
               price: (row['price'] as num?)?.toDouble(),
               distributorId: distributorName,
+              distributorUuid: userId,
               createdAt: row['created_at'] != null
                   ? DateTime.tryParse(row['created_at'].toString())
                   : null,
@@ -141,6 +142,7 @@ class OffersHomeRepository {
               price: (row['price'] as num?)?.toDouble(),
               selectedPackage: row['package'] as String?,
               distributorId: distributorName,
+              distributorUuid: userId,
               description: offerDescription,
               views: (row['views'] as int?) ?? 0,
             ),
@@ -152,14 +154,14 @@ class OffersHomeRepository {
 
     // Cache as JSON
     final jsonList = offers.map((o) => o.toJson()).toList();
-    _cache.set('all_offers_home', jsonList, duration: CacheDurations.medium);
+    _cache.set('all_offers_home_v2', jsonList, duration: CacheDurations.medium);
 
     return offers;
   }
 
   /// حذف كاش العروض
   void invalidateOffersCache() {
-    _cache.invalidate('all_offers_home');
+    _cache.invalidate('all_offers_home_v2');
     print('🧹 Offers cache invalidated');
   }
 }

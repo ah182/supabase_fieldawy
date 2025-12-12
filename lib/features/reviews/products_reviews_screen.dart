@@ -757,6 +757,27 @@ class ProductReviewCard extends ConsumerWidget {
                     label: 'reviews_feature.comments_count'.tr(namedArgs: {'count': request.commentsCount.toString()}),
                     color: colorScheme.secondary,
                   ),
+                  
+                  // زر الحذف (فقط لصاحب الطلب)
+                  if (isOwner) ...[
+                    const Spacer(),
+                    InkWell(
+                      onTap: () => _confirmDeleteRequest(context, ref),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -902,17 +923,6 @@ class ProductReviewCard extends ConsumerWidget {
                       color: Colors.grey[600],
                     ),
                   ),
-                  // زر الحذف (فقط لصاحب الطلب)
-                  if (isOwner) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      color: Colors.red,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => _confirmDeleteRequest(context, ref),
-                    ),
-                  ],
                 ],
               ),
             ],
@@ -2022,14 +2032,21 @@ class ReviewDetailCard extends ConsumerWidget {
                 ),
                 // زر الحذف (فقط لصاحب التعليق)
                 if (isOwner) ...[
-                  const SizedBox(width: 13),
-                  TextButton.icon(
-                    onPressed: () => _confirmDeleteReview(context, ref),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text(''),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _confirmDeleteReview(context, ref),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
                 ] else ...[

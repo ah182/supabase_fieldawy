@@ -7,6 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class JobOffersScreen extends ConsumerStatefulWidget {
   const JobOffersScreen({super.key});
@@ -122,11 +128,12 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                expandedHeight: 200,
+                expandedHeight: 140,
                 floating: false,
                 pinned: true,
                 elevation: 0,
                 backgroundColor: theme.colorScheme.surface,
+                iconTheme: const IconThemeData(color: Colors.white),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: BoxDecoration(
@@ -134,17 +141,17 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          theme.colorScheme.primary.withOpacity(0.8),
                           theme.colorScheme.primary,
+                          theme.colorScheme.tertiary,
                         ],
                       ),
                     ),
                     child: SafeArea(
                       child: Padding(
-                        padding: const EdgeInsets.all(24.0),
+                        padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Row(
                               children: [
@@ -152,10 +159,14 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.1),
+                                      width: 1,
+                                    ),
                                   ),
                                   child: const Icon(
-                                    Icons.work_outline,
+                                    Icons.work_outline_rounded,
                                     color: Colors.white,
                                     size: 32,
                                   ),
@@ -163,8 +174,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'job_offers_feature.title'.tr(),
@@ -172,14 +182,15 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                             ?.copyWith(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
+                                          height: 1.2,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Find your next opportunity',
+                                        'Find the best opportunities',
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(
-                                          color: Colors.white.withOpacity(0.9),
+                                          color: Colors.white.withOpacity(0.85),
                                         ),
                                       ),
                                     ],
@@ -196,7 +207,8 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                 title: innerBoxIsScrolled
                     ? Text(
                         'job_offers_feature.title'.tr(),
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       )
@@ -207,69 +219,60 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
           body: Column(
             children: [
               // Search bar
-              Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    if (_ghostText.isNotEmpty)
-                      Positioned.fill(
-                        child: Container(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.only(left: 52, right: 12),
-                          child: Text(
-                            _ghostText,
-                            style: TextStyle(
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.3),
-                              fontSize: 16,
+              Transform.translate(
+                offset: const Offset(0, -10),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      if (_ghostText.isNotEmpty)
+                        Positioned.fill(
+                          child: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 52, right: 12),
+                            child: Text(
+                              _ghostText,
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface.withOpacity(0.3),
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'job_offers_feature.search_hint'.tr(),
-                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                        prefixIcon: Container(
-                          padding: const EdgeInsets.all(12),
-                          child: Icon(
+                      TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        decoration: InputDecoration(
+                          hintText: 'job_offers_feature.search_hint'.tr(),
+                          hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
                             Icons.search_rounded,
                             color: theme.colorScheme.primary,
                             size: 24,
                           ),
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (_fullSuggestion.isNotEmpty)
-                                    Container(
-                                      margin: const EdgeInsets.only(right: 4),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            theme.colorScheme.primaryContainer,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: IconButton(
-                                        icon: Icon(
-                                          Icons.keyboard_tab_rounded,
-                                          color: theme.colorScheme.primary,
-                                        ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_fullSuggestion.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(
+                                            Icons.keyboard_tab_rounded),
+                                        color: theme.colorScheme.primary,
+                                        tooltip: 'Accept suggestion',
                                         onPressed: () {
                                           _searchController.text =
                                               _fullSuggestion;
@@ -284,75 +287,65 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                             _fullSuggestion = '';
                                           });
                                         },
-                                        tooltip: 'Accept suggestion',
                                       ),
+                                    IconButton(
+                                      icon: const Icon(Icons.clear_rounded),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                          _ghostText = '';
+                                          _fullSuggestion = '';
+                                        });
+                                      },
                                     ),
-                                  IconButton(
-                                    icon: const Icon(Icons.clear_rounded),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _searchQuery = '';
-                                        _ghostText = '';
-                                        _fullSuggestion = '';
-                                      });
-                                    },
-                                  ),
-                                ],
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+                                  ],
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                         ),
-                        filled: true,
-                        fillColor:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                          _debounce?.cancel();
+                          _debounce = Timer(const Duration(milliseconds: 300), () {
+                            _updateSuggestions(value);
+                          });
+                        },
+                        onTap: () {
+                          if (_searchController.text.isNotEmpty) {
+                            _updateSuggestions(_searchController.text);
+                          }
+                        },
                       ),
-                      style: theme.textTheme.bodyLarge,
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
-
-                        _debounce?.cancel();
-                        _debounce =
-                            Timer(const Duration(milliseconds: 300), () {
-                          _updateSuggestions(value);
-                        });
-                      },
-                      onTap: () {
-                        if (_searchController.text.isNotEmpty) {
-                          _updateSuggestions(_searchController.text);
-                        }
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
               // Tabs
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(4),
+                height: 48,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: TabBar(
                   controller: _tabController,
                   indicator: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        theme.colorScheme.primary,
-                        theme.colorScheme.primary.withOpacity(0.8),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
                         color: theme.colorScheme.primary.withOpacity(0.3),
@@ -363,38 +356,14 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
                   labelColor: Colors.white,
-                  unselectedLabelColor:
-                      theme.colorScheme.onSurface.withOpacity(0.6),
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
+                  unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                   dividerColor: Colors.transparent,
+                  overlayColor: WidgetStateProperty.all(Colors.transparent),
+                  padding: const EdgeInsets.all(4),
                   tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.explore_outlined, size: 18),
-                          const SizedBox(width: 8),
-                          Text('job_offers_feature.available_jobs'.tr()),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.business_center_outlined, size: 18),
-                          const SizedBox(width: 8),
-                          Text('job_offers_feature.my_jobs'.tr()),
-                        ],
-                      ),
-                    ),
+                    Tab(text: 'job_offers_feature.available_jobs'.tr()),
+                    Tab(text: 'job_offers_feature.my_jobs'.tr()),
                   ],
                 ),
               ),
@@ -413,48 +382,26 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
             ],
           ),
         ),
-        floatingActionButton: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                theme.colorScheme.primary,
-                theme.colorScheme.primary.withOpacity(0.8),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary.withOpacity(0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const AddJobOfferScreen(),
               ),
-            ],
-          ),
-          child: FloatingActionButton.extended(
-            onPressed: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const AddJobOfferScreen(),
-                ),
-              );
+            );
 
-              if (result == true && mounted) {
-                ref
-                    .read(allJobOffersNotifierProvider.notifier)
-                    .refreshAllJobs();
-                ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
-              }
-            },
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            icon: const Icon(Icons.add_rounded, size: 24),
-            label: Text(
-              'job_offers_feature.add_job'.tr(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+            if (result == true && mounted) {
+              ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
+              ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+            }
+          },
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          icon: const Icon(Icons.add_rounded),
+          label: Text(
+            'job_offers_feature.add_job'.tr(),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -476,77 +423,54 @@ class _AvailableJobsTab extends ConsumerWidget {
       data: (jobs) {
         final filteredJobs = searchQuery.isEmpty
             ? jobs
-            : jobs
-                .where((job) =>
-                    job.title
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()) ||
-                    job.description
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()) ||
+            : jobs.where((job) {
+                final query = searchQuery.toLowerCase();
+                return job.title.toLowerCase().contains(query) ||
+                    job.description.toLowerCase().contains(query) ||
                     (job.userName != null &&
-                        job.userName!
-                            .toLowerCase()
-                            .contains(searchQuery.toLowerCase())))
-                .toList();
+                        job.userName!.toLowerCase().contains(query));
+              }).toList();
 
         if (filteredJobs.isEmpty) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primaryContainer.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      searchQuery.isNotEmpty
-                          ? Icons.search_off_rounded
-                          : Icons.work_off_outlined,
-                      size: 80,
-                      color: theme.colorScheme.primary.withOpacity(0.6),
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 24),
-                  Text(
+                  child: Icon(
                     searchQuery.isNotEmpty
-                        ? 'job_offers_feature.no_jobs_found'.tr()
-                        : 'job_offers_feature.no_jobs_available'.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
+                        ? Icons.search_off_rounded
+                        : Icons.work_off_outlined,
+                    size: 64,
+                    color: theme.colorScheme.primary.withOpacity(0.6),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    searchQuery.isNotEmpty
-                        ? 'Try different keywords'
-                        : 'job_offers_feature.no_jobs_desc'.tr(),
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  searchQuery.isNotEmpty
+                      ? 'job_offers_feature.no_jobs_found'.tr()
+                      : 'job_offers_feature.no_jobs_available'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         }
 
         return RefreshIndicator(
           onRefresh: () async {
-            await ref
-                .read(allJobOffersNotifierProvider.notifier)
-                .refreshAllJobs();
+            await ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
@@ -560,49 +484,12 @@ class _AvailableJobsTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.error_outline,
-                    size: 60, color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'job_offers_feature.error_occurred'.tr(),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () {
-                  ref
-                      .read(allJobOffersNotifierProvider.notifier)
-                      .refreshAllJobs();
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text('job_offers_feature.retry'.tr()),
-              ),
-            ],
-          ),
-        ),
-      ),
+      error: (error, stack) => Center(child: Text('Error: $error')),
     );
   }
 
-  void _showJobDetailsDialog(
-      BuildContext context, JobOffer job, WidgetRef ref) {
+  void _showJobDetailsDialog(BuildContext context, JobOffer job, WidgetRef ref) {
     ref.read(allJobOffersNotifierProvider.notifier).incrementViews(job.id);
-
     showDialog(
       context: context,
       builder: (context) => _JobDetailsDialog(job: job),
@@ -624,97 +511,57 @@ class _MyJobOffersTab extends ConsumerWidget {
       data: (jobs) {
         final filteredJobs = searchQuery.isEmpty
             ? jobs
-            : jobs
-                .where((job) =>
-                    job.title
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()) ||
-                    job.description
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()))
-                .toList();
+            : jobs.where((job) {
+                final query = searchQuery.toLowerCase();
+                return job.title.toLowerCase().contains(query) ||
+                    job.description.toLowerCase().contains(query);
+              }).toList();
 
         if (filteredJobs.isEmpty) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primaryContainer.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      searchQuery.isNotEmpty
-                          ? Icons.search_off_rounded
-                          : Icons.post_add_outlined,
-                      size: 80,
-                      color: theme.colorScheme.primary.withOpacity(0.6),
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.post_add_rounded,
+                  size: 64,
+                  color: theme.colorScheme.outline,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'job_offers_feature.no_my_jobs'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    searchQuery.isNotEmpty
-                        ? 'job_offers_feature.no_jobs_found'.tr()
-                        : 'job_offers_feature.no_my_jobs'.tr(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
+                ),
+                if (searchQuery.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AddJobOfferScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text('job_offers_feature.add_first_job'.tr()),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    searchQuery.isNotEmpty
-                        ? 'Try different keywords'
-                        : 'job_offers_feature.no_my_jobs_desc'.tr(),
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (searchQuery.isEmpty) ...[
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const AddJobOfferScreen(),
-                          ),
-                        );
-
-                        if (result == true) {
-                          ref
-                              .read(myJobOffersNotifierProvider.notifier)
-                              .refreshMyJobs();
-                        }
-                      },
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text('job_offers_feature.add_first_job'.tr()),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 16),
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
           );
         }
 
         return RefreshIndicator(
           onRefresh: () async {
-            await ref
-                .read(myJobOffersNotifierProvider.notifier)
-                .refreshMyJobs();
+            await ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
@@ -727,11 +574,8 @@ class _MyJobOffersTab extends ConsumerWidget {
                       builder: (context) => AddJobOfferScreen(jobToEdit: job),
                     ),
                   );
-
                   if (result == true) {
-                    ref
-                        .read(myJobOffersNotifierProvider.notifier)
-                        .refreshMyJobs();
+                    ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
                   }
                 },
                 onDelete: () async {
@@ -743,19 +587,8 @@ class _MyJobOffersTab extends ConsumerWidget {
                     if (success && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.check_circle,
-                                  color: Colors.white),
-                              const SizedBox(width: 12),
-                              Text('job_offers_feature.delete_success'.tr()),
-                            ],
-                          ),
-                          backgroundColor: Colors.green[600],
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          content: Text('job_offers_feature.delete_success'.tr()),
+                          backgroundColor: Colors.green,
                         ),
                       );
                     }
@@ -767,65 +600,15 @@ class _MyJobOffersTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.error_outline,
-                    size: 60, color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'job_offers_feature.error_occurred'.tr(),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () {
-                  ref
-                      .read(myJobOffersNotifierProvider.notifier)
-                      .refreshMyJobs();
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text('job_offers_feature.retry'.tr()),
-              ),
-            ],
-          ),
-        ),
-      ),
+      error: (error, stack) => Center(child: Text('Error: $error')),
     );
   }
 
   Future<bool?> _showDeleteDialog(BuildContext context) {
-    
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.delete_outline, color: Colors.red),
-            ),
-            const SizedBox(width: 12),
-            Text('job_offers_feature.confirm_delete_title'.tr()),
-          ],
-        ),
+        title: Text('job_offers_feature.confirm_delete_title'.tr()),
         content: Text('job_offers_feature.confirm_delete_msg'.tr()),
         actions: [
           TextButton(
@@ -834,9 +617,7 @@ class _MyJobOffersTab extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: Text('job_offers_feature.delete'.tr()),
           ),
         ],
@@ -845,7 +626,7 @@ class _MyJobOffersTab extends ConsumerWidget {
   }
 }
 
-class _JobOfferCard extends ConsumerStatefulWidget {
+class _JobOfferCard extends ConsumerWidget {
   const _JobOfferCard({
     required this.job,
     this.showActions = false,
@@ -861,102 +642,102 @@ class _JobOfferCard extends ConsumerStatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  ConsumerState<_JobOfferCard> createState() => _JobOfferCardState();
-}
-
-class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
-        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primaryContainer,
-                            theme.colorScheme.primaryContainer.withOpacity(0.7),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.work_outline_rounded,
-                        color: theme.colorScheme.primary,
-                        size: 28,
+                    GestureDetector(
+                      onTap: () => _showUserDetails(context, ref, job.userId),
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.transparent,
+                        backgroundImage: job.userPhotoUrl != null 
+                            ? CachedNetworkImageProvider(job.userPhotoUrl!) 
+                            : null,
+                        child: job.userPhotoUrl == null 
+                            ? Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  Icons.work_rounded,
+                                  color: theme.colorScheme.primary,
+                                  size: 28,
+                                ),
+                              )
+                            : null,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.job.title,
-                            style: theme.textTheme.titleLarge?.copyWith(
+                            job.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
+                              height: 1.2,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Icon(
-                                Icons.schedule_rounded,
+                                Icons.access_time_rounded,
                                 size: 14,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.5),
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                _formatDate(widget.job.createdAt),
+                                _formatDate(job.createdAt),
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Icon(
                                 Icons.visibility_outlined,
                                 size: 14,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.5),
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${widget.job.viewsCount}',
+                                '${job.viewsCount}',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -966,106 +747,72 @@ class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
-                  widget.job.description,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  job.description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.8),
                     height: 1.5,
                   ),
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF25D366).withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                    if (!showActions) ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onTap,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _openWhatsApp(widget.job.phone),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.chat_rounded,
-                                      size: 20, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'job_offers_feature.contact_whatsapp'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (widget.showActions) ...[
-                  const SizedBox(height: 12),
-                  Divider(color: theme.colorScheme.outline.withOpacity(0.2)),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton.icon(
-                        onPressed: widget.onEdit,
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: Text('job_offers_feature.edit'.tr()),
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton.icon(
-                        onPressed: widget.onDelete,
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: Text('job_offers_feature.delete'.tr()),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          label: Text(
+                            'job_offers_feature.job_details'.tr(),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                ],
+                    if (showActions) ...[
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton.filledTonal(
+                              onPressed: onEdit,
+                              icon: const Icon(Icons.edit_rounded, size: 20),
+                              style: IconButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primaryContainer,
+                                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filledTonal(
+                              onPressed: onDelete,
+                              icon: const Icon(Icons.delete_rounded, size: 20),
+                              style: IconButton.styleFrom(
+                                backgroundColor: theme.colorScheme.errorContainer,
+                                foregroundColor: theme.colorScheme.onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _openWhatsApp(String phone) async {
-    final message = Uri.encodeComponent('whatsappInquiry'.tr());
-    final url = Uri.parse('https://wa.me/$phone?text=$message');
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
   }
 
   String _formatDate(DateTime date) {
@@ -1084,43 +831,63 @@ class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
   }
 }
 
-class _JobDetailsDialog extends StatelessWidget {
+class _JobDetailsDialog extends ConsumerWidget {
   const _JobDetailsDialog({required this.job});
 
   final JobOffer job;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primaryContainer,
-                            theme.colorScheme.primaryContainer.withOpacity(0.7),
-                          ],
+                    GestureDetector(
+                      onTap: () => _showUserDetails(context, ref, job.userId),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.work_outline_rounded,
-                        color: theme.colorScheme.primary,
-                        size: 32,
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.transparent,
+                          backgroundImage: job.userPhotoUrl != null 
+                              ? CachedNetworkImageProvider(job.userPhotoUrl!) 
+                              : null,
+                          child: job.userPhotoUrl == null 
+                              ? const Icon(Icons.work_rounded, color: Colors.white, size: 28) 
+                              : null,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1129,30 +896,18 @@ class _JobDetailsDialog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'job_offers_feature.job_details'.tr(),
-                            style: theme.textTheme.titleLarge?.copyWith(
+                            job.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
+                              fontSize: 18,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.schedule_rounded,
-                                size: 12,
-                                color: theme.colorScheme.onSurface
-                                    .withOpacity(0.5),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDate(job.createdAt),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            DateFormat('dd MMM yyyy').format(job.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -1170,203 +925,108 @@ class _JobDetailsDialog extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              ),
+              
+              // Body
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _InfoSection(
+                      title: 'job_offers_feature.job_description'.tr(),
+                      content: job.description,
+                      icon: Icons.description_outlined,
+                    ),
+                    if (job.userName != null) ...[
+                      const SizedBox(height: 20),
                       Row(
                         children: [
-                          Icon(
-                            Icons.work_outline,
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
+                          Icon(Icons.person_outline_rounded, size: 18, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
                           Text(
-                            'job_offers_feature.job_title'.tr(),
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.6),
-                              fontWeight: FontWeight.w600,
+                            'job_offers_feature.posted_by'.tr(),
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        job.title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.description_outlined,
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'job_offers_feature.job_description'.tr(),
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.6),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        job.description,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          height: 1.6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (job.userName != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.person_outline,
-                            size: 20,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'job_offers_feature.posted_by'.tr(),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                job.userName!,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.visibility_outlined,
-                        size: 18,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${job.viewsCount} ${'job_offers_feature.views'.tr()}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF25D366).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _openWhatsApp(job.phone),
+                      InkWell(
+                        onTap: () => _showUserDetails(context, ref, job.userId),
                         borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                            ),
+                          ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.chat_rounded,
-                                  size: 22, color: Colors.white),
-                              const SizedBox(width: 12),
-                              Text(
-                                'job_offers_feature.contact_whatsapp'.tr(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                               CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: job.userPhotoUrl != null ? CachedNetworkImageProvider(job.userPhotoUrl!) : null,
+                                  child: job.userPhotoUrl == null ? Icon(Icons.person, size: 16) : null,
+                               ),
+                               SizedBox(width: 12),
+                               Text(
+                                  job.userName!,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    height: 1.5,
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                               ),
                             ],
                           ),
                         ),
                       ),
+                    ],
+                    const SizedBox(height: 24),
+                    
+                    // Contact Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _openWhatsApp(job.phone),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: Text(
+                          'job_offers_feature.contact_whatsapp'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text('job_offers_feature.cancel'.tr()),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1376,24 +1036,319 @@ class _JobDetailsDialog extends StatelessWidget {
   Future<void> _openWhatsApp(String phone) async {
     final message = Uri.encodeComponent('whatsappInquiry'.tr());
     final url = Uri.parse('https://wa.me/$phone?text=$message');
-
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
+}
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({
+    required this.title,
+    required this.content,
+    required this.icon,
+  });
 
-    if (difference.inDays == 0) {
-      return 'today'.tr();
-    } else if (difference.inDays == 1) {
-      return 'yesterday'.tr();
-    } else if (difference.inDays < 7) {
-      return '${'daysAgo'.tr()} ${difference.inDays}';
-    } else {
-      return DateFormat('dd/MM/yyyy').format(date);
+  final String title;
+  final String content;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+            ),
+          ),
+          child: Text(
+            content,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              height: 1.5,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===================================================================
+// User Details Helpers
+// ===================================================================
+
+void _showUserDetails(BuildContext context, WidgetRef ref, String userId) async {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(child: CircularProgressIndicator()),
+  );
+
+  try {
+    final userModel = await ref.read(userRepositoryProvider).getUser(userId);
+    
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading
+      if (userModel != null) {
+        _showUserBottomSheet(context, userModel);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('surgical_tools_feature.messages.user_load_error'.tr())),
+        );
+      }
     }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('surgical_tools_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}))),
+      );
+    }
+  }
+}
+
+void _showUserBottomSheet(BuildContext context, UserModel user) {
+  final theme = Theme.of(context);
+  final isDistributor = user.role == 'distributor' || user.role == 'company';
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: user.photoUrl != null
+                      ? CachedNetworkImageProvider(user.photoUrl!)
+                      : null,
+                  child: user.photoUrl == null
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  user.displayName ?? 'مستخدم',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getRoleLabel(user.role),
+                    style: TextStyle(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: theme.colorScheme.outline.withOpacity(0.2)),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (isDistributor && user.distributionMethod != null)
+                  _buildDetailTile(
+                    theme,
+                    Icons.local_shipping,
+                    'distributors_feature.distribution_method'.tr(),
+                    _getDistributionMethodLabel(user.distributionMethod!),
+                  ),
+                if (user.governorates != null && user.governorates!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'distributors_feature.location'.tr(),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: user.governorates!.map((gov) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              gov,
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                if (user.whatsappNumber != null && user.whatsappNumber!.isNotEmpty)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openWhatsApp(user.whatsappNumber!),
+                      icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
+                      label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                if (isDistributor) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        final distributor = DistributorModel(
+                          id: user.id,
+                          displayName: user.displayName ?? '',
+                          photoURL: user.photoUrl,
+                          email: user.email,
+                          distributorType: user.role,
+                          whatsappNumber: user.whatsappNumber,
+                          governorates: user.governorates,
+                          centers: user.centers,
+                          distributionMethod: user.distributionMethod,
+                        );
+                        
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DistributorProductsScreen(
+                              distributor: distributor,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.inventory_2),
+                      label: Text('distributors_feature.view_products'.tr()),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildDetailTile(ThemeData theme, IconData icon, String title, String value) {
+  return ListTile(
+    leading: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+    ),
+    title: Text(title, style: theme.textTheme.bodySmall),
+    subtitle: Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+    contentPadding: EdgeInsets.zero,
+  );
+}
+
+String _getRoleLabel(String role) {
+  switch (role) {
+    case 'doctor': return 'auth.role_veterinarian'.tr();
+    case 'distributor': return 'auth.role_distributor'.tr();
+    case 'company': return 'auth.role_company'.tr();
+    default: return role;
+  }
+}
+
+String _getDistributionMethodLabel(String method) {
+  switch (method) {
+    case 'direct_distribution': return 'auth.profile.distribution.direct_distribution'.tr();
+    case 'order_delivery': return 'auth.profile.distribution.order_delivery'.tr();
+    case 'both': return 'auth.profile.distribution.both_methods'.tr();
+    default: return method;
+  }
+}
+
+Future<void> _openWhatsApp(String phone) async {
+  final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+  final url = 'https://wa.me/20$cleanPhone';
+  if (await canLaunchUrl(Uri.parse(url))) {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 }

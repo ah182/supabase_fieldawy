@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -210,43 +211,70 @@ class _ProductDialogState extends State<_ProductDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          if (widget.product.distributorId != null) {
-                            Navigator.of(context).pop(); // Close the dialog
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => DrawerWrapper(
-                                  distributorId: widget.product.distributorId,
+                      Row(
+                        children: [
+                          if (widget.product.distributorUuid != null) ...[
+                            GestureDetector(
+                              onTap: () => DistributorDetailsSheet.show(
+                                  context, widget.product.distributorUuid!),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.location_on,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          GestureDetector(
+                            onTap: () {
+                              if (widget.product.distributorId != null) {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => DrawerWrapper(
+                                      distributorId:
+                                          widget.product.distributorId,
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Text(
-                            widget.product.distributorId ?? 'موزع غير معروف',
-                            style: TextStyle(
-                              color: theme.colorScheme.onPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              child: Text(
+                                widget.product.distributorId ??
+                                    'موزع غير معروف',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -718,39 +746,64 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade700,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.orange.shade700.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.local_offer_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'offers.dialog.special_offer'.tr(),
-                              style: TextStyle(
-                                color: theme.colorScheme.onPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          if (widget.offer.distributorUuid != null) ...[
+                            GestureDetector(
+                              onTap: () => DistributorDetailsSheet.show(
+                                  context, widget.offer.distributorUuid!),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.location_on,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                           ],
-                        ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade700,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      Colors.orange.shade700.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.local_offer_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'offers.dialog.special_offer'.tr(),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1335,42 +1388,68 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                           onPressed: () => Navigator.pop(context),
                         ),
                       ),
-                      if (widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty)
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop(); // Close the dialog
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => DrawerWrapper(
-                                  distributorId: widget.tool.distributorId,
+                      if (widget.tool.distributorId != null &&
+                          widget.tool.distributorId!.isNotEmpty)
+                        Row(
+                          children: [
+                            if (widget.tool.distributorUuid != null) ...[
+                              GestureDetector(
+                                onTap: () => DistributorDetailsSheet.show(
+                                    context, widget.tool.distributorUuid!),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.location_on,
+                                    size: 20,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                 ),
                               ),
-                              (route) => false,
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.primary.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                              const SizedBox(width: 8),
+                            ],
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => DrawerWrapper(
+                                      distributorId: widget.tool.distributorId,
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              widget.tool.distributorId!,
-                              style: TextStyle(
-                                color: theme.colorScheme.onPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                child: Text(
+                                  widget.tool.distributorId!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                     ],
                   ),

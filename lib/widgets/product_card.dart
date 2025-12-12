@@ -5,6 +5,7 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -256,6 +257,9 @@ class ProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Debug print
+    print('ProductCard Build: name=${product.name}, distributorId=${product.distributorId}, distributorUuid=${product.distributorUuid}');
+
     final favoritesMap = ref.watch(favoritesProvider);
     final isFavorite = favoritesMap.containsKey(
         '${product.id}_${product.distributorId}_${product.selectedPackage}');

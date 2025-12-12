@@ -15,6 +15,7 @@ import 'package:fieldawy_store/features/profile/presentation/screens/profile_scr
 import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/product_card.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
+import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -619,43 +620,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          if (product.distributorId != null) {
-                            Navigator.of(context).pop(); // Close the dialog
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => DrawerWrapper(
-                                  distributorId: product.distributorId,
+                      Row(
+                        children: [
+                          if (product.distributorUuid != null) ...[
+                            GestureDetector(
+                              onTap: () => DistributorDetailsSheet.show(
+                                  context, product.distributorUuid!),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.location_on,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          GestureDetector(
+                            onTap: () {
+                              if (product.distributorId != null) {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => DrawerWrapper(
+                                      distributorId: product.distributorId,
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Text(
-                            product.distributorId ?? 'home.product_dialog.unknown_distributor'.tr(),
-                            style: TextStyle(
-                              color: theme.colorScheme.onPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              child: Text(
+                                product.distributorId ??
+                                    'home.product_dialog.unknown_distributor'.tr(),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),

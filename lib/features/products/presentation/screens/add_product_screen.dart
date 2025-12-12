@@ -18,6 +18,27 @@ class AddProductScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userRole = ref.watch(userDataProvider).asData?.value?.role ?? '';
     final selectedIndex = (userRole == 'distributor' || userRole == 'company') ? 1 : 1;
+    final isRestricted = userRole == 'doctor';
+
+    void showRestrictionMessage() {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+          content: Text(
+            'products.distributor_only_feature'.tr(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('ok'.tr()),
+            ),
+          ],
+        ),
+      );
+    }
 
     return MainScaffold(
       selectedIndex: selectedIndex,
@@ -40,9 +61,14 @@ class AddProductScreen extends ConsumerWidget {
             icon: Icons.local_offer_rounded,
             title: 'addProduct.limitedOffer.title'.tr(),
             subtitle: 'addProduct.limitedOffer.subtitle'.tr(),
-           onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const LimitedOfferScreen()));
+            isLocked: isRestricted,
+            onTap: () {
+              if (isRestricted) {
+                showRestrictionMessage();
+              } else {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => const LimitedOfferScreen()));
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -50,8 +76,13 @@ class AddProductScreen extends ConsumerWidget {
             icon: Icons.medical_services_rounded,
             title: 'addProduct.surgical.title'.tr(),
             subtitle: 'addProduct.surgical.subtitle'.tr(),
+            isLocked: isRestricted,
             onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SurgicalToolsScreen()));
+              if (isRestricted) {
+                showRestrictionMessage();
+              } else {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SurgicalToolsScreen()));
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -99,6 +130,7 @@ class _OptionCard extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.badge,
+    this.isLocked = false,
   });
 
   final IconData icon;
@@ -106,57 +138,62 @@ class _OptionCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final String? badge;
+  final bool isLocked;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      child: Stack(
-        children: [
-          ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-            leading: Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(subtitle),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded),
-            onTap: onTap,
-          ),
-          if (badge != null)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF6B6B).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+    return Opacity(
+      opacity: isLocked ? 0.5 : 1.0,
+      child: Card(
+        elevation: 2.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        color: isLocked ? Colors.grey.shade100 : null,
+        child: Stack(
+          children: [
+            ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+              leading: Icon(icon, size: 40, color: isLocked ? Colors.grey : Theme.of(context).colorScheme.primary),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(subtitle),
+              trailing: Icon(isLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded),
+              onTap: onTap,
+            ),
+            if (badge != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Text(
-                  badge!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    badge!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -38,6 +38,7 @@ class ProductModel {
   final int views;
   @HiveField(15)
   final String? surgicalToolId;
+  final String? distributorUuid;
 
   ProductModel({
     required this.id,
@@ -58,6 +59,7 @@ class ProductModel {
     this.priceUpdatedAt,
     this.views = 0,
     this.surgicalToolId,
+    this.distributorUuid,
   });
 
   // --- من Supabase (row) ---
@@ -83,6 +85,7 @@ class ProductModel {
       price: (data['price'] as num?)?.toDouble(),
       oldPrice: (data['old_price'] as num?)?.toDouble(),
       distributorId: data['distributor_id'] as String?,
+      distributorUuid: data['distributor_uuid'] as String? ?? data['distributor_id'] as String?, // Map UUID here initially
       createdAt: data['created_at'] != null
           ? DateTime.tryParse(data['created_at'].toString())
           : null,
@@ -109,6 +112,7 @@ class ProductModel {
       'price': price,
       'old_price': oldPrice,
       'distributor_id': distributorId,
+      'distributor_uuid': distributorUuid,
       'created_at': createdAt?.toIso8601String(),
       'price_updated_at': priceUpdatedAt?.toIso8601String(),
       'selected_package': selectedPackage,
@@ -143,6 +147,7 @@ class ProductModel {
     bool? isFavorite,
     int? views,
     String? surgicalToolId,
+    String? distributorUuid,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -163,6 +168,7 @@ class ProductModel {
       isFavorite: isFavorite ?? this.isFavorite,
       views: views ?? this.views,
       surgicalToolId: surgicalToolId ?? this.surgicalToolId,
+      distributorUuid: distributorUuid ?? this.distributorUuid,
     );
   }
 }
