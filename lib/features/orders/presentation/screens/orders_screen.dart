@@ -78,7 +78,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           icon: const Icon(Icons.close),
           onPressed: _exitSelectionMode,
         ),
-        title: Text('${_selectedDistributors.length} selected'),
+        title: Text('orders.selected_count'.tr(namedArgs: {'count': _selectedDistributors.length.toString()})),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -87,18 +87,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 context: context,
                 builder: (BuildContext dialogContext) {
                   return AlertDialog(
-                    title: const Text('تأكيد الحذف'),
+                    title: Text('orders.confirm_delete_title'.tr()),
                     content: Text(
-                        'هل أنت متأكد من حذف ${_selectedDistributors.length} طلب؟'),
+                        'orders.confirm_delete_selected_msg'.tr(namedArgs: {'count': _selectedDistributors.length.toString()})),
                     actions: <Widget>[
                       TextButton(
-                        child: const Text('إلغاء'),
+                        child: Text('orders.cancel'.tr()),
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
                         },
                       ),
                       TextButton(
-                        child: Text('حذف',
+                        child: Text('orders.delete'.tr(),
                             style: TextStyle(color: theme.colorScheme.error)),
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
@@ -111,8 +111,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: Colors.transparent,
                             content: AwesomeSnackbarContent(
-                              title: 'نجاح'.tr(),
-                              message: 'تم حذف الطلبات المحددة بنجاح.',
+                              title: 'orders.success'.tr(),
+                              message: 'orders.selected_deleted'.tr(),
                               contentType: ContentType.success,
                             ),
                           );
@@ -132,7 +132,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
     return AppBar(
       title: Text(
-        'Orders list ',
+        'orders.title'.tr(),
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w600,
@@ -144,10 +144,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       centerTitle: true,
       actions: [
         if (hasOrders)
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: IconButton(
-              icon: Icon(
+                      Container(
+                        margin: const EdgeInsetsDirectional.only(end: 16),
+                        child: IconButton(              icon: Icon(
                 Icons.delete_sweep_outlined,
                 color: theme.colorScheme.error,
                 size: 22,
@@ -158,18 +157,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     context: context,
                     builder: (BuildContext dialogContext) {
                       return AlertDialog(
-                        title: const Text('تأكيد الحذف'),
-                        content: const Text(
-                            'هل أنت متأكد من رغبتك في مسح كل الطلبات؟'),
+                        title: Text('orders.confirm_delete_title'.tr()),
+                        content: Text(
+                            'orders.confirm_delete_all_msg'.tr()),
                         actions: <Widget>[
                           TextButton(
-                            child: const Text('إلغاء'),
+                            child: Text('orders.cancel'.tr()),
                             onPressed: () {
                               Navigator.of(dialogContext).pop();
                             },
                           ),
                           TextButton(
-                            child: Text('مسح',
+                            child: Text('orders.clear'.tr(),
                                 style: TextStyle(
                                     color: Theme.of(context).colorScheme.error)),
                             onPressed: () {
@@ -180,8 +179,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: Colors.transparent,
                                 content: AwesomeSnackbarContent(
-                                  title: 'نجاح'.tr(),
-                                  message: 'تم مسح كل الطلبات بنجاح.',
+                                  title: 'orders.success'.tr(),
+                                  message: 'orders.all_deleted'.tr(),
                                   contentType: ContentType.success,
                                 ),
                               );
@@ -202,7 +201,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           padding: const EdgeInsets.all(12.0),
           child: UnifiedSearchBar(
             controller: _searchController,
-            hintText: 'ابحث عن طلبات موزع...',
+            hintText: 'orders.search_hint'.tr(),
           ),
         ),
       ),
@@ -271,7 +270,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                 ),
                                 const SizedBox(height: 24),
                                 Text(
-                                  'سلة الطلبات فارغة',
+                                  'orders.empty_cart'.tr(),
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
@@ -280,7 +279,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'أضف المنتجات من شاشة الموزعين',
+                                  'orders.add_products_hint'.tr(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: theme.colorScheme.onSurfaceVariant,
@@ -293,7 +292,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         : filteredDistributors.isEmpty
                             ? Center(
                                 child: Text(
-                                    'لا توجد نتائج للبحث عن "$_searchQuery"'),
+                                    'orders.no_search_results'.tr(namedArgs: {'query': _searchQuery})),
                               )
                             : ListView.separated(
                                 padding: const EdgeInsets.all(16.0),
@@ -354,8 +353,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                   ListTile(
                                                     leading: const Icon(Icons
                                                         .receipt_long_outlined),
-                                                    title: const Text(
-                                                        'عرض تفاصيل الطلب الحالي'),
+                                                    title: Text(
+                                                        'orders.view_order_details'.tr()),
                                                     onTap: () {
                                                       Navigator.of(ctx).pop();
                                                       Navigator.of(context)
@@ -374,8 +373,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                   ListTile(
                                                     leading: const Icon(
                                                         Icons.store_outlined),
-                                                    title: const Text(
-                                                        'الانتقال إلى صفحة الموزع'),
+                                                    title: Text(
+                                                        'orders.go_to_distributor'.tr()),
                                                     onTap: () {
                                                       Navigator.of(ctx).pop();
                                                       Navigator.of(context)
@@ -397,7 +396,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                         color: theme
                                                             .colorScheme.error),
                                                     title: Text(
-                                                        'بدء طلب جديد (حذف الحالي)',
+                                                        'orders.start_new_order'.tr(),
                                                         style: TextStyle(
                                                             color: theme
                                                                 .colorScheme
@@ -557,7 +556,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                               const SizedBox(
                                                                   width: 4),
                                                               Text(
-                                                                '$totalQuantity Products',
+                                                                'orders.products_count'.tr(namedArgs: {'count': totalQuantity.toString()}),
                                                                 style:
                                                                     TextStyle(
                                                                   fontSize: 12,
@@ -592,8 +591,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                               width: 4),
                                                           Text(
                                                             role == 'company'
-                                                                ? 'Distribution compny '
-                                                                : 'Individual distributor ',
+                                                                ? 'orders.distribution_company'.tr()
+                                                                : 'orders.individual_distributor'.tr(),
                                                             style: TextStyle(
                                                               color: theme
                                                                   .colorScheme
@@ -643,7 +642,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'حدث خطأ في تحميل البيانات',
+                'orders.load_error'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   color: theme.colorScheme.onSurface,

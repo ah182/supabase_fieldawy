@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/limited_offer_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/surgical_tools_screen.dart';
@@ -38,7 +39,7 @@ class QuickActionsPanel extends StatelessWidget {
     final List<_QuickActionItem> actions = [
       _QuickActionItem(
         icon: Icons.add_circle_outline,
-        label: 'إضافة منتج',
+        label: 'dashboard_feature.quick_actions.add_product'.tr(),
         color: Colors.blue,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -48,7 +49,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.local_offer,
-        label: 'إضافة عرض',
+        label: 'dashboard_feature.quick_actions.add_offer'.tr(),
         color: Colors.green,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -58,7 +59,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.inventory,
-        label: 'منتجاتي',
+        label: 'dashboard_feature.quick_actions.my_products'.tr(),
         color: Colors.indigo,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -68,7 +69,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.medical_services,
-        label: 'أدوات جراحية',
+        label: 'dashboard_feature.quick_actions.surgical_tools'.tr(),
         color: Colors.purple,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -78,7 +79,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.pets,
-        label: 'مستلزمات بيطرية',
+        label: 'dashboard_feature.quick_actions.vet_supplies'.tr(),
         color: Colors.teal,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -88,7 +89,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.work,
-        label: 'عروض توظيف',
+        label: 'dashboard_feature.quick_actions.job_offers'.tr(),
         color: Colors.orange,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -98,7 +99,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.menu_book,
-        label: 'كتب بيطرية',
+        label: 'dashboard_feature.quick_actions.vet_books'.tr(),
         color: Colors.brown,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -108,7 +109,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.school,
-        label: 'كورسات',
+        label: 'dashboard_feature.quick_actions.courses'.tr(),
         color: Colors.deepPurple,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -118,7 +119,7 @@ class QuickActionsPanel extends StatelessWidget {
       ),
       _QuickActionItem(
         icon: Icons.settings,
-        label: 'الإعدادات',
+        label: 'dashboard_feature.quick_actions.settings'.tr(),
         color: Colors.grey.shade700,
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -143,7 +144,7 @@ class QuickActionsPanel extends StatelessWidget {
                 Icon(Icons.flash_on, color: Colors.orange, size: 24),
                 const SizedBox(width: 8),
                 Text(
-                  'إجراءات سريعة',
+                  'dashboard_feature.quick_actions.title'.tr(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),

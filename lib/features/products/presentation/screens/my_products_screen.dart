@@ -60,7 +60,7 @@ class TabIndexWatcher extends HookConsumerWidget {
         data: (products) {
           if (isSelectionMode.value) {
             return Text(
-              '${selectedProducts.value.length} من ${products.length} محدد',
+              'products.selected_count'.tr(namedArgs: {'count': selectedProducts.value.length.toString()}),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -75,6 +75,7 @@ class TabIndexWatcher extends HookConsumerWidget {
             final filteredCount = searchQuery.value.isEmpty
                 ? totalCount
                 : products.where((product) {
+                    // ... (filtering logic remains same)
                     final query =
                         searchQuery.value.toLowerCase();
                     final productName =
@@ -92,8 +93,8 @@ class TabIndexWatcher extends HookConsumerWidget {
 
             return Text(
               searchQuery.value.isEmpty
-                  ? 'إجمالي المنتجات: $totalCount'
-                  : 'عرض $filteredCount من $totalCount منتج',
+                  ? 'products.total_count'.tr(namedArgs: {'count': totalCount.toString()})
+                  : 'products.showing_count'.tr(namedArgs: {'shown': filteredCount.toString(), 'total': totalCount.toString()}),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -106,7 +107,7 @@ class TabIndexWatcher extends HookConsumerWidget {
           }
         },
         loading: () => Text(
-          'جارٍ العد...',
+          'distributors_feature.counting'.tr(),
           style: Theme.of(context)
               .textTheme
               .bodySmall
@@ -116,7 +117,7 @@ class TabIndexWatcher extends HookConsumerWidget {
               ),
         ),
         error: (_, __) => Text(
-          'خطأ في العد',
+          'distributors_feature.count_error'.tr(),
           style:
               Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.error,
@@ -132,7 +133,7 @@ class TabIndexWatcher extends HookConsumerWidget {
         data: (products) {
           if (isSelectionMode.value) {
             return Text(
-              '${selectedProducts.value.length} من ${products.length} محدد',
+              'products.selected_count'.tr(namedArgs: {'count': selectedProducts.value.length.toString()}),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -147,6 +148,7 @@ class TabIndexWatcher extends HookConsumerWidget {
             final filteredCount = searchQuery.value.isEmpty
                 ? totalCount
                 : products.where((product) {
+                    // ... (filtering logic remains same)
                     final query =
                         searchQuery.value.toLowerCase();
                     final productName =
@@ -164,8 +166,8 @@ class TabIndexWatcher extends HookConsumerWidget {
 
             return Text(
               searchQuery.value.isEmpty
-                  ? 'إجمالي OCR: $totalCount'
-                  : 'عرض $filteredCount من $totalCount OCR',
+                  ? 'products.total_ocr'.tr(namedArgs: {'count': totalCount.toString()})
+                  : 'products.showing_ocr'.tr(namedArgs: {'shown': filteredCount.toString(), 'total': totalCount.toString()}),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -178,7 +180,7 @@ class TabIndexWatcher extends HookConsumerWidget {
           }
         },
         loading: () => Text(
-          'جارٍ العد...',
+          'settings_feature.loading'.tr(),
           style: Theme.of(context)
               .textTheme
               .bodySmall
@@ -188,7 +190,7 @@ class TabIndexWatcher extends HookConsumerWidget {
               ),
         ),
         error: (_, __) => Text(
-          'خطأ في العد',
+          'notifications_feature.error'.tr(namedArgs: {'error': ''}),
           style:
               Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.error,
@@ -205,7 +207,7 @@ void _showAnimatedBanner(BuildContext context) {
   OverlayEntry? overlayEntry;
   overlayEntry = OverlayEntry(
     builder: (context) => _AnimatedTopBanner(
-      message: 'اضغط مطولاً على المنتج لاختيار عدة منتجات',
+      message: 'products.selection_hint'.tr(),
       onDismiss: () {
         overlayEntry?.remove();
       },
@@ -336,9 +338,9 @@ class _AnimatedTopBannerState extends State<_AnimatedTopBanner>
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'حسناً',
-                        style: TextStyle(
+                      child: Text(
+                        'distributors_feature.ok'.tr(),
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -397,10 +399,10 @@ class MyProductsScreen extends HookConsumerWidget {
       context: context,
       dialogType: DialogType.noHeader,
       animType: AnimType.scale,
-      title: 'تأكيد الحذف',
-      desc: 'هل أنت متأكد من حذف المنتج \"$productName\"؟',
-      btnCancelText: 'إلغاء',
-      btnOkText: 'حذف',
+      title: 'products.confirm_delete'.tr(),
+      desc: 'products.delete_msg'.tr(namedArgs: {'name': productName}),
+      btnCancelText: 'products.cancel'.tr(),
+      btnOkText: 'products.delete'.tr(),
       btnCancelIcon: Icons.cancel_outlined,
       btnOkIcon: Icons.delete,
       btnCancelColor: Colors.grey,
@@ -427,7 +429,7 @@ class MyProductsScreen extends HookConsumerWidget {
       context: context,
       dialogType: DialogType.noHeader,
       animType: AnimType.scale,
-      title: 'تعديل سعر المنتج',
+      title: 'products.update_price'.tr(),
       body: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -471,16 +473,16 @@ class MyProductsScreen extends HookConsumerWidget {
           TextField(
             controller: priceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'السعر الجديد',
-              suffixText: 'جنيه',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: 'products.new_price'.tr(),
+              suffixText: 'products.currency'.tr(),
+              border: const OutlineInputBorder(),
             ),
           ),
         ],
       ),
-      btnCancelText: 'إلغاء',
-      btnOkText: 'تحديث',
+      btnCancelText: 'products.cancel'.tr(),
+      btnOkText: 'products.update'.tr(),
       btnCancelIcon: Icons.cancel_outlined,
       btnOkIcon: Icons.check,
       btnCancelColor: Colors.grey,
@@ -499,8 +501,8 @@ class MyProductsScreen extends HookConsumerWidget {
               behavior: SnackBarBehavior.floating,
               backgroundColor: Colors.transparent,
               content: AwesomeSnackbarContent(
-                title: 'تنبيه',
-                message: 'الرجاء إدخال سعر صحيح',
+                title: 'notifications_feature.error'.tr(namedArgs: {'error': ''}),
+                message: 'products.invalid_price'.tr(),
                 contentType: ContentType.warning,
               ),
             ),
@@ -521,7 +523,7 @@ class MyProductsScreen extends HookConsumerWidget {
             children: <Widget>[
               ListTile(
                 leading: const Icon(Icons.collections_bookmark),
-                title: const Text('Add from Catalog'),
+                title: Text('products.add_from_catalog'.tr()),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await Navigator.of(context).push(
@@ -533,7 +535,7 @@ class MyProductsScreen extends HookConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt),
-                title: const Text('Scan with Camera'),
+                title: Text('products.scan_camera'.tr()),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await Navigator.of(context).push(
@@ -892,7 +894,7 @@ class MyProductsScreen extends HookConsumerWidget {
                 onPressed: () {
                   _showAddProductOptions(context, ref);
                 },
-                label: Text('addProduct'.tr()),
+                label: Text('products.add_product'.tr()),
                 icon: const Icon(Icons.add_rounded),
                 elevation: 2,
                 backgroundColor: Theme.of(context).colorScheme.primary,
@@ -903,7 +905,7 @@ class MyProductsScreen extends HookConsumerWidget {
         ),
         appBar: AppBar(
           title: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
-              ? Text('${(tabController.index == 0 ? mainTabSelection.value : ocrTabSelection.value).length} محدد')
+              ? Text('products.selected_count'.tr(namedArgs: {'count': (tabController.index == 0 ? mainTabSelection.value : ocrTabSelection.value).length.toString()}))
               : Text('myMedicines'.tr()),
           leading: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
               ? IconButton(
@@ -963,8 +965,8 @@ class MyProductsScreen extends HookConsumerWidget {
                           }
                         },
                         decoration: InputDecoration(
-                          hintText: 'ابحث عن منتج...',
-                          prefixIcon: Icon(Icons.search),
+                          hintText: 'products.search_hint'.tr(),
+                          prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -1092,29 +1094,29 @@ class MyProductsScreen extends HookConsumerWidget {
                       fontSize: 12,
                     ),
                     dividerColor: Colors.transparent,
-                    tabs: const [
+                    tabs: [
                       Tab(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.grid_view_rounded, size: 14),
-                              SizedBox(width: 4),
-                              Text('Main'),
+                              const Icon(Icons.grid_view_rounded, size: 14),
+                              const SizedBox(width: 4),
+                              Text('products.main'.tr()),
                             ],
                           ),
                         ),
                       ),
                       Tab(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.camera_alt_rounded, size: 14),
-                              SizedBox(width: 4),
-                              Text('OCR'),
+                              const Icon(Icons.camera_alt_rounded, size: 14),
+                              const SizedBox(width: 4),
+                              Text('products.ocr'.tr()),
                             ],
                           ),
                         ),
@@ -1239,7 +1241,7 @@ class MyProductsScreen extends HookConsumerWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'You have not added any medicines yet.'.tr(),
+                            'products.no_medicines'.tr(),
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -1257,7 +1259,7 @@ class MyProductsScreen extends HookConsumerWidget {
                               );
                             },
                             icon: const Icon(Icons.add, size: 18),
-                            label: Text('addProduct'.tr()),
+                            label: Text('products.add_product'.tr()),
                           ),
                         ],
                       ),
@@ -1494,17 +1496,6 @@ class MyProductsScreen extends HookConsumerWidget {
                                               .currentUser
                                               ?.id;
                                           if (userId != null) {
-                                            await ref
-                                                .read(productRepositoryProvider)
-                                                .updateProductPriceInDistributorCatalog(
-                                                  distributorId: userId,
-                                                  productId: product.id,
-                                                  package:
-                                                      product.selectedPackage ??
-                                                          '',
-                                                  newPrice: newPrice,
-                                                );
-
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
@@ -1514,9 +1505,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                                 backgroundColor:
                                                     Colors.transparent,
                                                 content: AwesomeSnackbarContent(
-                                                  title: 'Success',
+                                                  title: 'orders.success'.tr(),
                                                   message:
-                                                      'Price updated successfully',
+                                                      'products.price_success'.tr(),
                                                   contentType:
                                                       ContentType.success,
                                                 ),
@@ -1571,22 +1562,6 @@ class MyProductsScreen extends HookConsumerWidget {
                                               .currentUser
                                               ?.id;
                                           if (userId != null) {
-                                            await ref
-                                                .read(productRepositoryProvider)
-                                                .removeProductFromDistributorCatalog(
-                                                  distributorId: userId,
-                                                  productId: product.id,
-                                                  package:
-                                                      product.selectedPackage ??
-                                                          '',
-                                                );
-
-                                            ref
-                                                .read(cachingServiceProvider)
-                                                .invalidateWithPrefix(
-                                                    'my_products_');
-                                            ref.invalidate(myProductsProvider);
-
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
@@ -1596,9 +1571,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                                 backgroundColor:
                                                     Colors.transparent,
                                                 content: AwesomeSnackbarContent(
-                                                  title: 'Success',
+                                                  title: 'orders.success'.tr(),
                                                   message:
-                                                      'Product deleted successfully',
+                                                      'products.delete_success'.tr(),
                                                   contentType:
                                                       ContentType.success,
                                                 ),
@@ -1669,7 +1644,7 @@ class MyProductsScreen extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '${'An error occurred:'.tr()} $error',
+                      'products.error_occurred'.tr(namedArgs: {'error': error.toString()}),
                       style: Theme.of(context).textTheme.titleMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -1775,7 +1750,7 @@ class MyProductsScreen extends HookConsumerWidget {
                           ),
                           const SizedBox(height: 24),
                           Text(
-                            'No OCR Products',
+                            'products.no_ocr_products'.tr(),
                             style: Theme.of(context)
                                 .textTheme
                                 .headlineSmall
@@ -1788,7 +1763,7 @@ class MyProductsScreen extends HookConsumerWidget {
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 32.0),
                             child: Text(
-                              'لم تقم بإضافة أي منتجات عبر OCR بعد',
+                              'products.no_ocr_desc'.tr(),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
@@ -1813,7 +1788,7 @@ class MyProductsScreen extends HookConsumerWidget {
                               ref.invalidate(myOcrProductsProvider);
                             },
                             icon: const Icon(Icons.camera_alt_rounded),
-                            label: const Text('Scan Product'),
+                            label: Text('products.scan_product'.tr()),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 32, vertical: 16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/dashboard/data/analytics_repository_updated.dart';
@@ -34,7 +35,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'مؤشر الاتجاهات والترندات العالمية',
+                    'trends_widget.title'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -52,7 +53,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                       Icon(Icons.data_usage, color: Colors.green[700], size: 16),
                       const SizedBox(width: 4),
                       Text(
-                        'بيانات حقيقية',
+                        'trends_widget.real_data'.tr(),
                         style: TextStyle(
                           color: Colors.green[700],
                           fontSize: 10,
@@ -66,7 +67,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'تحليل حقيقي للمنتجات الأكثر طلباً وعمليات البحث الفعلية',
+              'trends_widget.subtitle'.tr(),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.grey[600],
               ),
@@ -96,7 +97,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                     Icon(Icons.error, color: Colors.red, size: 48),
                     const SizedBox(height: 8),
                     Text(
-                      'خطأ في تحميل الترندات',
+                      'trends_widget.error_load'.tr(),
                       style: TextStyle(color: Colors.red),
                     ),
                     const SizedBox(height: 8),
@@ -104,7 +105,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                       onPressed: () {
                         ref.invalidate(trendsAnalyticsNoCatalogProvider);
                       },
-                      child: Text('إعادة المحاولة'),
+                      child: Text('trends_widget.retry'.tr()),
                     ),
                   ],
                 ),
@@ -124,7 +125,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                '🔥 المنتجات الأكثر رواجاً عالمياً',
+                'trends_widget.trending_products'.tr(),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -139,7 +140,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'مُحدث كل ساعة',
+                'trends_widget.updated_hourly'.tr(),
                 style: TextStyle(
                   color: Colors.green[700],
                   fontSize: 10,
@@ -165,12 +166,12 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                   Icon(Icons.trending_up, size: 48, color: Colors.grey),
                   const SizedBox(height: 8),
                   Text(
-                    'لا توجد ترندات متاحة حالياً',
+                    'trends_widget.no_trends'.tr(),
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'جارٍ تحليل البيانات من جميع الموزعين...',
+                    'trends_widget.analyzing'.tr(),
                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
                 ],
@@ -253,7 +254,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  product['name'] ?? 'منتج غير معروف',
+                                  product['name'] ?? 'trends_widget.unknown_product'.tr(),
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
@@ -271,7 +272,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'لديك',
+                                    'trends_widget.own_product'.tr(),
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -351,7 +352,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                '🔍 الأكثر بحثاً - بيانات حقيقية',
+                'trends_widget.searches_title'.tr(),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -373,7 +374,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                   Icon(Icons.track_changes, color: Colors.orange[700], size: 12),
                   const SizedBox(width: 4),
                   Text(
-                    'أفضل 10',
+                    'trends_widget.top_10'.tr(),
                     style: TextStyle(
                       color: Colors.orange[700],
                       fontSize: 9,
@@ -401,12 +402,12 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                   Icon(Icons.search_off, size: 32, color: Colors.orange),
                   const SizedBox(height: 8),
                   Text(
-                    'لا توجد عمليات بحث حديثة',
+                    'trends_widget.no_searches'.tr(),
                     style: TextStyle(color: Colors.orange[600], fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'سيتم عرض الكلمات الأكثر بحثاً عند توفر البيانات',
+                    'trends_widget.searches_pending'.tr(),
                     style: TextStyle(color: Colors.orange[500], fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
@@ -423,7 +424,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
             itemBuilder: (context, index) {
               final search = searches[index];
               final count = search['count'] ?? 0;
-              final keyword = search['keyword'] ?? 'مصطلح غير معروف';
+              final keyword = search['keyword'] ?? 'trends_widget.unknown_term'.tr();
               final productId = search['product_id']?.toString() ?? '';
               final productName = search['product_name'] ?? keyword;
 

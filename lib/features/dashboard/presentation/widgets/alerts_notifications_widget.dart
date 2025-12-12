@@ -23,7 +23,7 @@ class AlertsNotificationsWidget extends ConsumerWidget {
                 Icon(Icons.warning_amber, color: Colors.orange, size: 24),
                 const SizedBox(width: 8),
                 Text(
-                  'تنبيهات هامة',
+                  'dashboard_feature.alerts.title'.tr(),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -39,8 +39,8 @@ class AlertsNotificationsWidget extends ConsumerWidget {
                 if (products.isNotEmpty) {
                   alerts.add(_buildAlert(
                     icon: Icons.schedule,
-                    title: 'منتجات قاربت على الانتهاء',
-                    subtitle: '${products.length} منتج ينتهي خلال سنة',
+                    title: 'dashboard_feature.alerts.expiring_title'.tr(),
+                    subtitle: 'dashboard_feature.alerts.expiring_subtitle'.tr(namedArgs: {'count': products.length.toString()}),
                     color: Colors.orange,
                     onTap: () {
                       _showExpiringProductsDialog(context, products);
@@ -52,15 +52,15 @@ class AlertsNotificationsWidget extends ConsumerWidget {
                 alerts.addAll([
                   _buildAlert(
                     icon: Icons.inventory,
-                    title: 'مخزون منخفض',
-                    subtitle: 'تحقق من المخزون المتاح',
+                    title: 'dashboard_feature.alerts.low_stock_title'.tr(),
+                    subtitle: 'dashboard_feature.alerts.low_stock_subtitle'.tr(),
                     color: Colors.red,
                     onTap: () {},
                   ),
                   _buildAlert(
                     icon: Icons.trending_up,
-                    title: 'فرصة تسويقية',
-                    subtitle: 'منتجات لها طلب عالي',
+                    title: 'dashboard_feature.alerts.marketing_title'.tr(),
+                    subtitle: 'dashboard_feature.alerts.marketing_subtitle'.tr(),
                     color: Colors.green,
                     onTap: () {},
                   ),
@@ -73,7 +73,7 @@ class AlertsNotificationsWidget extends ConsumerWidget {
                         Icon(Icons.check_circle, size: 48, color: Colors.green),
                         const SizedBox(height: 8),
                         Text(
-                          'لا توجد تنبيهات',
+                          'dashboard_feature.alerts.no_alerts'.tr(),
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
@@ -86,7 +86,7 @@ class AlertsNotificationsWidget extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
                 child: Text(
-                  'خطأ في تحميل التنبيهات',
+                  'dashboard_feature.alerts.error_load'.tr(),
                   style: TextStyle(color: Colors.red),
                 ),
               ),
@@ -160,7 +160,7 @@ class AlertsNotificationsWidget extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('منتجات قاربت على الانتهاء'),
+        title: Text('dashboard_feature.alerts.dialog_title'.tr()),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -170,9 +170,9 @@ class AlertsNotificationsWidget extends ConsumerWidget {
               final product = products[index];
               final expiryDate = DateTime.tryParse(product['expiry_date'] ?? '');
               return ListTile(
-                title: Text(product['name'] ?? 'منتج غير معروف'),
+                title: Text(product['name'] ?? 'dashboard_feature.alerts.unknown'.tr()),
                 subtitle: Text(
-                  'ينتهي في: ${expiryDate != null ? DateFormat('yyyy/MM/dd').format(expiryDate) : 'غير محدد'}',
+                  'dashboard_feature.alerts.expires_on'.tr(namedArgs: {'date': expiryDate != null ? DateFormat('yyyy/MM/dd').format(expiryDate) : 'dashboard_feature.alerts.unknown'.tr()}),
                 ),
                 leading: Icon(Icons.medication, color: Colors.orange),
               );

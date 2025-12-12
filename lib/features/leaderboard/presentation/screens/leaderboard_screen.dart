@@ -8,6 +8,7 @@ import 'package:fieldawy_store/features/leaderboard/presentation/screens/referra
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -56,7 +57,7 @@ class LeaderboardScreen extends HookConsumerWidget {
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('حسناً'),
+            child: Text('leaderboard_feature.actions.ok'.tr()),
           ),
         ],
       ),
@@ -93,7 +94,7 @@ class LeaderboardScreen extends HookConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'معلومات الليدربورد',
+                'leaderboard_feature.info.title'.tr(),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -119,7 +120,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                 child: Column(
                   children: [
                     Text(
-                      'كود دعوتك هو',
+                      'leaderboard_feature.info.referral_code'.tr(),
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
@@ -128,7 +129,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                         if (referralCode != null) {
                           Clipboard.setData(ClipboardData(text: referralCode));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم نسخ الكود')),
+                            SnackBar(content: Text('leaderboard_feature.info.code_copied'.tr())),
                           );
                         }
                       },
@@ -168,20 +169,20 @@ class LeaderboardScreen extends HookConsumerWidget {
               _buildRuleItem(
                 context,
                 Icons.person_add_alt_1_rounded,
-                'يمكنك دعوة المستخدمين الآخرين لتحصل على نقاط:',
+                'leaderboard_feature.info.rules_title'.tr(),
                 [
-                  'الدعوة إلى طبيب: تحصل على 1 نقطة وهو 2 نقطة',
-                  'الدعوة إلى موزع: تحصل على 2 نقطة وهو 2 نقطة',
+                  'leaderboard_feature.info.rule_1'.tr(),
+                  'leaderboard_feature.info.rule_2'.tr(),
                 ],
               ),
               const SizedBox(height: 16),
               _buildRuleItem(
                 context,
                 Icons.update_rounded,
-                'تجديد الموسم:',
+                'leaderboard_feature.info.season_renewal_title'.tr(),
                 [
-                  'الموسم يتجدد كل 30 يوماً',
-                  'يتم تسليم الجوائز في الموسم الجديد مباشرة لأول 5 مراكز عن طريق عجلة الحظ لكل مركز',
+                  'leaderboard_feature.info.season_renewal_rule_1'.tr(),
+                  'leaderboard_feature.info.season_renewal_rule_2'.tr(),
                 ],
               ),
             ],
@@ -190,7 +191,7 @@ class LeaderboardScreen extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('حسناً'),
+            child: Text('leaderboard_feature.actions.ok'.tr()),
           ),
         ],
       ),
@@ -366,7 +367,7 @@ class LeaderboardScreen extends HookConsumerWidget {
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           title: Text(
-            'Leaderboard',
+            'leaderboard_feature.title'.tr(),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -430,7 +431,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                           }
                         },
                         decoration: InputDecoration(
-                          hintText: 'Search players...',
+                          hintText: 'leaderboard_feature.search_hint'.tr(),
                           hintStyle: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
@@ -518,7 +519,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No players found for "${debouncedSearchQuery.value}"',
+                          'leaderboard_feature.no_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
@@ -540,7 +541,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No users on the leaderboard yet.',
+                        'leaderboard_feature.empty'.tr(),
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
@@ -653,7 +654,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Oops! Something went wrong',
+                      'leaderboard_feature.error_title'.tr(),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -673,7 +674,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                     FilledButton.icon(
                       onPressed: () => ref.invalidate(leaderboardProvider),
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Try Again'),
+                      label: Text('leaderboard_feature.try_again'.tr()),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -701,12 +702,12 @@ class LeaderboardScreen extends HookConsumerWidget {
             Expanded(
               child: Container(
                 height: 52,
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsetsDirectional.only(end: 8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.purple[400]!,
-                      Colors.purple[600]!,
+                      const Color(0xFFAB47BC),
+                      const Color(0xFF8E24AA),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
@@ -723,14 +724,14 @@ class LeaderboardScreen extends HookConsumerWidget {
                   child: InkWell(
                     onTap: () => _showRewardsBottomSheet(context),
                     borderRadius: BorderRadius.circular(16),
-                    child: const Row(
+                    child:  Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.card_giftcard,
                             color: Colors.white, size: 22),
                         SizedBox(width: 10),
                         Text(
-                          'Rewards',
+                          'leaderboard_feature.rewards'.tr(),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 15,
@@ -760,9 +761,10 @@ class LeaderboardScreen extends HookConsumerWidget {
                           margin: const EdgeInsets.only(left: 8),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: isAvailable
-                                  ? [Colors.amber[400]!, Colors.orange[600]!]
-                                  : [Colors.grey[500]!, Colors.grey[700]!],
+                              colors: [
+                                const Color(0xFFFFCA28),
+                                const Color(0xFFFB8C00),
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
@@ -787,20 +789,25 @@ class LeaderboardScreen extends HookConsumerWidget {
                                       ref.invalidate(spinWheelAvailabilityProvider);
                                     }
                                   : () async {
-                                      String title = 'غير متاح';
-                                      String message = 'عجلة الحظ غير متاحة حالياً.';
+                                      String title = 'leaderboard_feature.spin_wheel_status.unavailable'.tr();
+                                      String message = 'leaderboard_feature.spin_wheel_status.unavailable_msg'.tr();
                                       switch (details.availability) {
                                         case SpinWheelAvailability.notWinner:
-                                          title = 'غير مؤهل';
-                                          message = 'عجلة الحظ متاحة فقط للفائزين في الموسم السابق.';
+                                          title = 'leaderboard_feature.spin_wheel_status.not_qualified'.tr();
+                                          message = 'leaderboard_feature.spin_wheel_status.not_qualified_msg'.tr();
                                           break;
                                         case SpinWheelAvailability.windowClosed:
-                                          title = 'انتهت الفرصة';
-                                          message = 'لقد انتهت فترة الـ 30 يوماً للمطالبة بجائزة الموسم السابق.';
+                                          title = 'leaderboard_feature.spin_wheel_status.window_closed'.tr();
+                                          message = 'leaderboard_feature.spin_wheel_status.window_closed_msg'.tr();
                                           break;
                                         case SpinWheelAvailability.alreadyClaimed:
-                                          title = 'لقد طالبت بجائزتك';
-                                          message = 'لقد طالبت بجائزتك لهذا الموسم بالفعل.\n\nالجائزة: ${details.claimedPrize}\nالمركز: ${details.rank}';
+                                          title = 'leaderboard_feature.spin_wheel_status.already_claimed'.tr();
+                                          message = 'leaderboard_feature.spin_wheel_status.already_claimed_msg'.tr() + 
+                                                    '\n\n' + 
+                                                    'leaderboard_feature.spin_wheel_status.claimed_details'.tr(namedArgs: {
+                                                      'prize': details.claimedPrize ?? '',
+                                                      'rank': (details.rank ?? '').toString()
+                                                    });
                                           break;
                                         default:
                                           break;
@@ -823,9 +830,9 @@ class LeaderboardScreen extends HookConsumerWidget {
                                     size: 22,
                                   ),
                                   const SizedBox(width: 10),
-                                  const Text(
-                                    'Spin Wheel',
-                                    style: TextStyle(
+                                  Text(
+                                    'leaderboard_feature.spin_wheel'.tr(),
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -876,7 +883,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Top Champions',
+                  'leaderboard_feature.top_champions'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
@@ -1128,7 +1135,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Your Rank',
+                        'leaderboard_feature.your_rank'.tr(),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 11,
@@ -1167,7 +1174,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                     ),
                   ),
                   Text(
-                    'points',
+                    'leaderboard_feature.points'.tr(),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 9,
@@ -1273,7 +1280,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} points',
+                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -1393,7 +1400,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} points',
+                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -1513,7 +1520,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} points',
+                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -1633,7 +1640,7 @@ class _CountdownTimerState extends State<_CountdownTimer> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Season ends in',
+                'leaderboard_feature.season_ends_in'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -1646,13 +1653,13 @@ class _CountdownTimerState extends State<_CountdownTimer> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _timeBox(context, '$days', 'Days'),
+              _timeBox(context, '$days', 'leaderboard_feature.time_units.days'.tr()),
               _timeSeparator(),
-              _timeBox(context, _two(hours), 'Hours'),
+              _timeBox(context, _two(hours), 'leaderboard_feature.time_units.hours'.tr()),
               _timeSeparator(),
-              _timeBox(context, _two(minutes), 'Min'),
+              _timeBox(context, _two(minutes), 'leaderboard_feature.time_units.min'.tr()),
               _timeSeparator(),
-              _timeBox(context, _two(seconds), 'Sec'),
+              _timeBox(context, _two(seconds), 'leaderboard_feature.time_units.sec'.tr()),
             ],
           ),
         ],
@@ -1767,13 +1774,13 @@ class _RewardsInfoSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Leaderboard Rewards',
+                        'leaderboard_feature.rewards_sheet.title'.tr(),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        'Win amazing prizes!',
+                        'leaderboard_feature.rewards_sheet.subtitle'.tr(),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
@@ -1789,47 +1796,47 @@ class _RewardsInfoSheet extends StatelessWidget {
             child: ListView(
               controller: scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: const [
+              children: [
                 _RewardTierCard(
-                  rank: '1st Place',
+                  rank: 'leaderboard_feature.ranks.first'.tr(),
                   rankIcon: '🥇',
                   color: Colors.amber,
                   rewards: [
-                    'EGP 1000 Cash Prize',
-                    'Book 1, Book 2, Book 3',
-                    'Course 1, Course 2',
-                    'Golden Blind Box (Medicines)',
+                    'leaderboard_feature.prizes.cash_1000'.tr(),
+                    'leaderboard_feature.prizes.books_3'.tr(),
+                    'leaderboard_feature.prizes.courses_2'.tr(),
+                    'leaderboard_feature.prizes.golden_box'.tr(),
                   ],
                 ),
                 _RewardTierCard(
-                  rank: '2nd Place',
+                  rank: 'leaderboard_feature.ranks.second'.tr(),
                   rankIcon: '🥈',
                   color: Colors.grey,
                   rewards: [
-                    'EGP 500 Cash Prize',
-                    'Book 1, Book 2',
-                    'Course 1, Course 2',
-                    'Silver Blind Box',
+                    'leaderboard_feature.prizes.cash_500'.tr(),
+                    'leaderboard_feature.prizes.books_2'.tr(),
+                    'leaderboard_feature.prizes.courses_2'.tr(),
+                    'leaderboard_feature.prizes.silver_box'.tr(),
                   ],
                 ),
                 _RewardTierCard(
-                  rank: '3rd Place',
+                  rank: 'leaderboard_feature.ranks.third'.tr(),
                   rankIcon: '🥉',
-                  color: Color(0xFFCD7F32),
+                  color: const Color(0xFFCD7F32),
                   rewards: [
-                    'EGP 250 Cash Prize',
-                    'Book 1',
-                    'Course 1',
-                    'Bronze Blind Box',
+                    'leaderboard_feature.prizes.cash_250'.tr(),
+                    'leaderboard_feature.prizes.books_1'.tr(),
+                    'leaderboard_feature.prizes.courses_1'.tr(),
+                    'leaderboard_feature.prizes.bronze_box'.tr(),
                   ],
                 ),
                 _RewardTierCard(
-                  rank: '4th & 5th Place',
+                  rank: 'leaderboard_feature.ranks.fourth_fifth'.tr(),
                   rankIcon: '🏅',
                   color: Colors.blue,
                   rewards: [
-                    'EGP 100 Cash Prize',
-                    '1 Book & 1 Course',
+                    'leaderboard_feature.prizes.cash_100'.tr(),
+                    'leaderboard_feature.prizes.book_course'.tr(),
                   ],
                 ),
               ],

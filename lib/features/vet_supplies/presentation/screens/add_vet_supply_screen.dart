@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:easy_localization/easy_localization.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
@@ -90,7 +91,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل معالجة الصورة: $e'),
+            content: Text('vet_supplies_feature.messages.process_error'.tr(namedArgs: {'error': e.toString()})),
             backgroundColor: Colors.red,
           ),
         );
@@ -119,14 +120,14 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       sourcePath: imageFile.path,
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle: 'قص صورة المستلزم',
+          toolbarTitle: 'vet_supplies_feature.fields.crop_image_title'.tr(),
           toolbarColor: Colors.deepOrange,
           toolbarWidgetColor: Colors.white,
           initAspectRatio: CropAspectRatioPreset.original,
           lockAspectRatio: false,
         ),
         IOSUiSettings(
-          title: 'قص صورة المستلزم',
+          title: 'vet_supplies_feature.fields.crop_image_title'.tr(),
         ),
       ],
     );
@@ -158,7 +159,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('المعرض'),
+              title: Text('gallery'.tr()),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -166,7 +167,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_camera),
-              title: const Text('الكاميرا'),
+              title: Text('camera'.tr()),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -185,8 +186,8 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
 
     if (_processedImageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('الرجاء اختيار صورة'),
+        SnackBar(
+          content: Text('vet_supplies_feature.messages.select_image'.tr()),
           backgroundColor: Colors.red,
         ),
       );
@@ -204,7 +205,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       );
 
       if (imageUrl == null) {
-        throw Exception('فشل رفع الصورة');
+        throw Exception('vet_supplies_feature.messages.upload_error'.tr());
       }
 
       // Create supply
@@ -221,8 +222,8 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إضافة المستلزم بنجاح'),
+          SnackBar(
+            content: Text('vet_supplies_feature.messages.add_success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -232,7 +233,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل الحفظ: $e'),
+            content: Text('vet_supplies_feature.messages.save_error'.tr(namedArgs: {'error': e.toString()})),
             backgroundColor: Colors.red,
           ),
         );
@@ -248,7 +249,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إضافة مستلزم بيطري'),
+        title: Text('vet_supplies_feature.add_title'.tr()),
         actions: [
           if (_isSaving)
             const Center(
@@ -282,13 +283,13 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
                   border: Border.all(color: Colors.grey[400]!),
                 ),
                 child: _isProcessing
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('جاري معالجة الصورة...'),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text('vet_supplies_feature.messages.processing_image'.tr()),
                           ],
                         ),
                       )
@@ -308,7 +309,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
                                   size: 64, color: Colors.grey[600]),
                               const SizedBox(height: 8),
                               Text(
-                                'اضغط لاختيار صورة',
+                                'vet_supplies_feature.actions.tap_to_pick_image'.tr(),
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
@@ -320,7 +321,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
               TextButton.icon(
                 onPressed: _showImageSourceDialog,
                 icon: const Icon(Icons.edit),
-                label: const Text('تغيير الصورة'),
+                label: Text('vet_supplies_feature.actions.change_image'.tr()),
               ),
             ],
             const SizedBox(height: 24),
@@ -328,17 +329,17 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             // Name Field
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'اسم المستلزم *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.inventory_2),
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.name_label'.tr(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.inventory_2),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'الرجاء إدخال اسم المستلزم';
+                  return 'vet_supplies_feature.fields.name_required'.tr();
                 }
                 if (value.length < 3) {
-                  return 'يجب أن يكون الاسم 3 أحرف على الأقل';
+                  return 'vet_supplies_feature.fields.name_too_short'.tr();
                 }
                 return null;
               },
@@ -348,19 +349,19 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             // Price Field
             TextFormField(
               controller: _priceController,
-              decoration: const InputDecoration(
-                labelText: 'السعر (جنيه) *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.attach_money),
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.price_label'.tr(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.attach_money),
               ),
               keyboardType: TextInputType.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'الرجاء إدخال السعر';
+                  return 'vet_supplies_feature.fields.price_required'.tr();
                 }
                 final price = double.tryParse(value);
                 if (price == null || price < 0) {
-                  return 'السعر غير صحيح';
+                  return 'vet_supplies_feature.fields.price_invalid'.tr();
                 }
                 return null;
               },
@@ -370,19 +371,19 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             // Description Field
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'الوصف *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.description_label'.tr(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.description),
                 alignLabelWithHint: true,
               ),
               maxLines: 5,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'الرجاء إدخال وصف المستلزم';
+                  return 'vet_supplies_feature.fields.description_required'.tr();
                 }
                 if (value.length < 10) {
-                  return 'يجب أن يكون الوصف 10 أحرف على الأقل';
+                  return 'vet_supplies_feature.fields.description_too_short'.tr();
                 }
                 return null;
               },
@@ -392,9 +393,9 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             // Phone Field
             IntlPhoneField(
               controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'رقم الهاتف *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.phone_label'.tr(),
+                border: const OutlineInputBorder(),
               ),
               initialCountryCode: 'EG',
               onChanged: (phone) {
@@ -402,7 +403,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
               },
               validator: (phone) {
                 if (phone == null || phone.number.isEmpty) {
-                  return 'الرجاء إدخال رقم الهاتف';
+                  return 'vet_supplies_feature.fields.phone_required'.tr();
                 }
                 return null;
               },
@@ -424,9 +425,9 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text(
-                      'حفظ المستلزم',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  : Text(
+                      'vet_supplies_feature.actions.save'.tr(),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
             ),
           ],

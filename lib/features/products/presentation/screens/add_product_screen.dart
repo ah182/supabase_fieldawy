@@ -81,7 +81,7 @@ class AddProductScreen extends ConsumerWidget {
             icon: Icons.local_fire_department_rounded,
             title: 'addProduct.limitedAds.title'.tr(),
             subtitle: 'addProduct.limitedAds.subtitle'.tr(),
-            badge: 'يتوفر قريباً',
+            badge: 'products.add_options.soon'.tr(),
             onTap: () {
               // TODO: Navigate to the correct screen
             },

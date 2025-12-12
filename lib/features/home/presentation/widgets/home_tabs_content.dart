@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
@@ -1029,8 +1030,8 @@ class OffersTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد عروض متاحة'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'offers.tabs.no_offers'.tr()
+                      : 'offers.tabs.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center),
               ],
@@ -1088,9 +1089,9 @@ class OffersTab extends ConsumerWidget {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'Offer',
-                        style: TextStyle(
+                      child: Text(
+                        'offers.dialog.special_offer'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,

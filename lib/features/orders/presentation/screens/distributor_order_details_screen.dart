@@ -89,10 +89,9 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
         elevation: 0,
         centerTitle: true,
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
+                      Container(
+                        margin: const EdgeInsetsDirectional.only(end: 16),
+                        padding: const EdgeInsets.all(6),            decoration: BoxDecoration(
               color: theme.colorScheme.primary,
               borderRadius: BorderRadius.circular(6),
             ),
@@ -105,7 +104,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
       body: currentProducts.isEmpty
           ? Center(
               child: Text(
-                'لا توجد منتجات لهذا الموزع',
+                'orders.no_products_distributor'.tr(),
                 style: TextStyle(
                     fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -340,7 +339,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Create Invoice ',
+                  'orders.create_invoice'.tr(),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -362,7 +361,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                             children: [
                               ListTile(
                                 leading: const Icon(Icons.picture_as_pdf),
-                                title: const Text('  PDF حفظ وطباعة الفاتورة'),
+                                title: Text('orders.save_pdf'.tr()),
                                 onTap: () async {
                                   Navigator.of(ctx).pop();
                                   try {
@@ -398,7 +397,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                         backgroundColor: Colors.transparent,
                                         content: AwesomeSnackbarContent(
                                           title: 'خطأ'.tr(),
-                                          message: 'فشل إنشاء ملف PDF: $e',
+                                          message: 'orders.pdf_error'.tr(namedArgs: {'error': e.toString()}),
                                           contentType: ContentType.failure,
                                         ),
                                       );
@@ -409,7 +408,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.image),
-                                title: const Text('  معاينة الفاتورة'),
+                                title: Text('orders.preview_invoice'.tr()),
                                 onTap: () async {
                                   // First, close the modal bottom sheet.
                                   Navigator.of(ctx).pop();
@@ -499,7 +498,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                           backgroundColor: Colors.transparent,
                                           content: AwesomeSnackbarContent(
                                             title: 'خطأ'.tr(),
-                                            message: 'فشل إنشاء معاينة الفاتورة.',
+                                            message: 'orders.preview_generic_error'.tr(),
                                             contentType: ContentType.failure,
                                           ),
                                         );
@@ -517,7 +516,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                         backgroundColor: Colors.transparent,
                                         content: AwesomeSnackbarContent(
                                           title: 'خطأ'.tr(),
-                                          message: 'فشل إنشاء معاينة الفاتورة: $e',
+                                          message: 'orders.preview_error'.tr(namedArgs: {'error': e.toString()}),
                                           contentType: ContentType.failure,
                                         ),
                                       );

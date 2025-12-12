@@ -60,7 +60,7 @@ class _SurgicalToolDetailsScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تم إضافة التعليق بنجاح'),
+          content: Text('surgical_tools_feature.comments.add_success'.tr()),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -70,7 +70,7 @@ class _SurgicalToolDetailsScreenState
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('فشل إضافة التعليق، حاول مرة أخرى'),
+          content: Text('surgical_tools_feature.comments.add_error'.tr()),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -84,18 +84,18 @@ class _SurgicalToolDetailsScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف التعليق'),
-        content: const Text('هل أنت متأكد من حذف هذا التعليق؟'),
+        title: Text('surgical_tools_feature.comments.delete_title'.tr()),
+        content: Text('surgical_tools_feature.comments.delete_confirm'.tr()),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('surgical_tools_feature.actions.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('surgical_tools_feature.actions.delete'.tr()),
           ),
         ],
       ),
@@ -110,7 +110,7 @@ class _SurgicalToolDetailsScreenState
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حذف التعليق'),
+            content: Text('surgical_tools_feature.comments.delete_success'.tr()),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
             shape:
@@ -137,7 +137,7 @@ class _SurgicalToolDetailsScreenState
           _showUserBottomSheet(context, userModel);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تعذر تحميل بيانات المستخدم')),
+            SnackBar(content: Text('surgical_tools_feature.messages.user_load_error'.tr())),
           );
         }
       }
@@ -145,7 +145,7 @@ class _SurgicalToolDetailsScreenState
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
+          SnackBar(content: Text('surgical_tools_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}))),
         );
       }
     }
@@ -193,7 +193,7 @@ class _SurgicalToolDetailsScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.displayName ?? 'مستخدم',
+                    user.displayName ?? 'surgical_tools_feature.comments.user'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -225,7 +225,7 @@ class _SurgicalToolDetailsScreenState
                     _buildDetailTile(
                       theme,
                       Icons.local_shipping,
-                      'طريقة التوزيع',
+                      'surgical_tools_feature.distributor.distribution_method'.tr(),
                       _getDistributionMethodLabel(user.distributionMethod!),
                     ),
                   if (user.governorates != null && user.governorates!.isNotEmpty)
@@ -239,7 +239,7 @@ class _SurgicalToolDetailsScreenState
                               Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                isDistributor ? 'مناطق التغطية' : 'الموقع',
+                                isDistributor ? 'surgical_tools_feature.distributor.coverage_areas'.tr() : 'surgical_tools_feature.distributor.location'.tr(),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
@@ -304,7 +304,7 @@ class _SurgicalToolDetailsScreenState
                       child: ElevatedButton.icon(
                         onPressed: () => _openWhatsApp(user.whatsappNumber!),
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
-                        label: const Text('تواصل عبر واتساب', style: TextStyle(color: Colors.white)),
+                        label: Text('surgical_tools_feature.actions.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF25D366),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -340,7 +340,7 @@ class _SurgicalToolDetailsScreenState
                           );
                         },
                         icon: const Icon(Icons.inventory_2),
-                        label: const Text('عرض المنتجات'),
+                        label: Text('surgical_tools_feature.actions.view_products'.tr()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -374,18 +374,18 @@ class _SurgicalToolDetailsScreenState
 
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'doctor': return 'طبيب بيطري'.tr();
-      case 'distributor': return 'موزع فردي'.tr();
-      case 'company': return 'شركة توزيع'.tr();
+      case 'doctor': return 'auth.role_veterinarian'.tr();
+      case 'distributor': return 'auth.role_distributor'.tr();
+      case 'company': return 'auth.role_company'.tr();
       default: return role;
     }
   }
 
   String _getDistributionMethodLabel(String method) {
     switch (method) {
-      case 'direct_distribution': return 'توزيع مباشر'.tr();
-      case 'order_delivery': return 'توصيل طلبات'.tr();
-      case 'both': return 'توزيع وتوصيل'.tr();
+      case 'direct_distribution': return 'auth.profile.distribution.direct_distribution'.tr();
+      case 'order_delivery': return 'auth.profile.distribution.order_delivery'.tr();
+      case 'both': return 'auth.profile.distribution.both_methods'.tr();
       default: return method;
     }
   }
@@ -399,7 +399,7 @@ class _SurgicalToolDetailsScreenState
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح واتساب')),
+            SnackBar(content: Text('surgical_tools_feature.messages.whatsapp_error'.tr())),
           );
         }
       }
@@ -410,11 +410,11 @@ class _SurgicalToolDetailsScreenState
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [
-      'محتوى غير لائق / مسيء',
-      'رسائل مزعجة (Spam)',
-      'معلومات مضللة',
-      'تحرش أو تنمر',
-      'أخرى',
+      'surgical_tools_feature.report.reasons.inappropriate'.tr(),
+      'surgical_tools_feature.report.reasons.spam'.tr(),
+      'surgical_tools_feature.report.reasons.misleading'.tr(),
+      'surgical_tools_feature.report.reasons.harassment'.tr(),
+      'surgical_tools_feature.report.reasons.other'.tr(),
     ];
     String selectedReason = reasons[0];
     final descriptionController = TextEditingController();
@@ -457,19 +457,19 @@ class _SurgicalToolDetailsScreenState
                       child: const Icon(Icons.flag_rounded, color: Colors.red),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'إبلاغ عن محتوى',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Text(
+                      'surgical_tools_feature.report.title'.tr(),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'ساعدنا في الحفاظ على بيئة آمنة. ما المشكلة في هذا التقييم؟',
-                  style: TextStyle(color: Colors.grey),
+                  'surgical_tools_feature.report.subtitle'.tr(),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
@@ -504,7 +504,7 @@ class _SurgicalToolDetailsScreenState
                   controller: descriptionController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'أضف تفاصيل إضافية (اختياري)...',
+                    hintText: 'surgical_tools_feature.report.details_hint'.tr(),
                     filled: true,
                     fillColor: Colors.grey[100],
                     border: OutlineInputBorder(
@@ -525,7 +525,7 @@ class _SurgicalToolDetailsScreenState
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                        child: Text('surgical_tools_feature.actions.cancel'.tr(), style: const TextStyle(color: Colors.grey)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -536,7 +536,7 @@ class _SurgicalToolDetailsScreenState
                           Navigator.pop(context);
                           
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                            SnackBar(content: Text('surgical_tools_feature.report.sending'.tr())),
                           );
 
                           final service = ref.read(reviewServiceProvider);
@@ -551,15 +551,15 @@ class _SurgicalToolDetailsScreenState
                           if (context.mounted) {
                              if (result['success'] == true) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                                SnackBar(
+                                  content: Text('surgical_tools_feature.report.success'.tr()),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                                  content: Text(result['message'] ?? 'surgical_tools_feature.report.error'.tr()),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -575,7 +575,7 @@ class _SurgicalToolDetailsScreenState
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('surgical_tools_feature.report.submit'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -731,9 +731,9 @@ class _SurgicalToolDetailsScreenState
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.attach_money,
-                          label: 'السعر',
+                          label: 'surgical_tools_feature.fields.price'.tr(),
                           value:
-                              '${widget.tool.price?.toStringAsFixed(0) ?? '0'} ج.م',
+                              '${widget.tool.price?.toStringAsFixed(0) ?? '0'} ${"EGP".tr()}',
                           color: Colors.green,
                           theme: theme,
                         ),
@@ -742,7 +742,7 @@ class _SurgicalToolDetailsScreenState
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.visibility_outlined,
-                          label: 'مشاهدات',
+                          label: 'surgical_tools_feature.fields.views'.tr(),
                           value: '${widget.tool.views}',
                           color: Colors.blue,
                           theme: theme,
@@ -758,7 +758,7 @@ class _SurgicalToolDetailsScreenState
                           builder: (context, snapshot) {
                             return _buildStatCard(
                               icon: Icons.comment_outlined,
-                              label: 'تعليقات',
+                              label: 'surgical_tools_feature.fields.comments'.tr(),
                               value: '${snapshot.data ?? 0}',
                               color: Colors.orange,
                               theme: theme,
@@ -794,7 +794,7 @@ class _SurgicalToolDetailsScreenState
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'الحالة: $status',
+                            'surgical_tools_feature.fields.status'.tr(namedArgs: {'status': status}),
                             style: TextStyle(
                               color: _getStatusColor(status),
                               fontSize: 16,
@@ -839,7 +839,7 @@ class _SurgicalToolDetailsScreenState
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'الشركة المصنعة',
+                                'surgical_tools_feature.fields.manufacturer'.tr(),
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: theme.colorScheme.onSurface
@@ -870,7 +870,7 @@ class _SurgicalToolDetailsScreenState
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'الموزع',
+                                'surgical_tools_feature.fields.distributor'.tr(),
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: theme.colorScheme.onSurface
@@ -901,7 +901,7 @@ class _SurgicalToolDetailsScreenState
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'وصف الأداة',
+                                'surgical_tools_feature.fields.description'.tr(),
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: theme.colorScheme.onSurface
@@ -929,7 +929,7 @@ class _SurgicalToolDetailsScreenState
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'معلومات إضافية',
+                                'surgical_tools_feature.fields.additional_info'.tr(),
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: theme.colorScheme.onSurface
@@ -940,7 +940,7 @@ class _SurgicalToolDetailsScreenState
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'أداة جراحية عالية الجودة للاستخدام الطبي المتخصص',
+                            'surgical_tools_feature.fields.default_description'.tr(),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               height: 1.6,
                               color:
@@ -1028,7 +1028,7 @@ class _SurgicalToolDetailsScreenState
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'التعليقات',
+                  'surgical_tools_feature.comments.title'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1084,14 +1084,14 @@ class _SurgicalToolDetailsScreenState
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'لا توجد تعليقات بعد',
+                          'surgical_tools_feature.comments.no_comments'.tr(),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'كن أول من يعلق!',
+                          'surgical_tools_feature.comments.be_first'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.4),
                           ),
@@ -1154,7 +1154,7 @@ class _SurgicalToolDetailsScreenState
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: 'اكتب تعليقك...',
+                hintText: 'surgical_tools_feature.comments.hint'.tr(),
                 hintStyle: TextStyle(
                   color: theme.colorScheme.onSurface.withOpacity(0.5),
                 ),
@@ -1282,7 +1282,7 @@ class _SurgicalToolDetailsScreenState
                     onPressed: () => _showReportDialog(context, ref, comment.id),
                     icon: Icon(Icons.flag_outlined, size: 14, color: Colors.grey[500]),
                     label: Text(
-                      'إبلاغ',
+                      'surgical_tools_feature.actions.report'.tr(),
                       style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
                     style: TextButton.styleFrom(

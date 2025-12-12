@@ -80,7 +80,7 @@ class AnalyticsPage extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Analytics',
+                                    'analytics_feature.title'.tr(),
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
                                       color: Colors.white,
@@ -89,7 +89,7 @@ class AnalyticsPage extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Market insights & analytics',
+                                    'analytics_feature.subtitle'.tr(),
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: Colors.white.withOpacity(0.9),
                                       fontSize: 15,
@@ -176,14 +176,14 @@ class AnalyticsPage extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Global Trends',
+                                      'analytics_feature.global_trends'.tr(),
                                       style: theme.textTheme.titleLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Market insights & analytics',
+                                      'analytics_feature.global_trends_subtitle'.tr(),
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                                       ),
@@ -237,7 +237,7 @@ class AnalyticsPage extends ConsumerWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
-                                      'Global Data • Updated hourly',
+                                      'analytics_feature.footer_badge'.tr(),
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         color: Colors.green[700],
                                         fontWeight: FontWeight.w600,
@@ -263,7 +263,7 @@ class AnalyticsPage extends ConsumerWidget {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Last updated: ${DateFormat('MMM dd, HH:mm').format(DateTime.now())}',
+                                      'analytics_feature.last_updated'.tr(namedArgs: {'date': DateFormat('MMM dd, HH:mm').format(DateTime.now())}),
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                                         fontSize: 11,
@@ -318,7 +318,7 @@ class AnalyticsPage extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Refreshing data...',
+                        'dashboard_feature.refreshing'.tr(),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),

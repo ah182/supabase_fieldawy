@@ -78,7 +78,7 @@ class _NotificationPreferencesScreenState
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الإعدادات: $e')),
+          SnackBar(content: Text('${'notifications_feature.load_error'.tr()}: $e')),
         );
       }
     }
@@ -105,7 +105,7 @@ class _NotificationPreferencesScreenState
       setState(() => _isLoadingDistributors = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الموزعين: $e')),
+          SnackBar(content: Text('${'notifications_feature.distributors_error'.tr()}: $e')),
         );
       }
     }
@@ -119,16 +119,16 @@ class _NotificationPreferencesScreenState
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حفظ الإعدادات'),
-            duration: Duration(seconds: 1),
+          SnackBar(
+            content: Text('notifications_feature.save_success'.tr()),
+            duration: const Duration(seconds: 1),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في حفظ الإعدادات: $e')),
+          SnackBar(content: Text('${'notifications_feature.save_error'.tr()}: $e')),
         );
       }
       // Revert the change
@@ -140,16 +140,16 @@ class _NotificationPreferencesScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إلغاء الاشتراك'),
-        content: Text('هل تريد إلغاء الاشتراك من $distributorName؟'),
+        title: Text('notifications_feature.unsubscribe_confirm_title'.tr()),
+        content: Text('notifications_feature.unsubscribe_confirm_msg'.tr(namedArgs: {'name': distributorName})),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
+            child: Text('notifications_feature.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('تأكيد'),
+            child: Text('notifications_feature.confirm'.tr()),
           ),
         ],
       ),
@@ -164,21 +164,21 @@ class _NotificationPreferencesScreenState
           repository.invalidateCache();
           
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم إلغاء الاشتراك بنجاح'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text('notifications_feature.unsubscribe_success'.tr()),
+              duration: const Duration(seconds: 2),
             ),
           );
           await _loadSubscribedDistributors();
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('فشل إلغاء الاشتراك')),
+            SnackBar(content: Text('notifications_feature.unsubscribe_failed'.tr())),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e')),
+            SnackBar(content: Text('${'notifications_feature.error'.tr(namedArgs: {'error': e.toString()})}')),
           );
         }
       }
@@ -192,19 +192,19 @@ class _NotificationPreferencesScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('notificationSettings'.tr()),
+        title: Text('notifications_feature.title'.tr()),
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
+          tabs: [
             Tab(
-              icon: Icon(Icons.notifications_rounded),
-              text: 'الإشعارات العامة',
+              icon: const Icon(Icons.notifications_rounded),
+              text: 'notifications_feature.general_tab'.tr(),
             ),
             Tab(
-              icon: Icon(Icons.people_rounded),
-              text: 'الموزعين المشتركين',
+              icon: const Icon(Icons.people_rounded),
+              text: 'notifications_feature.distributors_tab'.tr(),
             ),
           ],
           indicatorColor: colorScheme.primary,
@@ -231,7 +231,7 @@ class _NotificationPreferencesScreenState
               padding: const EdgeInsets.all(16.0),
               children: [
                 Text(
-                  'chooseNotificationTypes'.tr(),
+                  'notifications_feature.choose_types'.tr(),
                   style: textTheme.titleMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -242,8 +242,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.monetization_on_rounded,
                   iconColor: Colors.green,
-                  title: 'priceUpdates'.tr(),
-                  subtitle: 'receivePriceUpdateNotifications'.tr(),
+                  title: 'notifications_feature.types.price_action'.tr(),
+                  subtitle: 'notifications_feature.types.price_action_desc'.tr(),
                   value: _priceActionEnabled,
                   onChanged: (value) {
                     setState(() => _priceActionEnabled = value);
@@ -257,8 +257,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.warning_rounded,
                   iconColor: Colors.orange,
-                  title: 'expiringProducts'.tr(),
-                  subtitle: 'receiveExpiringProductNotifications'.tr(),
+                  title: 'notifications_feature.types.expire_soon'.tr(),
+                  subtitle: 'notifications_feature.types.expire_soon_desc'.tr(),
                   value: _expireSoonEnabled,
                   onChanged: (value) {
                     setState(() => _expireSoonEnabled = value);
@@ -272,8 +272,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.local_offer_rounded,
                   iconColor: Colors.red,
-                  title: 'offers'.tr(),
-                  subtitle: 'receiveOffersNotifications'.tr(),
+                  title: 'notifications_feature.types.offers'.tr(),
+                  subtitle: 'notifications_feature.types.offers_desc'.tr(),
                   value: _offersEnabled,
                   onChanged: (value) {
                     setState(() => _offersEnabled = value);
@@ -287,8 +287,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.medical_services_rounded,
                   iconColor: Colors.blue,
-                  title: 'surgicalTools'.tr(),
-                  subtitle: 'receiveSurgicalToolsNotifications'.tr(),
+                  title: 'notifications_feature.types.surgical_tools'.tr(),
+                  subtitle: 'notifications_feature.types.surgical_tools_desc'.tr(),
                   value: _surgicalToolsEnabled,
                   onChanged: (value) {
                     setState(() => _surgicalToolsEnabled = value);
@@ -302,8 +302,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.book_rounded,
                   iconColor: Colors.purple,
-                  title: 'الكتب البيطرية',
-                  subtitle: 'استقبال إشعارات الكتب البيطرية الجديدة',
+                  title: 'notifications_feature.types.books'.tr(),
+                  subtitle: 'notifications_feature.types.books_desc'.tr(),
                   value: _booksEnabled,
                   onChanged: (value) {
                     setState(() => _booksEnabled = value);
@@ -317,8 +317,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.school_rounded,
                   iconColor: Colors.teal,
-                  title: 'الكورسات البيطرية',
-                  subtitle: 'استقبال إشعارات الكورسات البيطرية الجديدة',
+                  title: 'notifications_feature.types.courses'.tr(),
+                  subtitle: 'notifications_feature.types.courses_desc'.tr(),
                   value: _coursesEnabled,
                   onChanged: (value) {
                     setState(() => _coursesEnabled = value);
@@ -332,8 +332,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.work_rounded,
                   iconColor: Colors.indigo,
-                  title: 'عروض الوظائف',
-                  subtitle: 'استقبال إشعارات الوظائف البيطرية الجديدة',
+                  title: 'notifications_feature.types.job_offers'.tr(),
+                  subtitle: 'notifications_feature.types.job_offers_desc'.tr(),
                   value: _jobOffersEnabled,
                   onChanged: (value) {
                     setState(() => _jobOffersEnabled = value);
@@ -347,8 +347,8 @@ class _NotificationPreferencesScreenState
                 _buildNotificationToggle(
                   icon: Icons.medical_services_outlined,
                   iconColor: Colors.cyan,
-                  title: 'المستلزمات البيطرية',
-                  subtitle: 'استقبال إشعارات المستلزمات البيطرية الجديدة',
+                  title: 'notifications_feature.types.vet_supplies'.tr(),
+                  subtitle: 'notifications_feature.types.vet_supplies_desc'.tr(),
                   value: _vetSuppliesEnabled,
                   onChanged: (value) {
                     setState(() => _vetSuppliesEnabled = value);
@@ -378,7 +378,7 @@ class _NotificationPreferencesScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'notificationPreferencesInfo'.tr(),
+                          'notifications_feature.info_text'.tr(),
                           style: textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurface,
                           ),
@@ -410,14 +410,14 @@ class _NotificationPreferencesScreenState
               ),
               const SizedBox(height: 16),
               Text(
-                'لا يوجد موزعين مشتركين',
+                'notifications_feature.no_subscriptions'.tr(),
                 style: textTheme.titleLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'يمكنك الاشتراك مع الموزعين من صفحة الموزعين',
+                'notifications_feature.subscribe_hint'.tr(),
                 style: textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                 ),

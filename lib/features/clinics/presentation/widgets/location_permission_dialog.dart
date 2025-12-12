@@ -2,6 +2,7 @@ import 'package:fieldawy_store/features/clinics/presentation/screens/select_clin
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/services/location_service.dart';
 import '../../data/clinic_repository.dart';
 import '../../../authentication/data/user_repository.dart';
@@ -40,7 +41,7 @@ class _LocationPermissionDialogState
       if (position == null) {
         setState(() {
           _errorMessage =
-              'لم نتمكن من الحصول على موقعك. تأكد من تفعيل خدمات الموقع.';
+              'clinics_feature.permission_dialog.error_location'.tr();
           _isLoading = false;
         });
         return;
@@ -72,8 +73,8 @@ class _LocationPermissionDialogState
       if (success && mounted) {
         // Show success message for the initial save
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('✅ تم حفظ الموقع المبدئي, يمكنك الآن تعديله يدويًا'),
+          SnackBar(
+            content: Text('clinics_feature.permission_dialog.success_initial'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -92,13 +93,13 @@ class _LocationPermissionDialogState
         );
       } else {
         setState(() {
-          _errorMessage = 'حدث خطأ أثناء حفظ الموقع. حاول مرة أخرى.';
+          _errorMessage = 'clinics_feature.permission_dialog.error_save'.tr();
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ: ${e.toString()}';
+        _errorMessage = 'clinics_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()});
         _isLoading = false;
       });
     }
@@ -110,19 +111,19 @@ class _LocationPermissionDialogState
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      title: const Row(
+      title: Row(
         children: [
           Icon(Icons.location_on, color: Colors.blue, size: 28),
           SizedBox(width: 10),
-          Text('تحديد موقع العيادة'),
+          Text('clinics_feature.permission_dialog.title'.tr()),
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'هل تسمح للتطبيق بتحديد موقع العيادة على الخريطة؟',
+          Text(
+            'clinics_feature.permission_dialog.message'.tr(),
             style: TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 15),
@@ -132,7 +133,7 @@ class _LocationPermissionDialogState
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 Row(
                   children: [
@@ -140,7 +141,7 @@ class _LocationPermissionDialogState
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'لماذا نحتاج موقعك؟',
+                        'clinics_feature.permission_dialog.why_title'.tr(),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -151,9 +152,9 @@ class _LocationPermissionDialogState
                 ),
                 SizedBox(height: 8),
                 Text(
-                  '• سيظهر موقع عيادتك على الخريطة للمستخدمين الآخرين\n'
-                  '• يمكنك تحديث الموقع في أي وقت من الإعدادات\n'
-                  '• يساعد هذا المستخدمين في العثور على عيادتك',
+                  '${"clinics_feature.permission_dialog.reason_1".tr()}\n'
+                  '${"clinics_feature.permission_dialog.reason_2".tr()}\n'
+                  '${"clinics_feature.permission_dialog.reason_3".tr()}',
                   style: TextStyle(fontSize: 13),
                 ),
               ],
@@ -187,13 +188,13 @@ class _LocationPermissionDialogState
           ],
           if (_isLoading) ...[
             const SizedBox(height: 20),
-            const Center(
+            Center(
               child: Column(
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 10),
                   Text(
-                    'جاري تحديد الموقع...',
+                    'clinics_feature.permission_dialog.locating'.tr(),
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
@@ -205,14 +206,14 @@ class _LocationPermissionDialogState
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
-          child: const Text('لاحقاً'),
+          child: Text('clinics_feature.permission_dialog.later'.tr()),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _requestLocationAndSave,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           ),
-          child: const Text('السماح وحفظ الموقع'),
+          child: Text('clinics_feature.permission_dialog.allow'.tr()),
         ),
       ],
     );

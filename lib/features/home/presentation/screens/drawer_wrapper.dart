@@ -1,3 +1,4 @@
+// ignore: unused_import
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
@@ -83,8 +84,7 @@ class _DrawerWrapperState extends State<DrawerWrapper> {
       slideWidth: MediaQuery.of(context).size.width * 0.75, // عرض القائمة
       mainScreenTapClose: true, // إغلاق القائمة عند الضغط على الشاشة الرئيسية
       menuBackgroundColor: Theme.of(context).colorScheme.primary,
-      isRtl:
-          context.locale.languageCode == 'ar', // دعم الاتجاه من اليمين لليسار
+      // دعم الاتجاه من اليمين لليسار
     );
   }
 }

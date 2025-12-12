@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/add_course_screen.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/edit_course_screen.dart';
@@ -19,7 +20,7 @@ class CoursesScreen extends ConsumerWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'كورساتي',
+          'courses_feature.title'.tr(),
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -74,7 +75,7 @@ class CoursesScreen extends ConsumerWidget {
           );
           ref.invalidate(myCoursesNotifierProvider);
         },
-        tooltip: 'إضافة كورس',
+        tooltip: 'courses_feature.add_course_tooltip'.tr(),
         child: const Icon(Icons.add),
       ),
     );
@@ -95,14 +96,14 @@ class CoursesScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'لا توجد كورسات بعد',
+            'courses_feature.no_courses'.tr(),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'اضغط على زر + في الأسفل لإضافة أول كورس لك',
+            'courses_feature.add_first_course'.tr(),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodySmall?.color,
@@ -125,7 +126,7 @@ class CoursesScreen extends ConsumerWidget {
             Icon(Icons.cloud_off, size: 80, color: colorScheme.error.withOpacity(0.5)),
             const SizedBox(height: 20),
             Text(
-              'حدث خطأ في الاتصال',
+              'courses_feature.error_connection'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.error,
@@ -142,7 +143,7 @@ class CoursesScreen extends ConsumerWidget {
             ElevatedButton.icon(
               onPressed: () => ref.invalidate(myCoursesNotifierProvider),
               icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
+              label: Text('courses_feature.retry'.tr()),
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -163,17 +164,17 @@ class CoursesScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل أنت متأكد من حذف كورس "$courseTitle"؟'),
+        title: Text('courses_feature.confirm_delete_title'.tr()),
+        content: Text('courses_feature.confirm_delete_msg'.tr(namedArgs: {'title': courseTitle})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child:
-                const Text('إلغاء'),
+                Text('courses_feature.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف', style: TextStyle(color: Colors.red)),
+            child: Text('courses_feature.delete'.tr(), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -187,7 +188,7 @@ class CoursesScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(success ? 'تم حذف الكورس بنجاح' : 'فشل حذف الكورس'),
+              content: Text(success ? 'courses_feature.delete_success'.tr() : 'courses_feature.delete_failed'.tr()),
               backgroundColor: success ? Colors.green : Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -197,7 +198,7 @@ class CoursesScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('حدث خطأ: $e'),
+              content: Text('courses_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -228,8 +229,8 @@ class CoursesScreen extends ConsumerWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح WhatsApp'),
+          SnackBar(
+            content: Text('courses_feature.whatsapp_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -354,7 +355,7 @@ class _CourseCard extends StatelessWidget {
                     child: Row(children: [
                       Icon(Icons.edit_outlined, color: colorScheme.primary),
                       SizedBox(width: 8),
-                      Text('تعديل'),
+                      Text('courses_feature.edit'.tr()),
                     ]),
                   ),
                   PopupMenuItem(
@@ -362,7 +363,7 @@ class _CourseCard extends StatelessWidget {
                     child: Row(children: [
                       Icon(Icons.delete_outline, color: colorScheme.error),
                       SizedBox(width: 8),
-                      Text('حذف'),
+                      Text('courses_feature.delete'.tr()),
                     ]),
                   ),
                 ],
@@ -471,7 +472,7 @@ class _CourseDetailsContent extends StatelessWidget {
                   _buildStatChip(
                     context: context,
                     icon: Icons.price_change,
-                    label: 'السعر',
+                    label: 'courses_feature.price'.tr(),
                     value: '${course.price.toStringAsFixed(0)} ج.م',
                     color: Colors.green,
                   ),
@@ -479,7 +480,7 @@ class _CourseDetailsContent extends StatelessWidget {
                   _buildStatChip(
                     context: context,
                     icon: Icons.visibility,
-                    label: 'مشاهدات',
+                    label: 'courses_feature.views'.tr(),
                     value: '${course.views}',
                     color: colorScheme.primary,
                   ),
@@ -497,9 +498,9 @@ class _CourseDetailsContent extends StatelessWidget {
                   },
                   icon: const Icon(Icons.phone_in_talk_outlined,
                       color: Colors.white),
-                  label: const Text(
-                    'تواصل مع مقدم الكورس',
-                    style: TextStyle(
+                  label: Text(
+                    'courses_feature.contact_seller'.tr(),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,

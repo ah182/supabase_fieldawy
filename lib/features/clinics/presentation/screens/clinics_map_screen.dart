@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../data/clinic_repository.dart';
 import '../../domain/clinic_model.dart';
 import '../../../../core/services/custom_tile_provider.dart';
@@ -64,14 +65,14 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('تفعيل خدمة الموقع'),
-          content: const Text('يرجى تفعيل خدمة الموقع (GPS) في جهازك لعرض الخريطة بشكل صحيح.'),
+          title: Text('clinics_feature.location_dialog.title'.tr()),
+          content: Text('clinics_feature.location_dialog.message'.tr()),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('clinics_feature.location_dialog.cancel'.tr())),
             ElevatedButton(onPressed: () async {
               await _locationService.openLocationSettings();
               Navigator.of(context).pop();
-            }, child: const Text('فتح الإعدادات')),
+            }, child: Text('clinics_feature.location_dialog.settings'.tr())),
           ],
         ),
       );
@@ -177,7 +178,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
     try {
       final position = await _locationService.getHighAccuracyPosition();
       if (position == null) {
-        if (mounted) messenger.showSnackBar(const SnackBar(content: Text('⚠️ تعذر الحصول على موقع دقيق. حاول في مكان مفتوح.'), backgroundColor: Colors.orange));
+        if (mounted) messenger.showSnackBar(SnackBar(content: Text('clinics_feature.location_error'.tr()), backgroundColor: Colors.orange));
         return;
       }
 
@@ -190,7 +191,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
         await ref.read(userRepositoryProvider).updateUserLocation(userId: currentUser.id, latitude: position.latitude, longitude: position.longitude);
         ref.invalidate(userDataProvider);
         _mapController.move(LatLng(position.latitude, position.longitude), 14);
-        messenger.showSnackBar(const SnackBar(content: Text('✅ تم تحديث موقعك بنجاح'), backgroundColor: Colors.green));
+        messenger.showSnackBar(SnackBar(content: Text('clinics_feature.location_success'.tr()), backgroundColor: Colors.green));
       }
     } finally {
       if (mounted) setState(() => _isUpdatingLocation = false);
@@ -236,12 +237,12 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('خريطة العيادات'),
+        title: Text('clinics_feature.title'.tr()),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _isFabDisabled || _isUpdatingLocation ? null : _updateMyLocation,
         backgroundColor: _isFabDisabled || _isUpdatingLocation ? Colors.grey : Theme.of(context).primaryColor,
-        tooltip: 'تحديث موقعي الحالي',
+        tooltip: 'clinics_feature.my_location'.tr(),
         child: _isUpdatingLocation 
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.my_location, color: Colors.white),
@@ -267,7 +268,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                   TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'ابحث عن عيادة, طبيب, منطقة...', 
+                    hintText: 'clinics_feature.search_hint'.tr(), 
                     prefixIcon: Icon(Icons.search),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     filled: true,
@@ -334,10 +335,10 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                   _loadClinicMarkers(_filteredClinics);
                 }
                 if (_filteredClinics.isEmpty && _searchController.text.isNotEmpty) {
-                  return const Center(child: Text('لا توجد نتائج مطابقة لبحثك'));
+                  return Center(child: Text('clinics_feature.no_results'.tr()));
                 }
                 if (_allClinics.isEmpty && !_isLoading) {
-                  return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.location_off, size: 64, color: Colors.grey), SizedBox(height: 16), Text('لا توجد عيادات مسجلة بعد', style: TextStyle(fontSize: 18, color: Colors.grey))]));
+                  return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.location_off, size: 64, color: Colors.grey), SizedBox(height: 16), Text('clinics_feature.no_clinics'.tr(), style: TextStyle(fontSize: 18, color: Colors.grey))]));
                 }
                 return Stack(
                   children: [
@@ -389,7 +390,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text('خطأ في تحميل الخريطة: $error'), const SizedBox(height: 16), ElevatedButton(onPressed: () => ref.refresh(allClinicsProvider), child: const Text('إعادة المحاولة'))]))
+              error: (error, stack) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text('clinics_feature.error_load'.tr(namedArgs: {'error': error.toString()})), const SizedBox(height: 16), ElevatedButton(onPressed: () => ref.refresh(allClinicsProvider), child: Text('clinics_feature.retry'.tr()))]))
             ),
           ),
         ],
@@ -410,7 +411,7 @@ class _ClinicDetailsSheet extends ConsumerWidget {
     }
     
     // إذا كانت القيمة فارغة وshowIfEmpty = true، اعرض "غير متوفر"
-    final displayValue = (value == null || value.isEmpty) ? 'غير متوفر' : value;
+    final displayValue = (value == null || value.isEmpty) ? 'clinics_feature.details.unavailable'.tr() : value;
     final isUnavailable = (value == null || value.isEmpty);
     
     return Padding(
@@ -477,12 +478,12 @@ class _ClinicDetailsSheet extends ConsumerWidget {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(clinic.clinicName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8), const Divider(),
-        _buildInfoRow(context, Icons.person_outline, 'الطبيب', clinic.doctorName),
-        _buildInfoRow(context, Icons.location_on_outlined, 'العنوان', cleanedAddress),
-        _buildInfoRow(context, Icons.phone_outlined, 'رقم الهاتف', clinic.clinicPhoneNumber, showIfEmpty: true),
+        _buildInfoRow(context, Icons.person_outline, 'clinics_feature.details.doctor'.tr(), clinic.doctorName),
+        _buildInfoRow(context, Icons.location_on_outlined, 'clinics_feature.details.address'.tr(), cleanedAddress),
+        _buildInfoRow(context, Icons.phone_outlined, 'clinics_feature.details.phone'.tr(), clinic.clinicPhoneNumber, showIfEmpty: true),
         _buildWhatsAppRow(context, clinic.doctorWhatsappNumber),
         const SizedBox(height: 24),
-        SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: const Icon(Icons.directions), label: const Text('Get Directions'), onPressed: () => _launchDirections(context), style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+        SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: const Icon(Icons.directions), label: Text('clinics_feature.details.directions'.tr()), onPressed: () => _launchDirections(context), style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
       ]),
     );
   }

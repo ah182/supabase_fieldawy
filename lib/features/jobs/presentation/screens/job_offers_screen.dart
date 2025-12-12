@@ -167,7 +167,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'jobOffers'.tr(),
+                                        'job_offers_feature.title'.tr(),
                                         style: theme.textTheme.headlineSmall
                                             ?.copyWith(
                                           color: Colors.white,
@@ -195,7 +195,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                 ),
                 title: innerBoxIsScrolled
                     ? Text(
-                        'jobOffers'.tr(),
+                        'job_offers_feature.title'.tr(),
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -241,7 +241,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                       controller: _searchController,
                       focusNode: _searchFocusNode,
                       decoration: InputDecoration(
-                        hintText: 'Search jobs, titles, skills...',
+                        hintText: 'job_offers_feature.search_hint'.tr(),
                         hintStyle: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.5),
                         ),
@@ -381,7 +381,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                         children: [
                           const Icon(Icons.explore_outlined, size: 18),
                           const SizedBox(width: 8),
-                          Text('availableJobs'.tr()),
+                          Text('job_offers_feature.available_jobs'.tr()),
                         ],
                       ),
                     ),
@@ -391,7 +391,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                         children: [
                           const Icon(Icons.business_center_outlined, size: 18),
                           const SizedBox(width: 8),
-                          Text('myJobOffers'.tr()),
+                          Text('job_offers_feature.my_jobs'.tr()),
                         ],
                       ),
                     ),
@@ -449,7 +449,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
             elevation: 0,
             icon: const Icon(Icons.add_rounded, size: 24),
             label: Text(
-              'addJobOffer'.tr(),
+              'job_offers_feature.add_job'.tr(),
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -515,8 +515,8 @@ class _AvailableJobsTab extends ConsumerWidget {
                   const SizedBox(height: 24),
                   Text(
                     searchQuery.isNotEmpty
-                        ? 'No jobs found'
-                        : 'noJobsAvailable'.tr(),
+                        ? 'job_offers_feature.no_jobs_found'.tr()
+                        : 'job_offers_feature.no_jobs_available'.tr(),
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -526,7 +526,7 @@ class _AvailableJobsTab extends ConsumerWidget {
                   Text(
                     searchQuery.isNotEmpty
                         ? 'Try different keywords'
-                        : 'noJobsAvailableDesc'.tr(),
+                        : 'job_offers_feature.no_jobs_desc'.tr(),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                       height: 1.5,
@@ -577,7 +577,7 @@ class _AvailableJobsTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Something went wrong',
+                'job_offers_feature.error_occurred'.tr(),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -590,7 +590,7 @@ class _AvailableJobsTab extends ConsumerWidget {
                       .refreshAllJobs();
                 },
                 icon: const Icon(Icons.refresh_rounded),
-                label: Text('retry'.tr()),
+                label: Text('job_offers_feature.retry'.tr()),
               ),
             ],
           ),
@@ -659,8 +659,8 @@ class _MyJobOffersTab extends ConsumerWidget {
                   const SizedBox(height: 24),
                   Text(
                     searchQuery.isNotEmpty
-                        ? 'No jobs found'
-                        : 'noMyJobOffers'.tr(),
+                        ? 'job_offers_feature.no_jobs_found'.tr()
+                        : 'job_offers_feature.no_my_jobs'.tr(),
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -670,7 +670,7 @@ class _MyJobOffersTab extends ConsumerWidget {
                   Text(
                     searchQuery.isNotEmpty
                         ? 'Try different keywords'
-                        : 'noMyJobOffersDesc'.tr(),
+                        : 'job_offers_feature.no_my_jobs_desc'.tr(),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                       height: 1.5,
@@ -694,7 +694,7 @@ class _MyJobOffersTab extends ConsumerWidget {
                         }
                       },
                       icon: const Icon(Icons.add_rounded),
-                      label: Text('addYourFirstJob'.tr()),
+                      label: Text('job_offers_feature.add_first_job'.tr()),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 16),
@@ -748,7 +748,7 @@ class _MyJobOffersTab extends ConsumerWidget {
                               const Icon(Icons.check_circle,
                                   color: Colors.white),
                               const SizedBox(width: 12),
-                              Text('Job deleted successfully'.tr()),
+                              Text('job_offers_feature.delete_success'.tr()),
                             ],
                           ),
                           backgroundColor: Colors.green[600],
@@ -784,7 +784,7 @@ class _MyJobOffersTab extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Something went wrong',
+                'job_offers_feature.error_occurred'.tr(),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -797,7 +797,7 @@ class _MyJobOffersTab extends ConsumerWidget {
                       .refreshMyJobs();
                 },
                 icon: const Icon(Icons.refresh_rounded),
-                label: Text('retry'.tr()),
+                label: Text('job_offers_feature.retry'.tr()),
               ),
             ],
           ),
@@ -823,21 +823,21 @@ class _MyJobOffersTab extends ConsumerWidget {
               child: const Icon(Icons.delete_outline, color: Colors.red),
             ),
             const SizedBox(width: 12),
-            Text('Confirm Delete'.tr()),
+            Text('job_offers_feature.confirm_delete_title'.tr()),
           ],
         ),
-        content: Text('Are you sure you want to delete this job?'.tr()),
+        content: Text('job_offers_feature.confirm_delete_msg'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('cancel'.tr()),
+            child: Text('job_offers_feature.cancel'.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: Text('delete'.tr()),
+            child: Text('job_offers_feature.delete'.tr()),
           ),
         ],
       ),
@@ -1008,7 +1008,7 @@ class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
                                       size: 20, color: Colors.white),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'whatsapp'.tr(),
+                                    'job_offers_feature.contact_whatsapp'.tr(),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -1034,7 +1034,7 @@ class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
                       TextButton.icon(
                         onPressed: widget.onEdit,
                         icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: Text('edit'.tr()),
+                        label: Text('job_offers_feature.edit'.tr()),
                         style: TextButton.styleFrom(
                           foregroundColor: theme.colorScheme.primary,
                         ),
@@ -1043,7 +1043,7 @@ class _JobOfferCardState extends ConsumerState<_JobOfferCard> {
                       TextButton.icon(
                         onPressed: widget.onDelete,
                         icon: const Icon(Icons.delete_outline, size: 18),
-                        label: Text('delete'.tr()),
+                        label: Text('job_offers_feature.delete'.tr()),
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.red,
                         ),
@@ -1129,7 +1129,7 @@ class _JobDetailsDialog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'jobDetails'.tr(),
+                            'job_offers_feature.job_details'.tr(),
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.primary,
@@ -1189,7 +1189,7 @@ class _JobDetailsDialog extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'jobTitle'.tr(),
+                            'job_offers_feature.job_title'.tr(),
                             style: theme.textTheme.labelMedium?.copyWith(
                               color:
                                   theme.colorScheme.onSurface.withOpacity(0.6),
@@ -1227,7 +1227,7 @@ class _JobDetailsDialog extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'jobDescription'.tr(),
+                            'job_offers_feature.job_description'.tr(),
                             style: theme.textTheme.labelMedium?.copyWith(
                               color:
                                   theme.colorScheme.onSurface.withOpacity(0.6),
@@ -1274,7 +1274,7 @@ class _JobDetailsDialog extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'postedBy'.tr(),
+                                'job_offers_feature.posted_by'.tr(),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: theme.colorScheme.onSurface
                                       .withOpacity(0.6),
@@ -1311,7 +1311,7 @@ class _JobDetailsDialog extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${job.viewsCount} ${'views'.tr()}',
+                        '${job.viewsCount} ${'job_offers_feature.views'.tr()}',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontWeight: FontWeight.w500,
@@ -1351,7 +1351,7 @@ class _JobDetailsDialog extends StatelessWidget {
                                   size: 22, color: Colors.white),
                               const SizedBox(width: 12),
                               Text(
-                                'contactViaWhatsApp'.tr(),
+                                'job_offers_feature.contact_whatsapp'.tr(),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,

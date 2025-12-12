@@ -28,7 +28,7 @@ class RecentProductsWidget extends ConsumerWidget {
                     Icon(Icons.schedule, color: Colors.blue, size: 24),
                     const SizedBox(width: 8),
                     Text(
-                      'المنتجات الأحدث',
+                      'dashboard_feature.recent_products.title'.tr(),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -44,7 +44,7 @@ class RecentProductsWidget extends ConsumerWidget {
                       ),
                     );
                   },
-                  child: Text('عرض الكل'),
+                  child: Text('dashboard_feature.recent_products.view_all'.tr()),
                 ),
               ],
             ),
@@ -58,7 +58,7 @@ class RecentProductsWidget extends ConsumerWidget {
                         Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
                         const SizedBox(height: 8),
                         Text(
-                          'لا توجد منتجات',
+                          'dashboard_feature.recent_products.no_products'.tr(),
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 8),
@@ -70,7 +70,7 @@ class RecentProductsWidget extends ConsumerWidget {
                               ),
                             );
                           },
-                          child: Text('إضافة منتج جديد'),
+                          child: Text('dashboard_feature.recent_products.add_new'.tr()),
                         ),
                       ],
                     ),
@@ -93,7 +93,7 @@ class RecentProductsWidget extends ConsumerWidget {
                 child: Column(
                   children: [
                     Text(
-                      'خطأ في تحميل المنتجات',
+                      'dashboard_feature.recent_products.error_load'.tr(),
                       style: TextStyle(color: Colors.red),
                     ),
                     const SizedBox(height: 8),
@@ -102,7 +102,7 @@ class RecentProductsWidget extends ConsumerWidget {
                         // Fix: Use the refresh result properly
                         ref.invalidate(recentProductsProvider);
                       },
-                      child: Text('إعادة المحاولة'),
+                      child: Text('dashboard_feature.recent_products.retry'.tr()),
                     ),
                   ],
                 ),
@@ -181,7 +181,7 @@ class RecentProductsWidget extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              product['name'] ?? 'منتج غير معروف',
+                              product['name'] ?? 'dashboard_feature.recent_products.unknown_product'.tr(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -630,12 +630,12 @@ class RecentProductsWidget extends ConsumerWidget {
 
   String _getSourceLabel(String source) {
     switch (source) {
-      case 'offer': return 'عرض';
-      case 'course': return 'كورس';
-      case 'book': return 'كتاب';
-      case 'surgical': return 'جراحي';
-      case 'ocr': return 'OCR';
-      default: return 'منتج';
+      case 'offer': return 'dashboard_feature.recent_products.source.offer'.tr();
+      case 'course': return 'dashboard_feature.recent_products.source.course'.tr();
+      case 'book': return 'dashboard_feature.recent_products.source.book'.tr();
+      case 'surgical': return 'dashboard_feature.recent_products.source.surgical'.tr();
+      case 'ocr': return 'dashboard_feature.recent_products.source.ocr'.tr();
+      default: return 'dashboard_feature.recent_products.source.product'.tr();
     }
   }
 
@@ -645,13 +645,13 @@ class RecentProductsWidget extends ConsumerWidget {
     final difference = now.difference(dateTime);
 
     if (difference.inDays > 0) {
-      return 'منذ ${difference.inDays} ${difference.inDays == 1 ? 'يوم' : 'أيام'}';
+      return 'dashboard_feature.recent_products.time.day'.tr(namedArgs: {'count': difference.inDays.toString()});
     } else if (difference.inHours > 0) {
-      return 'منذ ${difference.inHours} ${difference.inHours == 1 ? 'ساعة' : 'ساعات'}';
+      return 'dashboard_feature.recent_products.time.hour'.tr(namedArgs: {'count': difference.inHours.toString()});
     } else if (difference.inMinutes > 0) {
-      return 'منذ ${difference.inMinutes} ${difference.inMinutes == 1 ? 'دقيقة' : 'دقائق'}';
+      return 'dashboard_feature.recent_products.time.min'.tr(namedArgs: {'count': difference.inMinutes.toString()});
     } else {
-      return 'الآن';
+      return 'dashboard_feature.recent_products.time.now'.tr();
     }
   }
 }

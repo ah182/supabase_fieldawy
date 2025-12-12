@@ -55,8 +55,8 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
-            title: 'تنبيه',
-            message: 'pleaseSelectImageFirst'.tr(),
+            title: 'تنبيه', // Can be localized later or kept simple
+            message: 'auth.document.please_select_image'.tr(),
             contentType: ContentType.warning,
           ),
         ),
@@ -96,7 +96,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
             title: 'خطأ',
-            message: 'imageUploadFailed'.tr(),
+            message: 'auth.document.upload_failed'.tr(),
             contentType: ContentType.failure,
           ),
         ),
@@ -114,8 +114,8 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
     final textTheme = Theme.of(context).textTheme;
     final title = widget.role == UserRole.doctor
-        ? 'uploadSyndicateCard'.tr()
-        : 'uploadNationalId'.tr();
+        ? 'auth.document.upload_syndicate'.tr()
+        : 'auth.document.upload_national_id'.tr();
 
     final selectedImage = ref.watch(documentUploadControllerProvider);
     final isImageSelected = selectedImage != null;
@@ -140,7 +140,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           children: [
             // --- Header Text ---
             Text(
-              'identityVerification'.tr(),
+              'auth.document.identity_verification'.tr(),
               style: textTheme.headlineMedium
                   ?.copyWith(fontWeight: FontWeight.bold, color: kTextColor),
               textAlign: TextAlign.center,
@@ -213,7 +213,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                   child: _buildPickerButton(
                     context,
                     icon: Icons.camera_alt_outlined,
-                    label: 'camera'.tr(),
+                    label: 'auth.document.camera'.tr(),
                     onPressed: () => ref
                         .read(documentUploadControllerProvider.notifier)
                         .pickImage(ImageSource.camera, context),
@@ -224,7 +224,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                   child: _buildPickerButton(
                     context,
                     icon: Icons.photo_library_outlined,
-                    label: 'gallery'.tr(),
+                    label: 'auth.document.gallery'.tr(),
                     onPressed: () => ref
                         .read(documentUploadControllerProvider.notifier)
                         .pickImage(ImageSource.gallery, context),
@@ -297,13 +297,13 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ensure Image Clarity'.tr(),
+                  'auth.document.ensure_clarity'.tr(),
                   style: textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold, color: Colors.blue.shade900),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'image Tips'.tr(),
+                  'auth.document.tips'.tr(),
                   style: textTheme.bodyMedium
                       ?.copyWith(color: kMutedTextColor, height: 1.5),
                 ),

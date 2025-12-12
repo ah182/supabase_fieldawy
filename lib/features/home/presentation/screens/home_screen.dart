@@ -42,16 +42,6 @@ class _TabInfo {
   final String text;
 }
 
-final _tabsInfo = [
-  _TabInfo(Icons.apps_rounded, 'Home'),
-  _TabInfo(Icons.trending_up_rounded, 'Price Action'),
-  _TabInfo(Icons.schedule_rounded, 'Expire Soon'),
-  _TabInfo(Icons.medical_services_outlined, 'Surgical & Diagnostic'),
-  _TabInfo(Icons.local_offer_outlined, 'Offers'),
-  _TabInfo(Icons.school_rounded, 'Courses'),
-  _TabInfo(Icons.menu_book_rounded, 'Books'),
-];
-
 class HomeScreen extends ConsumerStatefulWidget {
   final int? initialTabIndex;
   final String? distributorId;
@@ -84,6 +74,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _ghostText = '';
   String _fullSuggestion = '';
 
+  List<_TabInfo> _getTabs() {
+    return [
+      _TabInfo(Icons.apps_rounded, 'home.tabs.home'.tr()),
+      _TabInfo(Icons.trending_up_rounded, 'home.tabs.price_action'.tr()),
+      _TabInfo(Icons.schedule_rounded, 'home.tabs.expire_soon'.tr()),
+      _TabInfo(Icons.medical_services_outlined, 'home.tabs.surgical'.tr()),
+      _TabInfo(Icons.local_offer_outlined, 'home.tabs.offers'.tr()),
+      _TabInfo(Icons.school_rounded, 'home.tabs.courses'.tr()),
+      _TabInfo(Icons.menu_book_rounded, 'home.tabs.books'.tr()),
+    ];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -91,9 +93,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // استخدام initialTabIndex إذا تم توفيره من الإشعار
     final initialIndex = widget.initialTabIndex ?? 0;
     _tabController = TabController(
-      length: _tabsInfo.length, 
+      length: 7, 
       vsync: this,
-      initialIndex: initialIndex.clamp(0, _tabsInfo.length - 1),
+      initialIndex: initialIndex.clamp(0, 6),
     );
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -646,7 +648,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ],
                           ),
                           child: Text(
-                            product.distributorId ?? 'موزع غير معروف',
+                            product.distributorId ?? 'home.product_dialog.unknown_distributor'.tr(),
                             style: TextStyle(
                               color: theme.colorScheme.onPrimary,
                               fontSize: 14,
@@ -777,7 +779,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Active principle',
+                    'home.product_dialog.active_principle'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -872,7 +874,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         children: [
                           Expanded(
                             child: Text(
-                              'لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye ',
+                              'home.product_dialog.medical_info_note'.tr(),
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 fontSize: 16,
                                 color: theme.colorScheme.onSurface,
@@ -982,13 +984,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onRefresh: () => ref.read(paginatedProductsProvider.notifier).refresh(),
       child: () {
         if (products.isEmpty && !paginatedState.hasMore && query.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('لا توجد منتجات متاحة حاليًا.'),
+                const Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text('home.search.no_products'.tr()),
               ],
             ),
           );
@@ -1032,7 +1034,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 const Icon(Icons.search_off_outlined,
                     size: 60, color: Colors.grey),
                 const SizedBox(height: 16),
-                Text('لا توجد نتائج للبحث عن "$_debouncedSearchQuery"'),
+                Text('home.search.no_results'.tr(namedArgs: {'query': _debouncedSearchQuery})),
               ],
             ),
           );
@@ -1109,7 +1111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                title: Text('homeScreen'.tr()),
+                title: Text('home_label'.tr()),
                 pinned: true,
                 floating: false,
                 snap: false,
@@ -1284,7 +1286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 });
                               },
                               decoration: InputDecoration(
-                                hintText: 'ابحث عن دواء، مادة فعالة...',
+                                hintText: 'home.search.hint'.tr(),
                                 hintStyle:
                                     Theme.of(context).textTheme.bodySmall?.copyWith(
                                           color: Theme.of(context)
@@ -1318,7 +1320,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                           });
                                           HapticFeedback.lightImpact();
                                         },
-                                        tooltip: 'مسح البحث',
+                                        tooltip: 'home.search.clear'.tr(),
                                       )
                                     : null,
                                 // تحسين الحدود والشكل
@@ -1491,7 +1493,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           dividerColor: Colors.transparent,
 
-                          tabs: _tabsInfo.map((tab) {
+                          tabs: _getTabs().map((tab) {
                             return Tab(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1583,8 +1585,8 @@ class PriceUpdateTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد تحديثات في الأسعار حاليًا.'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'home.search.no_price_updates'.tr()
+                      : 'home.search.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),

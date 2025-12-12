@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/add_book_screen.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/edit_book_screen.dart';
@@ -19,7 +20,7 @@ class BooksScreen extends ConsumerWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'كتبي',
+          'books_feature.title'.tr(),
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -73,7 +74,7 @@ class BooksScreen extends ConsumerWidget {
           );
           ref.invalidate(myBooksNotifierProvider);
         },
-        tooltip: 'إضافة كتاب',
+        tooltip: 'books_feature.add_book_tooltip'.tr(),
         child: const Icon(Icons.add),
       ),
     );
@@ -92,14 +93,14 @@ class BooksScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'لا توجد كتب بعد',
+            'books_feature.no_books'.tr(),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'اضغط على زر + في الأسفل لإضافة أول كتاب لك',
+            'books_feature.add_first_book'.tr(),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodySmall?.color,
@@ -122,7 +123,7 @@ class BooksScreen extends ConsumerWidget {
             Icon(Icons.cloud_off, size: 80, color: colorScheme.error.withOpacity(0.5)),
             const SizedBox(height: 20),
             Text(
-              'حدث خطأ في الاتصال',
+              'books_feature.error_connection'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.error,
@@ -139,7 +140,7 @@ class BooksScreen extends ConsumerWidget {
             ElevatedButton.icon(
               onPressed: () => ref.invalidate(myBooksNotifierProvider),
               icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
+              label: Text('books_feature.retry'.tr()),
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -157,17 +158,17 @@ class BooksScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل أنت متأكد من حذف كتاب "$bookName"؟'),
+        title: Text('books_feature.confirm_delete_title'.tr()),
+        content: Text('books_feature.confirm_delete_msg'.tr(namedArgs: {'name': bookName})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('books_feature.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('books_feature.delete'.tr()),
           ),
         ],
       ),
@@ -179,8 +180,8 @@ class BooksScreen extends ConsumerWidget {
         if (success) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('تم حذف الكتاب بنجاح'),
+              SnackBar(
+                content: Text('books_feature.delete_success'.tr()),
                 backgroundColor: Colors.green,
               ),
             );
@@ -188,8 +189,8 @@ class BooksScreen extends ConsumerWidget {
         } else {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('فشل حذف الكتاب'),
+              SnackBar(
+                content: Text('books_feature.delete_failed'.tr()),
                 backgroundColor: Colors.red,
               ),
             );
@@ -199,7 +200,7 @@ class BooksScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('حدث خطأ: $e'),
+              content: Text('books_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})),
               backgroundColor: Colors.red,
             ),
           );
@@ -344,7 +345,7 @@ class _BookCard extends StatelessWidget {
                     child: Row(children: [
                       Icon(Icons.edit_outlined, color: colorScheme.primary),
                       const SizedBox(width: 8),
-                      const Text('تعديل'),
+                      Text('books_feature.edit'.tr()),
                     ]),
                   ),
                   PopupMenuItem(
@@ -352,7 +353,7 @@ class _BookCard extends StatelessWidget {
                     child: Row(children: [
                       Icon(Icons.delete_outline, color: colorScheme.error),
                       const SizedBox(width: 8),
-                      const Text('حذف'),
+                      Text('books_feature.delete'.tr()),
                     ]),
                   ),
                 ],

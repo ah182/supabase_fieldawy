@@ -57,7 +57,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تم إضافة التعليق بنجاح'),
+          content: Text('comments_feature.add_success'.tr()),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -66,7 +66,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('فشل إضافة التعليق، حاول مرة أخرى'),
+          content: Text('comments_feature.add_error'.tr()),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -79,18 +79,18 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف التعليق'),
-        content: const Text('هل أنت متأكد من حذف هذا التعليق؟'),
+        title: Text('comments_feature.delete_title'.tr()),
+        content: Text('comments_feature.delete_confirm'.tr()),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -105,7 +105,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حذف التعليق'),
+            content: Text('comments_feature.delete_success'.tr()),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -127,7 +127,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح واتساب')),
+          SnackBar(content: Text('cannotOpenWhatsApp'.tr())),
         );
       }
     }
@@ -205,7 +205,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.displayName ?? 'مستخدم',
+                    user.displayName ?? 'comments_feature.user'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -237,7 +237,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                     _buildDetailTile(
                       theme,
                       Icons.local_shipping,
-                      'طريقة التوزيع',
+                      'distributors_feature.distribution_method'.tr(),
                       _getDistributionMethodLabel(user.distributionMethod!),
                     ),
                   if (user.governorates != null && user.governorates!.isNotEmpty)
@@ -251,7 +251,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                               Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                isDistributor ? 'مناطق التغطية' : 'الموقع',
+                                isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'clinics_feature.distributor.location'.tr(),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
@@ -316,7 +316,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () => _openWhatsApp(user.whatsappNumber!),
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
-                        label: const Text('تواصل عبر واتساب', style: TextStyle(color: Colors.white)),
+                        label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF25D366),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -352,7 +352,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                           );
                         },
                         icon: const Icon(Icons.inventory_2),
-                        label: const Text('عرض المنتجات'),
+                        label: Text('distributors_feature.view_products'.tr()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -386,29 +386,29 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
 
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'doctor': return 'طبيب بيطري'.tr();
-      case 'distributor': return 'موزع فردي'.tr();
-      case 'company': return 'شركة توزيع'.tr();
+      case 'doctor': return 'auth.role_veterinarian'.tr();
+      case 'distributor': return 'auth.role_distributor'.tr();
+      case 'company': return 'auth.role_company'.tr();
       default: return role;
     }
   }
 
   String _getDistributionMethodLabel(String method) {
     switch (method) {
-      case 'direct_distribution': return 'توزيع مباشر'.tr();
-      case 'order_delivery': return 'توصيل طلبات'.tr();
-      case 'both': return 'توزيع وتوصيل'.tr();
+      case 'direct_distribution': return 'auth.profile.distribution.direct_distribution'.tr();
+      case 'order_delivery': return 'auth.profile.distribution.order_delivery'.tr();
+      case 'both': return 'auth.profile.distribution.both_methods'.tr();
       default: return method;
     }
   }
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [
-      'محتوى غير لائق / مسيء',
-      'رسائل مزعجة (Spam)',
-      'معلومات مضللة',
-      'تحرش أو تنمر',
-      'أخرى',
+      'comments_feature.report_reasons.inappropriate'.tr(),
+      'comments_feature.report_reasons.spam'.tr(),
+      'comments_feature.report_reasons.misleading'.tr(),
+      'comments_feature.report_reasons.harassment'.tr(),
+      'comments_feature.report_reasons.other'.tr(),
     ];
     String selectedReason = reasons[0];
     final descriptionController = TextEditingController();
@@ -451,19 +451,19 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                       child: const Icon(Icons.flag_rounded, color: Colors.red),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'إبلاغ عن محتوى',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Text(
+                      'comments_feature.report_title'.tr(),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'ساعدنا في الحفاظ على بيئة آمنة. ما المشكلة في هذا التقييم؟',
-                  style: TextStyle(color: Colors.grey),
+                  'comments_feature.report_subtitle'.tr(),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
@@ -498,7 +498,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                   controller: descriptionController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'أضف تفاصيل إضافية (اختياري)...',
+                    hintText: 'comments_feature.details_hint'.tr(),
                     filled: true,
                     fillColor: Colors.grey[100],
                     border: OutlineInputBorder(
@@ -519,7 +519,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                        child: Text('cancel'.tr(), style: const TextStyle(color: Colors.grey)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -530,7 +530,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                           Navigator.pop(context);
                           
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                            SnackBar(content: Text('comments_feature.report_sending'.tr())),
                           );
 
                           final service = ref.read(reviewServiceProvider);
@@ -545,15 +545,15 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                           if (context.mounted) {
                              if (result['success'] == true) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                                SnackBar(
+                                  content: Text('comments_feature.report_success'.tr()),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                                  content: Text(result['message'] ?? 'comments_feature.report_error'.tr()),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -569,7 +569,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('comments_feature.submit_report'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

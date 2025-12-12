@@ -38,7 +38,8 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
             transitionDuration: const Duration(milliseconds: 500),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-              const begin = Offset(1.0, 0.0);
+              final isRtl = context.locale.languageCode == 'ar';
+              final begin = Offset(isRtl ? -1.0 : 1.0, 0.0);
               const end = Offset.zero;
               final tween = Tween(begin: begin, end: end)
                   .chain(CurveTween(curve: Curves.ease));
@@ -79,7 +80,7 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'complete_your_profile'.tr(),
+                    'auth.complete_profile'.tr(),
                     style: textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -89,7 +90,7 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Please select your language and role to continue.',
+                    'auth.select_language_role_desc'.tr(),
                     style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
                     textAlign: TextAlign.center,
                   ),
@@ -97,7 +98,7 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
                   _buildSelectorButton(
                     context,
                     key: languageButtonKey,
-                    label: selectedLanguageLabel.value ?? "Select Language",
+                    label: selectedLanguageLabel.value ?? "auth.select_language".tr(),
                     icon: Icons.language,
                     onTap: () => _openLanguageMenu(
                         context, languageButtonKey, selectedLanguage, selectedLanguageLabel),
@@ -106,7 +107,7 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
                   _buildSelectorButton(
                     context,
                     key: roleButtonKey,
-                    label: selectedRoleLabel.value ?? "Select Role",
+                    label: selectedRoleLabel.value ?? "auth.select_role".tr(),
                     icon: Icons.person,
                     onTap: () => _openRoleMenu(
                         context, roleButtonKey, selectedRole, selectedRoleLabel),
@@ -125,7 +126,7 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
                       disabledBackgroundColor: Colors.white.withOpacity(0.5),
                     ),
                     child: Text(
-                      'continue'.tr(),
+                      'auth.continue'.tr(),
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: const Color.fromARGB(255, 248, 249, 249),
@@ -193,8 +194,8 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
     ValueNotifier<String?> selectedLanguageLabel,
   ) async {
     final languages = [
-      {"label": "English", "flag": "🇬🇧", "locale": const Locale('en')},
-      {"label": "Arabic", "flag": "🇪🇬", "locale": const Locale('ar')},
+      {"label": "auth.english".tr(), "flag": "🇬🇧", "locale": const Locale('en')},
+      {"label": "auth.arabic".tr(), "flag": "🇪🇬", "locale": const Locale('ar')},
     ];
 
     final selected = await _showCustomMenu<String>(
@@ -224,9 +225,9 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
     ValueNotifier<String?> selectedRoleLabel,
   ) async {
     final roles = [
-      {"label": "Veterinarian", "role": UserRole.doctor, "icon": Icons.local_hospital},
-      {"label": "Distribution company", "role": UserRole.company, "icon": Icons.business},
-      {"label": "Individual distributor", "role": UserRole.distributor, "icon": Icons.storefront},
+      {"label": "auth.role_veterinarian".tr(), "role": UserRole.doctor, "icon": Icons.local_hospital},
+      {"label": "auth.role_company".tr(), "role": UserRole.company, "icon": Icons.business},
+      {"label": "auth.role_distributor".tr(), "role": UserRole.distributor, "icon": Icons.storefront},
     ];
 
     final selected = await _showCustomMenu<String>(

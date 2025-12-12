@@ -183,7 +183,7 @@ final sliverAppBar = SliverAppBar(
       title: Padding(
         padding: const EdgeInsets.only(top: 8.0), // تنزيل العنوان للأسفل
         child: Text(
-          'distributors'.tr(),
+          'distributors_feature.title'.tr(),
           style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
@@ -231,7 +231,7 @@ final sliverAppBar = SliverAppBar(
                       }
                     },
                     decoration: InputDecoration(
-                      hintText: 'searchDistributor'.tr(),
+                      hintText: 'distributors_feature.search_hint'.tr(),
                       hintStyle: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
@@ -327,8 +327,11 @@ final sliverAppBar = SliverAppBar(
 
                       return Text(
                         debouncedSearchQuery.value.isEmpty
-                            ? 'إجمالي الموزعين: $totalCount'
-                            : 'عرض $filteredCount من $totalCount موزع',
+                            ? 'distributors_feature.total_count'.tr(namedArgs: {'count': totalCount.toString()})
+                            : 'distributors_feature.showing_count'.tr(namedArgs: {
+                                'shown': filteredCount.toString(),
+                                'total': totalCount.toString()
+                              }),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -336,14 +339,14 @@ final sliverAppBar = SliverAppBar(
                       );
                     },
                     loading: () => Text(
-                      'جارٍ العد...',
+                      'distributors_feature.counting'.tr(),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     error: (_, __) => Text(
-                      'خطأ في العد',
+                      'distributors_feature.count_error'.tr(),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.error,
                         fontWeight: FontWeight.w500,
@@ -557,34 +560,34 @@ final sliverAppBar = SliverAppBar(
                 _buildDetailListTile(
                   theme,
                   Icons.email_rounded,
-                  'email'.tr(),
-                  distributor.email ?? 'notAvailable'.tr(),
+                  'distributors_feature.email'.tr(),
+                  distributor.email ?? 'distributors_feature.not_available'.tr(),
                 ),
                 _buildDetailListTile(
                   theme,
                   Icons.inventory_2_rounded,
-                  'numberOfProducts'.tr(),
-                  'productCount'
-                      .tr(args: [distributor.productCount.toString()]),
+                  'distributors_feature.products_count'.tr(),
+                  'distributors_feature.product_count_value'
+                      .tr(namedArgs: {'count': distributor.productCount.toString()}),
                 ),
                 _buildDetailListTile(
                   theme,
                   Icons.business_rounded,
-                  'distributorType'.tr(),
+                  'distributors_feature.type'.tr(),
                   distributor.distributorType == 'company'
-                      ? 'distributionCompany'.tr()
-                      : 'individualDistributor'.tr(),
+                      ? 'distributors_feature.company'.tr()
+                      : 'distributors_feature.individual'.tr(),
                 ),
                 if (distributor.distributionMethod != null)
                   _buildDetailListTile(
                     theme,
                     Icons.local_shipping_rounded,
-                    'distributionMethod'.tr(),
+                    'distributors_feature.distribution_method'.tr(),
                     distributor.distributionMethod == 'direct_distribution'
-                        ? 'directDistribution'.tr()
+                        ? 'distributors_feature.direct'.tr()
                         : distributor.distributionMethod == 'order_delivery'
-                            ? 'orderDelivery'.tr()
-                            : 'bothMethods'.tr(),
+                            ? 'distributors_feature.delivery'.tr()
+                            : 'distributors_feature.both'.tr(),
                   ),
                 if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
                   Padding(
@@ -605,7 +608,7 @@ final sliverAppBar = SliverAppBar(
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              'Coverage Areas'.tr(),
+                              'distributors_feature.coverage_areas'.tr(),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -672,7 +675,7 @@ final sliverAppBar = SliverAppBar(
                   _buildDetailListTile(
                     theme,
                     FontAwesomeIcons.whatsapp,
-                    'whatsapp'.tr(),
+                    'distributors_feature.whatsapp'.tr(),
                     distributor.whatsappNumber!,
                   ),
               ],
@@ -696,7 +699,7 @@ final sliverAppBar = SliverAppBar(
                       );
                     },
                     icon: const Icon(Icons.inventory_2_rounded, size: 18),
-                    label: Text('viewProducts'.tr()),
+                    label: Text('distributors_feature.view_products'.tr()),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -783,7 +786,7 @@ final sliverAppBar = SliverAppBar(
     if (phoneNumber == null || phoneNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('phoneNumberNotAvailable'.tr()),
+          content: Text('distributors_feature.phone_not_available'.tr()),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -794,7 +797,7 @@ final sliverAppBar = SliverAppBar(
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
 
     // رسالة افتراضية
-    final message = Uri.encodeComponent('whatsappInquiry'.tr());
+    final message = Uri.encodeComponent('distributors_feature.whatsapp_inquiry'.tr());
 
     // رابط الواتساب
     final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
@@ -809,10 +812,10 @@ final sliverAppBar = SliverAppBar(
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('couldNotOpenWhatsApp'.tr()),
+          content: Text('distributors_feature.whatsapp_error'.tr()),
           backgroundColor: Theme.of(context).colorScheme.error,
           action: SnackBarAction(
-            label: 'ok'.tr(),
+            label: 'distributors_feature.ok'.tr(),
             onPressed: () {},
           ),
         ),
@@ -835,7 +838,7 @@ final sliverAppBar = SliverAppBar(
             ),
             const SizedBox(height: 16),
             Text(
-              'خطأ في الاتصال بالإنترنت',
+              'distributors_feature.error_connection'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -843,7 +846,7 @@ final sliverAppBar = SliverAppBar(
             ),
             const SizedBox(height: 8),
             Text(
-              'تأكد من اتصالك بالإنترنت وحاول مرة أخرى',
+              'distributors_feature.error_message'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -856,7 +859,7 @@ final sliverAppBar = SliverAppBar(
                 ref.invalidate(distributorsProvider);
               },
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('إعادة المحاولة'),
+              label: Text('distributors_feature.retry'.tr()),
             ),
           ],
         ),
@@ -879,7 +882,7 @@ final sliverAppBar = SliverAppBar(
             ),
             const SizedBox(height: 16),
             Text(
-              'noDistributorsFound'.tr(),
+              'distributors_feature.no_distributors'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
@@ -907,7 +910,7 @@ final sliverAppBar = SliverAppBar(
             ),
             const SizedBox(height: 16),
             Text(
-              'noSearchResults'.tr(),
+              'distributors_feature.no_search_results'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
@@ -915,7 +918,7 @@ final sliverAppBar = SliverAppBar(
             ),
             const SizedBox(height: 8),
             Text(
-              'noResultsFor'.tr(args: [query]),
+              'distributors_feature.no_results_for'.tr(namedArgs: {'query': query}),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.5),
               ),
@@ -1123,8 +1126,8 @@ class _DistributorCard extends HookWidget {
                             Text(
                               distributor.companyName ??
                                   (isCompany
-                                      ? 'distributionCompany'.tr()
-                                      : 'individualDistributor'.tr()),
+                                      ? 'distributors_feature.company'.tr()
+                                      : 'distributors_feature.individual'.tr()),
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onSecondaryContainer,
                                 fontWeight: FontWeight.w500,
@@ -1174,7 +1177,7 @@ class _DistributorCard extends HookWidget {
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
-                                    'قريب منك',
+                                    'distributors_feature.near_you'.tr(),
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -1211,7 +1214,7 @@ class _DistributorCard extends HookWidget {
                                   ),
                                   const SizedBox(width: 2),
                                   Text(
-                                    'نفس المحافظة',
+                                    'distributors_feature.same_governorate'.tr(),
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: Colors.blue.shade700,
                                       fontWeight: FontWeight.w600,
@@ -1239,8 +1242,8 @@ class _DistributorCard extends HookWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'productCount'.tr(
-                                      args: [distributor.productCount.toString()]),
+                                  'distributors_feature.product_count_value'.tr(
+                                      namedArgs: {'count': distributor.productCount.toString()}),
                                   style: theme.textTheme.labelMedium?.copyWith(
                                     color: theme.colorScheme.onPrimaryContainer,
                                     fontWeight: FontWeight.bold,
@@ -1336,8 +1339,8 @@ class _DistributorCard extends HookWidget {
                                   SnackBar(
                                     content: Text(
                                       isSubscribed.value!
-                                          ? 'تم الاشتراك في إشعارات ${distributor.displayName}'
-                                          : 'تم إلغاء الاشتراك في إشعارات ${distributor.displayName}',
+                                          ? 'distributors_feature.subscribed'.tr(namedArgs: {'name': distributor.displayName})
+                                          : 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': distributor.displayName}),
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                     duration: const Duration(seconds: 2),
@@ -1347,8 +1350,8 @@ class _DistributorCard extends HookWidget {
                               isLoading.value = false;
                             },
                       tooltip: isSubscribed.value!
-                          ? 'إلغاء الاشتراك في الإشعارات'
-                          : 'الاشتراك في الإشعارات',
+                          ? 'distributors_feature.unsubscribe_tooltip'.tr()
+                          : 'distributors_feature.subscribe_tooltip'.tr(),
                     ),
                   )
                 else

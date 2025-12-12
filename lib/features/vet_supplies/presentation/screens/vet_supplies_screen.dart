@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/add_vet_supply_screen.dart';
@@ -152,17 +153,17 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
       onTap: () => _hideKeyboard(),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('المستلزمات البيطرية'),
+          title: Text('vet_supplies_feature.title'.tr()),
           bottom: TabBar(
             controller: _tabController,
-            tabs: const [
+            tabs: [
               Tab(
-                icon: Icon(Icons.inventory_2_outlined),
-                text: 'جميع المستلزمات',
+                icon: const Icon(Icons.inventory_2_outlined),
+                text: 'vet_supplies_feature.tabs.all_supplies'.tr(),
               ),
               Tab(
-                icon: Icon(Icons.store_outlined),
-                text: 'مستلزماتي',
+                icon: const Icon(Icons.store_outlined),
+                text: 'vet_supplies_feature.tabs.my_supplies'.tr(),
               ),
             ],
           ),
@@ -179,7 +180,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
                     Positioned.fill(
                       child: Container(
                         alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 48, right: 12),
+                        padding: const EdgeInsetsDirectional.only(start: 48, end: 12),
                         child: Text(
                           _ghostText,
                           style: TextStyle(
@@ -194,7 +195,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     decoration: InputDecoration(
-                      hintText: 'البحث في المستلزمات...',
+                      hintText: 'vet_supplies_feature.search.hint'.tr(),
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? Row(
@@ -214,7 +215,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
                                         _fullSuggestion = '';
                                       });
                                     },
-                                    tooltip: 'قبول الاقتراح',
+                                    tooltip: 'vet_supplies_feature.search.accept_suggestion'.tr(),
                                   ),
                                 IconButton(
                                   icon: const Icon(Icons.clear),
@@ -301,7 +302,7 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
           }
         },
         icon: const Icon(Icons.add),
-        label: const Text('إضافة مستلزم'),
+        label: Text('vet_supplies_feature.actions.add_supply'.tr()),
         elevation: 4,
       ),
       ),
@@ -430,7 +431,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'لم يتم العثور على مستلزمات',
+                      'vet_supplies_feature.search.no_results'.tr(),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -440,7 +441,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'جرب كلمات بحث أخرى',
+                      'vet_supplies_feature.search.try_other_terms'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -466,7 +467,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'لا توجد مستلزمات متاحة',
+                    'vet_supplies_feature.empty.no_supplies'.tr(),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -476,7 +477,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'كن أول من يضيف مستلزمات بيطرية',
+                    'vet_supplies_feature.empty.be_first'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -522,7 +523,7 @@ class _AllSuppliesTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${error.toString()}',
+              'vet_supplies_feature.messages.generic_error'.tr(namedArgs: {'error': error.toString()}),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -531,7 +532,7 @@ class _AllSuppliesTab extends ConsumerWidget {
               onPressed: () {
                 ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
               },
-              child: const Text('إعادة المحاولة'),
+              child: Text('vet_supplies_feature.actions.retry'.tr()),
             ),
           ],
         ),
@@ -626,8 +627,8 @@ class _AllSuppliesTab extends ConsumerWidget {
                           _buildStatChip(
                             context: context,
                             icon: Icons.price_change,
-                            label: 'السعر',
-                            value: '${supply.price.toStringAsFixed(0)} ج.م',
+                            label: 'vet_supplies_feature.fields.price'.tr(),
+                            value: '${supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
                             color: Colors.green,
                             
                           ),
@@ -635,7 +636,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                           _buildStatChip(
                             context: context,
                             icon: Icons.visibility,
-                            label: 'مشاهدات',
+                            label: 'vet_supplies_feature.fields.views'.tr(),
                             value: '${supply.viewsCount}',
                             color: colorScheme.primary,
                           ),
@@ -655,9 +656,9 @@ class _AllSuppliesTab extends ConsumerWidget {
                           },
                           icon: const Icon(Icons.phone_in_talk_outlined,
                               color: Colors.white),
-                          label: const Text(
-                            'تواصل مع البائع',
-                            style: TextStyle(
+                          label: Text(
+                            'vet_supplies_feature.actions.contact_seller'.tr(),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -724,8 +725,8 @@ class _AllSuppliesTab extends ConsumerWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح WhatsApp'),
+          SnackBar(
+            content: Text('vet_supplies_feature.messages.whatsapp_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -771,7 +772,7 @@ class _MySuppliesTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'لم يتم العثور على مستلزمات',
+                      'vet_supplies_feature.search.no_results'.tr(),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -781,7 +782,7 @@ class _MySuppliesTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'جرب كلمات بحث أخرى',
+                      'vet_supplies_feature.search.try_other_terms'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -807,7 +808,7 @@ class _MySuppliesTab extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'لم تضف أي مستلزمات بعد',
+                    'vet_supplies_feature.empty.no_my_supplies'.tr(),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -817,7 +818,7 @@ class _MySuppliesTab extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'اضغط على زر + لإضافة أول مستلزم لك',
+                    'vet_supplies_feature.empty.add_first'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -876,7 +877,7 @@ class _MySuppliesTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${error.toString()}',
+              'vet_supplies_feature.messages.generic_error'.tr(namedArgs: {'error': error.toString()}),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -885,7 +886,7 @@ class _MySuppliesTab extends ConsumerWidget {
               onPressed: () {
                 ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
               },
-              child: const Text('إعادة المحاولة'),
+              child: Text('vet_supplies_feature.actions.retry'.tr()),
             ),
           ],
         ),
@@ -897,17 +898,17 @@ class _MySuppliesTab extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل أنت متأكد من حذف "${supply.name}"؟'),
+        title: Text('vet_supplies_feature.dialogs.delete_confirm_title'.tr()),
+        content: Text('vet_supplies_feature.dialogs.delete_confirm_message'.tr(namedArgs: {'name': supply.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('vet_supplies_feature.actions.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('vet_supplies_feature.actions.delete'.tr()),
           ),
         ],
       ),
@@ -921,7 +922,7 @@ class _MySuppliesTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? 'تم الحذف بنجاح' : 'فشل الحذف'),
+            content: Text(success ? 'vet_supplies_feature.messages.delete_success'.tr() : 'vet_supplies_feature.messages.delete_error'.tr()),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
         );
@@ -1021,15 +1022,15 @@ class _MySuppliesTab extends ConsumerWidget {
                           _buildStatChip(
                             context: context,
                             icon: Icons.price_change,
-                            label: 'السعر',
-                            value: '${supply.price.toStringAsFixed(0)} ج.م',
+                            label: 'vet_supplies_feature.fields.price'.tr(),
+                            value: '${supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
                             color: Colors.green,
                           ),
                           const SizedBox(width: 12),
                           _buildStatChip(
                             context: context,
                             icon: Icons.visibility,
-                            label: 'مشاهدات',
+                            label: 'vet_supplies_feature.fields.views'.tr(),
                             value: '${supply.viewsCount}',
                             color: colorScheme.primary,
                           ),
@@ -1049,9 +1050,9 @@ class _MySuppliesTab extends ConsumerWidget {
                           },
                           icon: const Icon(Icons.phone_in_talk_outlined,
                               color: Colors.white),
-                          label: const Text(
-                            'تواصل مع البائع',
-                            style: TextStyle(
+                          label: Text(
+                            'vet_supplies_feature.actions.contact_seller'.tr(),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -1118,7 +1119,7 @@ class _MySuppliesTab extends ConsumerWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح WhatsApp')),
+          SnackBar(content: Text('vet_supplies_feature.messages.whatsapp_error'.tr())),
         );
       }
     }
@@ -1231,15 +1232,15 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                             child: Row(children: [
                               Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
-                              Text('تعديل', style: TextStyle(color: theme.colorScheme.onSurface)),
+                              Text('vet_supplies_feature.actions.edit'.tr(), style: TextStyle(color: theme.colorScheme.onSurface)),
                             ]),
                           ),
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'delete',
                             child: Row(children: [
-                              Icon(Icons.delete_outline, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('حذف'),
+                              const Icon(Icons.delete_outline, color: Colors.red),
+                              const SizedBox(width: 8),
+                              Text('vet_supplies_feature.actions.delete'.tr()),
                             ]),
                           ),
                         ],
@@ -1290,7 +1291,7 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                       children: [
                         Flexible(
                           child: Text(
-                            '${widget.supply.price.toStringAsFixed(0)} ُEGP',
+                            '${widget.supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/clinics/data/clinic_repository.dart';
 import 'package:fieldawy_store/core/services/location_service.dart';
 
@@ -56,8 +57,8 @@ class _SelectClinicLocationScreenState
 
       if (success && mounted) {
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('✅ تم تحديث الموقع بنجاح إلى الموقع اليدوي'),
+          SnackBar(
+            content: Text('clinics_feature.select_location.success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -67,7 +68,7 @@ class _SelectClinicLocationScreenState
       }
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('❌ حدث خطأ: ${e.toString()}')),
+        SnackBar(content: Text('clinics_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}))),
       );
     } finally {
       if (mounted) {
@@ -98,7 +99,7 @@ class _SelectClinicLocationScreenState
 
           messenger.showSnackBar(
 
-            const SnackBar(content: Text('لم نتمكن من تحديد موقعك الحالي')),
+            SnackBar(content: Text('clinics_feature.select_location.error_center'.tr())),
 
           );
 
@@ -120,7 +121,7 @@ class _SelectClinicLocationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('حدد الموقع بدقة'),
+        title: Text('clinics_feature.select_location.title'.tr()),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
@@ -179,7 +180,7 @@ class _SelectClinicLocationScreenState
                   ? const SizedBox(
                       width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
                   : const Icon(Icons.check),
-              label: Text(_isLoading ? 'جاري الحفظ...' : 'تأكيد هذا الموقع'),
+              label: Text(_isLoading ? 'clinics_feature.select_location.saving'.tr() : 'clinics_feature.select_location.save_btn'.tr()),
               onPressed: _isLoading ? null : _onConfirmLocation,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),

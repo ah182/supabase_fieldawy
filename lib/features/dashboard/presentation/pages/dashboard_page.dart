@@ -117,7 +117,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Dashboard',
+                                    'dashboard_feature.title'.tr(),
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
                                       color: Colors.white,
@@ -126,7 +126,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Real-time analytics & insights',
+                                    'dashboard_feature.subtitle'.tr(),
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: Colors.white.withOpacity(0.9),
                                       fontSize: 15,
@@ -211,7 +211,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                                   children: [
                                     Icon(Icons.person_outline, size: 18),
                                     const SizedBox(width: 8),
-                                    Text('Personal'),
+                                    Text('dashboard_feature.tabs.personal'.tr()),
                                   ],
                                 ),
                               ),
@@ -221,7 +221,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                                   children: [
                                     Icon(Icons.trending_up_rounded, size: 18),
                                     const SizedBox(width: 8),
-                                    Text('Trends'),
+                                    Text('dashboard_feature.tabs.trends'.tr()),
                                   ],
                                 ),
                               ),
@@ -280,7 +280,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Refreshing data...',
+                        'dashboard_feature.refreshing'.tr(),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -341,14 +341,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Personal Statistics',
+                          'dashboard_feature.stats.personal_title'.tr(),
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Your performance insights',
+                          'dashboard_feature.stats.personal_subtitle'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
@@ -369,7 +369,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     children: [
                       Expanded(
                         child: DashboardStatsCard(
-                          title: 'Total Products',
+                          title: 'dashboard_feature.stats.total_products'.tr(),
                           value: '${stats.totalProducts}',
                           icon: Icons.inventory_2_outlined,
                           color: Colors.blue,
@@ -379,7 +379,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       const SizedBox(width: 12),
                       Expanded(
                         child: DashboardStatsCard(
-                          title: 'Active Offers',
+                          title: 'dashboard_feature.stats.active_offers'.tr(),
                           value: '${stats.activeOffers}',
                           icon: Icons.local_offer_outlined,
                           color: Colors.green,
@@ -389,7 +389,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   ),
                   const SizedBox(height: 12),
                   DashboardStatsCard(
-                    title: 'Total Views',
+                    title: 'dashboard_feature.stats.total_views'.tr(),
                     value: '${stats.totalViews}',
                     icon: Icons.visibility_outlined,
                     color: Colors.purple,
@@ -431,7 +431,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Failed to load statistics',
+                      'dashboard_feature.stats.failed_load'.tr(),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -441,7 +441,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     FilledButton.icon(
                       onPressed: _refreshDashboard,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry'),
+                      label: Text('dashboard_feature.stats.retry'.tr()),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red,
                       ),
@@ -539,7 +539,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Personal Stats • Updated every minute',
+                      'dashboard_feature.personal_footer'.tr(),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -603,14 +603,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Global Trends',
+                          'dashboard_feature.global_trends.title'.tr(),
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Market insights & analytics',
+                          'dashboard_feature.global_trends.subtitle'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
@@ -664,7 +664,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Global Data • Updated hourly',
+                          'dashboard_feature.global_trends.footer_badge'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.green[700],
                             fontWeight: FontWeight.w600,
@@ -691,7 +691,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Last updated: ${DateFormat('MMM dd, HH:mm').format(DateTime.now())}',
+                          'dashboard_feature.global_trends.last_updated'.tr(namedArgs: {'date': DateFormat('MMM dd, HH:mm').format(DateTime.now())}),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                             fontSize: 11,

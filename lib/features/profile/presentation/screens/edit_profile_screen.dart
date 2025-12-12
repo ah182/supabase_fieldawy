@@ -97,7 +97,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            title: const Text('Edit Profile'),
+            title: Text('profile_feature.edit.title'.tr()),
             pinned: true,
             floating: true,
             backgroundColor: colorScheme.surface,
@@ -121,13 +121,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           children: [
                             _buildInputField(
                               controller: _nameController,
-                              label: 'Name',
+                              label: 'profile_feature.edit.name_label'.tr(),
                               icon: Icons.person_outline,
                             ),
                             const SizedBox(height: 16),
                             _buildInputField(
                               controller: _phoneController,
-                              label: 'WhatsApp Number',
+                              label: 'profile_feature.edit.whatsapp_label'.tr(),
                               icon: Icons.phone_outlined,
                             ),
                           ],
@@ -147,12 +147,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('accountType'.tr(),
+                              Text('profile_feature.edit.account_type'.tr(),
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold, fontSize: 16)),
                               const SizedBox(height: 12),
                               _buildOptionCard(
-                                title: 'Distribution company'.tr(),
+                                title: 'profile_feature.roles.company'.tr(),
                                 value: 'company',
                                 groupValue: _selectedRole,
                                 icon: Icons.business_rounded,
@@ -160,7 +160,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ),
                               const SizedBox(height: 8),
                               _buildOptionCard(
-                                title: 'Individual distributor'.tr(),
+                                title: 'profile_feature.roles.distributor'.tr(),
                                 value: 'distributor',
                                 groupValue: _selectedRole,
                                 icon: Icons.person_outline_rounded,
@@ -183,12 +183,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('distributionMethod'.tr(),
+                                Text('profile_feature.edit.distribution_method'.tr(),
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold, fontSize: 16)),
                                 const SizedBox(height: 12),
                                 _buildOptionCard(
-                                  title: 'directDistribution'.tr(),
+                                  title: 'profile_feature.distribution.direct'.tr(),
                                   value: 'direct_distribution',
                                   groupValue: _selectedDistributionMethod,
                                   icon: Icons.local_shipping_outlined,
@@ -197,7 +197,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 _buildOptionCard(
-                                  title: 'orderDelivery'.tr(),
+                                  title: 'profile_feature.distribution.delivery'.tr(),
                                   value: 'order_delivery',
                                   groupValue: _selectedDistributionMethod,
                                   icon: Icons.shopping_bag_outlined,
@@ -206,7 +206,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 _buildOptionCard(
-                                  title: 'bothMethods'.tr(),
+                                  title: 'profile_feature.distribution.both'.tr(),
                                   value: 'both',
                                   groupValue: _selectedDistributionMethod,
                                   icon: Icons.all_inclusive_rounded,
@@ -240,9 +240,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        title: const Text(
-                          'Coverage Areas',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        title: Text(
+                          'profile_feature.edit.coverage_areas'.tr(),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 12.0),
@@ -254,7 +254,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                         color: Colors.grey[400]),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'Tap to select governorates & centers',
+                                      'profile_feature.edit.tap_to_select'.tr(),
                                       style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 13),
@@ -342,7 +342,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                               Padding(
                                                 padding: const EdgeInsets.only(top: 4.0, left: 20),
                                                 child: Text(
-                                                  'No specific centers selected',
+                                                  'profile_feature.edit.no_centers_selected'.tr(),
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontStyle: FontStyle.italic,
@@ -415,7 +415,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text('Save'),
+          child: Text('profile_feature.edit.save'.tr()),
         ),
       ),
     );

@@ -88,7 +88,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
       onTap: () => hideKeyboard(),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('المنتجات المطلوب تقييمها'),
+          title: Text('reviews_feature.title'.tr()),
           centerTitle: true,
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(70),
@@ -125,7 +125,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                           }
                         },
                         decoration: InputDecoration(
-                          hintText: 'ابحث عن منتج...',
+                          hintText: 'reviews_feature.search_hint'.tr(),
                           hintStyle: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
@@ -210,7 +210,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}"',
+                      'reviews_feature.no_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -234,7 +234,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'لا توجد منتجات مطلوب تقييمها حالياً',
+                      'reviews_feature.no_requests'.tr(),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -242,7 +242,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'اضغط على + لإضافة طلب تقييم',
+                      'reviews_feature.add_request_hint'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[500],
@@ -301,7 +301,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _showAddReviewRequestDialog(context, ref),
           icon: const Icon(Icons.add),
-          label: const Text('إضافة طلب تقييم'),
+          label: Text('reviews_feature.add_request_fab'.tr()),
         ),
       ),
     );
@@ -314,18 +314,18 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('إضافة طلب تقييم'),
+        title: Text('reviews_feature.add_request_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('اختر مصدر المنتج:'),
+            Text('reviews_feature.select_source'.tr()),
             const SizedBox(height: 16),
             
             // خيار الكتالوج
             ListTile(
               leading: const Icon(Icons.library_books, color: Colors.blue),
-              title: const Text('من الكتالوج'),
-              subtitle: const Text('اختر من المنتجات الموجودة'),
+              title: Text('reviews_feature.from_catalog'.tr()),
+              subtitle: Text('reviews_feature.from_catalog_subtitle'.tr()),
               onTap: () {
                 Navigator.pop(dialogContext); // نقفل الـ dialog
                 Navigator.push(
@@ -354,8 +354,8 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
             // خيار المعرض
             ListTile(
               leading: const Icon(Icons.photo_library, color: Colors.green),
-              title: const Text('من المعرض'),
-              subtitle: const Text('التقط صورة أو اختر من المعرض'),
+              title: Text('reviews_feature.from_gallery'.tr()),
+              subtitle: Text('reviews_feature.from_gallery_subtitle'.tr()),
               onTap: () {
                 Navigator.pop(dialogContext); // نقفل الـ dialog
                 Navigator.push(
@@ -383,7 +383,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
+            child: Text('reviews_feature.cancel'.tr()),
           ),
         ],
       ),
@@ -402,7 +402,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('أضف تعليقك'),
+        title: Text('reviews_feature.add_comment_title'.tr()),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -467,13 +467,13 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                 maxLines: 4,
                 maxLength: 300,
                 autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'تعليقك على المنتج (اختياري)',
-                  hintText: 'مثال: أريد معرفة جودة هذا المنتج وسعره في السوق',
-                  helperText: 'سيظهر تعليقك مع طلب التقييم',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'reviews_feature.comment_hint'.tr(),
+                  hintText: 'reviews_feature.comment_example'.tr(),
+                  helperText: 'reviews_feature.comment_helper'.tr(),
+                  border: const OutlineInputBorder(),
                   alignLabelWithHint: true,
-                  prefixIcon: Icon(Icons.comment),
+                  prefixIcon: const Icon(Icons.comment),
                 ),
               ),
             ],
@@ -495,7 +495,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
               );
             },
             icon: const Icon(Icons.send),
-            label: const Text('إرسال الطلب'),
+            label: Text('reviews_feature.send_request'.tr()),
           ),
         ],
       ),
@@ -549,15 +549,15 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
 
     if (result['success'] == true) {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('تم إنشاء طلب التقييم بنجاح')),
+        SnackBar(content: Text('reviews_feature.create_success'.tr())),
       );
       ref.invalidate(activeReviewRequestsProvider);
     } else {
-      String errorMessage = 'حدث خطأ';
+      String errorMessage = 'reviews_feature.report_error'.tr();
       if (result['error'] == 'product_already_requested') {
-        errorMessage = 'تم طلب تقييم هذا المنتج مسبقاً';
+        errorMessage = 'reviews_feature.product_already_requested'.tr();
       } else if (result['error'] == 'weekly_limit_exceeded') {
-        errorMessage = 'يمكنك طلب تقييم منتج واحد فقط كل أسبوع';
+        errorMessage = 'reviews_feature.weekly_limit'.tr();
       } else if (result['message'] != null) {
         errorMessage = result['message'];
       }
@@ -693,7 +693,7 @@ class ProductReviewCard extends ConsumerWidget {
                             ),
                           ),
                           child: Text(
-                            request.status == 'active' ? 'نشط' : 'مغلق',
+                            request.status == 'active' ? 'reviews_feature.active'.tr() : 'reviews_feature.closed'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -746,7 +746,7 @@ class ProductReviewCard extends ConsumerWidget {
                   // عدد التقييمات
                   _buildInfoChip(
                     icon: Icons.rate_review,
-                    label: '${request.totalReviewsCount} تقييم',
+                    label: '${request.totalReviewsCount} ${"reviews_feature.ratings".tr()}',
                     color: colorScheme.primary,
                   ),
                   const SizedBox(width: 12),
@@ -754,7 +754,7 @@ class ProductReviewCard extends ConsumerWidget {
                   // عدد التعليقات
                   _buildInfoChip(
                     icon: Icons.comment,
-                    label: '${request.commentsCount}/5',
+                    label: 'reviews_feature.comments_count'.tr(namedArgs: {'count': request.commentsCount.toString()}),
                     color: colorScheme.secondary,
                   ),
                 ],
@@ -769,13 +769,13 @@ class ProductReviewCard extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'التعليقات النصية',
+                        'reviews_feature.text_comments'.tr(),
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                       Text(
-                        '${request.commentsCount}/5',
+                        'reviews_feature.comments_count'.tr(namedArgs: {'count': request.commentsCount.toString()}),
                         style: textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: request.isCommentsFull
@@ -824,7 +824,7 @@ class ProductReviewCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'تعليق طالب التقييم:',
+                              'reviews_feature.requester_comment'.tr(),
                               style: textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.primary,
@@ -981,13 +981,13 @@ class ProductReviewCard extends ConsumerWidget {
   String _getRoleLabel(String role) {
     switch (role.toLowerCase()) {
       case 'doctor':
-        return 'طبيب بيطري';
+        return 'auth.role_veterinarian'.tr();
       case 'distributor':
-        return 'موزع فردي';
+        return 'auth.role_distributor'.tr();
       case 'company':
-        return 'شركة توزيع';
+        return 'auth.role_company'.tr();
       case 'viewer':
-        return 'مشاهد';
+        return 'مشاهد'; // Not standard role, keep as is or add to json
       default:
         return role;
     }
@@ -997,20 +997,19 @@ class ProductReviewCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف طلب التقييم'),
-        content: const Text(
-          'هل أنت متأكد من حذف طلب التقييم؟\n\n'
-          '⚠️ سيتم حذف جميع التقييمات المرتبطة به',
+        title: Text('reviews_feature.delete_request_title'.tr()),
+        content: Text(
+          'reviews_feature.delete_request_confirm'.tr(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('reviews_feature.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('reviews_feature.delete'.tr()), // Assuming delete key exists or added to reviews
           ),
         ],
       ),
@@ -1116,9 +1115,9 @@ class _ProductReviewDetailsScreenState
           children: [
             Icon(FontAwesomeIcons.handHoldingHeart, color: Theme.of(context).colorScheme.primary, size: 24),
             const SizedBox(width: 12),
-            const Text(
-              'ميثاق الأمانة',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            Text(
+              'reviews_feature.honesty_charter'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
           ],
         ),
@@ -1132,10 +1131,10 @@ class _ProductReviewDetailsScreenState
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
-              child: const Text(
-                'قال الله تعالى:\n{ وَالَّذِينَ لَا يَشْهَدُونَ الزُّورَ وَإِذَا مَرُّوا بِاللَّغْوِ مَرُّوا كِرَامًا }',
+              child: Text(
+                'reviews_feature.quran_verse'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   
@@ -1144,15 +1143,15 @@ class _ProductReviewDetailsScreenState
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'أخي الكريم، تقييمك لهذا المنتج أمانة ستُسأل عنها أمام الله.',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            Text(
+              'reviews_feature.honesty_msg1'.tr(),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'يرجى التقييم بأمانة وعدل، وعن تجربة حقيقية للمنتج، لضمان مصلحة الجميع.',
-              style: TextStyle(fontSize: 14, height: 1.5),
+            Text(
+              'reviews_feature.honesty_msg2'.tr(),
+              style: const TextStyle(fontSize: 14, height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1168,7 +1167,7 @@ class _ProductReviewDetailsScreenState
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 backgroundColor: Colors.green[700],
               ),
-              child: const Text('اللهم إني بلغت.. أتعهد بالصدق', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              child: Text('reviews_feature.pledge_button'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -1211,7 +1210,7 @@ class _ProductReviewDetailsScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تقييمات المنتج'),
+        title: Text('reviews_feature.reviews_list_title'.tr()),
       ),
       body: Column(
         children: [
@@ -1459,7 +1458,7 @@ class _ProductReviewDetailsScreenState
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'التعليقات التي تصل لـ 10 تقييمات "لا اتفق" يتم حذفها تلقائياً',
+                    'reviews_feature.auto_delete_msg'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: const Color.fromARGB(255, 11, 129, 171),
@@ -1487,7 +1486,7 @@ class _ProductReviewDetailsScreenState
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'لا توجد تقييمات بعد',
+                          'reviews_feature.no_reviews'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey[600],
@@ -1495,7 +1494,7 @@ class _ProductReviewDetailsScreenState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'كن أول من يقيم هذا المنتج',
+                          'reviews_feature.be_first'.tr(),
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[500],
@@ -1605,7 +1604,7 @@ class _ProductReviewDetailsScreenState
         return FloatingActionButton.extended(
           onPressed: () => _showAddReviewDialog(context),
           icon: const Icon(Icons.add_comment),
-          label: const Text('إضافة تقييمي'),
+          label: Text('reviews_feature.add_my_review'.tr()),
         );
       },
       orElse: () => null,
@@ -1633,7 +1632,7 @@ class _ProductReviewDetailsScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'أضف تقييمك',
+              'reviews_feature.add_review_title'.tr(),
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
@@ -1679,10 +1678,10 @@ class _ProductReviewDetailsScreenState
                 maxLines: 4,
                 maxLength: 500,
                 decoration: InputDecoration(
-                  hintText: 'اكتب تعليقك (اختياري)',
+                  hintText: 'reviews_feature.comment_placeholder'.tr(),
                   border: const OutlineInputBorder(),
                   helperText:
-                      'التعليقات محدودة (${widget.request.commentsCount}/5)',
+                      'reviews_feature.comments_limit_helper'.tr(namedArgs: {'count': widget.request.commentsCount.toString()}),
                 ),
               ),
             ] else ...[
@@ -1699,7 +1698,7 @@ class _ProductReviewDetailsScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'اكتمل عدد التعليقات. يمكنك إضافة تقييم بالنجوم فقط',
+                        'reviews_feature.comments_full_msg'.tr(),
                         style: TextStyle(color: Colors.orange[900]),
                       ),
                     ),
@@ -1713,7 +1712,7 @@ class _ProductReviewDetailsScreenState
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('إلغاء'),
+                    child: Text('reviews_feature.cancel'.tr()),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1722,7 +1721,7 @@ class _ProductReviewDetailsScreenState
                     onPressed: () async {
                       if (rating == 0) {
                         setState(() {
-                          errorMessage = '⭐ يجب اختيار التقييم بالنجوم أولاً';
+                          errorMessage = 'reviews_feature.rating_required'.tr();
                         });
                         return;
                       }
@@ -1741,8 +1740,8 @@ class _ProductReviewDetailsScreenState
 
                         if (result['success'] == true) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('تم إضافة تقييمك بنجاح'),
+                            SnackBar(
+                              content: Text('reviews_feature.review_added'.tr()),
                             ),
                           );
                           ref.invalidate(productReviewsProvider);
@@ -1751,13 +1750,13 @@ class _ProductReviewDetailsScreenState
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(result['message'] ??
-                                  'حدث خطأ في إضافة التقييم'),
+                                  'reviews_feature.report_error'.tr()),
                             ),
                           );
                         }
                       }
                     },
-                    child: const Text('إرسال'),
+                    child: Text('reviews_feature.send'.tr()),
                   ),
                 ),
               ],
@@ -1840,7 +1839,7 @@ class ReviewDetailCard extends ConsumerWidget {
                       InkWell(
                         onTap: () => _showUserDetails(context, ref, review.userId),
                         child: Text(
-                          review.userName.isEmpty ? 'مستخدم' : review.userName,
+                          review.userName.isEmpty ? 'surgical_tools_feature.comments.user'.tr() : review.userName,
                           style: textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -1937,7 +1936,7 @@ class ReviewDetailCard extends ConsumerWidget {
                     color: review.currentUserVotedHelpful ? Colors.green : null,
                   ),
                   label: Text(
-                    'اتفق (${review.helpfulCount})',
+                    'reviews_feature.agree'.tr(namedArgs: {'count': review.helpfulCount.toString()}),
                     style: TextStyle(
                       color: review.currentUserVotedHelpful ? Colors.green : null,
                     ),
@@ -2015,7 +2014,7 @@ class ReviewDetailCard extends ConsumerWidget {
                     color: review.currentUserVotedUnhelpful ? Colors.red : null,
                   ),
                   label: Text(
-                    ' لا اتفق (${review.unhelpfulCount})',
+                    'reviews_feature.disagree'.tr(namedArgs: {'count': review.unhelpfulCount.toString()}),
                     style: TextStyle(
                       color: review.currentUserVotedUnhelpful ? Colors.red : null,
                     ),
@@ -2039,7 +2038,7 @@ class ReviewDetailCard extends ConsumerWidget {
                   IconButton(
                     onPressed: () => _showReportDialog(context, ref, review.id),
                     icon: const Icon(Icons.flag_outlined, size: 18, color: Colors.grey),
-                    tooltip: 'إبلاغ عن محتوى مسيء',
+                    tooltip: 'reviews_feature.report_content'.tr(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -2056,17 +2055,17 @@ class ReviewDetailCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف التقييم'),
-        content: const Text('هل أنت متأكد من حذف تقييمك؟'),
+        title: Text('reviews_feature.delete_review_title'.tr()),
+        content: Text('reviews_feature.delete_review_confirm'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('reviews_feature.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('reviews_feature.delete'.tr()), // Assuming delete key exists or add to reviews
           ),
         ],
       ),
@@ -2089,8 +2088,8 @@ class ReviewDetailCard extends ConsumerWidget {
 
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم حذف التقييم بنجاح'),
+        SnackBar(
+          content: Text('reviews_feature.review_deleted'.tr()),
           backgroundColor: Colors.green,
         ),
       );
@@ -2104,7 +2103,7 @@ class ReviewDetailCard extends ConsumerWidget {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message'] ?? 'حدث خطأ في الحذف'),
+          content: Text(result['message'] ?? 'reviews_feature.delete_error'.tr()),
           backgroundColor: Colors.red,
         ),
       );
@@ -2402,11 +2401,11 @@ class ReviewDetailCard extends ConsumerWidget {
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [
-      'محتوى غير لائق / مسيء',
-      'رسائل مزعجة (Spam)',
-      'معلومات مضللة',
-      'تحرش أو تنمر',
-      'أخرى',
+      'surgical_tools_feature.report.reasons.inappropriate'.tr(),
+      'surgical_tools_feature.report.reasons.spam'.tr(),
+      'surgical_tools_feature.report.reasons.misleading'.tr(),
+      'surgical_tools_feature.report.reasons.harassment'.tr(),
+      'surgical_tools_feature.report.reasons.other'.tr(),
     ];
     String selectedReason = reasons[0];
     final descriptionController = TextEditingController();
@@ -2451,9 +2450,9 @@ class ReviewDetailCard extends ConsumerWidget {
                       child: const Icon(Icons.flag_rounded, color: Colors.red),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'إبلاغ عن محتوى',
-                      style: TextStyle(
+                    Text(
+                      'reviews_feature.report_content'.tr(),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2462,11 +2461,11 @@ class ReviewDetailCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'ساعدنا في الحفاظ على بيئة آمنة. ما المشكلة في هذا التقييم؟',
-                  style: TextStyle(color: Colors.grey),
+                  'reviews_feature.report_subtitle'.tr(),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
@@ -2503,7 +2502,7 @@ class ReviewDetailCard extends ConsumerWidget {
                   controller: descriptionController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'أضف تفاصيل إضافية (اختياري)...',
+                    hintText: 'reviews_feature.report_details'.tr(),
                     filled: true,
                     fillColor: Colors.grey[100],
                     border: OutlineInputBorder(
@@ -2525,7 +2524,7 @@ class ReviewDetailCard extends ConsumerWidget {
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                        child: Text('reviews_feature.cancel'.tr(), style: const TextStyle(color: Colors.grey)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -2536,7 +2535,7 @@ class ReviewDetailCard extends ConsumerWidget {
                           Navigator.pop(context);
                           
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                            SnackBar(content: Text('reviews_feature.sending_report'.tr())),
                           );
 
                           final service = ref.read(reviewServiceProvider);
@@ -2551,15 +2550,15 @@ class ReviewDetailCard extends ConsumerWidget {
                           if (context.mounted) {
                              if (result['success'] == true) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                                SnackBar(
+                                  content: Text('reviews_feature.report_success'.tr()),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                                  content: Text(result['message'] ?? 'reviews_feature.report_error'.tr()),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -2575,7 +2574,7 @@ class ReviewDetailCard extends ConsumerWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('reviews_feature.submit_report'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

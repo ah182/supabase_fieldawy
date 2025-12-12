@@ -139,7 +139,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
                 children: [
                   
                   Text(
-                    'Coverage Areas'.tr(), // عنوان رئيسي مختصر وجذاب
+                    'auth.governorate.coverage_areas'.tr(), // عنوان رئيسي مختصر وجذاب
                     style: textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: kTextColor,
@@ -147,8 +147,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8.0),
                   Text(
-                    'select governorates and centers you coverd'
-                        .tr(), // نص الشرح
+                    'auth.governorate.select_coverage_desc'.tr(), // نص الشرح
                     textAlign: TextAlign.center,
                     style: textTheme.bodyLarge?.copyWith(
                       color: const Color.fromARGB(255, 54, 67, 88), // لون أفتح للنص الثانوي
@@ -187,7 +186,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _HeaderWithBadge(
-                            title: 'Governorates'.tr(),
+                            title: 'auth.governorate.governorates'.tr(),
                             badge: '${selectedGovernorates.value.length}',
                           ),
                           const SizedBox(height: 16),
@@ -263,7 +262,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _HeaderWithBadge(
-                              title: 'Centers'.tr(),
+                              title: 'auth.governorate.centers'.tr(),
                               badge: '${selectedCenters.value.length}',
                             ),
                             const SizedBox(height: 12),
@@ -344,7 +343,7 @@ class GovernorateSelectionScreen extends HookConsumerWidget {
             shadowColor: kPrimaryColor.withOpacity(0.4),
           ),
           child: Text(
-            'continue'.tr(),
+            'auth.continue'.tr(),
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: isContinueEnabled ? Colors.white : Colors.grey.shade500,

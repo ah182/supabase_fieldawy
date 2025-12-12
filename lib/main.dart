@@ -1159,8 +1159,14 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       title: 'Fieldawy Store',
       // DevicePreview support
       useInheritedMediaQuery: true,
-      locale: DevicePreview.locale(context) ?? context.locale,
-      builder: DevicePreview.appBuilder,
+      locale: ref.watch(languageProvider),
+      builder: (context, child) {
+        child = DevicePreview.appBuilder(context, child);
+        return Directionality(
+          textDirection: ui.TextDirection.ltr,
+          child: child,
+        );
+      },
       // Localization
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,

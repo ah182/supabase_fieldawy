@@ -100,7 +100,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'jobOfferUpdated'.tr() : 'jobOfferSubmitted'.tr()),
+            content: Text(_isEditing ? 'job_offers_feature.job_updated'.tr() : 'job_offers_feature.job_published'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -113,7 +113,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: ${e.toString()}'),
+            content: Text('${'job_offers_feature.error_occurred'.tr()}: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -125,7 +125,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'editJobOffer'.tr() : 'addJobOffer'.tr()),
+        title: Text(_isEditing ? 'job_offers_feature.edit'.tr() : 'job_offers_feature.add_job'.tr()),
         elevation: 0,
       ),
       body: Form(
@@ -156,7 +156,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'jobOfferInfo'.tr(),
+                      'job_offers_feature.info_text'.tr(),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[700],
@@ -172,8 +172,8 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
             TextFormField(
               controller: _titleController,
               decoration: InputDecoration(
-                labelText: 'jobTitle'.tr(),
-                hintText: 'jobTitleHint'.tr(),
+                labelText: 'job_offers_feature.job_title'.tr(),
+                hintText: 'job_offers_feature.title_hint'.tr(),
                 prefixIcon: const Icon(Icons.work_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -182,10 +182,10 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'jobTitleRequired'.tr();
+                  return 'job_offers_feature.title_required'.tr();
                 }
                 if (value.trim().length < 10) {
-                  return 'jobTitleTooShort'.tr();
+                  return 'job_offers_feature.title_too_short'.tr();
                 }
                 return null;
               },
@@ -197,8 +197,8 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               maxLines: 8,
               maxLength: 500,
               decoration: InputDecoration(
-                labelText: 'jobDescription'.tr(),
-                hintText: 'jobDescriptionHint'.tr(),
+                labelText: 'job_offers_feature.job_description'.tr(),
+                hintText: 'job_offers_feature.description_hint'.tr(),
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 120),
                   child: Icon(Icons.description_outlined),
@@ -207,7 +207,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                helperText: '$_wordCount / 100 ${'words'.tr()}',
+                helperText: '$_wordCount / 100 ${'job_offers_feature.words'.tr()}',
                 helperStyle: TextStyle(
                   color: _wordCount > 100 ? Colors.red : Colors.grey[600],
                   fontWeight: _wordCount > 100 ? FontWeight.bold : FontWeight.normal,
@@ -215,13 +215,13 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'jobDescriptionRequired'.tr();
+                  return 'job_offers_feature.desc_required'.tr();
                 }
                 if (_wordCount < 20) {
-                  return 'jobDescriptionTooShort'.tr();
+                  return 'job_offers_feature.desc_too_short'.tr();
                 }
                 if (_wordCount > 100) {
-                  return 'jobDescriptionTooLong'.tr();
+                  return 'job_offers_feature.desc_too_long'.tr();
                 }
                 return null;
               },
@@ -231,8 +231,8 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
             IntlPhoneField(
               controller: _phoneController,
               decoration: InputDecoration(
-                labelText: 'phoneNumber'.tr(),
-                hintText: 'phoneNumberHint'.tr(),
+                labelText: 'job_offers_feature.phone'.tr(),
+                hintText: 'job_offers_feature.phone_hint'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -248,11 +248,11 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               },
               validator: (phone) {
                 if (phone == null || phone.number.isEmpty) {
-                  return 'phoneNumberRequired'.tr();
+                  return 'job_offers_feature.phone_required'.tr();
                 }
                 return null;
               },
-              invalidNumberMessage: 'phoneNumberInvalid'.tr(),
+              invalidNumberMessage: 'job_offers_feature.phone_invalid'.tr(),
               dropdownIconPosition: IconPosition.trailing,
               showCountryFlag: true,
               showDropdownIcon: true,
@@ -276,8 +276,8 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
                     : const Icon(Icons.send),
                 label: Text(
                   _isSubmitting 
-                    ? 'submitting'.tr() 
-                    : (_isEditing ? 'updateJobOffer'.tr() : 'submitJobOffer'.tr()),
+                    ? 'job_offers_feature.submitting'.tr() 
+                    : (_isEditing ? 'job_offers_feature.update_job'.tr() : 'job_offers_feature.publish_job'.tr()),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

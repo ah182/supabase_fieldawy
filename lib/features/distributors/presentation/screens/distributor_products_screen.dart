@@ -186,7 +186,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
       if (currentDistributor == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('failedToLoadDistributorDetails'.tr())),
+            SnackBar(content: Text('distributors_feature.products_screen.load_error'.tr())),
           );
         }
         return;
@@ -840,7 +840,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
 
                   // === وصف المنتج ===
                   Text(
-                    'Description',
+                    'distributors_feature.products_screen.description'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -854,14 +854,14 @@ class DistributorProductsScreen extends HookConsumerWidget {
                     text: TextSpan(
                       children: [
                         TextSpan(
-                          text: 'المادة الفعالة: ',
+                          text: 'distributors_feature.products_screen.active_principle'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         TextSpan(
-                          text: product.activePrinciple ?? 'غير محدد',
+                          text: product.activePrinciple ?? 'distributors_feature.products_screen.undefined'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w800,
@@ -929,7 +929,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                             'لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye ',
+                             'distributors_feature.products_screen.vet_eye_note'.tr(),
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 fontSize: 16,
                                 color: theme.colorScheme.onSurface,
@@ -1001,21 +1001,21 @@ class DistributorProductsScreen extends HookConsumerWidget {
                     ),
                   );
                 },
-                label: Text('viewOrder'.tr()),
+                label: Text('distributors_feature.products_screen.view_order'.tr()),
                 icon: const Icon(Icons.shopping_cart_checkout_rounded),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
               )
             : null,
         appBar: AppBar(
-          title: Text('منتجات $_distributorName'),
+          title: Text('distributors_feature.products_screen.title'.tr(namedArgs: {'name': _distributorName})),
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,
           actions: [
             IconButton(
               icon: const Icon(Icons.info_outline_rounded),
-              tooltip: 'distributorDetails'.tr(),
+              tooltip: 'distributors_feature.products_screen.details_tooltip'.tr(),
               onPressed: () => _showDistributorDetails(context, ref),
             ),
           ],
@@ -1153,7 +1153,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'لا توجد منتجات متاحة حاليًا.',
+                        'distributors_feature.products_screen.no_products'.tr(),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
@@ -1224,7 +1224,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'عدد المنتجات: ${filteredProducts.length}',
+                            'distributors_feature.products_screen.products_count'.tr(namedArgs: {'count': filteredProducts.length.toString()}),
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.bold,
@@ -1251,7 +1251,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}" ',
+                                      'distributors_feature.products_screen.no_search_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -1265,7 +1265,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'جرب البحث عن:\\n• اسم الدواء أو المادة الفعالة\\n• اسم الموزع أو الشركة\\n• حجم العبوة أو الوصف',
+                                      'distributors_feature.products_screen.search_tips'.tr(),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
@@ -1287,7 +1287,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                         fullSuggestion.value = '';
                                       },
                                       icon: const Icon(Icons.clear, size: 18),
-                                      label: const Text('مسح البحث'),
+                                      label: Text('distributors_feature.products_screen.clear_search'.tr()),
                                     ),
                                   ],
                                 ),
@@ -1335,7 +1335,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                     color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(height: 16),
-                  Text('حدث خطأ: $error',
+                  Text('distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
@@ -1343,7 +1343,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       ref.invalidate(distributorProductsProvider(_distributorId));
                     },
                     icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('إعادة المحاولة'),
+                    label: Text('distributors_feature.retry'.tr()),
                   ),
                 ],
               ),

@@ -72,7 +72,7 @@ class _ProfileCompletionScreenState
     if ((widget.selectedRole == 'company' || widget.selectedRole == 'distributor') && 
         _selectedDistributionMethod == null) {
        ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('pleaseSelectDistributionMethod'.tr())),
+        SnackBar(content: Text('auth.profile.please_select_distribution'.tr())),
       );
       return;
     }
@@ -116,7 +116,7 @@ class _ProfileCompletionScreenState
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
               title: 'خطأ'.tr(),
-              message: '${'profileUpdateFailed'.tr()}: $e',
+              message: '${'auth.profile.update_failed'.tr()}: $e',
               contentType: ContentType.failure,
             ),
           ),
@@ -137,7 +137,7 @@ class _ProfileCompletionScreenState
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'completeProfile'.tr(),
+          'auth.profile.complete_title'.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -155,7 +155,7 @@ class _ProfileCompletionScreenState
           child: ListView(
             children: [
               Text(
-                'Complete your profile'.tr(),
+                'auth.profile.complete_header'.tr(),
                 style: theme.textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 25,
@@ -169,11 +169,11 @@ class _ProfileCompletionScreenState
               /// حقل الاسم
               _buildInputField(
                 controller: _nameController,
-                label: 'appNameLabel'.tr(),
+                label: 'auth.profile.app_name_label'.tr(),
                 icon: Icons.person_outline,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'pleaseEnterName'.tr();
+                    return 'auth.profile.enter_name'.tr();
                   }
                   return null;
                 },
@@ -183,12 +183,12 @@ class _ProfileCompletionScreenState
               /// حقل الهاتف
               _buildInputField(
                 controller: _phoneController,
-                label: 'whatsappNumberLabel'.tr(),
+                label: 'auth.profile.whatsapp_label'.tr(),
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.trim().length < 10) {
-                    return 'pleaseEnterValidPhone'.tr();
+                    return 'auth.profile.enter_valid_phone'.tr();
                   }
                   return null;
                 },
@@ -198,7 +198,7 @@ class _ProfileCompletionScreenState
               // إظهار خيارات التوزيع فقط للشركات والموزعين
               if (widget.selectedRole == 'company' || widget.selectedRole == 'distributor') ...[
                  Text(
-                  'distributionMethod'.tr(),
+                  'auth.profile.distribution_method'.tr(),
                   style: const TextStyle(
                     fontSize: 16, 
                     fontWeight: FontWeight.bold, 
@@ -215,7 +215,7 @@ class _ProfileCompletionScreenState
                   child: Column(
                     children: [
                       RadioListTile<String>(
-                        title: Text('directDistribution'.tr()),
+                        title: Text('auth.profile.direct_distribution'.tr()),
                         value: 'direct_distribution',
                         groupValue: _selectedDistributionMethod,
                         onChanged: (value) {
@@ -227,7 +227,7 @@ class _ProfileCompletionScreenState
                       ),
                       Divider(height: 1, color: Colors.grey.shade200),
                       RadioListTile<String>(
-                        title: Text('orderDelivery'.tr()),
+                        title: Text('auth.profile.order_delivery'.tr()),
                         value: 'order_delivery',
                         groupValue: _selectedDistributionMethod,
                         onChanged: (value) {
@@ -239,7 +239,7 @@ class _ProfileCompletionScreenState
                       ),
                        Divider(height: 1, color: Colors.grey.shade200),
                       RadioListTile<String>(
-                        title: Text('bothMethods'.tr()),
+                        title: Text('auth.profile.both_methods'.tr()),
                         value: 'both',
                         groupValue: _selectedDistributionMethod,
                         onChanged: (value) {
@@ -258,7 +258,7 @@ class _ProfileCompletionScreenState
 
               /// زر الحفظ أو اللودر
               _buildGradientButton(
-                        text: 'finishAndSave'.tr(),
+                        text: 'auth.profile.finish_save'.tr(),
                         onPressed: _submitProfile,
                       ),
             ],

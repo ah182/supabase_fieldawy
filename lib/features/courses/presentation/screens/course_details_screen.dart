@@ -60,7 +60,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       // إظهار رسالة نجاح
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تم إضافة التعليق بنجاح'),
+          content: Text('courses_feature.comment_added'.tr()),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -69,7 +69,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('فشل إضافة التعليق، حاول مرة أخرى'),
+          content: Text('courses_feature.comment_failed'.tr()),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -82,18 +82,18 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف التعليق'),
-        content: const Text('هل أنت متأكد من حذف هذا التعليق؟'),
+        title: Text('courses_feature.delete_comment_title'.tr()),
+        content: Text('courses_feature.delete_comment_msg'.tr()),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('courses_feature.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+            child: Text('courses_feature.delete'.tr()),
           ),
         ],
       ),
@@ -108,7 +108,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حذف التعليق'),
+            content: Text('courses_feature.comment_deleted'.tr()),
             backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -130,7 +130,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح واتساب')),
+          SnackBar(content: Text('courses_feature.whatsapp_error'.tr())),
         );
       }
     }
@@ -152,7 +152,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           _showUserBottomSheet(context, userModel);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تعذر تحميل بيانات المستخدم')),
+            SnackBar(content: Text('profile_feature.user_data_not_found'.tr())),
           );
         }
       }
@@ -160,7 +160,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
+          SnackBar(content: Text('${'courses_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})}')),
         );
       }
     }
@@ -208,7 +208,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.displayName ?? 'مستخدم',
+                    user.displayName ?? 'comments_feature.user'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -240,7 +240,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     _buildDetailTile(
                       theme,
                       Icons.local_shipping,
-                      'طريقة التوزيع',
+                      'distributors_feature.distribution_method'.tr(),
                       _getDistributionMethodLabel(user.distributionMethod!),
                     ),
                   if (user.governorates != null && user.governorates!.isNotEmpty)
@@ -254,7 +254,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                isDistributor ? 'مناطق التغطية' : 'الموقع',
+                                isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'clinics_feature.distributor.location'.tr(),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
@@ -319,7 +319,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () => _openWhatsApp(user.whatsappNumber!),
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
-                        label: const Text('تواصل عبر واتساب', style: TextStyle(color: Colors.white)),
+                        label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF25D366),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -355,7 +355,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           );
                         },
                         icon: const Icon(Icons.inventory_2),
-                        label: const Text('عرض المنتجات'),
+                        label: Text('distributors_feature.view_products'.tr()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -389,29 +389,29 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'doctor': return 'طبيب بيطري'.tr();
-      case 'distributor': return 'موزع فردي'.tr();
-      case 'company': return 'شركة توزيع'.tr();
+      case 'doctor': return 'auth.role_veterinarian'.tr();
+      case 'distributor': return 'auth.role_distributor'.tr();
+      case 'company': return 'auth.role_company'.tr();
       default: return role;
     }
   }
 
   String _getDistributionMethodLabel(String method) {
     switch (method) {
-      case 'direct_distribution': return 'توزيع مباشر'.tr();
-      case 'order_delivery': return 'توصيل طلبات'.tr();
-      case 'both': return 'توزيع وتوصيل'.tr();
+      case 'direct_distribution': return 'auth.profile.distribution.direct_distribution'.tr();
+      case 'order_delivery': return 'auth.profile.distribution.order_delivery'.tr();
+      case 'both': return 'auth.profile.distribution.both_methods'.tr();
       default: return method;
     }
   }
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [
-      'محتوى غير لائق / مسيء',
-      'رسائل مزعجة (Spam)',
-      'معلومات مضللة',
-      'تحرش أو تنمر',
-      'أخرى',
+      'comments_feature.report_reasons.inappropriate'.tr(),
+      'comments_feature.report_reasons.spam'.tr(),
+      'comments_feature.report_reasons.misleading'.tr(),
+      'comments_feature.report_reasons.harassment'.tr(),
+      'comments_feature.report_reasons.other'.tr(),
     ];
     String selectedReason = reasons[0];
     final descriptionController = TextEditingController();
@@ -454,19 +454,19 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       child: const Icon(Icons.flag_rounded, color: Colors.red),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'إبلاغ عن محتوى',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Text(
+                      'comments_feature.report_title'.tr(),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'ساعدنا في الحفاظ على بيئة آمنة. ما المشكلة في هذا التقييم؟',
-                  style: TextStyle(color: Colors.grey),
+                  'comments_feature.report_subtitle'.tr(),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
@@ -501,7 +501,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   controller: descriptionController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'أضف تفاصيل إضافية (اختياري)...',
+                    hintText: 'comments_feature.details_hint'.tr(),
                     filled: true,
                     fillColor: Colors.grey[100],
                     border: OutlineInputBorder(
@@ -522,7 +522,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                        child: Text('cancel'.tr(), style: const TextStyle(color: Colors.grey)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -533,7 +533,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           Navigator.pop(context);
                           
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                            SnackBar(content: Text('comments_feature.report_sending'.tr())),
                           );
 
                           final service = ref.read(reviewServiceProvider);
@@ -548,15 +548,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           if (context.mounted) {
                              if (result['success'] == true) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                                SnackBar(
+                                  content: Text('comments_feature.report_success'.tr()),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                                  content: Text(result['message'] ?? 'comments_feature.report_error'.tr()),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -572,7 +572,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('إرسال البلاغ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('comments_feature.submit_report'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -694,7 +694,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.attach_money,
-                          label: 'السعر',
+                          label: 'courses_feature.price'.tr(),
                           value: '${widget.course.price.toStringAsFixed(0)} ج.م',
                           color: Colors.green,
                           theme: theme,
@@ -704,7 +704,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.visibility_outlined,
-                          label: 'مشاهدات',
+                          label: 'courses_feature.views'.tr(),
                           value: '${widget.course.views}',
                           color: Colors.blue,
                           theme: theme,
@@ -720,7 +720,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           builder: (context, snapshot) {
                             return _buildStatCard(
                               icon: Icons.comment_outlined,
-                              label: 'تعليقات',
+                              label: 'courses_feature.comments'.tr(),
                               value: '${snapshot.data ?? 0}',
                               color: Colors.orange,
                               theme: theme,
@@ -760,7 +760,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'وصف الكورس',
+                              'courses_feature.description'.tr(),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -791,9 +791,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _openWhatsApp(widget.course.phone),
                       icon: const Icon(Icons.phone_in_talk, color: Colors.white),
-                      label: const Text(
-                        'تواصل عبر واتساب',
-                        style: TextStyle(
+                      label: Text(
+                        'courses_feature.contact_seller'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -885,7 +885,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'التعليقات',
+                  'courses_feature.comments'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -919,7 +919,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   padding: const EdgeInsets.all(32),
                   child: Center(
                     child: Text(
-                      'حدث خطأ في تحميل التعليقات',
+                      'courses_feature.error_loading_comments'.tr(),
                       style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ),
@@ -941,14 +941,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'لا توجد تعليقات بعد',
+                          'courses_feature.no_comments'.tr(),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'كن أول من يعلق!',
+                          'courses_feature.be_first_comment'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.4),
                           ),
@@ -1011,7 +1011,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: 'اكتب تعليقك...',
+                hintText: 'courses_feature.add_comment'.tr(),
                 hintStyle: TextStyle(
                   color: theme.colorScheme.onSurface.withOpacity(0.5),
                 ),
@@ -1139,7 +1139,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     onPressed: () => _showReportDialog(context, ref, comment.id),
                     icon: Icon(Icons.flag_outlined, size: 14, color: Colors.grey[500]),
                     label: Text(
-                      'إبلاغ',
+                      'comments_feature.report_title'.tr(),
                       style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
                     style: TextButton.styleFrom(

@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
       content: AwesomeSnackbarContent(
-        title: 'خطأ'.tr(),
+        title: 'خطأ'.tr(), // Common key, keep or standardize
         message: message,
         contentType: ContentType.failure,
       ),

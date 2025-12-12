@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class EditSurgicalToolScreen extends ConsumerStatefulWidget {
   final String id;
@@ -99,14 +100,14 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
 
       setState(() => _isLoading = false);
       if (success) {
-        _showSnackBar('تم تحديث الأداة بنجاح', isError: false);
+        _showSnackBar('surgical_tools_feature.messages.update_success'.tr(), isError: false);
         Navigator.pop(context, true); // إرجاع true للإشارة إلى نجاح التحديث
       } else {
-        _showSnackBar('فشل في تحديث الأداة', isError: true);
+        _showSnackBar('surgical_tools_feature.messages.update_error'.tr(), isError: true);
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar('حدث خطأ: ${e.toString()}', isError: true);
+      _showSnackBar('surgical_tools_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}), isError: true);
     }
   }
 
@@ -118,7 +119,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('تعديل الأداة'),
+        title: Text('surgical_tools_feature.edit.title'.tr()),
         centerTitle: true,
         backgroundColor: colorScheme.surface,
         elevation: 0,
@@ -177,7 +178,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'اسم الأداة',
+                      'surgical_tools_feature.fields.tool_name'.tr(),
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: colorScheme.onSurface.withOpacity(0.6),
                       ),
@@ -219,7 +220,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'الشركة المصنعة',
+                              'surgical_tools_feature.fields.manufacturer'.tr(),
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: colorScheme.onSurface.withOpacity(0.6),
                               ),
@@ -242,7 +243,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
 
               // حقل الوصف
               Text(
-                'الوصف',
+                'surgical_tools_feature.fields.description'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -253,7 +254,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                 maxLines: 5,
                 maxLength: null,
                 decoration: InputDecoration(
-                  hintText: 'أدخل وصف الأداة (60 كلمة كحد أقصى)',
+                  hintText: 'surgical_tools_feature.fields.description_hint'.tr(),
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   border: OutlineInputBorder(
@@ -283,11 +284,11 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'الرجاء إدخال وصف الأداة';
+                    return 'surgical_tools_feature.fields.description_required'.tr();
                   }
                   final wordCount = _countWords(value);
                   if (wordCount > 60) {
-                    return 'الوصف يجب ألا يتعدى 60 كلمة (حالياً: $wordCount)';
+                    return 'surgical_tools_feature.fields.description_limit_error'.tr(namedArgs: {'count': wordCount.toString()});
                   }
                   return null;
                 },
@@ -304,7 +305,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'عدد الكلمات: $wordCount',
+                        'surgical_tools_feature.fields.word_count'.tr(namedArgs: {'count': wordCount.toString()}),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: wordCount > 60
                               ? colorScheme.error
@@ -328,7 +329,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
 
               // حالة الأداة
               Text(
-                'حالة الأداة',
+                'surgical_tools_feature.fields.status_label'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -362,9 +363,14 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                   ),
                 ),
                 items: ['جديد', 'مستعمل', 'كسر زيرو'].map((String status) {
+                  String label = status;
+                  if (status == 'جديد') label = 'surgical_tools_feature.status.new'.tr();
+                  else if (status == 'مستعمل') label = 'surgical_tools_feature.status.used'.tr();
+                  else if (status == 'كسر زيرو') label = 'surgical_tools_feature.status.like_new'.tr();
+                  
                   return DropdownMenuItem<String>(
                     value: status,
-                    child: Text(status),
+                    child: Text(label),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -379,7 +385,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
 
               // حقل السعر
               Text(
-                'السعر',
+                'surgical_tools_feature.fields.price'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -392,12 +398,12 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
                 decoration: InputDecoration(
-                  hintText: 'أدخل السعر',
+                  hintText: 'surgical_tools_feature.fields.price_hint'.tr(),
                   prefixIcon: Icon(
                     Icons.attach_money,
                     color: colorScheme.primary,
                   ),
-                  suffixText: 'EGP',
+                  suffixText: 'EGP'.tr(),
                   suffixStyle: TextStyle(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -430,11 +436,11 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'الرجاء إدخال السعر';
+                    return 'surgical_tools_feature.fields.price_required'.tr();
                   }
                   final price = double.tryParse(value);
                   if (price == null || price <= 0) {
-                    return 'الرجاء إدخال سعر صحيح';
+                    return 'surgical_tools_feature.fields.price_invalid'.tr();
                   }
                   return null;
                 },
@@ -468,7 +474,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
                           Icon(Icons.save_rounded, size: 24),
                           const SizedBox(width: 12),
                           Text(
-                            'حفظ التعديلات',
+                            'surgical_tools_feature.actions.save_changes'.tr(),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

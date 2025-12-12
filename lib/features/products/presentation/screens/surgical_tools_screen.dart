@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class SurgicalToolsScreen extends ConsumerStatefulWidget {
   const SurgicalToolsScreen({super.key});
@@ -30,7 +31,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'تأكيد الحذف',
+                'surgical_tools_feature.dialogs.delete_confirm_title'.tr(),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -43,7 +44,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'هل أنت متأكد من حذف هذه الأداة؟',
+              'surgical_tools_feature.dialogs.delete_confirm_message'.tr(),
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 8),
@@ -79,7 +80,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'لن يمكنك التراجع عن هذا الإجراء.',
+              'surgical_tools_feature.dialogs.delete_warning'.tr(),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.red,
                     fontWeight: FontWeight.w500,
@@ -93,7 +94,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
-            child: const Text('إلغاء'),
+            child: Text('surgical_tools_feature.actions.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -107,10 +108,10 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.delete_rounded, size: 20),
-                SizedBox(width: 8),
-                Text('حذف'),
+              children: [
+                const Icon(Icons.delete_rounded, size: 20),
+                const SizedBox(width: 8),
+                Text('surgical_tools_feature.actions.delete'.tr()),
               ],
             ),
           ),
@@ -139,8 +140,8 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    success ? 'تم حذف الأداة بنجاح' : 'فشل في حذف الأداة',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    success ? 'surgical_tools_feature.messages.delete_success'.tr() : 'surgical_tools_feature.messages.delete_error'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -186,7 +187,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    'إضافة أداة جراحية',
+                    'surgical_tools_feature.actions.add_tool'.tr(),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -201,8 +202,8 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                     child: Icon(Icons.list_alt,
                         color: Theme.of(context).colorScheme.primary),
                   ),
-                  title: const Text('الاختيار من كتالوج الأدوات'),
-                  subtitle: const Text('اختر من القائمة المتاحة'),
+                  title: Text('surgical_tools_feature.actions.select_from_catalog'.tr()),
+                  subtitle: Text('surgical_tools_feature.actions.select_from_catalog_subtitle'.tr()),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
@@ -220,8 +221,8 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                     child: Icon(Icons.photo_library_outlined,
                         color: Colors.orange),
                   ),
-                  title: const Text('الاختيار من المعرض'),
-                  subtitle: const Text('إضافة صورة من الاستوديو'),
+                  title: Text('surgical_tools_feature.actions.select_from_gallery'.tr()),
+                  subtitle: Text('surgical_tools_feature.actions.select_from_gallery_subtitle'.tr()),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
@@ -257,10 +258,10 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
     if (userId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('الأدوات الجراحية'),
+          title: Text('surgical_tools_feature.title'.tr()),
         ),
-        body: const Center(
-          child: Text('يجب تسجيل الدخول أولاً'),
+        body: Center(
+          child: Text('surgical_tools_feature.messages.login_required'.tr()),
         ),
       );
     }
@@ -283,14 +284,14 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.medical_services_rounded,
                 color: Colors.white,
                 size: 20,
               ),
             ),
             const SizedBox(width: 12),
-            const Text('أدواتي الجراحية'),
+            Text('surgical_tools_feature.my_tools_title'.tr()),
           ],
         ),
         centerTitle: true,
@@ -301,9 +302,9 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add_rounded, size: 24),
-        label: const Text(
-          'إضافة أداة',
-          style: TextStyle(
+        label: Text(
+          'surgical_tools_feature.actions.add_tool_short'.tr(),
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),
@@ -327,7 +328,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'جاري تحميل الأدوات...',
+                    'surgical_tools_feature.messages.loading_tools'.tr(),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
@@ -381,6 +382,12 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                             (tool['price'] as num?)?.toDouble() ?? 0.0;
                         final status = tool['status'] ?? 'جديد';
 
+                        // Translate status for display
+                        String displayStatus = status;
+                        if (status == 'جديد') displayStatus = 'surgical_tools_feature.status.new'.tr();
+                        else if (status == 'مستعمل') displayStatus = 'surgical_tools_feature.status.used'.tr();
+                        else if (status == 'كسر زيرو') displayStatus = 'surgical_tools_feature.status.like_new'.tr();
+
                         return _ModernToolCard(
                           id: id,
                           toolName: toolName,
@@ -389,6 +396,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                           description: description,
                           price: price,
                           status: status,
+                          displayStatus: displayStatus,
                           index: index,
                           onDelete: () => _deleteTool(context, id, toolName),
                           onTap: () async {
@@ -453,7 +461,7 @@ class _StatsCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            'الأدوات المتاحة:',
+            'surgical_tools_feature.stats.available_tools'.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontWeight: FontWeight.w500,
@@ -485,6 +493,7 @@ class _ModernToolCard extends StatelessWidget {
   final String description;
   final double price;
   final String status;
+  final String displayStatus;
   final int index;
   final VoidCallback onDelete;
   final VoidCallback onTap;
@@ -497,6 +506,7 @@ class _ModernToolCard extends StatelessWidget {
     required this.description,
     required this.price,
     required this.status,
+    required this.displayStatus,
     required this.index,
     required this.onDelete,
     required this.onTap,
@@ -658,7 +668,7 @@ class _ModernToolCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                status,
+                                displayStatus,
                                 style: textTheme.labelMedium?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -822,7 +832,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              'لا توجد أدوات جراحية بعد',
+              'surgical_tools_feature.empty.no_tools'.tr(),
               textAlign: TextAlign.center,
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: theme.colorScheme.onSurface,
@@ -831,7 +841,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'ابدأ بإضافة أدواتك الجراحية\nوابنِ قائمة أدواتك',
+              'surgical_tools_feature.empty.start_adding'.tr(),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -842,9 +852,9 @@ class _EmptyState extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onAddPressed,
               icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'إضافة أداة جراحية',
-                style: TextStyle(
+              label: Text(
+                'surgical_tools_feature.actions.add_tool'.tr(),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -905,7 +915,7 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'حدث خطأ في تحميل الأدوات',
+              'surgical_tools_feature.messages.load_error'.tr(),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -925,9 +935,9 @@ class _ErrorState extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text(
-                'إعادة المحاولة',
-                style: TextStyle(
+              label: Text(
+                'surgical_tools_feature.actions.retry'.tr(),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),

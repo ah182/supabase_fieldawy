@@ -15,7 +15,7 @@ class PendingReviewScreen extends ConsumerWidget {
     final userEmail = user?.email ?? 'غير متوفر';
 
     // 2. إنشاء نص الرسالة مع تمرير البيانات
-    final message = 'supportMessagePending'.tr(namedArgs: {
+    final message = 'auth.pending.support_message'.tr(namedArgs: {
       'name': userName,
       'email': userEmail,
     });
@@ -37,7 +37,7 @@ class PendingReviewScreen extends ConsumerWidget {
               backgroundColor: Colors.transparent,
               content: AwesomeSnackbarContent(
                 title: 'تنبيه',
-                message: 'cannotOpenWhatsApp'.tr(),
+                message: 'auth.pending.cannot_open_whatsapp'.tr(),
                 contentType: ContentType.warning,
               ),
             ),
@@ -68,14 +68,14 @@ class PendingReviewScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'accountUnderReview'.tr(),
+                'auth.pending.account_under_review'.tr(),
                 style: textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
-                'pendingMessage'.tr(),
+                'auth.pending.pending_message'.tr(),
                 textAlign: TextAlign.center,
                 style: const TextStyle(height: 1.5),
               ),
@@ -85,14 +85,14 @@ class PendingReviewScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Text('contactSupport'.tr()),
+                child: Text('auth.pending.contact_support'.tr()),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () {
                   ref.read(authServiceProvider).signOut();
                 },
-                child: Text('signOut'.tr()),
+                child: Text('auth.pending.sign_out'.tr()),
               ),
             ],
           ),

@@ -742,7 +742,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'عرض خاص',
+                              'offers.dialog.special_offer'.tr(),
                               style: TextStyle(
                                 color: theme.colorScheme.onPrimary,
                                 fontSize: 14,
@@ -976,28 +976,27 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       ),
                     ),
                   // === وصف العرض ===
-                  if (widget.offer.description != null && widget.offer.description!.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.description_outlined,
-                          size: 20,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'وصف العرض',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                                      if (widget.offer.description != null && widget.offer.description!.isNotEmpty) ...[
+                                        const SizedBox(height: 20),
+                                        const Divider(),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.description_outlined,
+                                              size: 20,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'offers.dialog.description'.tr(),
+                                              style: theme.textTheme.titleMedium?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),                    const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -1826,7 +1825,7 @@ class _OfferDialogState extends State<_OfferDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'تفاصيل العرض',
+                      'offers.dialog.title'.tr(),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,

@@ -100,14 +100,14 @@ class MenuScreen extends ConsumerWidget {
             ),
             _buildMenuItem(
               icon: Icons.logout,
-              title: 'signOut'.tr(),
+              title: 'home.menu.sign_out'.tr(),
               onTap: () {
                 AwesomeDialog(
                   context: context,
                   dialogType: DialogType.question,
                   animType: AnimType.scale,
-                  title: 'logoutConfirmationTitle'.tr(),
-                  desc: 'logoutConfirmationMessage'.tr(),
+                  title: 'home.menu.logout_confirm_title'.tr(),
+                  desc: 'home.menu.logout_confirm_msg'.tr(),
                   btnCancelOnPress: () {},
                   btnOkOnPress: () {
                     ref.read(authServiceProvider).signOut();
@@ -126,7 +126,7 @@ class MenuScreen extends ConsumerWidget {
     return [
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
-          title: 'Clinics Map',
+          title: 'home.menu.clinics_map'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -134,7 +134,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
-          title: 'Product rating',
+          title: 'home.menu.product_rating'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -142,7 +142,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.dashboard_outlined,
-          title: 'dashboard'.tr(),
+          title: 'home.menu.dashboard'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -151,7 +151,7 @@ class MenuScreen extends ConsumerWidget {
      
       _buildMenuItem(
           icon: Icons.inventory_2_outlined, // أيقونة جديدة
-          title: 'myMedicines'.tr(),
+          title: 'home.menu.my_medicines'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -159,7 +159,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.production_quantity_limits_outlined,
-          title: 'Add Products'.tr(),
+          title: 'home.menu.add_products'.tr(),
           onTap: () {
             Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
@@ -167,7 +167,7 @@ class MenuScreen extends ConsumerWidget {
         ),
       _buildMenuItem(
           icon: Icons.inventory_2_outlined,
-          title: 'vetSupplies'.tr(),
+          title: 'home.menu.vet_supplies'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -175,7 +175,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.work_outline,
-          title: 'jobOffers'.tr(),
+          title: 'home.menu.job_offers'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -183,7 +183,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.person_outline,
-          title: 'profile'.tr(),
+          title: 'home.menu.profile'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -191,7 +191,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.settings_outlined,
-          title: 'settings'.tr(),
+          title: 'home.menu.settings'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -204,7 +204,7 @@ class MenuScreen extends ConsumerWidget {
     return [
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
-          title: 'Clinics Map',
+          title: 'home.menu.clinics_map'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -212,7 +212,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
-          title: 'Product rating',
+          title: 'home.menu.product_rating'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -220,7 +220,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.analytics_outlined,
-          title: 'Analytics',
+          title: 'home.menu.analytics'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -228,7 +228,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.people_alt_outlined,
-          title: 'distributors'.tr(),
+          title: 'home.menu.distributors'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -236,7 +236,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.shopping_cart_outlined,
-          title: 'Orders',
+          title: 'home.menu.orders'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -244,7 +244,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.add_business_outlined,
-          title: 'Add Products'.tr(),
+          title: 'home.menu.add_products'.tr(),
           onTap: () {
             Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
@@ -252,7 +252,7 @@ class MenuScreen extends ConsumerWidget {
         ),
       _buildMenuItem(
           icon: Icons.inventory_2_outlined,
-          title: 'vetSupplies'.tr(),
+          title: 'home.menu.vet_supplies'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -260,7 +260,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.work_outline,
-          title: 'jobOffers'.tr(),
+          title: 'home.menu.job_offers'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -268,7 +268,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.person_outline,
-          title: 'profile'.tr(),
+          title: 'home.menu.profile'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -276,7 +276,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.settings_outlined,
-          title: 'settings'.tr(),
+          title: 'home.menu.settings'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -289,7 +289,7 @@ class MenuScreen extends ConsumerWidget {
     return [
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
-          title: 'Clinics Map',
+          title: 'home.menu.clinics_map'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -297,7 +297,7 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
-          title: 'Product rating',
+          title: 'home.menu.product_rating'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
@@ -305,14 +305,14 @@ class MenuScreen extends ConsumerWidget {
           }),
       _buildMenuItem(
           icon: Icons.work_outline,
-          title: 'jobOffers'.tr(),
+          title: 'home.menu.job_offers'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => const JobOffersScreen()));
           }),
       _buildMenuItem(
-          icon: Icons.person_outline, title: 'profile'.tr(), onTap: () {}),
+          icon: Icons.person_outline, title: 'home.menu.profile'.tr(), onTap: () {}),
     ];
   }
 
@@ -409,7 +409,7 @@ class MenuScreen extends ConsumerWidget {
   Widget _getAdminMenuItems(BuildContext context) {
     return _buildMenuItem(
       icon: Icons.admin_panel_settings,
-      title: 'Admin Dashboard',
+      title: 'home.menu.admin_dashboard'.tr(),
       onTap: () {
         ZoomDrawer.of(context)!.close();
         // استخدام النسخة Web المناسبة للإدارة

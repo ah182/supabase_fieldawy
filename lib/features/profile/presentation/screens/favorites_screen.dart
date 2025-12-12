@@ -277,11 +277,12 @@ class FavoritesScreen extends HookConsumerWidget {
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: Colors.transparent,
                                     content: AwesomeSnackbarContent(
-                                      title: isFavorite ? 'تم الحذف' : 'نجاح',
+                                      title: isFavorite 
+                                          ? 'profile_feature.favorites.removed_title'.tr() 
+                                          : 'profile_feature.favorites.success_title'.tr(),
                                       message: isFavorite
-                                          ? 'تمت إزالة ${product.name} من المفضلة'
-                                          : 'addedToFavorites'
-                                              .tr(args: [product.name]),
+                                          ? 'profile_feature.favorites.removed_message'.tr(namedArgs: {'name': product.name})
+                                          : 'profile_feature.favorites.added_message'.tr(namedArgs: {'name': product.name}),
                                       contentType: isFavorite
                                           ? ContentType.failure
                                           : ContentType.success,
@@ -474,7 +475,7 @@ class FavoritesScreen extends HookConsumerWidget {
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
-                title: Text('favorites'.tr()),
+                title: Text('profile_feature.favorites.title'.tr()),
                 pinned: true,
                 backgroundColor: Theme.of(context).colorScheme.surface,
                 scrolledUnderElevation: 0,
@@ -492,7 +493,7 @@ class FavoritesScreen extends HookConsumerWidget {
                       onClear: () {
                         searchQuery.value = '';
                       },
-                      hintText: 'ابحث في المفضلة...',
+                      hintText: 'profile_feature.favorites.search_hint'.tr(),
                     ),
                   ),
                 ),
@@ -562,8 +563,8 @@ class FavoritesScreen extends HookConsumerWidget {
                               const SizedBox(height: 16),
                               Text(
                                 debouncedSearchQuery.value.isEmpty
-                                    ? 'noFavorites'.tr()
-                                    : 'لا توجد نتائج للبحث عن "${debouncedSearchQuery.value}"',
+                                    ? 'profile_feature.favorites.no_favorites'.tr()
+                                    : 'profile_feature.favorites.no_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
                                 style: Theme.of(context).textTheme.titleLarge,
                                 textAlign: TextAlign.center,
                               ),

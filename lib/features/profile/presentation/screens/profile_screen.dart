@@ -29,11 +29,11 @@ class ProfileScreen extends ConsumerWidget {
   String _getRoleDisplayName(String role) {
     switch (role) {
       case 'doctor':
-        return 'Veterinarian';
+        return 'profile_feature.roles.doctor'.tr();
       case 'company':
-        return 'Distribution company';
+        return 'profile_feature.roles.company'.tr();
       case 'distributor':
-        return 'Individual distributor';
+        return 'profile_feature.roles.distributor'.tr();
       default:
         return role;
     }
@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
     final selectedIndex = isDoctor ? 3 : 3; // Profile is at index 3 for both
 
     final sliverAppBar = SliverAppBar(
-      title: Text('profile'.tr()),
+      title: Text('profile_feature.title'.tr()),
       backgroundColor: colorScheme.surface,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -85,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                 child: userDataAsync.when(
                   data: (userModel) {
                     if (userModel == null) {
-                      return Center(child: Text('userDataNotFound'.tr()));
+                      return Center(child: Text('profile_feature.user_data_not_found'.tr()));
                     }
                     return ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 500),
@@ -244,11 +244,11 @@ class ProfileScreen extends ConsumerWidget {
                                       const SizedBox(width: 6),
                                       Text(
                                         userModel.distributionMethod == 'direct_distribution'
-                                            ? 'directDistribution'.tr()
+                                            ? 'profile_feature.distribution.direct'.tr()
                                             : userModel.distributionMethod == 'order_delivery'
-                                                ? 'orderDelivery'.tr()
+                                                ? 'profile_feature.distribution.delivery'.tr()
                                                 : userModel.distributionMethod == 'both' 
-                                                    ? 'bothMethods'.tr()
+                                                    ? 'profile_feature.distribution.both'.tr()
                                                     : userModel.distributionMethod!,
                                         style: textTheme.bodySmall?.copyWith(
                                           color: colorScheme.onTertiaryContainer,
@@ -278,7 +278,7 @@ class ProfileScreen extends ConsumerWidget {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        '${userModel.subscribersCount} ${'subscribers'.tr()}',
+                                        '${userModel.subscribersCount} ${'profile_feature.subscribers'.tr()}',
                                         style: textTheme.bodySmall?.copyWith(
                                           color: Colors.orange.shade900,
                                           fontWeight: FontWeight.w600,
@@ -337,7 +337,7 @@ class ProfileScreen extends ConsumerWidget {
                               children: [
                                 _buildProfileOption(
                                   icon: Icons.edit_rounded,
-                                  title: 'editProfile'.tr(),
+                                  title: 'profile_feature.edit_profile'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -355,7 +355,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 _buildProfileOption(
                                   icon: Icons.notifications_rounded,
-                                  title: 'notifications'.tr(),
+                                  title: 'profile_feature.notifications'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -373,7 +373,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 _buildProfileOption(
                                   icon: Icons.favorite_rounded,
-                                  title: 'favorites'.tr(),
+                                  title: 'profile_feature.favorites.title'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -391,7 +391,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 _buildProfileOption(
                                   icon: Icons.settings_rounded,
-                                  title: 'settings'.tr(),
+                                  title: 'profile_feature.settings'.tr(),
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -408,7 +408,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 _buildProfileOption(
                                   icon: Icons.delete_forever_rounded,
-                                  title: 'deleteAccount'.tr(),
+                                  title: 'profile_feature.delete_account'.tr(),
                                   isDestructive: true,
                                   onTap: () => _confirmDeleteAccount(context, ref),
                                 ),
@@ -503,14 +503,14 @@ class ProfileScreen extends ConsumerWidget {
           if (context.mounted) {
             Navigator.of(context).pop(); // إغلاق مؤشر التحميل
             ScaffoldMessenger.of(context).showSnackBar(
-               SnackBar(content: Text('profileUpdated'.tr())),
+               SnackBar(content: Text('profile_feature.profile_updated'.tr())),
             );
           }
         } else {
           if (context.mounted) {
              Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('imageUploadFailed'.tr())),
+              SnackBar(content: Text('profile_feature.image_upload_failed'.tr())),
             );
           }
         }
@@ -532,12 +532,12 @@ class ProfileScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('deleteAccount'.tr()),
-        content: Text('deleteAccountConfirmation'.tr()),
+        title: Text('profile_feature.delete_account'.tr()),
+        content: Text('profile_feature.delete_account_confirmation'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('cancel'.tr()),
+            child: Text('profile_feature.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -545,7 +545,7 @@ class ProfileScreen extends ConsumerWidget {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: Text('delete'.tr()),
+            child: Text('profile_feature.delete'.tr()),
           ),
         ],
       ),
