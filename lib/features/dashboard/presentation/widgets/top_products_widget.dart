@@ -457,33 +457,96 @@ class TopProductsWidget extends ConsumerWidget {
         case 'ocr_product':
         case 'ocr_products':
           try {
+            // محاولة البحث في distributor_ocr_products مع JOIN
             final response = await Supabase.instance.client
-                .from('ocr_products')
-                .select('image_url, product_name')
+                .from('distributor_ocr_products')
+                .select('ocr_products!inner(image_url, product_name)')
                 .eq('id', productId)
                 .limit(1);
             
-            if (response.isNotEmpty && response.first['image_url'] != null) {
-              imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top OCR product: ${response.first['product_name']}, Image: $imageUrl');
+            if (response.isNotEmpty && response.first['ocr_products'] != null) {
+              final data = response.first['ocr_products'];
+              Map<String, dynamic>? ocrProduct;
+              
+              if (data is List && data.isNotEmpty) {
+                ocrProduct = data.first as Map<String, dynamic>;
+              } else if (data is Map) {
+                ocrProduct = data as Map<String, dynamic>;
+              }
+
+              if (ocrProduct != null) {
+                imageUrl = ocrProduct['image_url']?.toString();
+                print('✅ Found top OCR product: ${ocrProduct['product_name']}, Image: $imageUrl');
+              }
             }
           } catch (e) {
-            print('❌ Error fetching from ocr_products: $e');
+            print('❌ Error fetching from distributor_ocr_products: $e');
+            // Fallback: البحث المباشر إذا كان الآيدي هو آيدي المنتج نفسه
+            try {
+              final directResponse = await Supabase.instance.client
+                  .from('ocr_products')
+                  .select('image_url, product_name')
+                  .eq('id', productId)
+                  .limit(1);
+              if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
+                imageUrl = directResponse.first['image_url']?.toString();
+              }
+            } catch (_) {}
           }
           break;
           
         case 'offer':
         case 'offers':
           try {
-            final response = await Supabase.instance.client
+            // أولاً: جلب تفاصيل العرض لمعرفة المنتج المرتبط
+            final offerResponse = await Supabase.instance.client
                 .from('offers')
-                .select('image_url, title')
+                .select('product_id, is_ocr')
                 .eq('id', productId)
                 .limit(1);
-            
-            if (response.isNotEmpty && response.first['image_url'] != null) {
-              imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top offer: ${response.first['title']}, Image: $imageUrl');
+
+            if (offerResponse.isNotEmpty) {
+              final offer = offerResponse.first;
+              
+              // نبحث عن صورة المنتج المرتبط
+              if (offer['product_id'] != null) {
+                final isOcr = offer['is_ocr'] == true;
+                final linkedProductId = offer['product_id'];
+                
+                if (isOcr) {
+                   // البحث في ocr_products
+                   final productResponse = await Supabase.instance.client
+                      .from('ocr_products')
+                      .select('image_url')
+                      .eq('ocr_product_id', linkedProductId)
+                      .maybeSingle();
+                   
+                   if (productResponse != null) {
+                     imageUrl = productResponse['image_url']?.toString();
+                   } else {
+                     // Fallback: Try with 'id' just in case
+                     final fallbackResponse = await Supabase.instance.client
+                        .from('ocr_products')
+                        .select('image_url')
+                        .eq('id', linkedProductId)
+                        .maybeSingle();
+                     if (fallbackResponse != null) {
+                       imageUrl = fallbackResponse['image_url']?.toString();
+                     }
+                   }
+                } else {
+                   final productResponse = await Supabase.instance.client
+                      .from('products')
+                      .select('image_url')
+                      .eq('id', linkedProductId)
+                      .maybeSingle();
+                   
+                   if (productResponse != null) {
+                     imageUrl = productResponse['image_url']?.toString();
+                   }
+                }
+                print('✅ Found top offer linked product image: $imageUrl');
+              }
             }
           } catch (e) {
             print('❌ Error fetching from offers: $e');
@@ -494,7 +557,7 @@ class TopProductsWidget extends ConsumerWidget {
         case 'courses':
           try {
             final response = await Supabase.instance.client
-                .from('courses')
+                .from('vet_courses')
                 .select('image_url, title')
                 .eq('id', productId)
                 .limit(1);
@@ -512,14 +575,14 @@ class TopProductsWidget extends ConsumerWidget {
         case 'books':
           try {
             final response = await Supabase.instance.client
-                .from('books')
-                .select('image_url, title')
+                .from('vet_books')
+                .select('image_url, name')
                 .eq('id', productId)
                 .limit(1);
             
             if (response.isNotEmpty && response.first['image_url'] != null) {
               imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top book: ${response.first['title']}, Image: $imageUrl');
+              print('✅ Found top book: ${response.first['name']}, Image: $imageUrl');
             }
           } catch (e) {
             print('❌ Error fetching from books: $e');
@@ -616,13 +679,33 @@ class TopProductsWidget extends ConsumerWidget {
             try {
               final offersResponse = await Supabase.instance.client
                   .from('offers')
-                  .select('image_url, title')
+                  .select('product_id, is_ocr')
                   .eq('id', productId)
                   .limit(1);
               
-              if (offersResponse.isNotEmpty && offersResponse.first['image_url'] != null) {
-                imageUrl = offersResponse.first['image_url'].toString();
-                print('✅ Found in offers table: ${offersResponse.first['title']}');
+              if (offersResponse.isNotEmpty) {
+                final offer = offersResponse.first;
+                if (offer['product_id'] != null) {
+                  final linkedId = offer['product_id'];
+                  final isOcr = offer['is_ocr'] == true;
+                  
+                  if (isOcr) {
+                     final ocrResp = await Supabase.instance.client
+                        .from('ocr_products')
+                        .select('image_url')
+                        .eq('ocr_product_id', linkedId)
+                        .maybeSingle();
+                     imageUrl = ocrResp?['image_url']?.toString();
+                  } else {
+                     final prodResp = await Supabase.instance.client
+                        .from('products')
+                        .select('image_url')
+                        .eq('id', linkedId)
+                        .maybeSingle();
+                     imageUrl = prodResp?['image_url']?.toString();
+                  }
+                  print('✅ Found in offers table (via linked product): $imageUrl');
+                }
               }
             } catch (e) {
               print('❌ Offers fallback failed: $e');
@@ -633,7 +716,7 @@ class TopProductsWidget extends ConsumerWidget {
           if (imageUrl == null) {
             try {
               final coursesResponse = await Supabase.instance.client
-                  .from('courses')
+                  .from('vet_courses')
                   .select('image_url, title')
                   .eq('id', productId)
                   .limit(1);
@@ -651,14 +734,14 @@ class TopProductsWidget extends ConsumerWidget {
           if (imageUrl == null) {
             try {
               final booksResponse = await Supabase.instance.client
-                  .from('books')
-                  .select('image_url, title')
+                  .from('vet_books')
+                  .select('image_url, name')
                   .eq('id', productId)
                   .limit(1);
               
               if (booksResponse.isNotEmpty && booksResponse.first['image_url'] != null) {
                 imageUrl = booksResponse.first['image_url'].toString();
-                print('✅ Found in books table: ${booksResponse.first['title']}');
+                print('✅ Found in books table: ${booksResponse.first['name']}');
               }
             } catch (e) {
               print('❌ Books fallback failed: $e');

@@ -667,6 +667,13 @@
         "report_success": "Report received and will be reviewed by our team.",
         "report_error": "Error sending report",
         "submit_report": "Submit Report",
+        "report_reasons": {
+            "inappropriate": "Inappropriate / Offensive Content",
+            "spam": "Spam",
+            "misleading": "Misleading Information",
+            "harassment": "Harassment or Bullying",
+            "other": "Other"
+        },
         "auto_delete_msg": "Reviews reaching 10 \"Disagree\" votes are automatically deleted",
         "honesty_charter": "ميثاق الأمانة",
         "quran_verse": "{ وَالَّذِينَ لَا يَشْهَدُونَ الزُّورَ وَإِذَا مَرُّوا بِاللَّغْوِ مَرُّوا كِرَامًا }",

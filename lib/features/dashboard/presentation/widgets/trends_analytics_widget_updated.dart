@@ -74,16 +74,26 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
             const SizedBox(height: 16),
             
             trendsAnalyticsAsync.when(
-              data: (analytics) => Column(
-                children: [
-                  // Global trending products
-                  _buildTrendingProducts(context, analytics['trending'] ?? []),
-                  const SizedBox(height: 20),
+              data: (analytics) {
+                final trending = (analytics['trending'] as List<dynamic>?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList() ?? [];
+                
+                final searches = (analytics['searches'] as List<dynamic>?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList() ?? [];
 
-                  // REAL Search trends
-                  _buildRealSearchTrends(context, analytics['searches'] ?? []),
-                ],
-              ),
+                return Column(
+                  children: [
+                    // Global trending products
+                    _buildTrendingProducts(context, trending),
+                    const SizedBox(height: 20),
+
+                    // REAL Search trends
+                    _buildRealSearchTrends(context, searches),
+                  ],
+                );
+              },
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.all(40),

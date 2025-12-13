@@ -424,18 +424,127 @@ class RecentProductsWidget extends ConsumerWidget {
         case 'ocr_product':
         case 'ocr_products':
           try {
+            // محاولة البحث في distributor_ocr_products مع JOIN
             final response = await Supabase.instance.client
-                .from('ocr_products')
-                .select('image_url, product_name')
+                .from('distributor_ocr_products')
+                .select('ocr_products!inner(image_url, product_name)')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['ocr_products'] != null) {
+              final data = response.first['ocr_products'];
+              Map<String, dynamic>? ocrProduct;
+              
+              if (data is List && data.isNotEmpty) {
+                ocrProduct = data.first as Map<String, dynamic>;
+              } else if (data is Map) {
+                ocrProduct = data as Map<String, dynamic>;
+              }
+
+              if (ocrProduct != null) {
+                imageUrl = ocrProduct['image_url']?.toString();
+                print('✅ Found recent OCR product: ${ocrProduct['product_name']}, Image: $imageUrl');
+              }
+            }
+          } catch (e) {
+            print('❌ Error fetching from distributor_ocr_products: $e');
+            // Fallback: البحث المباشر إذا كان الآيدي هو آيدي المنتج نفسه
+            try {
+              final directResponse = await Supabase.instance.client
+                  .from('ocr_products')
+                  .select('image_url, product_name')
+                  .eq('id', productId)
+                  .limit(1);
+              if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
+                imageUrl = directResponse.first['image_url']?.toString();
+              }
+            } catch (_) {}
+          }
+          break;
+
+        case 'offer':
+        case 'offers':
+          try {
+            // البحث عن صورة العرض أو المنتج المرتبط
+            final offerResponse = await Supabase.instance.client
+                .from('offers')
+                .select('product_id, is_ocr')
+                .eq('id', productId)
+                .limit(1);
+
+            if (offerResponse.isNotEmpty) {
+              final offer = offerResponse.first;
+              
+              if (offer['product_id'] != null) {
+                final isOcr = offer['is_ocr'] == true;
+                final linkedId = offer['product_id'];
+                
+                if (isOcr) {
+                   final ocrResp = await Supabase.instance.client
+                      .from('ocr_products')
+                      .select('image_url')
+                      .eq('ocr_product_id', linkedId)
+                      .maybeSingle();
+                   imageUrl = ocrResp?['image_url']?.toString();
+                } else {
+                   final prodResp = await Supabase.instance.client
+                      .from('products')
+                      .select('image_url')
+                      .eq('id', linkedId)
+                      .maybeSingle();
+                   imageUrl = prodResp?['image_url']?.toString();
+                }
+              }
+              // محاولة أخيرة: البحث عن صورة في جدول العروض نفسه إن وجدت
+              if (imageUrl == null) {
+                 final directOffer = await Supabase.instance.client
+                    .from('offers')
+                    .select('image_url')
+                    .eq('id', productId)
+                    .maybeSingle();
+                 if (directOffer != null && directOffer['image_url'] != null) {
+                   imageUrl = directOffer['image_url']?.toString();
+                 }
+              }
+            }
+          } catch (e) {
+            print('❌ Error fetching from offers: $e');
+          }
+          break;
+
+        case 'course':
+        case 'courses':
+          try {
+            final response = await Supabase.instance.client
+                .from('vet_courses')
+                .select('image_url, title')
                 .eq('id', productId)
                 .limit(1);
             
             if (response.isNotEmpty && response.first['image_url'] != null) {
               imageUrl = response.first['image_url']?.toString();
-              print('✅ Found OCR product: ${response.first['product_name']}, Image: $imageUrl');
+              print('✅ Found recent course: ${response.first['title']}, Image: $imageUrl');
             }
           } catch (e) {
-            print('❌ Error fetching from ocr_products: $e');
+            print('❌ Error fetching from courses: $e');
+          }
+          break;
+
+        case 'book':
+        case 'books':
+          try {
+            final response = await Supabase.instance.client
+                .from('vet_books')
+                .select('image_url, name')
+                .eq('id', productId)
+                .limit(1);
+            
+            if (response.isNotEmpty && response.first['image_url'] != null) {
+              imageUrl = response.first['image_url']?.toString();
+              print('✅ Found recent book: ${response.first['name']}, Image: $imageUrl');
+            }
+          } catch (e) {
+            print('❌ Error fetching from books: $e');
           }
           break;
           

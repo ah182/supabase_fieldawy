@@ -2200,7 +2200,7 @@ class ReviewDetailCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.displayName ?? 'مستخدم',
+                    user.displayName ?? 'comments_feature.user'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -2232,7 +2232,7 @@ class ReviewDetailCard extends ConsumerWidget {
                     _buildDetailTile(
                       theme,
                       Icons.local_shipping,
-                      'طريقة التوزيع',
+                      'distributors_feature.distribution_method'.tr(),
                       _getDistributionMethodLabel(user.distributionMethod!),
                     ),
                   if (user.governorates != null && user.governorates!.isNotEmpty)
@@ -2246,7 +2246,7 @@ class ReviewDetailCard extends ConsumerWidget {
                               Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                isDistributor ? 'مناطق التغطية' : 'الموقع',
+                                isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'distributors_feature.location'.tr(),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
@@ -2311,7 +2311,7 @@ class ReviewDetailCard extends ConsumerWidget {
                       child: ElevatedButton.icon(
                         onPressed: () => _openWhatsApp(context, user.whatsappNumber!),
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
-                        label: const Text('تواصل عبر واتساب', style: TextStyle(color: Colors.white)),
+                        label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF25D366), // WhatsApp Green
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -2347,7 +2347,7 @@ class ReviewDetailCard extends ConsumerWidget {
                           );
                         },
                         icon: const Icon(Icons.inventory_2),
-                        label: const Text('عرض المنتجات'),
+                        label: Text('distributors_feature.view_products'.tr()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -2382,18 +2382,18 @@ class ReviewDetailCard extends ConsumerWidget {
 
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'doctor': return 'طبيب بيطري'.tr();
-      case 'distributor': return 'موزع فردي'.tr();
-      case 'company': return 'شركة توزيع'.tr();
+      case 'doctor': return 'auth.role_veterinarian'.tr();
+      case 'distributor': return 'auth.role_distributor'.tr();
+      case 'company': return 'auth.role_company'.tr();
       default: return role;
     }
   }
 
   String _getDistributionMethodLabel(String method) {
     switch (method) {
-      case 'direct_distribution': return 'توزيع مباشر'.tr();
-      case 'order_delivery': return 'توصيل طلبات'.tr();
-      case 'both': return 'توزيع وتوصيل'.tr();
+      case 'direct_distribution': return 'distributors_feature.direct'.tr();
+      case 'order_delivery': return 'distributors_feature.delivery'.tr();
+      case 'both': return 'distributors_feature.both'.tr();
       default: return method;
     }
   }
@@ -2418,11 +2418,11 @@ class ReviewDetailCard extends ConsumerWidget {
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [
-      'surgical_tools_feature.report.reasons.inappropriate'.tr(),
-      'surgical_tools_feature.report.reasons.spam'.tr(),
-      'surgical_tools_feature.report.reasons.misleading'.tr(),
-      'surgical_tools_feature.report.reasons.harassment'.tr(),
-      'surgical_tools_feature.report.reasons.other'.tr(),
+      'reviews_feature.report_reasons.inappropriate'.tr(),
+      'reviews_feature.report_reasons.spam'.tr(),
+      'reviews_feature.report_reasons.misleading'.tr(),
+      'reviews_feature.report_reasons.harassment'.tr(),
+      'reviews_feature.report_reasons.other'.tr(),
     ];
     String selectedReason = reasons[0];
     final descriptionController = TextEditingController();
