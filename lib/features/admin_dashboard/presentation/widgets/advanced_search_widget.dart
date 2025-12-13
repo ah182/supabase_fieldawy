@@ -442,7 +442,7 @@ class _ProductResultItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
                     product.imageUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) =>
                         const Icon(Icons.image_not_supported),
                   ),

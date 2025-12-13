@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 
 class SmartRecommendationsWidget extends ConsumerWidget {
   const SmartRecommendationsWidget({super.key});
@@ -338,7 +340,7 @@ class SmartRecommendationsWidget extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildCompactPlaceholder(productType);
             },
@@ -397,34 +399,35 @@ class SmartRecommendationsWidget extends ConsumerWidget {
   Widget _buildAddButton(BuildContext context, Map<String, dynamic> recommendation, String category) {
     return Container(
       height: 32,
-      child: ElevatedButton(
-        onPressed: () => _showAddProductDialog(context, recommendation),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _getCategoryColor(category),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          elevation: 2,
-          shadowColor: _getCategoryColor(category).withOpacity(0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.add, size: 14),
-            SizedBox(width: 4),
-            Text(
-              'أضف',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+              child: ElevatedButton(
+              onPressed: () => _showAddProductDialog(context, recommendation),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _getCategoryColor(category),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                elevation: 2,
+                shadowColor: _getCategoryColor(category).withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.add, size: 12),
+                  SizedBox(width: 2),
+                  Text(
+                    'أضف',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),    );
   }
 
   Color _getCategoryColor(String category) {
@@ -723,7 +726,7 @@ class SmartRecommendationsWidget extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               print('❌ Error loading image: ${snapshot.data}');
               return _buildPlaceholderImage(productType);
@@ -965,7 +968,11 @@ class SmartRecommendationsWidget extends ConsumerWidget {
               Navigator.of(context).pop();
               _handleAddRecommendation(context, recommendation);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _getCategoryColor(category)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _getCategoryColor(category),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
             child: Text(_getActionButtonText(actionType)),
           ),
         ],
@@ -1000,30 +1007,10 @@ class SmartRecommendationsWidget extends ConsumerWidget {
   }
 
   void _handleAddRecommendation(BuildContext context, Map<String, dynamic> recommendation) {
-    final category = recommendation['category'] ?? 'trending';
-   
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.check_circle,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('سيتم إضافة "${recommendation['name']}" قريباً'),
-            ),
-          ],
-        ),
-        backgroundColor: _getCategoryColor(category),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'تم',
-          textColor: Colors.white,
-          onPressed: () {},
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddFromCatalogScreen(
+          catalogContext: CatalogContext.myProducts,
         ),
       ),
     );

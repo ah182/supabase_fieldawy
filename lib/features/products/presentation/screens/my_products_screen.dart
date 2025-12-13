@@ -1352,7 +1352,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                 borderRadius: BorderRadius.circular(12),
                                 child: CachedNetworkImage(
                                   imageUrl: product.imageUrl,
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
                                   placeholder: (context, url) => Container(
                                     decoration: BoxDecoration(
                                       color: Theme.of(context)

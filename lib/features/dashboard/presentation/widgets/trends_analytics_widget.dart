@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 
 class TrendsAnalyticsWidget extends ConsumerWidget {
   const TrendsAnalyticsWidget({super.key});
@@ -264,13 +266,15 @@ class TrendsAnalyticsWidget extends ConsumerWidget {
                         },
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.green.withOpacity(0.1),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
                           'أضف للكتالوج',
                           style: TextStyle(
                             color: Colors.green[700],
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -513,14 +517,10 @@ class TrendsAnalyticsWidget extends ConsumerWidget {
   }
 
   void _navigateToAddProduct(BuildContext context, Map<String, dynamic> product) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('سيتم توجيهك لإضافة ${product['name']}'),
-        action: SnackBarAction(
-          label: 'إضافة',
-          onPressed: () {
-            // TODO: Navigate to add product screen
-          },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddFromCatalogScreen(
+          catalogContext: CatalogContext.myProducts,
         ),
       ),
     );

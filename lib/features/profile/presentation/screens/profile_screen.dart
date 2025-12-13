@@ -22,6 +22,7 @@ import 'package:path_provider/path_provider.dart'; // Required for temporary pat
 import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -398,6 +399,26 @@ class ProfileScreen extends ConsumerWidget {
                                           builder: (context) =>
                                               const SettingsScreen()),
                                     );
+                                  },
+                                ),
+                                Divider(
+                                  height: 1,
+                                  indent: 16,
+                                  endIndent: 16,
+                                  color: colorScheme.outline.withOpacity(0.2),
+                                ),
+                                _buildProfileOption(
+                                  icon: Icons.privacy_tip_rounded,
+                                  title: 'سياسة الخصوصية', // Localized string usually, but hardcoding for now as key likely missing
+                                  onTap: () async {
+                                    final Uri url = Uri.parse('https://www.google.com'); // TODO: Replace with actual privacy policy URL
+                                    if (!await launchUrl(url)) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Could not launch Privacy Policy')),
+                                        );
+                                      }
+                                    }
                                   },
                                 ),
                                 Divider(

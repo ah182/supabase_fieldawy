@@ -103,7 +103,7 @@ class DistributorDetailsSheet {
                             distributor.photoURL!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             placeholder: (context, url) => const Center(
                                 child: ImageLoadingIndicator(size: 32)),
                             errorWidget: (context, url, error) => Icon(

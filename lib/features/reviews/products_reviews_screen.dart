@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'review_system.dart';
+import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
@@ -424,7 +425,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                           selectedProduct['product_image'].isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: selectedProduct['product_image'],
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           placeholder: (context, url) => const Center(
                             child: CircularProgressIndicator(),
                           ),
@@ -2050,14 +2051,57 @@ class ReviewDetailCard extends ConsumerWidget {
                     ),
                   ),
                 ] else ...[
-                  // زر الإبلاغ (للمستخدمين الآخرين)
+                  // زر الإبلاغ والحظر (للمستخدمين الآخرين)
                   const Spacer(),
-                  IconButton(
-                    onPressed: () => _showReportDialog(context, ref, review.id),
-                    icon: const Icon(Icons.flag_outlined, size: 18, color: Colors.grey),
-                    tooltip: 'reviews_feature.report_content'.tr(),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
+                    onSelected: (value) async {
+                      if (value == 'report') {
+                        _showReportDialog(context, ref, review.id);
+                      } else if (value == 'block') {
+                        final blockingService = ref.read(blockingServiceProvider);
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('حظر المستخدم'),
+                            content: const Text('هل أنت متأكد أنك تريد حظر هذا المستخدم؟ لن ترى محتواه مرة أخرى.'),
+                            actions: [
+                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: const Text('إلغاء')),
+                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: const Text('حظر', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await blockingService.blockUser(review.userId);
+                          // Refresh UI
+                          ref.invalidate(productReviewsProvider);
+                        }
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'report',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flag_outlined, size: 20, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Text('reviews_feature.report_content'.tr()),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'block',
+                        child: Row(
+                          children: [
+                            Icon(Icons.block, size: 20, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('حظر المستخدم'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],

@@ -1,10 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/comment_model.dart';
+import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
 
 enum CommentType { course, book, surgicalTool }
 
 class CommentsRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final _blockingService = BlockingService();
   
   // Cache لبيانات المستخدمين لتحسين الأداء
   final Map<String, Map<String, dynamic>> _usersCache = {};
@@ -56,8 +58,10 @@ class CommentsRepository {
       }
       
       final response = await query;
+      final blockedUsers = await _blockingService.getBlockedUsers();
 
       return (response as List)
+          .where((json) => !blockedUsers.contains(json['user_id']))
           .map((json) {
             // دمج بيانات المستخدم في object واحد
             final userdata = json['users'];
@@ -293,12 +297,18 @@ class CommentsRepository {
     }
     
     return stream.asyncMap((data) async {
+          // جلب بيانات المستخدمين المحظورين
+          final blockedUsers = await _blockingService.getBlockedUsers();
+          
           // جلب بيانات المستخدمين لكل تعليق
           final Set<Comment> comments = {};
           
           for (final json in data) {
             try {
               final userId = json['user_id'];
+              
+              // تخطي المستخدمين المحظورين
+              if (blockedUsers.contains(userId)) continue;
               
               // التحقق من الـ Cache أولاً
               Map<String, dynamic>? userData = _usersCache[userId];

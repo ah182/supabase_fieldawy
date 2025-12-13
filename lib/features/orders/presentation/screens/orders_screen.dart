@@ -456,7 +456,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                                               imageUrl:
                                                                   distributor
                                                                       .photoURL!,
-                                                              fit: BoxFit.cover,
+                                                              fit: BoxFit.contain,
                                                               placeholder:
                                                                   (context,
                                                                           url) =>

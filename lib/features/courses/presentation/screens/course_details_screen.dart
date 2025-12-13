@@ -12,6 +12,7 @@ import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/features/reviews/review_system.dart';
+import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -611,7 +612,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   // الصورة
                   CachedNetworkImage(
                     imageUrl: widget.course.imageUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: (context, url) => Container(
                       color: theme.colorScheme.surfaceVariant,
                       child: const Center(
@@ -1135,18 +1136,50 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               if (!isOwner)
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => _showReportDialog(context, ref, comment.id),
-                    icon: Icon(Icons.flag_outlined, size: 14, color: Colors.grey[500]),
-                    label: Text(
-                      'comments_feature.report_title'.tr(),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  child: PopupMenuButton<String>(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.more_horiz, size: 16, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text('خيارات', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        ],
+                      ),
                     ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+                    onSelected: (value) async {
+                      if (value == 'report') {
+                        _showReportDialog(context, ref, comment.id);
+                      } else if (value == 'block') {
+                        final blockingService = ref.read(blockingServiceProvider);
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('حظر المستخدم'),
+                            content: const Text('هل أنت متأكد أنك تريد حظر هذا المستخدم؟'),
+                            actions: [
+                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: const Text('إلغاء')),
+                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: const Text('حظر', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await blockingService.blockUser(comment.userId);
+                          setState(() {});
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'report',
+                        child: Row(children: [const Icon(Icons.flag, size: 16), const SizedBox(width: 8), Text('comments_feature.report_title'.tr())]),
+                      ),
+                      const PopupMenuItem(
+                        value: 'block',
+                        child: Row(children: [Icon(Icons.block, size: 16, color: Colors.red), SizedBox(width: 8), Text('حظر المستخدم')]),
+                      ),
+                    ],
                   ),
                 ),
             ],

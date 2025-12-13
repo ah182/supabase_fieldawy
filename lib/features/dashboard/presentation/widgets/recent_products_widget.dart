@@ -284,7 +284,7 @@ class RecentProductsWidget extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildRecentPlaceholder(source);
             },

@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/dashboard/data/analytics_repository_updated.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
+import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 
 /// Provider for trends analytics using updated repository
 final trendsAnalyticsUpdatedProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -352,13 +354,15 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                         },
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.green.withOpacity(0.1),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
                           'أضف للكتالوج',
                           style: TextStyle(
                             color: Colors.green[700],
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -402,7 +406,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                   Icon(Icons.track_changes, color: Colors.orange[700], size: 12),
                   const SizedBox(width: 4),
                   Text(
-                    'أفضل 10',
+                    'أكثر 10',
                     style: TextStyle(
                       color: Colors.orange[700],
                       fontSize: 9,
@@ -457,7 +461,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
               final productName = search['product_name'] ?? keyword;
 
               return Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
@@ -469,8 +473,8 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                   children: [
                     // Search rank
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -481,17 +485,17 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                           style: TextStyle(
                             color: Colors.orange[700],
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     
                     // Product Image
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -506,7 +510,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                       ),
                     ),
                     
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     
                     // Search info
                     Expanded(
@@ -517,7 +521,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                             keyword,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              fontSize: 14,
+                              fontSize: 13,
                               color: Colors.orange[800],
                             ),
                             maxLines: 1,
@@ -529,7 +533,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                               productName,
                               style: TextStyle(
                                 color: Colors.grey[600],
-                                fontSize: 11,
+                                fontSize: 10,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -574,14 +578,14 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                       ),
                     ),
                     
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     
                     // Search count badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.orange,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.orange.withOpacity(0.3),
@@ -595,15 +599,15 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                         children: [
                           Icon(
                             Icons.search,
-                            size: 12,
+                            size: 10,
                             color: Colors.white,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 3),
                           Text(
                             NumberFormatter.formatCompact(count),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -653,7 +657,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
         String arabicName = _getArabicGovernorate(governorate);
         
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
             color: themeColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
@@ -667,24 +671,27 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
             children: [
               Icon(
                 Icons.location_on,
-                size: 10,
+                size: 8,
                 color: themeColor.withOpacity(0.8),
               ),
-              const SizedBox(width: 3),
-              Text(
-                arabicName,
-                style: TextStyle(
-                  color: themeColor.withOpacity(0.9),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  arabicName,
+                  style: TextStyle(
+                    color: themeColor.withOpacity(0.9),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: 2),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 decoration: BoxDecoration(
                   color: themeColor.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   percentageText,
@@ -911,7 +918,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildSearchPlaceholder();
             },
@@ -967,7 +974,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildTrendingPlaceholder(index);
             },
@@ -1230,14 +1237,10 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
   }
 
   void _navigateToAddProduct(BuildContext context, Map<String, dynamic> product) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('سيتم توجيهك لإضافة ${product['name']}'),
-        action: SnackBarAction(
-          label: 'إضافة',
-          onPressed: () {
-            // TODO: Navigate to add product screen
-          },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddFromCatalogScreen(
+          catalogContext: CatalogContext.myProducts,
         ),
       ),
     );

@@ -606,7 +606,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                   // الصورة
                   CachedNetworkImage(
                     imageUrl: widget.book.imageUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: (context, url) => Container(
                       color: theme.colorScheme.surfaceVariant,
                       child: const Center(

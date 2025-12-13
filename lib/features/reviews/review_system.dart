@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
 
 // ============================================================================
 // 📦 MODELS
@@ -505,10 +506,19 @@ final productReviewsProvider = FutureProvider.family<List<ProductReviewModel>,
     ({String productId, String productType})>(
   (ref, params) async {
     final service = ref.read(reviewServiceProvider);
-    return service.getProductReviews(
+    
+    // Get all reviews
+    final reviews = await service.getProductReviews(
       productId: params.productId,
       productType: params.productType,
     );
+
+    // Filter blocked users
+    final blockingService = ref.read(blockingServiceProvider);
+    final blockedUsers = await blockingService.getBlockedUsers();
+    
+    // Return filtered list
+    return reviews.where((review) => !blockedUsers.contains(review.userId)).toList();
   },
 );
 

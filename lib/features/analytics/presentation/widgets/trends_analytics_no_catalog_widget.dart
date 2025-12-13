@@ -429,7 +429,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
               final productName = search['product_name'] ?? keyword;
 
               return Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
@@ -441,8 +441,8 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                   children: [
                     // Search rank
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -453,17 +453,17 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                           style: TextStyle(
                             color: Colors.orange[700],
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     
                     // Product Image
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -478,7 +478,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                       ),
                     ),
                     
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     
                     // Search info
                     Expanded(
@@ -489,7 +489,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                             keyword,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              fontSize: 14,
+                              fontSize: 13,
                               color: Colors.orange[800],
                             ),
                             maxLines: 1,
@@ -501,7 +501,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                               productName,
                               style: TextStyle(
                                 color: Colors.grey[600],
-                                fontSize: 11,
+                                fontSize: 10,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -546,14 +546,14 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                       ),
                     ),
                     
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     
                     // Search count badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.orange,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.orange.withOpacity(0.3),
@@ -567,15 +567,15 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
                         children: [
                           Icon(
                             Icons.search,
-                            size: 12,
+                            size: 10,
                             color: Colors.white,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 3),
                           Text(
                             '$count',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -620,7 +620,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
         String arabicName = _getArabicGovernorate(governorate);
         
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
             color: themeColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
@@ -634,24 +634,27 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
             children: [
               Icon(
                 Icons.location_on,
-                size: 10,
+                size: 8,
                 color: themeColor.withOpacity(0.8),
               ),
-              const SizedBox(width: 3),
-              Text(
-                arabicName,
-                style: TextStyle(
-                  color: themeColor.withOpacity(0.9),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  arabicName,
+                  style: TextStyle(
+                    color: themeColor.withOpacity(0.9),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: 2),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 decoration: BoxDecoration(
                   color: themeColor.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   percentageText,
@@ -809,7 +812,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildSearchPlaceholder();
             },
@@ -865,7 +868,7 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return Image.network(
             snapshot.data!,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildTrendingPlaceholder(index);
             },

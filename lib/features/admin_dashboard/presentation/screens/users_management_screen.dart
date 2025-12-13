@@ -353,7 +353,7 @@ class _UsersDataSource extends DataTableSource {
                     imageUrl: user.photoUrl!,
                     width: 40,
                     height: 40,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: (context, url) => const CircleAvatar(
                       radius: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -575,7 +575,7 @@ class _UsersDataSource extends DataTableSource {
                       imageUrl: user.photoUrl!,
                       width: 100,
                       height: 100,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorWidget: (context, url, error) => const CircleAvatar(
                         radius: 50,
                         child: Icon(Icons.person, size: 50),

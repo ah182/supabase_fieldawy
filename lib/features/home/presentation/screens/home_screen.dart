@@ -1201,7 +1201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                         imageUrl: user.photoUrl!,
                                         width: 29,
                                         height: 29,
-                                        fit: BoxFit.contain,
+                                        fit: BoxFit.cover,
                                         placeholder: (context, url) =>
                                             Container(
                                           width: 29,

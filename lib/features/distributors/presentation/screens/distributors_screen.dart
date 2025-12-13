@@ -517,7 +517,7 @@ final sliverAppBar = SliverAppBar(
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
                             cacheManager: CustomImageCacheManager(),
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             placeholder: (context, url) => const Center(
                                 child: ImageLoadingIndicator(size: 32)),
                             errorWidget: (context, url, error) => Icon(
@@ -1054,7 +1054,7 @@ class _DistributorCard extends HookWidget {
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
                             cacheManager: CustomImageCacheManager(),
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             placeholder: (context, url) => Container(
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surfaceVariant,

@@ -640,7 +640,7 @@ class _SurgicalToolDetailsScreenState
                   // الصورة
                   CachedNetworkImage(
                     imageUrl: widget.tool.imageUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: (context, url) => Container(
                       color: theme.colorScheme.surfaceVariant,
                       child: const Center(
