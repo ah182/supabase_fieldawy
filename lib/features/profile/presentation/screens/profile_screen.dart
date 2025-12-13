@@ -409,7 +409,7 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 _buildProfileOption(
                                   icon: Icons.privacy_tip_rounded,
-                                  title: 'سياسة الخصوصية', // Localized string usually, but hardcoding for now as key likely missing
+                                  title: 'profile_feature.privacy_policy'.tr(),
                                   onTap: () async {
                                     final Uri url = Uri.parse('https://www.google.com'); // TODO: Replace with actual privacy policy URL
                                     if (!await launchUrl(url)) {

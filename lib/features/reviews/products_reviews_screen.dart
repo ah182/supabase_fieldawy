@@ -2065,11 +2065,11 @@ class ReviewDetailCard extends ConsumerWidget {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('حظر المستخدم'),
-                            content: const Text('هل أنت متأكد أنك تريد حظر هذا المستخدم؟ لن ترى محتواه مرة أخرى.'),
+                            title: Text('reviews_feature.block_user'.tr()),
+                            content: Text('reviews_feature.block_user_confirm'.tr()),
                             actions: [
-                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: const Text('إلغاء')),
-                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: const Text('حظر', style: TextStyle(color: Colors.red))),
+                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: Text('reviews_feature.cancel'.tr())),
+                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: Text('reviews_feature.block_user'.tr(), style: const TextStyle(color: Colors.red))),
                             ],
                           ),
                         );
@@ -2091,13 +2091,13 @@ class ReviewDetailCard extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const PopupMenuItem<String>(
+                      PopupMenuItem<String>(
                         value: 'block',
                         child: Row(
                           children: [
-                            Icon(Icons.block, size: 20, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('حظر المستخدم'),
+                            const Icon(Icons.block, size: 20, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Text('reviews_feature.block_user'.tr()),
                           ],
                         ),
                       ),

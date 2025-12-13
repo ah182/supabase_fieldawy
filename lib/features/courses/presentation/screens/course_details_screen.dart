@@ -1156,11 +1156,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('حظر المستخدم'),
-                            content: const Text('هل أنت متأكد أنك تريد حظر هذا المستخدم؟'),
+                            title: Text('reviews_feature.block_user'.tr()),
+                            content: Text('comments_feature.block_user_confirm_comment'.tr()),
                             actions: [
-                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: const Text('إلغاء')),
-                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: const Text('حظر', style: TextStyle(color: Colors.red))),
+                              TextButton(onPressed: ()=>Navigator.pop(context, false), child: Text('courses_feature.cancel'.tr())),
+                              TextButton(onPressed: ()=>Navigator.pop(context, true), child: Text('reviews_feature.block_user'.tr(), style: const TextStyle(color: Colors.red))),
                             ],
                           ),
                         );
@@ -1175,9 +1175,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         value: 'report',
                         child: Row(children: [const Icon(Icons.flag, size: 16), const SizedBox(width: 8), Text('comments_feature.report_title'.tr())]),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'block',
-                        child: Row(children: [Icon(Icons.block, size: 16, color: Colors.red), SizedBox(width: 8), Text('حظر المستخدم')]),
+                        child: Row(children: [const Icon(Icons.block, size: 16, color: Colors.red), const SizedBox(width: 8), Text('reviews_feature.block_user'.tr())]),
                       ),
                     ],
                   ),

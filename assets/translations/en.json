@@ -232,6 +232,7 @@
       "subscribers": "subscribers",
       "profile_updated": "Profile updated successfully",
       "image_upload_failed": "Failed to upload image",
+      "privacy_policy": "Privacy Policy",
       "roles": {
         "doctor": "Veterinarian",
         "company": "Distribution Company",
@@ -679,7 +680,9 @@
         "quran_verse": "{ وَالَّذِينَ لَا يَشْهَدُونَ الزُّورَ وَإِذَا مَرُّوا بِاللَّغْوِ مَرُّوا كِرَامًا }",
         "honesty_msg1": "أخي الكريم، تقييمك لهذا المنتج أمانة ستُسأل عنها أمام الله.",
         "honesty_msg2": "يرجى التقييم بأمانة وعدل، وعن تجربة حقيقية للمنتج، لضمان مصلحة الجميع.",
-        "pledge_button": "اللهم إني بلغت.. أتعهد بالصدق"
+        "pledge_button": "اللهم إني بلغت.. أتعهد بالصدق",
+        "block_user": "Block User",
+        "block_user_confirm": "Are you sure you want to block this user? You will not see their content again."
     },
     "leaderboard_feature": {
         "title": "Leaderboard",
@@ -1051,7 +1054,8 @@
                                 "harassment": "Harassment or Bullying",
                                 "other": "Other"
                             },
-                            "details_hint": "Add additional details (optional)..."
+                            "details_hint": "Add additional details (optional)...",
+                            "block_user_confirm_comment": "Are you sure you want to block this user?"
                         },
                         "clinics_feature": {
                     "title": "Clinics Map",
@@ -1079,11 +1083,13 @@
                     },
                     "select_location": {
                         "title": "Select Exact Location",
-                        "save_btn": "Confirm This Location",
-                        "saving": "Saving...",
-                        "success": "Location updated successfully to manual location",
-                        "error_center": "Could not determine your current location"
-                    },
+                                            "save_btn": "Confirm This Location",
+                                            "saving": "Saving...",
+                                            "success": "Location updated successfully to manual location",
+                                            "error_center": "Could not determine your current location",
+                                            "location_disclosure_title": "Location Usage",
+                                            "location_disclosure_content": "Fieldawy Store needs access to your location to accurately pinpoint your clinic on the map.\\n\\nLocation data will only be used for this purpose and will not be shared with third parties.",
+                                            "accept": "Accept"                    },
                     "permission_dialog": {
                         "title": "Set Clinic Location",
                         "message": "Allow app to set clinic location on map?",

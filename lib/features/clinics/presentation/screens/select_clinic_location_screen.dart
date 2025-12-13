@@ -91,19 +91,18 @@ class _SelectClinicLocationScreenState
               context: context,
               barrierDismissible: false,
               builder: (context) => AlertDialog(
-                title: const Text('استخدام الموقع الجغرافي'),
-                content: const Text(
-                  'يحتاج تطبيق Fieldawy Store إلى الوصول لموقعك الجغرافي لتحديد موقع عيادتك بدقة على الخريطة.\n\n'
-                  'سيتم استخدام بيانات الموقع فقط لهذا الغرض ولن يتم مشاركتها مع أطراف ثالثة.',
+                title: Text('clinics_feature.select_location.location_disclosure_title'.tr()),
+                content: Text(
+                  'clinics_feature.select_location.location_disclosure_content'.tr(),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),
-                    child: const Text('إلغاء'),
+                    child: Text('cancel'.tr()),
                   ),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('موافق'),
+                    child: Text('clinics_feature.select_location.accept'.tr()),
                   ),
                 ],
               ),
