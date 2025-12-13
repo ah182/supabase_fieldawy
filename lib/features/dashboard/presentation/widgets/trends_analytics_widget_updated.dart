@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/dashboard/data/analytics_repository_updated.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 
 /// Provider for trends analytics using updated repository
 final trendsAnalyticsUpdatedProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -320,7 +321,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${product['total_views']}',
+                                  NumberFormatter.formatCompact(product['total_views'] ?? 0),
                                   style: TextStyle(
                                     color: _getTrendColor(index),
                                     fontSize: 11,
@@ -599,7 +600,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '$count',
+                            NumberFormatter.formatCompact(count),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -863,7 +864,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
             Text('هل تريد إضافة "${product['name']}" لكتالوجك؟'),
             const SizedBox(height: 8),
             Text(
-              'هذا المنتج حصل على ${product['total_views']} مشاهدة عالمية وهو في ازدياد بنسبة ${product['growth_percentage']}%',
+              'هذا المنتج حصل على ${NumberFormatter.formatCompact(product['total_views'] ?? 0)} مشاهدة عالمية وهو في ازدياد بنسبة ${product['growth_percentage']}%',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,

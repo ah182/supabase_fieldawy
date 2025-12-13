@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:flutter/material.dart';
@@ -216,7 +217,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                         ],
                       ),
                       child: Text(
-                        '${product.price?.toStringAsFixed(0) ?? 'N/A'} ج',
+                        '${NumberFormatter.formatCompact(product.price ?? 0)} ج',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -542,7 +543,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${totalPrice.toStringAsFixed(0)} EGP',
+                    '${NumberFormatter.formatCompact(totalPrice)} EGP',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/dashboard_stats_card.dart';
@@ -370,7 +371,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       Expanded(
                         child: DashboardStatsCard(
                           title: 'dashboard_feature.stats.total_products'.tr(),
-                          value: '${stats.totalProducts}',
+                          value: NumberFormatter.formatCompact(stats.totalProducts),
                           icon: Icons.inventory_2_outlined,
                           color: Colors.blue,
                         
@@ -380,7 +381,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       Expanded(
                         child: DashboardStatsCard(
                           title: 'dashboard_feature.stats.active_offers'.tr(),
-                          value: '${stats.activeOffers}',
+                          value: NumberFormatter.formatCompact(stats.activeOffers),
                           icon: Icons.local_offer_outlined,
                           color: Colors.green,
                         ),
@@ -390,7 +391,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   const SizedBox(height: 12),
                   DashboardStatsCard(
                     title: 'dashboard_feature.stats.total_views'.tr(),
-                    value: '${stats.totalViews}',
+                    value: NumberFormatter.formatCompact(stats.totalViews),
                     icon: Icons.visibility_outlined,
                     color: Colors.purple,
                   ),

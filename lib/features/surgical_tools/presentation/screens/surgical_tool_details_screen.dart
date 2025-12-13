@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import '../../../comments/data/comments_repository.dart';
 import '../../../comments/domain/comment_model.dart';
 import '../../../products/domain/product_model.dart';
@@ -733,7 +734,7 @@ class _SurgicalToolDetailsScreenState
                           icon: Icons.attach_money,
                           label: 'surgical_tools_feature.fields.price'.tr(),
                           value:
-                              '${widget.tool.price?.toStringAsFixed(0) ?? '0'} ${"EGP".tr()}',
+                              '${NumberFormatter.formatCompact(widget.tool.price ?? 0)} ${"EGP".tr()}',
                           color: Colors.green,
                           theme: theme,
                         ),
@@ -743,7 +744,7 @@ class _SurgicalToolDetailsScreenState
                         child: _buildStatCard(
                           icon: Icons.visibility_outlined,
                           label: 'surgical_tools_feature.fields.views'.tr(),
-                          value: '${widget.tool.views}',
+                          value: NumberFormatter.formatCompact(widget.tool.views),
                           color: Colors.blue,
                           theme: theme,
                         ),

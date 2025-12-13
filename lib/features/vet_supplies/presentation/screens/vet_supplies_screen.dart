@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/add_vet_supply_screen.dart';
@@ -628,7 +629,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                             context: context,
                             icon: Icons.price_change,
                             label: 'vet_supplies_feature.fields.price'.tr(),
-                            value: '${supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
+                            value: '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
                             color: Colors.green,
                             
                           ),
@@ -637,7 +638,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                             context: context,
                             icon: Icons.visibility,
                             label: 'vet_supplies_feature.fields.views'.tr(),
-                            value: '${supply.viewsCount}',
+                            value: NumberFormatter.formatCompact(supply.viewsCount),
                             color: colorScheme.primary,
                           ),
                         ],
@@ -1031,7 +1032,7 @@ class _MySuppliesTab extends ConsumerWidget {
                             context: context,
                             icon: Icons.visibility,
                             label: 'vet_supplies_feature.fields.views'.tr(),
-                            value: '${supply.viewsCount}',
+                            value: NumberFormatter.formatCompact(supply.viewsCount),
                             color: colorScheme.primary,
                           ),
                         ],
@@ -1291,7 +1292,7 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                       children: [
                         Flexible(
                           child: Text(
-                            '${widget.supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
+                            '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -1307,7 +1308,7 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                                 size: 14, color: Colors.grey[600]),
                             const SizedBox(width: 4),
                             Text(
-                              '${widget.supply.viewsCount}',
+                              NumberFormatter.formatCompact(widget.supply.viewsCount),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],

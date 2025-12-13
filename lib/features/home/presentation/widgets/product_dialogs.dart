@@ -1,6 +1,7 @@
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/surgical_tools/presentation/screens/surgical_tool_details_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -311,7 +312,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                       Directionality(
                         textDirection: ui.TextDirection.ltr,
                         child: Text(
-                          '${widget.product.price?.toStringAsFixed(0) ?? '0'} ${'EGP'.tr()}',
+                          '${NumberFormatter.formatCompact(widget.product.price ?? 0)} ${'EGP'.tr()}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -840,7 +841,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       Directionality(
                         textDirection: ui.TextDirection.ltr,
                         child: Text(
-                          '${widget.offer.price?.toStringAsFixed(0) ?? '0'} ${'EGP'.tr()}',
+                          '${NumberFormatter.formatCompact(widget.offer.price ?? 0)} ${'EGP'.tr()}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -1553,7 +1554,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                         context,
                         Icons.sell,
                         'السعر',
-                        '${widget.tool.price!.toStringAsFixed(0)} ج.م',
+                        '${NumberFormatter.formatCompact(widget.tool.price!)} ج.م',
                       ),
 
                     // الوصف
@@ -1990,7 +1991,7 @@ class _OfferDialogState extends State<_OfferDialog> {
                       _buildInfoRow(
                         Icons.sell,
                         'السعر',
-                        '${widget.offer.price!.toStringAsFixed(0)} ج.م',
+                        '${NumberFormatter.formatCompact(widget.offer.price!)} ج.م',
                       ),
 
                     // الموزع

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/jobs/application/job_offers_provider.dart';
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:fieldawy_store/features/jobs/presentation/screens/add_job_offer_screen.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -735,7 +736,7 @@ class _JobOfferCard extends ConsumerWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${job.viewsCount}',
+                                NumberFormatter.formatCompact(job.viewsCount),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),

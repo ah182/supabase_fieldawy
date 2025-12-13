@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
@@ -181,7 +182,7 @@ class CoursesTab extends ConsumerWidget {
                           context: context,
                           icon: Icons.price_change,
                           label: 'السعر',
-                          value: '${course.price.toStringAsFixed(0)} ج.م',
+                          value: '${NumberFormatter.formatCompact(course.price)} ج.م',
                           color: Colors.green,
                         ),
                         const SizedBox(width: 12),
@@ -189,7 +190,7 @@ class CoursesTab extends ConsumerWidget {
                           context: context,
                           icon: Icons.visibility,
                           label: 'مشاهدات',
-                          value: '${course.views}',
+                          value: NumberFormatter.formatCompact(course.views),
                           color: theme.colorScheme.primary,
                         ),
                       ],
@@ -500,7 +501,7 @@ class BooksTab extends ConsumerWidget {
                           context: context,
                           icon: Icons.price_change,
                           label: 'السعر',
-                          value: '${book.price.toStringAsFixed(0)} ج.م',
+                          value: '${NumberFormatter.formatCompact(book.price)} ج.م',
                           color: Colors.green,
                         ),
                         const SizedBox(width: 12),
@@ -508,7 +509,7 @@ class BooksTab extends ConsumerWidget {
                           context: context,
                           icon: Icons.visibility,
                           label: 'مشاهدات',
-                          value: '${book.views}',
+                          value: NumberFormatter.formatCompact(book.views),
                           color: theme.colorScheme.primary,
                         ),
                       ],
@@ -1204,7 +1205,7 @@ class _BookCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${book.price.toStringAsFixed(0)} LE',
+                          '${NumberFormatter.formatCompact(book.price)} LE',
                           style: const TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
@@ -1216,7 +1217,7 @@ class _BookCard extends StatelessWidget {
                             Icon(Icons.remove_red_eye_outlined, size: 12, color: Colors.grey[600]),
                             const SizedBox(width: 2),
                             Text(
-                              '${book.views}',
+                              NumberFormatter.formatCompact(book.views),
                               style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                             ),
                           ],
@@ -1449,7 +1450,7 @@ class _CourseCardHorizontal extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${course.price.toStringAsFixed(0)} LE',
+                                '${NumberFormatter.formatCompact(course.price)} LE',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -1469,7 +1470,7 @@ class _CourseCardHorizontal extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${course.views}',
+                              NumberFormatter.formatCompact(course.views),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey[600],

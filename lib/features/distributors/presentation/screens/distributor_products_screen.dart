@@ -2,6 +2,7 @@
 
 import "package:collection/collection.dart";
 import "package:fieldawy_store/core/caching/caching_service.dart";
+import "package:fieldawy_store/core/utils/number_formatter.dart";
 // lib/features/distributors/presentation/screens/distributor_products_screen.dart
 
 import "dart:ui" as ui;
@@ -775,7 +776,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       Directionality(
                         textDirection: ui.TextDirection.ltr,
                         child: Text(
-                          '${product.price?.toStringAsFixed(0) ?? 0} ${'EGP'.tr()}',
+                          '${NumberFormatter.formatCompact(product.price ?? 0)} ${'EGP'.tr()}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -1575,7 +1576,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '${product.price?.toStringAsFixed(0) ?? 0} ${'LE'.tr()}',
+                        '${NumberFormatter.formatCompact(product.price ?? 0)} ${'LE'.tr()}',
                         style:
                             Theme.of(context).textTheme.labelMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.primary,

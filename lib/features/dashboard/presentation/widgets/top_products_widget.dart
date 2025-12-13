@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -226,7 +227,7 @@ class TopProductsWidget extends ConsumerWidget {
                                 Icon(Icons.visibility, size: 10, color: Colors.green[700]),
                                 const SizedBox(width: 3),
                                 Text(
-                                  '$views',
+                                  NumberFormatter.formatCompact(views),
                                   style: TextStyle(
                                     color: Colors.green[700],
                                     fontSize: 10,
@@ -247,7 +248,7 @@ class TopProductsWidget extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '$price ${'EGP'.tr()}',
+                              '${NumberFormatter.formatCompact(price)} ${'EGP'.tr()}',
                               style: TextStyle(
                                 color: Colors.blue[700],
                                 fontSize: 10,

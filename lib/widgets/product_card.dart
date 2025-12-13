@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/application/favorites_provider.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -22,17 +23,6 @@ bool _isValidUUID(String id) {
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
   );
   return uuidRegex.hasMatch(id);
-}
-
-// دالة لتنسيق عدد المشاهدات بشكل مختصر
-String _formatViewsCount(int views) {
-  if (views >= 1000000) {
-    return '${(views / 1000000).toStringAsFixed(1)}M';
-  } else if (views >= 1000) {
-    return '${(views / 1000).toStringAsFixed(1)}K';
-  } else {
-    return views.toString();
-  }
 }
 
 // دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offer)
@@ -440,7 +430,7 @@ class ProductCard extends ConsumerWidget {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        ' ${product.oldPrice?.toStringAsFixed(0) ?? ''} ${'LE'.tr()}',
+                                        ' ${NumberFormatter.formatCompact(product.oldPrice ?? 0)} ${'LE'.tr()}',
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelMedium
@@ -468,7 +458,7 @@ class ProductCard extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    '${product.price?.toStringAsFixed(0) ?? '0'} ${'LE'.tr()}',
+                                    '${NumberFormatter.formatCompact(product.price ?? 0)} ${'LE'.tr()}',
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
@@ -516,7 +506,7 @@ class ProductCard extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  _formatViewsCount(product.views),
+                                  NumberFormatter.formatCompact(product.views),
                                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                         color: Theme.of(context).colorScheme.secondary,
                                         fontSize: 8,
@@ -646,7 +636,7 @@ class _PriceChangeBadge extends StatelessWidget {
           ),
           const SizedBox(width: 2),
           Text(
-            '${newPrice.toStringAsFixed(0)} ',
+            '${NumberFormatter.formatCompact(newPrice)} ',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: solidBadgeColor,
                   fontWeight: FontWeight.bold,

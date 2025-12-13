@@ -1,6 +1,7 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
@@ -1436,7 +1437,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
+                                    '${NumberFormatter.formatCompact(product.price ?? 0)} جنيه',
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
@@ -2017,7 +2018,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
-                                      '${product.price?.toStringAsFixed(2) ?? '0.00'} جنيه',
+                                      '${NumberFormatter.formatCompact(product.price ?? 0)} جنيه',
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelMedium

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/my_products_screen.dart';
+import 'package:fieldawy_store/core/utils/number_formatter.dart';
 
 class RecentProductsWidget extends ConsumerWidget {
   const RecentProductsWidget({super.key});
@@ -209,7 +210,7 @@ class RecentProductsWidget extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '$price ${'EGP'.tr()}',
+                              '${NumberFormatter.formatCompact(price)} ${'EGP'.tr()}',
                               style: TextStyle(
                                 color: Colors.green[700],
                                 fontSize: 11,
@@ -221,7 +222,7 @@ class RecentProductsWidget extends ConsumerWidget {
                           const SizedBox(width: 8),
                           
                           // Views
-                          _buildMiniStat(Icons.visibility_outlined, '$views', Colors.blue),
+                          _buildMiniStat(Icons.visibility_outlined, NumberFormatter.formatCompact(views), Colors.blue),
                           
                           const Spacer(),
                           

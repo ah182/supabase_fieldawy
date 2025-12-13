@@ -62,7 +62,7 @@
     "favorites": "Favorites",
     "myProducts": "My Products",
     "myMedicines": "My Medicines",
-    "LE": "LE",
+    "LE": "EGP",
     "You have not added any products yet.": "You have not added any products yet.",
     "price": "Price",
     "add": "Add",
@@ -963,9 +963,9 @@
             "unknown_product": "Unknown Product",
             "time": {
                 "now": "Just now",
-                "min": "{count}m ago",
-                "hour": "{count}h ago",
-                "day": "{count}d ago"
+                "min": "{count}m ",
+                "hour": "{count}h ",
+                "day": "{count}d "
             },
             "source": {
                 "offer": "Offer",

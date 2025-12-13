@@ -254,7 +254,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Icon(Icons.location_on, size: 20, color: theme.colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(
-                                isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'clinics_feature.distributor.location'.tr(),
+                                isDistributor ? 'distributors_feature.coverage_areas'.tr() : 'distributors_feature.location'.tr(),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
