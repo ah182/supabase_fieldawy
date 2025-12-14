@@ -263,7 +263,10 @@
         "added_message": "{name} added to favorites",
         "removed_title": "Removed",
         "success_title": "Success"
-      }
+      },
+      "privacy_policy_launch_error": "Could not launch Privacy Policy",
+      "image_upload_error_generic": "Failed to upload image. Please try again.",
+      "account_deletion_error_generic": "An error occurred while deleting the account. Please try again later."
     },
     "distributors_feature": {
       "title": "Distributors",
@@ -412,7 +415,7 @@
         "delete": "Delete",
         "delete_success": "Course deleted successfully",
         "delete_failed": "Failed to delete course",
-        "error_occurred": "Error: {error}",
+        "error_occurred": "An unexpected error occurred. Please try again later.",
         "whatsapp_error": "Cannot open WhatsApp",
         "edit": "Edit",
         "comment_added": "Comment added successfully",
@@ -499,6 +502,8 @@
         "showing_ocr": "Showing {shown} of {total} OCR",
         "selection_hint": "Long press to select multiple products",
         "confirm_delete": "Confirm Delete",
+        "delete": "Delete",
+        "cancel": "Cancel",
         "delete_msg": "Are you sure you want to delete product \"{name}\"?",
         "delete_selected_msg": "Are you sure you want to delete {count} selected products?",
         "delete_success": "Product deleted successfully",
@@ -527,23 +532,27 @@
             "ads": "Add Limited Ads",
             "ads_desc": "Create promotional ads",
             "soon": "Coming Soon"
-        }
+        },
+        "confirm_delete_generic_msg": "Are you sure you want to delete this item?",
+        "price_update_error_title": "Price Update Failed",
+        "price_update_error_message": "Failed to update price. Please try again.",
+        "delete_product_error_message": "Failed to delete product. Please try again.",
+        "generic_loading_error": "Error loading data. Please try again."
     },
     "category": {
         "title": "Categories",
         "screen_title": "Categories Screen",
         "coming_soon": "Categories coming soon..."
     },
-  "notifications_feature": {
-    "title": "Notification Settings",
-    "general_tab": "General Notifications",
-    "distributors_tab": "Subscribed Distributors",
-    "choose_types": "Choose which types of notifications you want to receive",
-    "load_error": "Error loading settings",
-    "distributors_error": "Error loading distributors",
-    "save_success": "Settings saved",
-    "save_error": "Error saving settings",
-    "unsubscribe_confirm_title": "Unsubscribe",
+      "notifications_feature": {
+          "title": "Notification Settings",
+          "general_tab": "General Notifications",
+          "distributors_tab": "Subscribed Distributors",
+          "choose_types": "Choose which types of notifications you want to receive",
+          "load_error": "Error loading settings. Please try again.",
+          "distributors_error": "Error loading distributors",
+          "save_success": "Settings saved",
+          "save_error": "Error saving settings",    "unsubscribe_confirm_title": "Unsubscribe",
     "unsubscribe_confirm_msg": "Are you sure you want to unsubscribe from {name}?",
     "unsubscribe_success": "Unsubscribed successfully",
     "unsubscribe_failed": "Failed to unsubscribe",
@@ -571,31 +580,31 @@
       "vet_supplies_desc": "Receive notifications for new veterinary supplies"
     }
   },
-  "settings_feature": {
-    "title": "Settings",
-    "language": "Language",
-    "arabic": "Arabic",
-    "english": "English",
-    "appearance": "Appearance",
-    "light_mode": "Light Mode",
-    "dark_mode": "Dark Mode",
-    "system_default": "System Default",
-    "referral_code": "Referral Code",
-    "enter_referral": "Enter Referral Code",
-    "referral_hint": "Enter referral code",
-    "apply": "Apply",
-    "copy_success": "Referral code copied!",
-    "apply_success": "Referral code applied successfully!",
-    "self_referral_error": "You cannot use your own referral code.",
-    "invalid_code_error": "Referral code is invalid or expired.",
-    "leaderboard": "Leaderboard",
-    "view_leaderboard": "View Leaderboard",
-    "clinic_location": "Clinic Location",
-    "update_location": "Update Clinic Location",
-    "update_location_desc": "Update your fixed clinic location on map",
-    "loading": "Loading..."
-  },
-  "continue": "Continue",
+      "settings_feature": {
+        "title": "Settings",
+        "language": "Language",
+        "arabic": "Arabic",
+        "english": "English",
+        "appearance": "Appearance",
+        "light_mode": "Light Mode",
+        "dark_mode": "Dark Mode",
+        "system_default": "System Default",
+        "referral_code": "Referral Code",
+        "enter_referral": "Enter Referral Code",
+        "referral_hint": "Enter referral code",
+        "apply": "Apply",
+        "copy_success": "Referral code copied!",
+        "apply_success": "Referral code applied successfully!",
+        "self_referral_error": "You cannot use your own referral code.",
+        "invalid_code_error": "Referral code is invalid or expired.",
+        "leaderboard": "Leaderboard",
+        "view_leaderboard": "View Leaderboard",
+        "clinic_location": "Clinic Location",
+        "update_location": "Update Clinic Location",
+        "update_location_desc": "Update your fixed clinic location on map",
+        "loading": "Loading...",
+        "unexpected_referral_error": "An unexpected error occurred. Please try again later."
+      },  "continue": "Continue",
   "complete_your_profile": "Complete Your Profile",
   "select_governorates_and_centers": "Select Governorates and Centers You Cover",
   "logout": "Logout",
@@ -682,7 +691,16 @@
         "honesty_msg2": "يرجى التقييم بأمانة وعدل، وعن تجربة حقيقية للمنتج، لضمان مصلحة الجميع.",
         "pledge_button": "اللهم إني بلغت.. أتعهد بالصدق",
         "block_user": "Block User",
-        "block_user_confirm": "Are you sure you want to block this user? You will not see their content again."
+        "block_user_confirm": "Are you sure you want to block this user? You will not see their content again.",
+    "product_id_missing_error": "Error: Product ID is missing.",
+    "invalid_response_from_server": "Invalid response from server.",
+    "unexpected_error": "An unexpected error occurred. Please try again later.",
+    "loading_reviews_error": "An error occurred while loading review requests. Please try again.",
+    "delete_error_generic": "An error occurred during deletion.",
+    "report_reason_label": "Reason",
+    "add_review_error_generic": "An error occurred while adding your review.",
+    "create_request_confirmation_message": "Do you want to request a review for this product?\n\n⚠️ Note: You can only request one product review per week.",
+    "create_request_error_generic": "An error occurred while creating the review request."
     },
     "leaderboard_feature": {
         "title": "Leaderboard",
@@ -790,7 +808,7 @@
             "login_required": "You must login first",
             "loading_tools": "Loading tools...",
             "load_error": "Error loading tools",
-            "generic_error": "Error occurred: {error}",
+            "generic_error": "An unexpected error occurred. Please try again later.",
             "user_load_error": "Failed to load user data",
             "whatsapp_error": "Cannot open WhatsApp"
         },
@@ -901,17 +919,15 @@
               "delete_success": "Deleted successfully",
               "delete_error": "Delete failed",
               "add_success": "Supply added successfully",
-              "save_error": "Save failed: {error}",
-              "update_success": "Supply updated successfully",
-              "update_error": "Update failed: {error}",
-              "select_image": "Please select an image",
+                          "save_error": "Save failed: {error}",
+                          "update_success": "Supply updated successfully",
+                          "update_error": "Update failed. Please try again later.",              "select_image": "Please select an image",
               "upload_error": "Image upload failed",
               "process_error": "Image processing failed: {error}",
               "processing_image": "Processing image...",
-              "whatsapp_error": "Cannot open WhatsApp",
-              "generic_error": "Error occurred: {error}"
-          },
-          "fields": {
+                          "whatsapp_error": "Cannot open WhatsApp",
+                          "generic_error": "An unexpected error occurred. Please try again later."
+                      },          "fields": {
               "name_label": "Supply Name *",
               "name_required": "Please enter supply name",
               "name_too_short": "Name must be at least 3 characters",
@@ -1057,14 +1073,13 @@
                             "details_hint": "Add additional details (optional)...",
                             "block_user_confirm_comment": "Are you sure you want to block this user?"
                         },
-                        "clinics_feature": {
-                    "title": "Clinics Map",
-                    "search_hint": "Search clinic, doctor, area...",
-                    "no_results": "No results match your search",
-                    "no_clinics": "No clinics registered yet",
-                    "error_load": "Error loading map: {error}",
-                    "retry": "Retry",
-                    "my_location": "Update My Location",
+                            "clinics_feature": {
+                                "title": "Clinics Map",
+                                "search_hint": "Search clinic, doctor, area...",
+                                "no_results": "No results match your search",
+                                "no_clinics": "No clinics registered yet",
+                                "error_load": "Error loading map. Please try again later.",
+                                "retry": "Retry",                    "my_location": "Update My Location",
                     "location_success": "Location updated successfully",
                     "location_error": "Could not get accurate location. Try in open area.",
                     "location_dialog": {
@@ -1090,19 +1105,20 @@
                                             "location_disclosure_title": "Location Usage",
                                             "location_disclosure_content": "Fieldawy Store needs access to your location to accurately pinpoint your clinic on the map.\\n\\nLocation data will only be used for this purpose and will not be shared with third parties.",
                                             "accept": "Accept"                    },
-                    "permission_dialog": {
-                        "title": "Set Clinic Location",
-                        "message": "Allow app to set clinic location on map?",
-                        "why_title": "Why do we need your location?",
-                        "reason_1": "• Your clinic location will appear on map for other users",
-                        "reason_2": "• You can update location anytime from settings",
-                        "reason_3": "• Helps users find your clinic",
-                        "locating": "Locating...",
-                        "later": "Later",
-                        "allow": "Allow & Save Location",
-                        "error_location": "Could not get your location. Ensure location services are enabled.",
-                        "error_save": "Error saving location. Try again.",
-                        "success_initial": "Initial location saved, you can now adjust it manually"
-                    }
-                }
+    "permission_dialog": {
+        "title": "Set Clinic Location",
+        "message": "Allow app to set clinic location on map?",
+        "why_title": "Why do we need your location?",
+        "reason_1": "• Your clinic location will appear on map for other users",
+        "reason_2": "• You can update location anytime from settings",
+        "reason_3": "• Helps users find your clinic",
+        "locating": "Locating...",
+        "later": "Later",
+        "allow": "Allow & Save Location",
+        "error_location": "Could not get your location. Ensure location services are enabled.",
+        "error_save": "Error saving location. Try again.",
+        "success_initial": "Initial location saved, you can now adjust it manually"
+    },
+    "generic_error": "An unexpected error occurred. Please try again later."
+}
             }

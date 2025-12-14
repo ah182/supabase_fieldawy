@@ -69,7 +69,7 @@ class _SelectClinicLocationScreenState
       }
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('clinics_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}))),
+        SnackBar(content: Text('clinics_feature.generic_error'.tr())),
       );
     } finally {
       if (mounted) {

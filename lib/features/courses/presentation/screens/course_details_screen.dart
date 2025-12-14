@@ -161,7 +161,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${'courses_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})}')),
+          SnackBar(content: Text('courses_feature.error_occurred'.tr())),
         );
       }
     }

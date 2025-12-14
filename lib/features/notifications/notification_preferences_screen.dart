@@ -78,7 +78,7 @@ class _NotificationPreferencesScreenState
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${'notifications_feature.load_error'.tr()}: $e')),
+          SnackBar(content: Text('notifications_feature.load_error'.tr())),
         );
       }
     }
@@ -105,7 +105,7 @@ class _NotificationPreferencesScreenState
       setState(() => _isLoadingDistributors = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${'notifications_feature.distributors_error'.tr()}: $e')),
+          SnackBar(content: Text('notifications_feature.distributors_error'.tr())),
         );
       }
     }
@@ -128,7 +128,7 @@ class _NotificationPreferencesScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${'notifications_feature.save_error'.tr()}: $e')),
+          SnackBar(content: Text('notifications_feature.save_error'.tr())),
         );
       }
       // Revert the change
@@ -177,10 +177,9 @@ class _NotificationPreferencesScreenState
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${'notifications_feature.error'.tr(namedArgs: {'error': e.toString()})}')),
-          );
-        }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('notifications_feature.generic_error'.tr())),
+                  );        }
       }
     }
   }

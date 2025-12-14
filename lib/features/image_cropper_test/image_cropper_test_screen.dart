@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -39,12 +40,12 @@ class _ImageCropperTestScreenState extends State<ImageCropperTestScreen> {
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response.statusCode}')),
+          SnackBar(content: Text('image_cropper_feature.http_error'.tr(namedArgs: {'statusCode': response.statusCode.toString()}))),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to process image: $e')),
+        SnackBar(content: Text('image_cropper_feature.processing_failed'.tr())),
       );
     } finally {
       setState(() => _isLoading = false);

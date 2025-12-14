@@ -191,7 +191,7 @@ class TabIndexWatcher extends HookConsumerWidget {
               ),
         ),
         error: (_, __) => Text(
-          'notifications_feature.error'.tr(namedArgs: {'error': ''}),
+          'products.generic_loading_error'.tr(),
           style:
               Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.error,
@@ -393,15 +393,24 @@ class MyProductsScreen extends HookConsumerWidget {
   }
 
   static Future<bool?> _showDeleteConfirmationDialog(
-      BuildContext context, String productName) {
+      BuildContext context, {String? productName, int? itemCount}) {
     final completer = Completer<bool?>();
+
+    String descMessage;
+    if (itemCount != null && itemCount > 1) {
+      descMessage = 'products.delete_selected_msg'.tr(namedArgs: {'count': itemCount.toString()});
+    } else if (productName != null) {
+      descMessage = 'products.delete_msg'.tr(namedArgs: {'name': productName});
+    } else {
+      descMessage = 'products.confirm_delete_generic_msg'.tr(); // New generic message for safety
+    }
 
     AwesomeDialog(
       context: context,
       dialogType: DialogType.noHeader,
       animType: AnimType.scale,
       title: 'products.confirm_delete'.tr(),
-      desc: 'products.delete_msg'.tr(namedArgs: {'name': productName}),
+      desc: descMessage,
       btnCancelText: 'products.cancel'.tr(),
       btnOkText: 'products.delete'.tr(),
       btnCancelIcon: Icons.cancel_outlined,
@@ -623,7 +632,7 @@ class MyProductsScreen extends HookConsumerWidget {
     if (userRole != 'distributor' && userRole != 'company' && userRole != 'admin') {
       return Scaffold(
         appBar: AppBar(
-          title: Text('myMedicines'.tr()),
+          title: Text('products.my_medicines'.tr()),
           backgroundColor: Theme.of(context).colorScheme.surface,
         ),
         body: Center(
@@ -670,7 +679,7 @@ class MyProductsScreen extends HookConsumerWidget {
                             if (ocrTabSelection.value.isNotEmpty) {
                               final confirmDelete = await _showDeleteConfirmationDialog(
                                   context,
-                                  '${ocrTabSelection.value.length} selected products');
+                                  itemCount: ocrTabSelection.value.length);
                               if (confirmDelete == true) {
                                 try {
                                   final userId =
@@ -704,9 +713,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                         behavior: SnackBarBehavior.floating,
                                         backgroundColor: Colors.transparent,
                                         content: AwesomeSnackbarContent(
-                                          title: 'Success',
+                                          title: 'profile_feature.favorites.success_title'.tr(),
                                           message:
-                                              'Selected products deleted successfully',
+                                              'products.delete_selected_success'.tr(),
                                           contentType: ContentType.success,
                                         ),
                                       ),
@@ -722,10 +731,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                       behavior: SnackBarBehavior.floating,
                                       backgroundColor: Colors.transparent,
                                       content: AwesomeSnackbarContent(
-                                        title: 'Error',
-                                        message:
-                                            'Failed to delete products. Please try again.',
-                                        contentType: ContentType.failure,
+                                                                                  title: 'leaderboard_feature.error_title'.tr(),
+                                                                                  message:
+                                                                                      'products.delete_error'.tr(),                                        contentType: ContentType.failure,
                                       ),
                                     ),
                                   );
@@ -794,7 +802,7 @@ class MyProductsScreen extends HookConsumerWidget {
                           if (mainTabSelection.value.isNotEmpty) {
                             final confirmDelete = await _showDeleteConfirmationDialog(
                                 context,
-                                '${mainTabSelection.value.length} selected products');
+                                itemCount: mainTabSelection.value.length);
                             if (confirmDelete == true) {
                               try {
                                 final userId =
@@ -819,10 +827,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                       behavior: SnackBarBehavior.floating,
                                       backgroundColor: Colors.transparent,
                                       content: AwesomeSnackbarContent(
-                                        title: 'Success',
-                                        message:
-                                            'Selected products deleted successfully',
-                                        contentType: ContentType.success,
+                                                                                  title: 'profile_feature.favorites.success_title'.tr(),
+                                                                                  message:
+                                                                                      'products.delete_selected_success'.tr(),                                        contentType: ContentType.success,
                                       ),
                                     ),
                                   );
@@ -836,10 +843,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                     behavior: SnackBarBehavior.floating,
                                     backgroundColor: Colors.transparent,
                                     content: AwesomeSnackbarContent(
-                                      title: 'Error',
-                                      message:
-                                          'Failed to delete products. Please try again.',
-                                      contentType: ContentType.failure,
+                                                                                title: 'leaderboard_feature.error_title'.tr(),
+                                                                                message:
+                                                                                    'products.delete_error'.tr(),                                      contentType: ContentType.failure,
                                     ),
                                   ),
                                 );
@@ -907,7 +913,7 @@ class MyProductsScreen extends HookConsumerWidget {
         appBar: AppBar(
           title: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
               ? Text('products.selected_count'.tr(namedArgs: {'count': (tabController.index == 0 ? mainTabSelection.value : ocrTabSelection.value).length.toString()}))
-              : Text('myMedicines'.tr()),
+              : Text('products.my_medicines'.tr()),
           leading: (tabController.index == 0 ? mainTabSelectionMode.value : ocrTabSelectionMode.value)
               ? IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -1207,7 +1213,7 @@ class MyProductsScreen extends HookConsumerWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'لا توجد نتائج للبحث.',
+                            'products.no_results'.tr(),
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -1437,7 +1443,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    '${NumberFormatter.formatCompact(product.price ?? 0)} جنيه',
+                                    '${NumberFormatter.formatCompact(product.price ?? 0)} ${'products.currency'.tr()}',
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
@@ -1516,23 +1522,18 @@ class MyProductsScreen extends HookConsumerWidget {
                                             );
                                           }
                                         } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              elevation: 0,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              content: AwesomeSnackbarContent(
-                                                title: 'Error',
-                                                message:
-                                                    'Failed to update price. Please try again.',
-                                                contentType:
-                                                    ContentType.failure,
-                                              ),
-                                            ),
-                                          );
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        elevation: 0,
+                                                        behavior: SnackBarBehavior.floating,
+                                                        backgroundColor: Colors.transparent,
+                                                        content: AwesomeSnackbarContent(
+                                                          title: 'products.price_update_error_title'.tr(),
+                                                          message: 'products.price_update_error_message'.tr(),
+                                                          contentType: ContentType.failure,
+                                                        ),
+                                                      ),
+                                                    );
                                         }
                                       }
                                     },
@@ -1555,7 +1556,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                     onPressed: () async {
                                       final confirmDelete =
                                           await _showDeleteConfirmationDialog(
-                                              context, product.name);
+                                              context, productName: product.name);
                                       if (confirmDelete == true) {
                                         try {
                                           final userId = ref
@@ -1591,9 +1592,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                               backgroundColor:
                                                   Colors.transparent,
                                               content: AwesomeSnackbarContent(
-                                                title: 'Error',
+                                                title: 'leaderboard_feature.error_title'.tr(),
                                                 message:
-                                                    'Failed to delete product. Please try again.',
+                                                    'products.delete_error'.tr(),
                                                 contentType:
                                                     ContentType.failure,
                                               ),
@@ -1716,7 +1717,7 @@ class MyProductsScreen extends HookConsumerWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'لا توجد نتائج للبحث.',
+                            'products.no_results'.tr(),
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -2018,7 +2019,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
-                                      '${NumberFormatter.formatCompact(product.price ?? 0)} جنيه',
+                                      '${NumberFormatter.formatCompact(product.price ?? 0)} ${'products.currency'.tr()}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelMedium
@@ -2150,7 +2151,7 @@ class MyProductsScreen extends HookConsumerWidget {
                                     onPressed: () async {
                                       final confirmDelete =
                                           await _showDeleteConfirmationDialog(
-                                              context, product.name);
+                                              context, productName: product.name);
                                       if (confirmDelete == true) {
                                         try {
                                           final userId = ref
@@ -2199,9 +2200,9 @@ class MyProductsScreen extends HookConsumerWidget {
                                               backgroundColor:
                                                   Colors.transparent,
                                               content: AwesomeSnackbarContent(
-                                                title: 'Error',
+                                                title: 'leaderboard_feature.error_title'.tr(),
                                                 message:
-                                                    'Failed to delete product. Please try again.',
+                                                    'products.delete_product_error_message'.tr(),
                                                 contentType:
                                                     ContentType.failure,
                                               ),

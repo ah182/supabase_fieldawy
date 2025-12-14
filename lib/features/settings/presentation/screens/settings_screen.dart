@@ -398,7 +398,7 @@ class _ReferralEntrySectionState extends ConsumerState<_ReferralEntrySection> {
     } catch (e) {
       // Handle other unexpected errors (e.g., network issues)
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An unexpected error occurred: ${e.toString()}')),
+        SnackBar(content: Text('settings_feature.unexpected_referral_error'.tr())),
       );
     } finally {
       if (mounted) {

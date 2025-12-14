@@ -390,7 +390,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text('clinics_feature.error_load'.tr(namedArgs: {'error': error.toString()})), const SizedBox(height: 16), ElevatedButton(onPressed: () => ref.refresh(allClinicsProvider), child: Text('clinics_feature.retry'.tr()))]))
+              error: (error, stack) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.error_outline, size: 64, color: Colors.red), const SizedBox(height: 16), Text('clinics_feature.error_load'.tr()), const SizedBox(height: 16), ElevatedButton(onPressed: () => ref.refresh(allClinicsProvider), child: Text('clinics_feature.retry'.tr()))]))
             ),
           ),
         ],
@@ -450,14 +450,14 @@ class _ClinicDetailsSheet extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); } else { throw 'Could not launch $url'; }
-    } catch (e) { messenger.showSnackBar(SnackBar(content: Text('Could not open maps: $e'))); }
+    } catch (e) { messenger.showSnackBar(SnackBar(content: Text('clinics_feature.map_launch_error'.tr()))); }
   }
 
   Widget _buildWhatsAppRow(BuildContext context, String? whatsappNumber) {
     if (whatsappNumber == null || whatsappNumber.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [Icon(FontAwesomeIcons.whatsapp, color: Theme.of(context).primaryColor, size: 22), const SizedBox(width: 16), const Expanded(child: Text('WhatsApp', style: TextStyle(fontSize: 16))), IconButton(icon: const Icon(Icons.send, color: Colors.green), tooltip: 'Open in WhatsApp', onPressed: () async { final messenger = ScaffoldMessenger.of(context); final cleanedNumber = whatsappNumber.replaceAll(RegExp(r'[^0-9]'), ''); final fullNumber = cleanedNumber.startsWith('20') ? cleanedNumber : '20$cleanedNumber'; final url = Uri.parse('https://wa.me/$fullNumber'); try { if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); } else { throw 'Could not launch $url'; } } catch (e) { messenger.showSnackBar(SnackBar(content: Text('Could not open WhatsApp: $e'))); }})]),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [Icon(FontAwesomeIcons.whatsapp, color: Theme.of(context).primaryColor, size: 22), const SizedBox(width: 16), const Expanded(child: Text('WhatsApp', style: TextStyle(fontSize: 16))), IconButton(icon: const Icon(Icons.send, color: Colors.green), tooltip: 'Open in WhatsApp', onPressed: () async { final messenger = ScaffoldMessenger.of(context); final cleanedNumber = whatsappNumber.replaceAll(RegExp(r'[^0-9]'), ''); final fullNumber = cleanedNumber.startsWith('20') ? cleanedNumber : '20$cleanedNumber'; final url = Uri.parse('https://wa.me/$fullNumber'); try { if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); } else { throw 'Could not launch $url'; } } catch (e) { messenger.showSnackBar(SnackBar(content: Text('clinics_feature.whatsapp_launch_error'.tr()))); }})]),
     );
   }
 

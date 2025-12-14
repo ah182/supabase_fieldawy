@@ -145,10 +145,9 @@ class _SurgicalToolDetailsScreenState
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('surgical_tools_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}))),
-        );
-      }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('surgical_tools_feature.messages.generic_error'.tr())),
+                  );      }
     }
   }
 

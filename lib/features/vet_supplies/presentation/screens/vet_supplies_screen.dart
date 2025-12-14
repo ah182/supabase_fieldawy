@@ -517,28 +517,27 @@ class _AllSuppliesTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'vet_supplies_feature.messages.generic_error'.tr(namedArgs: {'error': error.toString()}),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
-              },
-              child: Text('vet_supplies_feature.actions.retry'.tr()),
-            ),
-          ],
-        ),
-      ),
-    );
+                    error: (error, stack) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'vet_supplies_feature.messages.generic_error'.tr(),
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
+                            },
+                            child: Text('vet_supplies_feature.actions.retry'.tr()),
+                          ),
+                        ],
+                      ),
+                    ),    );
   }
 
   void _showSupplyDetailsDialog(BuildContext context, WidgetRef ref, VetSupply supply) {
@@ -878,7 +877,7 @@ class _MySuppliesTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'vet_supplies_feature.messages.generic_error'.tr(namedArgs: {'error': error.toString()}),
+              'vet_supplies_feature.messages.generic_error'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),

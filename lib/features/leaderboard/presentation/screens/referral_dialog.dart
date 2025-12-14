@@ -48,18 +48,18 @@ class ReferralEntryDialog extends HookConsumerWidget {
         if (context.mounted) {
           if (details is Map && details['error'] == 'You cannot refer yourself') {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('You cannot use your own referral code.')),
+              const SnackBar(content: Text('لا يمكنك استخدام كود الدعوة الخاص بك.')),
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid or expired referral code.')),
+              const SnackBar(content: Text('كود الدعوة غير صالح أو منتهي الصلاحية.')),
             );
           }
         }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('An unexpected error occurred: ${e.toString()}')),
+            const SnackBar(content: Text('حدث خطأ غير متوقع، يرجى المحاولة لاحقاً.')),
           );
         }
       } finally {

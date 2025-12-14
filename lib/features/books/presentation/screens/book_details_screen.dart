@@ -149,7 +149,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
           _showUserBottomSheet(context, userModel);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تعذر تحميل بيانات المستخدم')),
+            SnackBar(content: Text('profile_feature.user_data_not_found'.tr())),
           );
         }
       }
@@ -157,7 +157,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
+          SnackBar(content: Text('unexpectedError'.tr())),
         );
       }
     }
@@ -688,7 +688,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.attach_money,
-                          label: 'السعر',
+                          label: 'books_feature.price'.tr(),
                           value: '${widget.book.price.toStringAsFixed(0)} ج.م',
                           color: Colors.green,
                           theme: theme,
@@ -698,7 +698,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                       Expanded(
                         child: _buildStatCard(
                           icon: Icons.visibility_outlined,
-                          label: 'مشاهدات',
+                          label: 'books_feature.views'.tr(),
                           value: '${widget.book.views}',
                           color: Colors.blue,
                           theme: theme,
@@ -714,7 +714,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                           builder: (context, snapshot) {
                             return _buildStatCard(
                               icon: Icons.comment_outlined,
-                              label: 'تعليقات',
+                              label: 'comments_feature.title'.tr(),
                               value: '${snapshot.data ?? 0}',
                               color: Colors.orange,
                               theme: theme,
@@ -755,7 +755,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'المؤلف',
+                              'books_feature.author'.tr(),
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -781,7 +781,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'وصف الكتاب',
+                              'books_feature.description'.tr(),
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -813,9 +813,9 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _openWhatsApp(widget.book.phone),
                       icon: const Icon(Icons.phone_in_talk, color: Colors.white),
-                      label: const Text(
-                        'تواصل عبر واتساب',
-                        style: TextStyle(
+                      label: Text(
+                        'books_feature.contact_seller'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -907,7 +907,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'التعليقات',
+                  'comments_feature.title'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -941,7 +941,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                   padding: const EdgeInsets.all(32),
                   child: Center(
                     child: Text(
-                      'حدث خطأ في تحميل التعليقات',
+                      'comments_feature.load_error'.tr(),
                       style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ),
@@ -963,14 +963,14 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'لا توجد تعليقات بعد',
+                          'comments_feature.no_comments'.tr(),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'كن أول من يعلق!',
+                          'comments_feature.be_first'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.4),
                           ),
@@ -1033,7 +1033,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: 'اكتب تعليقك...',
+                hintText: 'comments_feature.hint'.tr(),
                 hintStyle: TextStyle(
                   color: theme.colorScheme.onSurface.withOpacity(0.5),
                 ),
@@ -1155,23 +1155,22 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                 ),
               ),
               if (!isOwner)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => _showReportDialog(context, ref, comment.id),
-                    icon: Icon(Icons.flag_outlined, size: 14, color: Colors.grey[500]),
-                    label: Text(
-                      'إبلاغ',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ),
-            ],
+                                  Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: () => _showReportDialog(context, ref, comment.id),
+                                    icon: Icon(Icons.flag_outlined, size: 14, color: Colors.grey[500]),
+                                    label: Text(
+                                      'reviews_feature.report_content'.tr(),
+                                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ),            ],
           ),
         ),
         // زر الحذف (للمستخدم فقط)

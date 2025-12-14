@@ -50,8 +50,8 @@ class AddProductScreen extends ConsumerWidget {
         children: [
           _OptionCard(
             icon: Icons.warning_amber_rounded,
-            title: 'addProduct.expireSoon.title'.tr(),
-            subtitle: 'addProduct.expireSoon.subtitle'.tr(),
+            title: 'products.add_options.expire_soon'.tr(),
+            subtitle: 'products.add_options.expire_desc'.tr(),
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ExpireDrugsScreen()));
             },
@@ -59,8 +59,8 @@ class AddProductScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _OptionCard(
             icon: Icons.local_offer_rounded,
-            title: 'addProduct.limitedOffer.title'.tr(),
-            subtitle: 'addProduct.limitedOffer.subtitle'.tr(),
+            title: 'products.add_options.limited_offer'.tr(),
+            subtitle: 'products.add_options.offer_desc'.tr(),
             isLocked: isRestricted,
             onTap: () {
               if (isRestricted) {
@@ -74,8 +74,8 @@ class AddProductScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _OptionCard(
             icon: Icons.medical_services_rounded,
-            title: 'addProduct.surgical.title'.tr(),
-            subtitle: 'addProduct.surgical.subtitle'.tr(),
+            title: 'products.add_options.surgical'.tr(),
+            subtitle: 'products.add_options.surgical_desc'.tr(),
             isLocked: isRestricted,
             onTap: () {
               if (isRestricted) {
@@ -88,8 +88,8 @@ class AddProductScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _OptionCard(
             icon: Icons.menu_book_rounded,
-            title: 'addProduct.vetBooks.title'.tr(),
-            subtitle: 'addProduct.vetBooks.subtitle'.tr(),
+            title: 'products.add_options.books'.tr(),
+            subtitle: 'products.add_options.books_desc'.tr(),
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => const BooksScreen(),
@@ -99,8 +99,8 @@ class AddProductScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _OptionCard(
             icon: Icons.school_rounded,
-            title: 'addProduct.vetCourses.title'.tr(),
-            subtitle: 'addProduct.vetCourses.subtitle'.tr(),
+            title: 'products.add_options.courses'.tr(),
+            subtitle: 'products.add_options.courses_desc'.tr(),
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => const CoursesScreen(),
@@ -110,8 +110,8 @@ class AddProductScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _OptionCard(
             icon: Icons.local_fire_department_rounded,
-            title: 'addProduct.limitedAds.title'.tr(),
-            subtitle: 'addProduct.limitedAds.subtitle'.tr(),
+            title: 'products.add_options.ads'.tr(),
+            subtitle: 'products.add_options.ads_desc'.tr(),
             badge: 'products.add_options.soon'.tr(),
             onTap: () {
               // TODO: Navigate to the correct screen

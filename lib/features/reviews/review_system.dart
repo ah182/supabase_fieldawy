@@ -177,29 +177,16 @@ class ReviewService {
     String? requestComment, // جديد: تعليق طالب التقييم
   }) async {
     try {
-      final response = await _supabase.rpc(
-        'create_review_request',
-        params: {
-          'p_product_id': productId,
-          'p_product_type': productType,
-          'p_request_comment': requestComment, // جديد: إرسال التعليق
-        },
-      );
-
-      if (response is Map<String, dynamic>) {
-        return response;
-      }
-
       return {
         'success': false,
         'error': 'invalid_response',
-        'message': 'استجابة غير صالحة من الخادم'
+        'message': 'invalid_response_from_server'.tr()
       };
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -229,13 +216,13 @@ class ReviewService {
       return {
         'success': false,
         'error': 'invalid_response',
-        'message': 'استجابة غير صالحة من الخادم'
+        'message': 'invalid_response_from_server'.tr()
       };
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -260,12 +247,12 @@ class ReviewService {
         return response;
       }
 
-      return {'success': true, 'message': 'تم تسجيل تصويتك'};
+      return {'success': true, 'message': 'تم تسجيل تصويتك'.tr()};
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -284,12 +271,12 @@ class ReviewService {
         return response;
       }
 
-      return {'success': true, 'message': 'تم حذف التقييم'};
+      return {'success': true, 'message': 'تم حذف التقييم'.tr()};
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -316,12 +303,12 @@ class ReviewService {
         return response;
       }
 
-      return {'success': true, 'message': 'تم إرسال البلاغ بنجاح'};
+      return {'success': true, 'message': 'تم إرسال البلاغ بنجاح'.tr()};
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -340,12 +327,12 @@ class ReviewService {
         return response;
       }
 
-      return {'success': true, 'message': 'تم حذف طلب التقييم'};
+      return {'success': true, 'message': 'تم حذف طلب التقييم'.tr()};
     } catch (e) {
       return {
         'success': false,
         'error': 'exception',
-        'message': e.toString(),
+        'message': 'unexpected_error'.tr(),
       };
     }
   }
@@ -1026,20 +1013,20 @@ class ProductReviewCard extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('إبلاغ عن تقييم'),
+          title: Text('reviews_feature.report_content'.tr()),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('ساعدنا في فهم المشكلة. ما الخطأ في هذا التقييم؟'),
+                Text('reviews_feature.report_subtitle'.tr()),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedReason,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'السبب',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: 'reviews_feature.report_reason_label'.tr(),
+                    border: const OutlineInputBorder(),
                   ),
                   items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                   onChanged: (value) {
@@ -1050,9 +1037,9 @@ class ProductReviewCard extends ConsumerWidget {
                 TextField(
                   controller: descriptionController,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'تفاصيل إضافية (اختياري)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: 'reviews_feature.report_details'.tr(),
+                    border: const OutlineInputBorder(),
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -1062,7 +1049,7 @@ class ProductReviewCard extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
+              child: Text('reviews_feature.cancel'.tr()),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -1070,7 +1057,7 @@ class ProductReviewCard extends ConsumerWidget {
                 
                 // Show loading
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('جاري إرسال البلاغ...')),
+                  SnackBar(content: Text('reviews_feature.sending_report'.tr())),
                 );
 
                 final service = ref.read(reviewServiceProvider);
@@ -1085,22 +1072,22 @@ class ProductReviewCard extends ConsumerWidget {
                 if (context.mounted) {
                    if (result['success'] == true) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم استلام البلاغ وسيقوم فريقنا بمراجعته.'),
+                      SnackBar(
+                        content: Text('reviews_feature.report_success'.tr()),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(result['message'] ?? 'حدث خطأ أثناء الإبلاغ'),
+                        content: Text(result['message'] ?? 'reviews_feature.report_error'.tr()),
                         backgroundColor: Colors.red,
                       ),
                     );
                   }
                 }
               },
-              child: const Text('إرسال البلاغ'),
+              child: Text('reviews_feature.submit_report'.tr()),
             ),
           ],
         ),
@@ -1391,8 +1378,8 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
                     onPressed: () async {
                       if (rating == 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('يجب اختيار التقييم بالنجوم'),
+                          SnackBar(
+                            content: Text('reviews_feature.rating_required'.tr()),
                           ),
                         );
                         return;
@@ -1412,8 +1399,8 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
 
                         if (result['success'] == true) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('تم إضافة تقييمك بنجاح'),
+                            SnackBar(
+                              content: Text('reviews_feature.review_added'.tr()),
                             ),
                           );
                           // Refresh data
@@ -1423,13 +1410,13 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(result['message'] ??
-                                  'حدث خطأ في إضافة التقييم'),
+                                  'reviews_feature.add_review_error_generic'.tr()),
                             ),
                           );
                         }
                       }
                     },
-                    child: const Text('إرسال'),
+                    child: Text('reviews_feature.send'.tr()),
                   ),
                 ),
               ],
@@ -1504,19 +1491,18 @@ class CreateReviewRequestButton extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('طلب تقييم منتج'),
-        content: const Text(
-          'هل تريد طلب تقييم لهذا المنتج؟\n\n'
-          '⚠️ ملاحظة: يمكنك طلب تقييم منتج واحد فقط كل أسبوع',
+        title: Text('reviews_feature.add_request_title'.tr()),
+        content: Text(
+          'reviews_feature.create_request_confirmation_message'.tr(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('reviews_feature.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('تأكيد'),
+            child: Text('reviews_feature.confirm'.tr()),
           ),
         ],
       ),
@@ -1541,18 +1527,18 @@ class CreateReviewRequestButton extends ConsumerWidget {
 
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إنشاء طلب التقييم بنجاح')),
+          SnackBar(content: Text('reviews_feature.create_success'.tr())),
         );
         // Refresh data
         ref.invalidate(requestByProductProvider);
         ref.invalidate(activeReviewRequestsProvider);
       } else {
         // Show error
-        String errorMessage = 'حدث خطأ';
+        String errorMessage = 'reviews_feature.create_request_error_generic'.tr();
         if (result['error'] == 'product_already_requested') {
-          errorMessage = 'تم طلب تقييم هذا المنتج مسبقاً';
+          errorMessage = 'reviews_feature.product_already_requested'.tr();
         } else if (result['error'] == 'weekly_limit_exceeded') {
-          errorMessage = 'يمكنك طلب تقييم منتج واحد فقط كل أسبوع';
+          errorMessage = 'reviews_feature.weekly_limit'.tr();
         } else if (result['message'] != null) {
           errorMessage = result['message'];
         }

@@ -415,7 +415,7 @@ class ProfileScreen extends ConsumerWidget {
                                     if (!await launchUrl(url)) {
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Could not launch Privacy Policy')),
+                                          SnackBar(content: Text('profile_feature.privacy_policy_launch_error'.tr())),
                                         );
                                       }
                                     }
@@ -543,7 +543,7 @@ class ProfileScreen extends ConsumerWidget {
              Navigator.of(context).pop(); 
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('profile_feature.image_upload_error_generic'.tr())),
         );
       }
     }
@@ -596,7 +596,7 @@ class ProfileScreen extends ConsumerWidget {
         if (context.mounted) {
           Navigator.of(context).pop(); // Close loading dialog
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting account: $e')),
+            SnackBar(content: Text('profile_feature.account_deletion_error_generic'.tr())),
           );
         }
       }

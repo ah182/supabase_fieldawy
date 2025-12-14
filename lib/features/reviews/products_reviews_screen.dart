@@ -286,7 +286,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
             children: [
               const Icon(Icons.error_outline, size: 60, color: Colors.red),
               const SizedBox(height: 16),
-              Text('حدث خطأ: $error'),
+              Text('reviews_feature.loading_reviews_error'.tr()),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
@@ -524,7 +524,7 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
     if (selectedProduct['product_id'] == null || selectedProduct['product_id'].toString().isEmpty) {
       print('❌ ERROR: product_id is null or empty!');
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('خطأ: معرف المنتج غير موجود')),
+        SnackBar(content: Text('reviews_feature.product_id_missing_error'.tr())),
       );
       return;
     }
