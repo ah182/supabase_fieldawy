@@ -153,12 +153,12 @@ class DistributorDetailsSheet {
                   _buildDetailListTile(
                     theme,
                     Icons.local_shipping_rounded,
-                    'distributionMethod'.tr(),
+                    'distributors_feature.distribution_method'.tr(),
                     distributor.distributionMethod == 'direct_distribution'
-                        ? 'directDistribution'.tr()
+                        ? 'auth.profile.distribution.direct_distribution'.tr()
                         : distributor.distributionMethod == 'order_delivery'
-                            ? 'orderDelivery'.tr()
-                            : 'both'.tr(),
+                            ? 'auth.profile.distribution.order_delivery'.tr()
+                            : 'auth.profile.distribution.both_methods'.tr(),
                   ),
                 if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
                   Padding(
@@ -179,7 +179,7 @@ class DistributorDetailsSheet {
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              'Coverage Areas'.tr(),
+                              'distributors_feature.coverage_areas'.tr(),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -264,7 +264,7 @@ class DistributorDetailsSheet {
                   },
                   icon: const FaIcon(FontAwesomeIcons.whatsapp,
                       color: Colors.white, size: 20),
-                  label: Text('contactViaWhatsapp'.tr()),
+                  label: Text('distributors_feature.contact_whatsapp'.tr()),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF25D366),
                     foregroundColor: Colors.white,
