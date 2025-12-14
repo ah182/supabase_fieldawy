@@ -215,7 +215,8 @@
         "product_dialog": {
             "unknown_distributor": "موزع غير معروف",
             "active_principle": "المادة الفعالة",
-            "medical_info_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye"
+            "medical_info_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye",
+            "whatsapp_interest": "مرحباً، أنا مهتم بـ {name}"
         }
     },
     "profile_feature": {
@@ -487,14 +488,12 @@
     "product_id_missing_error": "خطأ: معرف المنتج غير موجود.",
     "invalid_response_from_server": "استجابة غير صالحة من الخادم.",
     "unexpected_error": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-    "loading_reviews_error": "حدث خطأ أثناء تحميل طلبات التقييم. يرجى المحاولة مرة أخرى."
-    },
+    "loading_reviews_error": "حدث خطأ أثناء تحميل طلبات التقييم. يرجى المحاولة مرة أخرى.",
     "delete_error_generic": "حدث خطأ أثناء الحذف.",
     "report_reason_label": "السبب",
     "add_review_error_generic": "حدث خطأ أثناء إضافة التقييم.",
     "create_request_confirmation_message": "هل تريد طلب تقييم لهذا المنتج؟\n\n⚠️ ملاحظة: يمكنك طلب تقييم منتج واحد فقط كل أسبوع.",
-    "create_request_error_generic": "حدث خطأ أثناء إنشاء طلب التقييم."
-    },,
+    "create_request_error_generic": "حدث خطأ أثناء إنشاء طلب التقييم.",
     "leaderboard_feature": {
         "title": "لائحة المتصدرين",
         "search_hint": "ابحث عن لاعبين...",
@@ -568,6 +567,9 @@
     "surgical_tools_feature": {
         "title": "الأدوات الجراحية",
         "my_tools_title": "أدواتي الجراحية",
+        "search": {
+            "no_results": "لا توجد نتائج مطابقة لبحثك"
+        },
         "edit": {
             "title": "تعديل الأداة"
         },
@@ -585,7 +587,8 @@
             "contact_whatsapp": "تواصل عبر واتساب",
             "view_products": "عرض المنتجات",
             "report": "إبلاغ",
-            "edit": "تعديل"
+            "edit": "تعديل",
+            "tool_details": "تفاصيل الأداة"
         },
         "dialogs": {
             "delete_confirm_title": "تأكيد الحذف",
@@ -842,7 +845,13 @@
         "contact_seller": "تواصل مع البائع",
         "whatsapp_error": "لا يمكن فتح WhatsApp",
         "author": "المؤلف",
-        "description": "وصف الكتاب"
+        "description": "وصف الكتاب",
+        "book_details": "تفاصيل الكتاب",
+        "contact": "تواصل",
+        "empty": {
+            "no_books_available": "لا توجد كتب متاحة حالياً",
+            "no_results": "لا توجد نتائج للبحث عن \"{query}\""
+        }
     },
     "courses_feature": {
         "title": "كورساتي",
@@ -873,7 +882,13 @@
         "add_comment": "أضف تعليقاً...",
         "error_loading_comments": "خطأ في تحميل التعليقات",
         "no_comments": "لا توجد تعليقات بعد",
-        "be_first_comment": "كن أول من يعلق!"
+        "be_first_comment": "كن أول من يعلق!",
+        "course_details": "تفاصيل الكورس",
+        "contact": "تواصل",
+        "empty": {
+            "no_courses_available": "لا توجد كورسات متاحة حالياً",
+            "no_results": "لا توجد نتائج للبحث عن \"{query}\""
+        }
     },
     "job_offers_feature": {
         "title": "عروض التوظيف",
@@ -956,8 +971,11 @@
         "price_success": "تم تحديث السعر بنجاح",
         "price_error": "فشل تحديث السعر. يرجى المحاولة مرة أخرى.",
         "invalid_price": "الرجاء إدخال سعر صحيح",
-        "error_occurred": "حدث خطأ: {error}",
+        "error_occurred": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
         "distributor_only_feature": "هذه الميزة متاحة للموزعين فقط.",
+        "empty": {
+            "no_expire_soon": "لا توجد منتجات منتهية الصلاحية"
+        },
         "add_options": {
             "expire_soon": "إضافة أدوية قريبة الانتهاء",
             "expire_desc": "أضف الأدوية التي قاربت صلاحيتها على الانتهاء",
@@ -977,8 +995,9 @@
         "price_update_error_title": "فشل تحديث السعر",
         "price_update_error_message": "فشل تحديث السعر. يرجى المحاولة مرة أخرى.",
         "delete_product_error_message": "فشل حذف المنتج. يرجى المحاولة مرة أخرى.",
-        "generic_loading_error": "حدث خطأ أثناء تحميل البيانات. يرجى المحاولة مرة أخرى."
-    },,
+        "generic_loading_error": "حدث خطأ أثناء تحميل البيانات. يرجى المحاولة مرة أخرى.",
+        "expiration_date": "تاريخ الصلاحية: {date}"
+    },
     "category": {
         "title": "الفئات",
         "screen_title": "شاشة الفئات",

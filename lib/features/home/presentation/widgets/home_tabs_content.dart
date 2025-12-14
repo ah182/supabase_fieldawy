@@ -41,7 +41,7 @@ class CoursesTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${err.toString()}',
+              'courses_feature.error_occurred'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -72,8 +72,8 @@ class CoursesTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد كورسات متاحة حالياً'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'courses_feature.empty.no_courses_available'.tr()
+                      : 'courses_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -181,15 +181,15 @@ class CoursesTab extends ConsumerWidget {
                         _buildStatChip(
                           context: context,
                           icon: Icons.price_change,
-                          label: 'السعر',
-                          value: '${NumberFormatter.formatCompact(course.price)} ج.م',
+                          label: 'courses_feature.price'.tr(),
+                          value: '${NumberFormatter.formatCompact(course.price)} ${'products.currency'.tr()}',
                           color: Colors.green,
                         ),
                         const SizedBox(width: 12),
                         _buildStatChip(
                           context: context,
                           icon: Icons.visibility,
-                          label: 'مشاهدات',
+                          label: 'courses_feature.views'.tr(),
                           value: NumberFormatter.formatCompact(course.views),
                           color: theme.colorScheme.primary,
                         ),
@@ -209,8 +209,13 @@ class CoursesTab extends ConsumerWidget {
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.info_outline, size: 20),
-                            label: const Text('تفاصيل الكورس'),
+                            
+                            label: Text('courses_feature.course_details'.tr(),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                
+                              ),),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
@@ -227,9 +232,9 @@ class CoursesTab extends ConsumerWidget {
                               _openWhatsApp(context, course.phone);
                             },
                             icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                            label: const Text(
-                              'تواصل',
-                              style: TextStyle(
+                            label: Text(
+                              'courses_feature.contact'.tr(),
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -298,8 +303,8 @@ class CoursesTab extends ConsumerWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح WhatsApp'),
+          SnackBar(
+            content: Text('courses_feature.whatsapp_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -339,7 +344,7 @@ class BooksTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${err.toString()}',
+              'books_feature.error_occurred'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -371,8 +376,8 @@ class BooksTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد كتب متاحة حالياً'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'books_feature.empty.no_books_available'.tr()
+                      : 'books_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -500,15 +505,15 @@ class BooksTab extends ConsumerWidget {
                         _buildStatChip(
                           context: context,
                           icon: Icons.price_change,
-                          label: 'السعر',
-                          value: '${NumberFormatter.formatCompact(book.price)} ج.م',
+                          label: 'books_feature.price'.tr(),
+                          value: '${NumberFormatter.formatCompact(book.price)} ${'products.currency'.tr()}',
                           color: Colors.green,
                         ),
                         const SizedBox(width: 12),
                         _buildStatChip(
                           context: context,
                           icon: Icons.visibility,
-                          label: 'مشاهدات',
+                          label: 'books_feature.views'.tr(),
                           value: NumberFormatter.formatCompact(book.views),
                           color: theme.colorScheme.primary,
                         ),
@@ -528,8 +533,8 @@ class BooksTab extends ConsumerWidget {
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.info_outline, size: 20),
-                            label: const Text('تفاصيل الكتاب'),
+                            
+                            label: Text('books_feature.book_details'.tr()),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
@@ -546,9 +551,9 @@ class BooksTab extends ConsumerWidget {
                               _openWhatsApp(context, book.phone);
                             },
                             icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                            label: const Text(
-                              'تواصل',
-                              style: TextStyle(
+                            label: Text(
+                              'books_feature.contact'.tr(),
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -617,8 +622,8 @@ class BooksTab extends ConsumerWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح WhatsApp'),
+          SnackBar(
+            content: Text('books_feature.whatsapp_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -658,7 +663,7 @@ class ExpireSoonTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${err.toString()}',
+              'products.error_occurred'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -694,8 +699,8 @@ class ExpireSoonTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد منتجات منتهية الصلاحية'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'products.empty.no_expire_soon'.tr()
+                      : 'products.no_results'.tr(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -820,7 +825,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${err.toString()}',
+              'surgical_tools_feature.messages.generic_error'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
@@ -853,8 +858,8 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   searchQuery.isEmpty
-                      ? 'لا توجد أدوات جراحية'
-                      : 'لا توجد نتائج للبحث عن "$searchQuery"',
+                      ? 'surgical_tools_feature.empty.no_tools'.tr()
+                      : 'surgical_tools_feature.search.no_results'.tr(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -995,7 +1000,7 @@ class OffersTab extends ConsumerWidget {
             Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ: ${err.toString()}',
+              'offers.dialog.generic_error'.tr(),
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),

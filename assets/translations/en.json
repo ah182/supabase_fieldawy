@@ -216,7 +216,8 @@
       "product_dialog": {
         "unknown_distributor": "Unknown Distributor",
         "active_principle": "Active Principle",
-        "medical_info_note": "For more medical information about the product, please visit the Vet Eye application."
+        "medical_info_note": "For more medical information about the product, please visit the Vet Eye application.",
+        "whatsapp_interest": "Hello, I am interested in {name}"
       }
     },
     "profile_feature": {
@@ -400,7 +401,15 @@
         "price": "Price",
         "views": "Views",
         "contact_seller": "Contact Seller",
-        "whatsapp_error": "Cannot open WhatsApp"
+        "whatsapp_error": "Cannot open WhatsApp",
+        "author": "Author",
+        "description": "Book Description",
+        "book_details": "Book Details",
+        "contact": "Contact",
+        "empty": {
+            "no_books_available": "No books available currently",
+            "no_results": "No results for \"{query}\""
+        }
     },
     "courses_feature": {
         "title": "My Courses",
@@ -431,7 +440,13 @@
         "add_comment": "Add a comment...",
         "error_loading_comments": "Error loading comments",
         "no_comments": "No comments yet",
-        "be_first_comment": "Be the first to comment!"
+        "be_first_comment": "Be the first to comment!",
+        "course_details": "Course Details",
+        "contact": "Contact",
+        "empty": {
+            "no_courses_available": "No courses available currently",
+            "no_results": "No results for \"{query}\""
+        }
     },
     "job_offers_feature": {
         "title": "Job Offers",
@@ -516,8 +531,11 @@
         "price_success": "Price updated successfully",
         "price_error": "Failed to update price. Please try again.",
         "invalid_price": "Please enter a valid price",
-        "error_occurred": "Error: {error}",
+        "error_occurred": "An unexpected error occurred. Please try again later.",
         "distributor_only_feature": "This feature is available for distributors only.",
+        "empty": {
+            "no_expire_soon": "No expiring products found"
+        },
         "add_options": {
             "expire_soon": "Add Expiring Drugs",
             "expire_desc": "Add drugs nearing expiration",
@@ -537,7 +555,8 @@
         "price_update_error_title": "Price Update Failed",
         "price_update_error_message": "Failed to update price. Please try again.",
         "delete_product_error_message": "Failed to delete product. Please try again.",
-        "generic_loading_error": "Error loading data. Please try again."
+        "generic_loading_error": "Error loading data. Please try again.",
+        "expiration_date": "Expiration Date: {date}"
     },
     "category": {
         "title": "Categories",
@@ -775,6 +794,9 @@
     "surgical_tools_feature": {
         "title": "Surgical Tools",
         "my_tools_title": "My Surgical Tools",
+        "search": {
+            "no_results": "No results match your search"
+        },
         "edit": {
             "title": "Edit Tool"
         },
@@ -792,7 +814,8 @@
             "contact_whatsapp": "Contact via WhatsApp",
             "view_products": "View Products",
             "report": "Report",
-            "edit": "Edit"
+            "edit": "Edit",
+            "tool_details": "Tool Details"
         },
         "dialogs": {
             "delete_confirm_title": "Confirm Delete",

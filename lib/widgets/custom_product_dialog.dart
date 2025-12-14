@@ -1,6 +1,7 @@
 // ignore_for_file: unused_import
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -181,7 +182,7 @@ class CustomProductDialog extends StatelessWidget {
 
                     // === وصف المنتج ===
                     Text(
-                      'Active principle',
+                      'home.product_dialog.active_principle'.tr(),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -202,7 +203,7 @@ class CustomProductDialog extends StatelessWidget {
                             ),
                           ),
                           TextSpan(
-                            text: product.activePrinciple ?? 'غير محدد',
+                            text: product.activePrinciple ?? 'distributors_feature.products_screen.undefined'.tr(),
                             style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.w800),
@@ -284,7 +285,7 @@ class CustomProductDialog extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                 'لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye ',
+                                'home.product_dialog.medical_info_note'.tr(),
                                 style: theme.textTheme.bodyLarge?.copyWith(
                                   fontSize: 16,
                                   color: theme.colorScheme.onSurface,

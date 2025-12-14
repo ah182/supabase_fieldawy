@@ -87,7 +87,7 @@ class _ProductDialogState extends State<_ProductDialog> {
       phone = '+${phone.substring(2)}';
     }
 
-    final message = 'مرحباً، أنا مهتم بـ ${widget.product.name}';
+    final message = 'home.product_dialog.whatsapp_interest'.tr(namedArgs: {'name': widget.product.name});
     final url = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
     );
@@ -98,14 +98,14 @@ class _ProductDialogState extends State<_ProductDialog> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح الواتساب')),
+            SnackBar(content: Text('distributors_feature.whatsapp_error'.tr())),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح الواتساب')),
+          SnackBar(content: Text('offers.dialog.generic_error'.tr())),
         );
       }
     }
@@ -266,7 +266,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                               ),
                               child: Text(
                                 widget.product.distributorId ??
-                                    'موزع غير معروف',
+                                    'home.product_dialog.unknown_distributor'.tr(),
                                 style: TextStyle(
                                   color: theme.colorScheme.onPrimary,
                                   fontSize: 14,
@@ -312,7 +312,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                       Directionality(
                         textDirection: ui.TextDirection.ltr,
                         child: Text(
-                          '${NumberFormatter.formatCompact(widget.product.price ?? 0)} ${'EGP'.tr()}',
+                          '${NumberFormatter.formatCompact(widget.product.price ?? 0)} ${'products.currency'.tr()}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -352,7 +352,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Active principle',
+                    'home.product_dialog.active_principle'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -371,7 +371,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                           ),
                         ),
                         TextSpan(
-                          text: widget.product.activePrinciple ?? 'غير محدد',
+                          text: widget.product.activePrinciple ?? 'distributors_feature.products_screen.undefined'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w800,
@@ -406,7 +406,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'تاريخ الصلاحية: ${DateFormat('MM/yyyy').format(widget.expirationDate!)}',
+                            'products.expiration_date'.tr(namedArgs: {'date': DateFormat('MM/yyyy').format(widget.expirationDate!)}),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -495,10 +495,10 @@ class _ProductDialogState extends State<_ProductDialog> {
                               Flexible(
                                 child: Text(
                                   _isLoadingPhone
-                                      ? 'جاري التحميل...'
+                                      ? 'settings_feature.loading'.tr()
                                       : _phoneNumber == null
-                                          ? 'رقم الواتساب غير متوفر'
-                                          : 'تواصل عبر الواتساب',
+                                          ? 'offers.dialog.phone_not_available'.tr()
+                                          : 'offers.dialog.contact_whatsapp'.tr(),
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -506,6 +506,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+
                               if (!_isLoadingPhone && _phoneNumber != null) ...[
                                 const SizedBox(width: 8),
                                 Container(
@@ -622,7 +623,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
       phone = '+${phone.substring(2)}';
     }
 
-    final message = 'مرحباً، أنا مهتم بـ ${widget.offer.name}';
+    final message = 'home.product_dialog.whatsapp_interest'.tr(namedArgs: {'name': widget.offer.name});
     final url = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
     );
@@ -633,14 +634,14 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح الواتساب')),
+            SnackBar(content: Text('distributors_feature.whatsapp_error'.tr())),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح الواتساب')),
+          SnackBar(content: Text('offers.dialog.generic_error'.tr())),
         );
       }
     }
@@ -841,7 +842,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       Directionality(
                         textDirection: ui.TextDirection.ltr,
                         child: Text(
-                          '${NumberFormatter.formatCompact(widget.offer.price ?? 0)} ${'EGP'.tr()}',
+                          '${NumberFormatter.formatCompact(widget.offer.price ?? 0)} ${'products.currency'.tr()}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -947,7 +948,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'تاريخ الصلاحية: ${DateFormat('MM/yyyy').format(widget.expirationDate!)}',
+                            'products.expiration_date'.tr(namedArgs: {'date': DateFormat('MM/yyyy').format(widget.expirationDate!)}),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -959,7 +960,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                     ),
                   if (widget.expirationDate != null) const SizedBox(height: 20),
                   Text(
-                    'Active principle',
+                    'home.product_dialog.active_principle'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -978,7 +979,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                           ),
                         ),
                         TextSpan(
-                          text: widget.offer.activePrinciple ?? 'غير محدد',
+                          text: widget.offer.activePrinciple ?? 'distributors_feature.products_screen.undefined'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w800,
@@ -1106,10 +1107,10 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                               Flexible(
                                 child: Text(
                                   _isLoadingPhone
-                                      ? 'جاري التحميل...'
+                                      ? 'settings_feature.loading'.tr()
                                       : _phoneNumber == null
-                                          ? 'رقم الواتساب غير متوفر'
-                                          : 'تواصل عبر الواتساب',
+                                          ? 'offers.dialog.phone_not_available'.tr()
+                                          : 'offers.dialog.contact_whatsapp'.tr(),
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -1277,7 +1278,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
       phone = '+${phone.substring(2)}';
     }
 
-    final message = 'مرحباً، أنا مهتم بـ ${widget.tool.name}';
+    final message = 'home.product_dialog.whatsapp_interest'.tr(namedArgs: {'name': widget.tool.name});
     final url = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
     );
@@ -1288,14 +1289,14 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح الواتساب')),
+            SnackBar(content: Text('distributors_feature.whatsapp_error'.tr())),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح الواتساب')),
+          SnackBar(content: Text('offers.dialog.generic_error'.tr())),
         );
       }
     }
@@ -1526,7 +1527,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'الحالة: $status',
+                            'surgical_tools_feature.fields.status'.tr(namedArgs: {'status': status}),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -1544,7 +1545,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                       _buildInfoRow(
                         context,
                         Icons.business,
-                        'الشركة',
+                        'surgical_tools_feature.fields.manufacturer'.tr(),
                         widget.tool.company!,
                       ),
 
@@ -1553,8 +1554,8 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                       _buildInfoRow(
                         context,
                         Icons.sell,
-                        'السعر',
-                        '${NumberFormatter.formatCompact(widget.tool.price!)} ج.م',
+                        'surgical_tools_feature.fields.price'.tr(),
+                        '${NumberFormatter.formatCompact(widget.tool.price!)} ${'products.currency'.tr()}',
                       ),
 
                     // الوصف
@@ -1562,24 +1563,23 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                       const SizedBox(height: 16),
                       const Divider(),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.description,
-                            size: 20,
-                            
-                            
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'الوصف',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.description,
+                                                  size: 20,
+                      
+                      
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'surgical_tools_feature.fields.description'.tr(),
+                                                  style: theme.textTheme.titleMedium?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -1623,9 +1623,9 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                                   size: 20,
                                 ),
                               ),
-                              label: const Text(
-                                'تفاصيل الأداة',
-                                style: TextStyle(
+                              label: Text(
+                                'surgical_tools_feature.actions.tool_details'.tr(),
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1678,10 +1678,10 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                                     Flexible(
                                       child: Text(
                                         _isLoadingPhone
-                                            ? 'جاري التحميل...'
+                                            ? 'settings_feature.loading'.tr()
                                             : _phoneNumber == null
-                                                ? 'رقم الواتساب غير متوفر'
-                                                : 'تواصل عبر الواتساب',
+                                                ? 'offers.dialog.phone_not_available'.tr()
+                                                : 'offers.dialog.contact_whatsapp'.tr(),
                                         style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
@@ -1849,7 +1849,7 @@ class _OfferDialogState extends State<_OfferDialog> {
       phone = '+${phone.substring(2)}';
     }
 
-    final message = 'مرحباً، أنا مهتم بـ ${widget.offer.name}';
+    final message = 'home.product_dialog.whatsapp_interest'.tr(namedArgs: {'name': widget.offer.name});
     final url = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
     );
@@ -1860,14 +1860,14 @@ class _OfferDialogState extends State<_OfferDialog> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح الواتساب')),
+            SnackBar(content: Text('distributors_feature.whatsapp_error'.tr())),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء فتح الواتساب')),
+          SnackBar(content: Text('offers.dialog.generic_error'.tr())),
         );
       }
     }
@@ -1964,7 +1964,7 @@ class _OfferDialogState extends State<_OfferDialog> {
                         widget.offer.activePrinciple!.isNotEmpty)
                       _buildInfoRow(
                         Icons.science,
-                        'المادة الفعالة',
+                        'offers.labels.active_principle'.tr(),
                         widget.offer.activePrinciple!,
                       ),
 
@@ -1973,7 +1973,7 @@ class _OfferDialogState extends State<_OfferDialog> {
                         widget.offer.company!.isNotEmpty)
                       _buildInfoRow(
                         Icons.business,
-                        'الشركة',
+                        'offers.labels.company'.tr(),
                         widget.offer.company!,
                       ),
 
@@ -1982,7 +1982,7 @@ class _OfferDialogState extends State<_OfferDialog> {
                         widget.offer.selectedPackage!.isNotEmpty)
                       _buildInfoRow(
                         Icons.inventory_2,
-                        'العبوة',
+                        'offers.labels.package'.tr(),
                         widget.offer.selectedPackage!,
                       ),
 
@@ -1990,15 +1990,15 @@ class _OfferDialogState extends State<_OfferDialog> {
                     if (widget.offer.price != null)
                       _buildInfoRow(
                         Icons.sell,
-                        'السعر',
-                        '${NumberFormatter.formatCompact(widget.offer.price!)} ج.م',
+                        'offers.labels.price'.tr(),
+                        '${NumberFormatter.formatCompact(widget.offer.price!)} ${'products.currency'.tr()}',
                       ),
 
                     // الموزع
                     if (widget.offer.distributorId != null)
                       _buildInfoRow(
                         Icons.store,
-                        'الموزع',
+                        'offers.labels.distributor'.tr(),
                         widget.offer.distributorId!,
                       ),
 
@@ -2083,17 +2083,20 @@ class _OfferDialogState extends State<_OfferDialog> {
                   label: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        _isLoadingPhone
-                            ? 'جاري التحميل...'
-                            : _phoneNumber == null
-                                ? 'رقم الواتساب غير متوفر'
-                                : 'تواصل عبر الواتساب',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                              Flexible(
+                                child: Text(
+                                  _isLoadingPhone
+                                      ? 'settings_feature.loading'.tr()
+                                      : _phoneNumber == null
+                                          ? 'offers.dialog.phone_not_available'.tr()
+                                          : 'offers.dialog.contact_whatsapp'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                       if (!_isLoadingPhone && _phoneNumber != null) ...[
                         const SizedBox(width: 8),
                         Container(
