@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:fieldawy_store/features/leaderboard/application/spin_wheel_provider.dart';
 import 'package:fieldawy_store/features/leaderboard/data/leaderboard_repository.dart';
@@ -178,7 +179,7 @@ class _FortuneWheelUIState extends ConsumerState<FortuneWheelUI>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not save prize: ${e.toString()}'),
+            content: Text('leaderboard_feature.prize_claim_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );

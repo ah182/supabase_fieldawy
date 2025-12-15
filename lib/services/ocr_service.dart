@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class OcrService {
   // مفتاح API الخاص بك
-  final String _apiKey = "AIzaSyAEA7sDP68xAiPs4yMUxTE9RxN8IRrzLZw";
+  final String _apiKey = dotenv.env['GOOGLE_GEMINI_API_KEY'] ?? '';
   
   // لتتبع وقت آخر طلب (لتجنب تجاوز الحد المجاني)
   static DateTime? _lastRequestTime;

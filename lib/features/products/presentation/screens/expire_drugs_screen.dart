@@ -606,7 +606,7 @@ class ExpireDrugsScreen extends StatelessWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _ErrorState(
-                  message: e.toString(),
+                  message: 'products.error_occurred'.tr(),
                   onRetry: () => ref.invalidate(myExpireDrugsProvider),
                 ),
               ),
@@ -690,7 +690,7 @@ class _StatsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '  Expire soon drugs',
+                  'addProduct.expireSoon.title'.tr(),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color:
                         theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
@@ -712,7 +712,7 @@ class _StatsCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'Product',
+                      'products.product_label'.tr(),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onPrimaryContainer
                             .withOpacity(0.7),
@@ -763,7 +763,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'لا توجد أدوية منتهية الصلاحية',
+              'products.empty.no_expire_soon'.tr(),
               style:
                   textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
@@ -813,7 +813,7 @@ class _ErrorState extends StatelessWidget {
             Icon(Icons.error_outline, color: theme.colorScheme.error, size: 44),
             const SizedBox(height: 16),
             Text(
-              'An error occurred:'.tr(),
+              'products.error_occurred'.tr(),
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,

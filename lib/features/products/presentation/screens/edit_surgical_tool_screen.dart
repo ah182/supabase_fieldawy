@@ -107,7 +107,7 @@ class _EditSurgicalToolScreenState extends ConsumerState<EditSurgicalToolScreen>
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar('surgical_tools_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()}), isError: true);
+      _showSnackBar('surgical_tools_feature.messages.generic_error'.tr(), isError: true);
     }
   }
 

@@ -135,7 +135,7 @@ class CoursesScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              error.toString(),
+              'courses_feature.error_occurred'.tr(),
               style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
@@ -198,7 +198,7 @@ class CoursesScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('courses_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})),
+              content: Text('courses_feature.error_occurred'.tr()),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),

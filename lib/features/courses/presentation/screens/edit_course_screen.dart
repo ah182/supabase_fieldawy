@@ -186,7 +186,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
         );
 
         if (uploadedUrl == null) {
-          throw Exception('فشل رفع الصورة');
+          throw Exception('profile_feature.image_upload_failed'.tr());
         }
         imageUrl = uploadedUrl;
       }
@@ -195,12 +195,12 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
       
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
-        throw Exception('رقم الهاتف غير صحيح');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
       
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
-        throw Exception('رقم الهاتف يجب أن يكون بتنسيق دولي صحيح (مثال: +201234567890)');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
 
       // 2. Update course data in Supabase
@@ -218,15 +218,15 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
         
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم تحديث الكورس بنجاح'),
+            SnackBar(
+              content: Text('courses_feature.update_success'.tr()),
               backgroundColor: Colors.green,
             ),
           );
           
           Navigator.of(context).pop(true);
         } else {
-          throw Exception('فشل تحديث الكورس');
+          throw Exception('courses_feature.update_failed_message'.tr());
         }
       }
     } catch (e) {
@@ -235,7 +235,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: ${e.toString()}'),
+            content: Text('courses_feature.error_occurred'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -247,7 +247,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تعديل كورس'),
+        title: Text('courses_feature.edit'.tr()),
         elevation: 0,
       ),
       body: Form(
@@ -266,15 +266,15 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                   border: Border.all(color: Colors.grey[400]!, width: 2),
                 ),
                 child: _isProcessing
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
                             Text(
-                              'جارٍ معالجة الصورة...',
-                              style: TextStyle(
+                              'courses_feature.processing_image'.tr(),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
@@ -325,15 +325,15 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.edit,
                                             size: 40,
                                             color: Colors.white,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'اضغط لتغيير الصورة',
-                                            style: TextStyle(
+                                            'courses_feature.tap_to_change_image'.tr(),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
@@ -355,7 +355,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
             TextFormField(
               controller: _titleController,
               decoration: InputDecoration(
-                labelText: 'عنوان الكورس',
+                labelText: 'courses_feature.title_label'.tr(),
                 prefixIcon: const Icon(Icons.title),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -364,10 +364,10 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'عنوان الكورس مطلوب';
+                  return 'courses_feature.title_required'.tr();
                 }
                 if (value.trim().length < 5) {
-                  return 'العنوان قصير جداً (5 أحرف على الأقل)';
+                  return 'courses_feature.title_too_short'.tr();
                 }
                 return null;
               },
@@ -381,7 +381,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               maxLines: 6,
               maxLength: 500,
               decoration: InputDecoration(
-                labelText: 'وصف الكورس',
+                labelText: 'courses_feature.description_label'.tr(),
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 100),
                   child: Icon(Icons.description),
@@ -393,10 +393,10 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'وصف الكورس مطلوب';
+                  return 'courses_feature.description_required'.tr();
                 }
                 if (value.trim().length < 20) {
-                  return 'الوصف قصير جداً (20 حرف على الأقل)';
+                  return 'courses_feature.description_too_short'.tr();
                 }
                 return null;
               },
@@ -408,9 +408,9 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'سعر الكورس (جنيه)',
+                labelText: 'courses_feature.price_label'.tr(),
                 prefixIcon: const Icon(Icons.attach_money),
-                suffixText: 'LE',
+                suffixText: 'products.currency'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -418,11 +418,11 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'سعر الكورس مطلوب';
+                  return 'courses_feature.price_required'.tr();
                 }
                 final price = double.tryParse(value);
                 if (price == null || price <= 0) {
-                  return 'يرجى إدخال سعر صحيح';
+                  return 'products.invalid_price'.tr();
                 }
                 return null;
               },
@@ -480,7 +480,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات',
+                  _isSaving ? 'courses_feature.saving'.tr() : 'courses_feature.save_changes'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

@@ -162,8 +162,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
     if (_processedImageBytes == null || _processedImageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى إضافة صورة الكتاب'),
+        SnackBar(
+          content: Text('books_feature.cover_required'.tr()),
           backgroundColor: Colors.red,
         ),
       );
@@ -181,7 +181,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       );
 
       if (imageUrl == null) {
-        throw Exception('فشل رفع الصورة');
+        throw Exception('profile_feature.image_upload_failed'.tr());
       }
 
       // 2. Save book data to Supabase
@@ -191,12 +191,12 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
       
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
-        throw Exception('رقم الهاتف غير صحيح');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
       
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
-        throw Exception('رقم الهاتف يجب أن يكون بتنسيق دولي صحيح (مثال: +201234567890)');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
 
       await repository.createBook(
@@ -215,8 +215,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
         setState(() => _isSaving = false);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إضافة الكتاب بنجاح'),
+          SnackBar(
+            content: Text('books_feature.add_success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -229,7 +229,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: ${e.toString()}'),
+            content: Text('books_feature.error_occurred'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -241,7 +241,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إضافة كتاب بيطري'),
+        title: Text('books_feature.add_title'.tr()),
         elevation: 0,
       ),
       body: Form(
@@ -267,15 +267,15 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                   ],
                 ),
                 child: _isProcessing
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
                             Text(
-                              'جارٍ معالجة الصورة...',
-                              style: TextStyle(
+                              'books_feature.processing_image'.tr(),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
@@ -287,15 +287,15 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                               Icon(
                                 Icons.menu_book_rounded,
                                 size: 80,
                                 color: Colors.grey[600],
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'اضغط لإضافة صورة الكتاب',
-                                style: TextStyle(
+                                'books_feature.tap_to_add_cover'.tr(),
+                                style:  TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[700],
                                   fontWeight: FontWeight.w500,
@@ -303,8 +303,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'من الكاميرا أو المعرض',
-                                style: TextStyle(
+                                'books_feature.from_camera_or_gallery'.tr(),
+                                style:  TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[600],
                                 ),
@@ -326,7 +326,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               OutlinedButton.icon(
                 onPressed: _showImageSourceDialog,
                 icon: const Icon(Icons.edit),
-                label: const Text('تغيير الصورة'),
+                label: Text('books_feature.change_image'.tr()),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -338,8 +338,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             TextFormField(
               controller: _bookNameController,
               decoration: InputDecoration(
-                labelText: 'اسم الكتاب *',
-                hintText: 'مثال: الطب الباطني البيطري',
+                labelText: 'books_feature.name_label'.tr(),
+                hintText: 'books_feature.name_hint'.tr(),
                 prefixIcon: const Icon(Icons.book),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -348,7 +348,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'اسم الكتاب مطلوب';
+                  return 'books_feature.name_required'.tr();
                 }
                 return null;
               },
@@ -360,8 +360,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             TextFormField(
               controller: _authorController,
               decoration: InputDecoration(
-                labelText: 'اسم المؤلف *',
-                hintText: 'مثال: د. أحمد محمد',
+                labelText: 'books_feature.author_label'.tr(),
+                hintText: 'books_feature.author_hint'.tr(),
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -370,7 +370,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'اسم المؤلف مطلوب';
+                  return 'books_feature.author_required'.tr();
                 }
                 return null;
               },
@@ -384,8 +384,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               maxLines: 5,
               maxLength: 500,
               decoration: InputDecoration(
-                labelText: 'وصف الكتاب *',
-                hintText: 'اكتب وصفاً تفصيلياً عن محتوى الكتاب...',
+                labelText: 'books_feature.description_label'.tr(),
+                hintText: 'books_feature.description_hint'.tr(),
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 80),
                   child: Icon(Icons.description),
@@ -397,10 +397,10 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'وصف الكتاب مطلوب';
+                  return 'books_feature.description_required'.tr();
                 }
                 if (value.trim().length < 20) {
-                  return 'الوصف قصير جداً (20 حرف على الأقل)';
+                  return 'books_feature.description_too_short'.tr();
                 }
                 return null;
               },
@@ -412,10 +412,10 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'السعر (جنيه) *',
-                hintText: 'مثال: 250',
+                labelText: 'books_feature.price_label'.tr(),
+                hintText: 'books_feature.price_hint'.tr(),
                 prefixIcon: const Icon(Icons.attach_money),
-                suffixText: 'LE',
+                suffixText: 'products.currency'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -423,11 +423,11 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'السعر مطلوب';
+                  return 'books_feature.price_required'.tr();
                 }
                 final price = double.tryParse(value);
                 if (price == null || price <= 0) {
-                  return 'يرجى إدخال سعر صحيح';
+                  return 'products.invalid_price'.tr();
                 }
                 return null;
               },
@@ -485,7 +485,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'جارٍ الحفظ...' : 'حفظ الكتاب',
+                  _isSaving ? 'books_feature.saving'.tr() : 'books_feature.save_book_button'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

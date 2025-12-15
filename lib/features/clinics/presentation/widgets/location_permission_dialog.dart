@@ -99,7 +99,7 @@ class _LocationPermissionDialogState
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'clinics_feature.messages.generic_error'.tr(namedArgs: {'error': e.toString()});
+        _errorMessage = 'clinics_feature.generic_error'.tr();
         _isLoading = false;
       });
     }

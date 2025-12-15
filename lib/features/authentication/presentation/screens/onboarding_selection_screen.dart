@@ -29,25 +29,22 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
     void onContinue() {
       if (!isContinueEnabled) return;
 
-      context.setLocale(selectedLanguage.value!).then((_) {
-        if (!context.mounted) return;
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                GovernorateSelectionScreen(role: selectedRole.value!),
-            transitionDuration: const Duration(milliseconds: 500),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              final isRtl = context.locale.languageCode == 'ar';
-              final begin = Offset(isRtl ? -1.0 : 1.0, 0.0);
-              const end = Offset.zero;
-              final tween = Tween(begin: begin, end: end)
-                  .chain(CurveTween(curve: Curves.ease));
-              return SlideTransition(position: animation.drive(tween), child: child);
-            },
-          ),
-        );
-      });
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              GovernorateSelectionScreen(role: selectedRole.value!),
+          transitionDuration: const Duration(milliseconds: 500),
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+            final isRtl = context.locale.languageCode == 'ar';
+            final begin = Offset(isRtl ? -1.0 : 1.0, 0.0);
+            const end = Offset.zero;
+            final tween = Tween(begin: begin, end: end)
+                .chain(CurveTween(curve: Curves.ease));
+            return SlideTransition(position: animation.drive(tween), child: child);
+          },
+        ),
+      );
     }
 
     return Scaffold(
@@ -215,6 +212,11 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
       final selectedLangData = languages.firstWhere((l) => l['label'] == selected);
       selectedLanguage.value = selectedLangData['locale'] as Locale?;
       selectedLanguageLabel.value = selectedLangData['label'] as String?;
+      
+      // Immediately apply the locale change
+      if (context.mounted && selectedLanguage.value != null) {
+        await context.setLocale(selectedLanguage.value!);
+      }
     }
   }
 

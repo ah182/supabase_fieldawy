@@ -113,7 +113,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'job_offers_feature.error_occurred'.tr()}: ${e.toString()}'),
+            content: Text('job_offers_feature.error_occurred'.tr()),
             backgroundColor: Colors.red,
           ),
         );

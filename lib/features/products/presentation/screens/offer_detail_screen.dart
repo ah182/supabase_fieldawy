@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
@@ -91,8 +92,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
-            title: 'تنبيه',
-            message: 'الرجاء إضافة وصف للعرض',
+            title: 'alert_title'.tr(),
+            message: 'offers.description_required'.tr(),
             contentType: ContentType.warning,
           ),
         ),
@@ -109,8 +110,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
-            title: 'تنبيه',
-            message: 'الوصف يتجاوز الحد الأقصى ($_maxWords كلمة). عدد الكلمات الحالي: $wordCount',
+            title: 'alert_title'.tr(),
+            message: 'offers.description_limit_exceeded'.tr(namedArgs: {'max': _maxWords.toString(), 'current': wordCount.toString()}),
             contentType: ContentType.warning,
           ),
         ),
@@ -127,8 +128,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
-            title: 'تنبيه',
-            message: 'الرجاء إدخال سعر صحيح',
+            title: 'alert_title'.tr(),
+            message: 'products.invalid_price'.tr(),
             contentType: ContentType.warning,
           ),
         ),
@@ -153,8 +154,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
-              title: 'نجاح',
-              message: 'تم تحديث العرض بنجاح',
+              title: 'success_title'.tr(),
+              message: 'offers.update_success'.tr(),
               contentType: ContentType.success,
             ),
           ),
@@ -169,8 +170,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
-              title: 'خطأ',
-              message: 'فشل تحديث العرض: ${e.toString()}',
+              title: 'error_title'.tr(),
+              message: 'offers.update_error_generic'.tr(),
               contentType: ContentType.failure,
             ),
           ),
@@ -189,7 +190,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل العرض'),
+        title: Text('offers.details_title'.tr()),
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
       ),
@@ -244,7 +245,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'المنتج',
+                          'offers.product_label'.tr(),
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.7),
                             fontWeight: FontWeight.w500,
@@ -278,14 +279,14 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'تفاصيل العرض',
+                      'offers.details_title'.tr(),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'السعر',
+                      'offers.labels.price'.tr(),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -296,7 +297,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.attach_money),
-                        suffixText: 'EGP',
+                        suffixText: 'products.currency'.tr(),
                         filled: true,
                         fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                         border: OutlineInputBorder(
@@ -322,7 +323,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'تاريخ الصلاحية',
+                      'offers.expiration_date_label'.tr(),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -369,14 +370,14 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'وصف العرض',
+              'offers.description_label'.tr(),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'أضف وصفاً تفصيلياً للعرض الخاص بك (حد أقصى 50 كلمة)',
+              'offers.description_helper'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -395,7 +396,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                       controller: _descriptionController,
                       maxLines: 6,
                       decoration: InputDecoration(
-                        hintText: 'مثال: خصم 20% على جميع المنتجات الطبية...',
+                        hintText: 'offers.description_hint'.tr(),
                         filled: true,
                         fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                         border: OutlineInputBorder(
@@ -430,7 +431,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          '$wordCount / $_maxWords كلمة',
+                          '$wordCount / $_maxWords ${'offers.word'.tr()}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: isOverLimit
                                 ? theme.colorScheme.error
@@ -464,9 +465,9 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'حفظ التعديلات',
-                        style: TextStyle(
+                    : Text(
+                        'offers.save_changes'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -486,9 +487,9 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'تخطي',
-                  style: TextStyle(
+                child: Text(
+                  'offers.skip'.tr(),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),

@@ -132,7 +132,7 @@ class BooksScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              error.toString(),
+              'books_feature.error_occurred'.tr(),
               style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
@@ -200,7 +200,7 @@ class BooksScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('books_feature.error_occurred'.tr(namedArgs: {'error': e.toString()})),
+              content: Text('books_feature.error_occurred'.tr()),
               backgroundColor: Colors.red,
             ),
           );
@@ -305,7 +305,7 @@ class _BookCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${book.price.toStringAsFixed(0)} ج.م',
+                          '${book.price.toStringAsFixed(0)} ${'products.currency'.tr()}',
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -396,8 +396,8 @@ class _BookCard extends StatelessWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لا يمكن فتح WhatsApp'),
+          SnackBar(
+            content: Text('books_feature.whatsapp_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -491,15 +491,15 @@ class _BookDetailsContent extends StatelessWidget {
                   _buildStatChip(
                     context: context,
                     icon: Icons.price_change,
-                    label: 'السعر',
-                    value: '${book.price.toStringAsFixed(0)} ج.م',
+                    label: 'books_feature.price'.tr(),
+                    value: '${book.price.toStringAsFixed(0)} ${'products.currency'.tr()}',
                     color: Colors.green,
                   ),
                   const SizedBox(width: 12),
                   _buildStatChip(
                     context: context,
                     icon: Icons.visibility,
-                    label: 'مشاهدات',
+                    label: 'books_feature.views'.tr(),
                     value: '${book.views}',
                     color: colorScheme.primary,
                   ),
@@ -517,9 +517,9 @@ class _BookDetailsContent extends StatelessWidget {
                   },
                   icon: const Icon(Icons.phone_in_talk_outlined,
                       color: Colors.white),
-                  label: const Text(
-                    'تواصل مع البائع',
-                    style: TextStyle(
+                  label: Text(
+                    'books_feature.contact_seller'.tr(),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,

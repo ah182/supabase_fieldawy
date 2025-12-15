@@ -177,16 +177,41 @@ class ReviewService {
     String? requestComment, // جديد: تعليق طالب التقييم
   }) async {
     try {
+      print('🚀 Calling create_review_request RPC with productId: $productId, productType: $productType, requestComment: $requestComment');
+      final response = await _supabase.rpc(
+        'create_review_request',
+        params: {
+          'p_product_id': productId,
+          'p_product_type': productType,
+          'p_request_comment': requestComment,
+        },
+      );
+
+      print('✅ create_review_request RPC response: $response');
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+      
       return {
         'success': false,
         'error': 'invalid_response',
         'message': 'invalid_response_from_server'.tr()
       };
     } catch (e) {
+      print('❌ Error in createReviewRequest: $e');
+      if (e is PostgrestException) {
+        print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
+        return {
+          'success': false,
+          'error': e.code,
+          'message': '${e.message} (${e.code})',
+        };
+      }
       return {
         'success': false,
         'error': 'exception',
-        'message': 'unexpected_error'.tr(),
+        'message': 'unexpected_error'.tr() + ' ($e)',
       };
     }
   }
@@ -200,6 +225,7 @@ class ReviewService {
     String? comment,
   }) async {
     try {
+      print('🚀 Adding review - RequestID: $requestId, Rating: $rating');
       final response = await _supabase.rpc(
         'add_product_review',
         params: {
@@ -208,6 +234,8 @@ class ReviewService {
           'p_comment': comment,
         },
       );
+
+      print('✅ Add review response: $response');
 
       if (response is Map<String, dynamic>) {
         return response;
@@ -219,10 +247,19 @@ class ReviewService {
         'message': 'invalid_response_from_server'.tr()
       };
     } catch (e) {
+      print('❌ Error adding review: $e');
+      if (e is PostgrestException) {
+        print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
+        return {
+          'success': false,
+          'error': e.code,
+          'message': '${e.message} (${e.code})',
+        };
+      }
       return {
         'success': false,
         'error': 'exception',
-        'message': 'unexpected_error'.tr(),
+        'message': 'unexpected_error'.tr() + ' ($e)',
       };
     }
   }

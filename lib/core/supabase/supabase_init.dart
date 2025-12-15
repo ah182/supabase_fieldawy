@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SupaKeys {
   // Hardcoded values for Web (since .env doesn't work in Flutter Web)
+  // Note: For better security on web, consider loading these from a config.json at runtime
   static const String _webSupabaseUrl = 'https://rkukzuwerbvmueuxadul.supabase.co';
   static const String _webSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrdWt6dXdlcmJ2bXVldXhhZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NTcwODcsImV4cCI6MjA3MzQzMzA4N30.Rs69KRvvB8u6A91ZXIzkmWebO_IyavZXJrO-SXa2_mc';
   

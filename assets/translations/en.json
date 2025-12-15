@@ -356,34 +356,48 @@
       "preview_generic_error": "Failed to create invoice preview.",
       "no_products_distributor": "No products for this distributor"
   },
-  "offers": {
-      "tabs": {
-        "title": "Offers",
-        "no_offers": "No offers available currently",
-        "no_results": "No results found for \"{query}\""
-      },
-      "dialog": {
-        "title": "Offer Details",
-        "special_offer": "Special Offer",
-        "description": "Description",
-        "contact_whatsapp": "Contact via WhatsApp",
-        "whatsapp_error": "Could not open WhatsApp",
-        "generic_error": "An error occurred",
-        "loading": "Loading...",
-        "phone_not_available": "WhatsApp number not available"
-      },
-      "labels": {
-        "active_principle": "Active Principle",
-        "company": "Company",
-        "package": "Package",
-        "price": "Price",
-        "distributor": "Distributor"
-      },
-      "card": {
-        "badge": "Offer"
-      }
-  },
-    "books_feature": {
+      "offers": {
+        "tabs": {
+          "title": "Offers",
+          "no_offers": "No offers available currently",
+          "no_results": "No results found for \"{query}\""
+        },
+        "dialog": {
+          "title": "Offer Details",
+          "special_offer": "Special Offer",
+          "description": "Description",
+          "contact_whatsapp": "Contact via WhatsApp",
+          "whatsapp_error": "Could not open WhatsApp",
+          "generic_error": "An error occurred",
+          "loading": "Loading...",
+          "phone_not_available": "WhatsApp number not available"
+        },
+        "labels": {
+          "active_principle": "Active Principle",
+          "company": "Company",
+          "package": "Package",
+          "price": "Price",
+          "distributor": "Distributor"
+        },
+        "card": {
+          "badge": "Offer"
+        },
+        "description_required": "Please add offer description",
+        "description_limit_exceeded": "Description exceeds limit ({max} words). Current: {current}",
+        "update_success": "Offer updated successfully",
+        "details_title": "Offer Details",
+        "product_label": "Product",
+        "description_label": "Offer Description",
+        "description_helper": "Add detailed description (max 50 words)",
+        "description_hint": "Example: 20% discount...",
+              "save_changes": "Save Changes",
+              "skip": "Skip",
+              "update_error_generic": "Failed to update offer. Please try again.",
+              "expiration_date_label": "Expiration Date",
+              "word": "word"
+            },      "alert_title": "Alert",
+      "success_title": "Success",
+      "error_title": "Error",    "books_feature": {
         "title": "My Books",
         "no_books": "No books yet",
         "add_first_book": "Press the + button below to add your first book",
@@ -409,7 +423,33 @@
         "empty": {
             "no_books_available": "No books available currently",
             "no_results": "No results for \"{query}\""
-        }
+        },
+        "processing_image": "Processing image...",
+        "tap_to_change_image": "Tap to change image",
+        "name_label": "Book Name *",
+        "name_required": "Book Name is required",
+        "author_label": "Author Name *",
+        "author_required": "Author Name is required",
+        "description_label": "Book Description *",
+        "description_required": "Book Description is required",
+        "description_too_short": "Description is too short (min 20 characters)",
+        "price_label": "Price (EGP) *",
+        "price_required": "Price is required",
+        "saving": "Saving...",
+        "save_changes": "Save Changes",
+        "update_success": "Book updated successfully",
+        "update_failed_message": "Failed to update book",
+        "add_title": "Add Veterinary Book",
+        "tap_to_add_cover": "Tap to add book cover",
+        "from_camera_or_gallery": "From Camera or Gallery",
+        "change_image": "Change Image",
+        "name_hint": "Example: Veterinary Internal Medicine",
+        "author_hint": "Example: Dr. Ahmed Mohamed",
+        "description_hint": "Write detailed description about book content...",
+        "price_hint": "Example: 250",
+        "save_book_button": "Save Book",
+        "cover_required": "Please add book cover",
+        "add_success": "Book added successfully"
     },
     "courses_feature": {
         "title": "My Courses",
@@ -446,7 +486,31 @@
         "empty": {
             "no_courses_available": "No courses available currently",
             "no_results": "No results for \"{query}\""
-        }
+        },
+        "processing_image": "Processing image...",
+        "tap_to_change_image": "Tap to change image",
+        "title_label": "Course Title",
+        "title_required": "Course title is required",
+        "title_too_short": "Title is too short (min 5 characters)",
+        "description_label": "Course Description",
+        "description_required": "Course description is required",
+        "description_too_short": "Description is too short (min 20 characters)",
+        "price_label": "Course Price (EGP)",
+        "price_required": "Course price is required",
+        "saving": "Saving...",
+        "save_changes": "Save Changes",
+        "update_success": "Course updated successfully",
+        "update_failed_message": "Failed to update course",
+        "tap_to_add_poster": "Tap to add course poster",
+        "change_image": "Change Image",
+        "add_success": "Course added successfully",
+        "add_title": "Add Veterinary Course",
+        "title_hint": "Example: Equine Internal Medicine Course",
+        "description_hint": "Write detailed description about course content...",
+        "price_hint": "Example: 500",
+        "adding": "Adding...",
+        "add_course_button": "Add Course",
+        "poster_required": "Please add course poster"
     },
     "job_offers_feature": {
         "title": "Job Offers",
@@ -471,7 +535,7 @@
         "confirm_delete_msg": "Are you sure you want to delete this job?",
         "cancel": "Cancel",
         "delete_success": "Job deleted successfully",
-        "error_occurred": "An error occurred",
+        "error_occurred": "An unexpected error occurred. Please try again later.",
         "retry": "Retry",
         "job_details": "Job Details",
         "job_title": "Job Title",
@@ -495,7 +559,11 @@
         "update_job": "Update Job Offer",
         "publish_job": "Publish Job Offer",
         "job_updated": "Job offer updated successfully",
-        "job_published": "Job offer published successfully"
+        "job_published": "Job offer published successfully",
+        "subtitle": "Find the best opportunities",
+        "search": {
+            "accept_suggestion": "Accept suggestion"
+        }
     },
     "products": {
         "my_medicines": "My Medicines",
@@ -556,7 +624,8 @@
         "price_update_error_message": "Failed to update price. Please try again.",
         "delete_product_error_message": "Failed to delete product. Please try again.",
         "generic_loading_error": "Error loading data. Please try again.",
-        "expiration_date": "Expiration Date: {date}"
+        "expiration_date": "Expiration Date: {date}",
+        "product_label": "Product"
     },
     "category": {
         "title": "Categories",
@@ -687,6 +756,7 @@
         "agree": "Agree ({count})",
         "disagree": "Disagree ({count})",
         "delete_review_title": "Delete Review",
+        "delete": "Delete",
         "delete_review_confirm": "Are you sure you want to delete your review?",
         "review_deleted": "Review deleted successfully",
         "report_content": "Report Content",
@@ -711,6 +781,8 @@
         "pledge_button": "اللهم إني بلغت.. أتعهد بالصدق",
         "block_user": "Block User",
         "block_user_confirm": "Are you sure you want to block this user? You will not see their content again.",
+        "auto_deleted_message": "Review automatically deleted after reaching 10 'Unhelpful' votes."
+    },
     "product_id_missing_error": "Error: Product ID is missing.",
     "invalid_response_from_server": "Invalid response from server.",
     "unexpected_error": "An unexpected error occurred. Please try again later.",
@@ -719,8 +791,8 @@
     "report_reason_label": "Reason",
     "add_review_error_generic": "An error occurred while adding your review.",
     "create_request_confirmation_message": "Do you want to request a review for this product?\n\n⚠️ Note: You can only request one product review per week.",
-    "create_request_error_generic": "An error occurred while creating the review request."
-    },
+    "create_request_error_generic": "An error occurred while creating the review request.",
+    
     "leaderboard_feature": {
         "title": "Leaderboard",
         "search_hint": "Search players...",
@@ -779,6 +851,7 @@
         "actions": {
             "ok": "OK"
         },
+        "prize_claim_error": "Could not save prize. Please try again later.",
         "info": {
             "title": "Leaderboard Info",
             "referral_code": "Your Referral Code",
@@ -826,6 +899,8 @@
             "delete_success": "Tool deleted successfully",
             "delete_error": "Failed to delete tool",
             "add_success": "Tool added successfully",
+            "add_error": "Failed to add tool",
+            "duplicate_error": "This tool already exists in your inventory!",
             "update_success": "Tool updated successfully",
             "update_error": "Failed to update tool",
             "login_required": "You must login first",
@@ -941,13 +1016,14 @@
           "messages": {
               "delete_success": "Deleted successfully",
               "delete_error": "Delete failed",
-              "add_success": "Supply added successfully",
-                          "save_error": "Save failed: {error}",
+                          "add_success": "Supply added successfully",
+                          "save_error": "Save failed. Please try again.",
                           "update_success": "Supply updated successfully",
-                          "update_error": "Update failed. Please try again later.",              "select_image": "Please select an image",
-              "upload_error": "Image upload failed",
-              "process_error": "Image processing failed: {error}",
-              "processing_image": "Processing image...",
+                          "update_error": "Update failed. Please try again later.",
+                          "select_image": "Please select an image",
+                          "upload_error": "Image upload failed",
+                          "process_error": "Image processing failed. Please try again.",
+                          "processing_image": "Processing image...",
                           "whatsapp_error": "Cannot open WhatsApp",
                           "generic_error": "An unexpected error occurred. Please try again later."
                       },          "fields": {

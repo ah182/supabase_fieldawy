@@ -61,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       await ref.read(authServiceProvider).signInWithGoogle();
       // AuthGate will handle navigation after auth state changes.
     } catch (e) {
-      if (mounted) _showError(e.toString());
+      if (mounted) _showError('unexpected_error'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
       content: AwesomeSnackbarContent(
-        title: 'خطأ'.tr(), // Common key, keep or standardize
+        title: 'error_title'.tr(), // Common key, keep or standardize
         message: message,
         contentType: ContentType.failure,
       ),

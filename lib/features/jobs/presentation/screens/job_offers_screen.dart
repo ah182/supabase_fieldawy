@@ -188,7 +188,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Find the best opportunities',
+                                        'job_offers_feature.subtitle'.tr(),
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(
                                           color: Colors.white.withOpacity(0.85),
@@ -273,7 +273,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                                         icon: const Icon(
                                             Icons.keyboard_tab_rounded),
                                         color: theme.colorScheme.primary,
-                                        tooltip: 'Accept suggestion',
+                                        tooltip: 'job_offers_feature.search.accept_suggestion'.tr(),
                                         onPressed: () {
                                           _searchController.text =
                                               _fullSuggestion;
@@ -485,7 +485,7 @@ class _AvailableJobsTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error: (error, stack) => Center(child: Text('products.error_occurred'.tr())),
     );
   }
 
@@ -601,7 +601,7 @@ class _MyJobOffersTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error: (error, stack) => Center(child: Text('products.error_occurred'.tr())),
     );
   }
 
@@ -1172,7 +1172,7 @@ void _showUserBottomSheet(BuildContext context, UserModel user) {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  user.displayName ?? 'مستخدم',
+                  user.displayName ?? 'comments_feature.user'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

@@ -191,7 +191,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
         );
 
         if (uploadedUrl == null) {
-          throw Exception('فشل رفع الصورة');
+          throw Exception('profile_feature.image_upload_failed'.tr());
         }
         imageUrl = uploadedUrl;
       }
@@ -200,12 +200,12 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
       
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
-        throw Exception('رقم الهاتف غير صحيح');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
       
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
-        throw Exception('رقم الهاتف يجب أن يكون بتنسيق دولي صحيح (مثال: +201234567890)');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
 
       // 2. Update book data in Supabase
@@ -224,15 +224,15 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
         
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم تحديث الكتاب بنجاح'),
+            SnackBar(
+              content: Text('books_feature.update_success'.tr()),
               backgroundColor: Colors.green,
             ),
           );
           
           Navigator.of(context).pop(true);
         } else {
-          throw Exception('فشل تحديث الكتاب');
+          throw Exception('books_feature.update_failed_message'.tr());
         }
       }
     } catch (e) {
@@ -241,7 +241,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: ${e.toString()}'),
+            content: Text('books_feature.error_occurred'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -253,7 +253,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تعديل كتاب'),
+        title: Text('books_feature.edit'.tr()),
         elevation: 0,
       ),
       body: Form(
@@ -279,15 +279,15 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                   ],
                 ),
                 child: _isProcessing
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
                             Text(
-                              'جارٍ معالجة الصورة...',
-                              style: TextStyle(
+                              'books_feature.processing_image'.tr(),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
@@ -338,15 +338,15 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.edit,
                                             size: 40,
                                             color: Colors.white,
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'اضغط لتغيير الصورة',
-                                            style: TextStyle(
+                                            'books_feature.tap_to_change_image'.tr(),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
@@ -368,7 +368,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
             TextFormField(
               controller: _bookNameController,
               decoration: InputDecoration(
-                labelText: 'اسم الكتاب *',
+                labelText: 'books_feature.name_label'.tr(),
                 prefixIcon: const Icon(Icons.book),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -377,7 +377,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'اسم الكتاب مطلوب';
+                  return 'books_feature.name_required'.tr();
                 }
                 return null;
               },
@@ -389,7 +389,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
             TextFormField(
               controller: _authorController,
               decoration: InputDecoration(
-                labelText: 'اسم المؤلف *',
+                labelText: 'books_feature.author_label'.tr(),
                 prefixIcon: const Icon(Icons.person_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -398,7 +398,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'اسم المؤلف مطلوب';
+                  return 'books_feature.author_required'.tr();
                 }
                 return null;
               },
@@ -412,7 +412,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               maxLines: 5,
               maxLength: 500,
               decoration: InputDecoration(
-                labelText: 'وصف الكتاب *',
+                labelText: 'books_feature.description_label'.tr(),
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 80),
                   child: Icon(Icons.description),
@@ -424,10 +424,10 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'وصف الكتاب مطلوب';
+                  return 'books_feature.description_required'.tr();
                 }
                 if (value.trim().length < 20) {
-                  return 'الوصف قصير جداً (20 حرف على الأقل)';
+                  return 'books_feature.description_too_short'.tr();
                 }
                 return null;
               },
@@ -439,9 +439,9 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'السعر (جنيه) *',
+                labelText: 'books_feature.price_label'.tr(),
                 prefixIcon: const Icon(Icons.attach_money),
-                suffixText: 'LE',
+                suffixText: 'products.currency'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -449,11 +449,11 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'السعر مطلوب';
+                  return 'books_feature.price_required'.tr();
                 }
                 final price = double.tryParse(value);
                 if (price == null || price <= 0) {
-                  return 'يرجى إدخال سعر صحيح';
+                  return 'products.invalid_price'.tr();
                 }
                 return null;
               },
@@ -511,7 +511,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات',
+                  _isSaving ? 'books_feature.saving'.tr() : 'books_feature.save_changes'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -529,5 +529,6 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
         ),
       ),
     );
-  }
+    
+}
 }

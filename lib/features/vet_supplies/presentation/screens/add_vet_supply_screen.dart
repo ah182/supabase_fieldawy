@@ -91,7 +91,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('vet_supplies_feature.messages.process_error'.tr(namedArgs: {'error': e.toString()})),
+            content: Text('vet_supplies_feature.messages.process_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -233,7 +233,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('vet_supplies_feature.messages.save_error'.tr(namedArgs: {'error': e.toString()})),
+            content: Text('vet_supplies_feature.messages.save_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );

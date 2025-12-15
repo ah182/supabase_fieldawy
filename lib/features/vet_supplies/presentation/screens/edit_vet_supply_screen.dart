@@ -114,7 +114,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('vet_supplies_feature.messages.process_error'.tr(namedArgs: {'error': e.toString()})),
+            content: Text('vet_supplies_feature.messages.process_error'.tr()),
             backgroundColor: Colors.red,
           ),
         );

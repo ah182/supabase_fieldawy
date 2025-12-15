@@ -4,11 +4,12 @@ import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class StorageService {
-  static const _cloudName = 'dk8twnfrk';
-  static const _apiKey = '554622557218694';
-  static const _apiSecret = 'vFNW9PX3Rt-4ARIBFPnO4qqhV9I';
+  static final _cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+  static final _apiKey = dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+  static final _apiSecret = dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
 
   final CloudinaryPublic _cloudinaryDocuments = CloudinaryPublic(
     _cloudName,

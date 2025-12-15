@@ -1540,7 +1540,7 @@ class _ProductReviewDetailsScreenState
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text('حدث خطأ: $error'),
+                child: Text('reviews_feature.loading_reviews_error'.tr()),
               ),
             ),
           ),
@@ -1761,7 +1761,7 @@ class _ProductReviewDetailsScreenState
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(result['message'] ??
-                                  'reviews_feature.report_error'.tr()),
+                                  'reviews_feature.add_review_error_generic'.tr()),
                             ),
                           );
                         }
@@ -1980,15 +1980,15 @@ class ReviewDetailCard extends ConsumerWidget {
                         // عرض رسالة في آخر الصفحة
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                             SnackBar(
                               content: Row(
                                 children: [
                                   Icon(Icons.delete_forever, color: Colors.white),
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      '🗑️ تم حذف التعليق تلقائياً بعد وصوله لـ 10 تقييمات "غير مفيد"',
-                                      style: TextStyle(fontSize: 14),
+                                      'reviews_feature.auto_deleted_message'.tr(),
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                   ),
                                 ],

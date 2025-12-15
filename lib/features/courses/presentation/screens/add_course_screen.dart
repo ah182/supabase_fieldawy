@@ -157,8 +157,8 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
 
     if (_processedImageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى إضافة صورة بوستر الكورس'),
+        SnackBar(
+          content: Text('courses_feature.poster_required'.tr()),
           backgroundColor: Colors.red,
         ),
       );
@@ -176,7 +176,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
       );
 
       if (imageUrl == null) {
-        throw Exception('فشل رفع الصورة');
+        throw Exception('profile_feature.image_upload_failed'.tr());
       }
 
       // 2. Save course data to Supabase
@@ -186,12 +186,12 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
       
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
-        throw Exception('رقم الهاتف غير صحيح');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
       
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
-        throw Exception('رقم الهاتف يجب أن يكون بتنسيق دولي صحيح (مثال: +201234567890)');
+        throw Exception('job_offers_feature.phone_invalid'.tr());
       }
       
       await repository.createCourse(
@@ -209,8 +209,8 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
         setState(() => _isSubmitting = false);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إضافة الكورس بنجاح'),
+          SnackBar(
+            content: Text('courses_feature.add_success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -223,7 +223,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: ${e.toString()}'),
+            content: Text('courses_feature.error_occurred'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -235,7 +235,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إضافة كورس بيطري'),
+        title: Text('courses_feature.add_title'.tr()),
         elevation: 0,
       ),
       body: Form(
@@ -254,13 +254,13 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
                   border: Border.all(color: Colors.grey[400]!),
                 ),
                 child: _isProcessing
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('جارٍ معالجة الصورة...'),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text('courses_feature.processing_image'.tr()),
                           ],
                         ),
                       )
@@ -275,7 +275,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'اضغط لإضافة بوستر الكورس',
+                                'courses_feature.tap_to_add_poster'.tr(),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[700],
@@ -298,7 +298,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               TextButton.icon(
                 onPressed: _showImageSourceDialog,
                 icon: const Icon(Icons.edit),
-                label: const Text('تغيير الصورة'),
+                label: Text('courses_feature.change_image'.tr()),
               ),
             ],
             const SizedBox(height: 24),
@@ -307,8 +307,8 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
             TextFormField(
               controller: _titleController,
               decoration: InputDecoration(
-                labelText: 'عنوان الكورس',
-                hintText: 'مثال: دورة الطب الباطني للخيول',
+                labelText: 'courses_feature.title_label'.tr(),
+                hintText: 'courses_feature.title_hint'.tr(),
                 prefixIcon: const Icon(Icons.title),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -317,10 +317,10 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'عنوان الكورس مطلوب';
+                  return 'courses_feature.title_required'.tr();
                 }
                 if (value.trim().length < 5) {
-                  return 'العنوان قصير جداً (5 أحرف على الأقل)';
+                  return 'courses_feature.title_too_short'.tr();
                 }
                 return null;
               },
@@ -334,8 +334,8 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               maxLines: 6,
               maxLength: 500,
               decoration: InputDecoration(
-                labelText: 'وصف الكورس',
-                hintText: 'اكتب وصفاً تفصيلياً عن محتوى الكورس...',
+                labelText: 'courses_feature.description_label'.tr(),
+                hintText: 'courses_feature.description_hint'.tr(),
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 100),
                   child: Icon(Icons.description),
@@ -347,10 +347,10 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'وصف الكورس مطلوب';
+                  return 'courses_feature.description_required'.tr();
                 }
                 if (value.trim().length < 20) {
-                  return 'الوصف قصير جداً (20 حرف على الأقل)';
+                  return 'courses_feature.description_too_short'.tr();
                 }
                 return null;
               },
@@ -362,10 +362,10 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               controller: _priceController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'سعر الكورس (جنيه)',
-                hintText: 'مثال: 500',
+                labelText: 'courses_feature.price_label'.tr(),
+                hintText: 'courses_feature.price_hint'.tr(),
                 prefixIcon: const Icon(Icons.attach_money),
-                suffixText: 'LE',
+                suffixText: 'products.currency'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -373,11 +373,11 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'سعر الكورس مطلوب';
+                  return 'courses_feature.price_required'.tr();
                 }
                 final price = double.tryParse(value);
                 if (price == null || price <= 0) {
-                  return 'يرجى إدخال سعر صحيح';
+                  return 'products.invalid_price'.tr();
                 }
                 return null;
               },

@@ -79,8 +79,8 @@ void _navigateToVetSupplies() {
 // ✅ ملف إعدادات Firebase
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
-    return const FirebaseOptions(
-      apiKey: "AIzaSyAySg6p5glXrsJUV2xPqzx47DDj0f3hy3c",
+    return FirebaseOptions(
+      apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
       appId: "1:665551059689:android:cd266cedbef84f5c888e78",
       messagingSenderId: "665551059689",
       projectId: "fieldawy-store-app",
@@ -113,6 +113,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     print('🔵 === Background handler started ===');
     
+    // Initialize dotenv for background handler BEFORE Firebase
+    try {
+      await dotenv.load(fileName: ".env");
+    } catch (e) {
+      print("⚠️ Failed to load .env file in background: $e");
+    }
+
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -130,8 +137,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Supabase for background operations
   try {
     await Supabase.initialize(
-      url: 'https://rkukzuwerbvmueuxadul.supabase.co',
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrdWt6dXdlcmJ2bXVldXhhZHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NTcwODcsImV4cCI6MjA3MzQzMzA4N30.Rs69KRvvB8u6A91ZXIzkmWebO_IyavZXJrO-SXa2_mc',
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
     );
   } catch (e) {
     // Supabase already initialized
@@ -570,6 +577,13 @@ Future<void> main() async {
   HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ✅ Load env variables FIRST
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("⚠️ Failed to load .env file: $e");
+  }
+
   // ✅ Firebase initialization
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -878,11 +892,7 @@ Future<void> main() async {
 
   // pdfrxFlutterInitialize(); // Not needed in pdfrx 1.3.5
   await EasyLocalization.ensureInitialized();
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    print("⚠️ Failed to load .env file: $e");
-  }
+  
   await Hive.initFlutter();
 
  
