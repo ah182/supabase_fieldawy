@@ -815,8 +815,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                       title: isFavorite ? 'تم الحذف' : 'نجاح',
                                       message: isFavorite
                                           ? 'تمت إزالة ${product.name} من المفضلة'
-                                          : 'addedToFavorites'
-                                              .tr(args: [product.name]),
+                                          : 'تمت إضافة ${product.name} للمفضلة',
                                       contentType: isFavorite
                                           ? ContentType.failure
                                           : ContentType.success,
@@ -1480,8 +1479,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                     title: isFavorite ? 'تم الحذف' : 'نجاح',
                                     message: isFavorite
                                         ? 'تمت إزالة ${product.name} من المفضلة'
-                                        : 'addedToFavorites'
-                                            .tr(args: [product.name]),
+                                        : 'تمت إضافة ${product.name} للمفضلة',
                                     contentType: isFavorite
                                         ? ContentType.failure
                                         : ContentType.success,

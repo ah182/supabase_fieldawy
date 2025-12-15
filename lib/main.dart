@@ -29,6 +29,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // ignore: unused_import
 import 'package:pdfrx/pdfrx.dart';
 import 'core/theme/app_theme.dart';
+// ignore: unused_import
 import 'core/localization/language_provider.dart';
 
 import 'services/app_state_manager.dart';
@@ -1159,7 +1160,6 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(languageProvider); // Watch for language changes
     final themeMode = ref.watch(themeNotifierProvider);
 
     return MaterialApp(
@@ -1169,7 +1169,7 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       title: 'Fieldawy Store',
       // DevicePreview support
       useInheritedMediaQuery: true,
-      locale: ref.watch(languageProvider),
+      locale: context.locale,
       builder: (context, child) {
         child = DevicePreview.appBuilder(context, child);
         return Directionality(

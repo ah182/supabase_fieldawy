@@ -42,6 +42,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                     elevation: 0,
                     behavior: SnackBarBehavior.floating,
                     backgroundColor: Colors.transparent,
+                    duration: const Duration(seconds: 2),
                     content: AwesomeSnackbarContent(
                       title: 'نجاح'.tr(),
                       message: 'تم حفظ $savedCount صفحة بنجاح في معرض الصور',

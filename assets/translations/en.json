@@ -242,7 +242,7 @@
       "distribution": {
         "direct": "Direct Distribution",
         "delivery": "Order Delivery",
-        "both": "Both Methods"
+        "both": "Distribution & Delivery "
       },
       "edit": {
         "title": "Edit Profile",

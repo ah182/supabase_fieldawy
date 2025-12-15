@@ -281,8 +281,8 @@ class FavoritesScreen extends HookConsumerWidget {
                                           ? 'profile_feature.favorites.removed_title'.tr() 
                                           : 'profile_feature.favorites.success_title'.tr(),
                                       message: isFavorite
-                                          ? 'profile_feature.favorites.removed_message'.tr(namedArgs: {'name': product.name})
-                                          : 'profile_feature.favorites.added_message'.tr(namedArgs: {'name': product.name}),
+                                          ? 'تمت إزالة ${product.name} من المفضلة'
+                                          : 'تمت إضافة ${product.name} للمفضلة',
                                       contentType: isFavorite
                                           ? ContentType.failure
                                           : ContentType.success,

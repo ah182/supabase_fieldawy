@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:fieldawy_store/core/localization/language_provider.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/governorate_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';

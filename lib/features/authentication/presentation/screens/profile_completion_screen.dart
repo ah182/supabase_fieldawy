@@ -206,51 +206,26 @@ class _ProfileCompletionScreenState
                   ),
                 ),
                 const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Column(
-                    children: [
-                      RadioListTile<String>(
-                        title: Text('auth.profile.direct_distribution'.tr()),
-                        value: 'direct_distribution',
-                        groupValue: _selectedDistributionMethod,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDistributionMethod = value;
-                          });
-                        },
-                        activeColor: Colors.blueAccent,
-                      ),
-                      Divider(height: 1, color: Colors.grey.shade200),
-                      RadioListTile<String>(
-                        title: Text('auth.profile.order_delivery'.tr()),
-                        value: 'order_delivery',
-                        groupValue: _selectedDistributionMethod,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDistributionMethod = value;
-                          });
-                        },
-                         activeColor: Colors.blueAccent,
-                      ),
-                       Divider(height: 1, color: Colors.grey.shade200),
-                      RadioListTile<String>(
-                        title: Text('auth.profile.both_methods'.tr()),
-                        value: 'both',
-                        groupValue: _selectedDistributionMethod,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDistributionMethod = value;
-                          });
-                        },
-                         activeColor: Colors.blueAccent,
-                      ),
-                    ],
-                  ),
+                Column(
+                  children: [
+                    _buildDistributionCard(
+                      icon: Icons.storefront_outlined,
+                      title: 'auth.profile.distribution.direct_distribution'.tr(),
+                      value: 'direct_distribution',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDistributionCard(
+                      icon: Icons.delivery_dining_outlined,
+                      title: 'auth.profile.distribution.order_delivery'.tr(),
+                      value: 'order_delivery',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDistributionCard(
+                      icon: Icons.all_inclusive_outlined,
+                      title: 'auth.profile.distribution.both_methods'.tr(),
+                      value: 'both',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 40),
               ] else 
@@ -263,6 +238,70 @@ class _ProfileCompletionScreenState
                       ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDistributionCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    final bool isSelected = _selectedDistributionMethod == value;
+    final Color selectedColor = Colors.blueAccent.shade700;
+    final Color unselectedColor = Colors.grey.shade600;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDistributionMethod = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: isSelected ? selectedColor.withOpacity(0.08) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? selectedColor : Colors.grey.shade300,
+            width: isSelected ? 2.0 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: selectedColor.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected ? selectedColor : unselectedColor,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? selectedColor : unselectedColor,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: selectedColor,
+              )
+          ],
         ),
       ),
     );
@@ -281,7 +320,8 @@ class _ProfileCompletionScreenState
       validator: validator,
       style: const TextStyle(color: Colors.black87),
       decoration: InputDecoration(
-        label: Text(label, style: TextStyle(color: const Color.fromARGB(255, 34, 40, 85))),
+        label: Text(label,
+            style: TextStyle(color: const Color.fromARGB(255, 34, 40, 85))),
         prefixIcon: Icon(icon, color: Colors.blueAccent),
         filled: true,
         fillColor: Colors.grey[50],

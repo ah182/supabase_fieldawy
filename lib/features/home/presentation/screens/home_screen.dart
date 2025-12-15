@@ -760,13 +760,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                           'favorite_snackbar_${DateTime.now().millisecondsSinceEpoch}'),
                                       message: isFavorite
                                           ? 'تمت إزالة ${product.name} من المفضلة'
-                                          : 'addedToFavorites'
-                                              .tr(args: [product.name]),
+                                          : 'تمت إضافة ${product.name} للمفضلة',
                                       contentType: isFavorite
                                           ? ContentType.failure
                                           : ContentType.success,
                                     ),
-                                    duration: const Duration(seconds: 1),
+                                    duration: const Duration(seconds: 2),
                                   ),
                                 );
                               },
