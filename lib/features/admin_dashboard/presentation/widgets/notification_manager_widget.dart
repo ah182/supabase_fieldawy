@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:responsive_builder/responsive_builder.dart';
 
 class NotificationManagerWidget extends ConsumerStatefulWidget {
   const NotificationManagerWidget({super.key});
@@ -134,11 +135,11 @@ class _NotificationManagerWidgetState
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _previewNotification,
-                    icon: const Icon(Icons.preview),
+                
                     label: const Text('Preview'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 5),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton.icon(
@@ -175,33 +176,64 @@ class _NotificationManagerWidgetState
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: RadioListTile<String>(
-                title: const Text('All Users'),
-                value: 'all',
-                groupValue: _targetType,
-                onChanged: (value) => setState(() => _targetType = value!),
-              ),
-            ),
-            Expanded(
-              child: RadioListTile<String>(
-                title: const Text('By Role'),
-                value: 'role',
-                groupValue: _targetType,
-                onChanged: (value) => setState(() => _targetType = value!),
-              ),
-            ),
-            Expanded(
-              child: RadioListTile<String>(
-                title: const Text('By Governorate'),
-                value: 'governorate',
-                groupValue: _targetType,
-                onChanged: (value) => setState(() => _targetType = value!),
-              ),
-            ),
-          ],
+        ResponsiveBuilder(
+          builder: (context, sizingInformation) {
+            final isMobile = sizingInformation.isMobile;
+            
+            if (isMobile) {
+              return Column(
+                children: [
+                  RadioListTile<String>(
+                    title: const Text('All Users'),
+                    value: 'all',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('By Role'),
+                    value: 'role',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('By Governorate'),
+                    value: 'governorate',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                ],
+              );
+            }
+            
+            return Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('All Users'),
+                    value: 'all',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('By Role'),
+                    value: 'role',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text('By Governorate'),
+                    value: 'governorate',
+                    groupValue: _targetType,
+                    onChanged: (value) => setState(() => _targetType = value!),
+                  ),
+                ),
+              ],
+            );
+          }
         ),
         
         // Role/Governorate Dropdown

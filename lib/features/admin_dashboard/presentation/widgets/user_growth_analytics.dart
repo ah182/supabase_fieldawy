@@ -28,48 +28,106 @@ class _UserGrowthAnalyticsState extends ConsumerState<UserGrowthAnalytics> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.trending_up,
-                      color: Colors.green.shade700, size: 28),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'User Growth Analytics',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 600) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.trending_up,
+                                color: Colors.green.shade700, size: 28),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'User Growth Analytics',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Period selector
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: '7days',
+                              label: Text('Last 7 Days'),
+                              icon: Icon(Icons.calendar_today, size: 16),
+                            ),
+                            ButtonSegment(
+                              value: '30days',
+                              label: Text('Last 30 Days'),
+                              icon: Icon(Icons.calendar_month, size: 16),
+                            ),
+                          ],
+                          selected: {_selectedPeriod},
+                          onSelectionChanged: (Set<String> newSelection) {
+                            setState(() {
+                              _selectedPeriod = newSelection.first;
+                            });
+                          },
                         ),
-                  ),
-                ),
-                // Period selector
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: '7days',
-                      label: Text('Last 7 Days'),
-                      icon: Icon(Icons.calendar_today, size: 16),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.trending_up,
+                          color: Colors.green.shade700, size: 28),
                     ),
-                    ButtonSegment(
-                      value: '30days',
-                      label: Text('Last 30 Days'),
-                      icon: Icon(Icons.calendar_month, size: 16),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'User Growth Analytics',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    // Period selector
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: '7days',
+                          label: Text('Last 7 Days'),
+                          icon: Icon(Icons.calendar_today, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: '30days',
+                          label: Text('Last 30 Days'),
+                          icon: Icon(Icons.calendar_month, size: 16),
+                        ),
+                      ],
+                      selected: {_selectedPeriod},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        setState(() {
+                          _selectedPeriod = newSelection.first;
+                        });
+                      },
                     ),
                   ],
-                  selected: {_selectedPeriod},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    setState(() {
-                      _selectedPeriod = newSelection.first;
-                    });
-                  },
-                ),
-              ],
+                );
+              }
             ),
             const SizedBox(height: 24),
             // Charts
@@ -138,56 +196,81 @@ class _UserGrowthAnalyticsState extends ConsumerState<UserGrowthAnalytics> {
         ? ((data.last.totalUsers - data.first.totalUsers) / data.first.totalUsers * 100)
         : 0.0;
 
-    return Row(
-      children: [
-        Expanded(
-          child: _StatBox(
-            label: 'New Users',
-            value: '$totalNewUsers',
-            icon: Icons.person_add,
-            color: Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatBox(
-            label: 'Doctors',
-            value: '$totalDoctors',
-            icon: Icons.medical_services,
-            color: Colors.green,
-            subtitle: '${(totalDoctors / totalNewUsers * 100).toStringAsFixed(0)}%',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatBox(
-            label: 'Distributors',
-            value: '$totalDistributors',
-            icon: Icons.local_shipping,
-            color: Colors.purple,
-            subtitle: '${(totalDistributors / totalNewUsers * 100).toStringAsFixed(0)}%',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatBox(
-            label: 'Companies',
-            value: '$totalCompanies',
-            icon: Icons.business,
-            color: Colors.teal,
-            subtitle: '${(totalCompanies / totalNewUsers * 100).toStringAsFixed(0)}%',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatBox(
-            label: 'Growth Rate',
-            value: '${growthRate.toStringAsFixed(1)}%',
-            icon: growthRate >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-            color: growthRate >= 0 ? Colors.green : Colors.red,
-          ),
-        ),
-      ],
+    final stats = [
+      _StatItem(
+        label: 'New Users',
+        value: '$totalNewUsers',
+        icon: Icons.person_add,
+        color: Colors.blue,
+      ),
+      _StatItem(
+        label: 'Doctors',
+        value: '$totalDoctors',
+        icon: Icons.medical_services,
+        color: Colors.green,
+        subtitle: totalNewUsers > 0 ? '${(totalDoctors / totalNewUsers * 100).toStringAsFixed(0)}%' : '0%',
+      ),
+      _StatItem(
+        label: 'Distributors',
+        value: '$totalDistributors',
+        icon: Icons.local_shipping,
+        color: Colors.purple,
+        subtitle: totalNewUsers > 0 ? '${(totalDistributors / totalNewUsers * 100).toStringAsFixed(0)}%' : '0%',
+      ),
+      _StatItem(
+        label: 'Companies',
+        value: '$totalCompanies',
+        icon: Icons.business,
+        color: Colors.teal,
+        subtitle: totalNewUsers > 0 ? '${(totalCompanies / totalNewUsers * 100).toStringAsFixed(0)}%' : '0%',
+      ),
+      _StatItem(
+        label: 'Growth Rate',
+        value: '${growthRate.toStringAsFixed(1)}%',
+        icon: growthRate >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+        color: growthRate >= 0 ? Colors.green : Colors.red,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        if (isMobile) {
+          // Mobile layout: Use Wrap or Grid
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: stats.map((stat) => SizedBox(
+              width: (constraints.maxWidth - 12) / 2, // 2 items per row
+              child: _StatBox(
+                label: stat.label,
+                value: stat.value,
+                icon: stat.icon,
+                color: stat.color,
+                subtitle: stat.subtitle,
+                isMobile: true,
+              ),
+            )).toList(),
+          );
+        } else {
+          // Desktop/Tablet layout: Row
+          return Row(
+            children: stats.map((stat) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: stat == stats.last ? 0 : 12),
+                child: _StatBox(
+                  label: stat.label,
+                  value: stat.value,
+                  icon: stat.icon,
+                  color: stat.color,
+                  subtitle: stat.subtitle,
+                  isMobile: false,
+                ),
+              ),
+            )).toList(),
+          );
+        }
+      },
     );
   }
 
@@ -351,6 +434,7 @@ class _StatBox extends StatelessWidget {
     required this.icon,
     required this.color,
     this.subtitle,
+    this.isMobile = false,
   });
 
   final String label;
@@ -358,11 +442,12 @@ class _StatBox extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String? subtitle;
+  final bool isMobile;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -371,12 +456,12 @@ class _StatBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: color, size: isMobile ? 20 : 24),
           const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: isMobile ? 18 : 24,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -384,7 +469,7 @@ class _StatBox extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: isMobile ? 10 : 12,
               color: Colors.grey[600],
             ),
           ),
@@ -392,7 +477,7 @@ class _StatBox extends StatelessWidget {
             Text(
               subtitle!,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: isMobile ? 9 : 10,
                 color: color,
                 fontWeight: FontWeight.bold,
               ),
@@ -403,4 +488,18 @@ class _StatBox extends StatelessWidget {
   }
 }
 
+class _StatItem {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final String? subtitle;
 
+  _StatItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.subtitle,
+  });
+}

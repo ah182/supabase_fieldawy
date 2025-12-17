@@ -1,7 +1,15 @@
+// ignore_for_file: duplicate_import
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/admin_dashboard/data/activity_repository.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/features/admin_dashboard/data/activity_repository.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'package:responsive_builder/responsive_builder.dart';
 
 class RecentActivityTimeline extends ConsumerWidget {
   const RecentActivityTimeline({super.key});
@@ -10,102 +18,109 @@ class RecentActivityTimeline extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activitiesAsync = ref.watch(recentActivitiesProvider);
 
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+    return ResponsiveBuilder(
+      builder: (context, sizingInformation) {
+        final isMobile = sizingInformation.isMobile;
+        final padding = isMobile ? 12.0 : 24.0;
+
+        return Card(
+          elevation: 4,
+          child: Padding(
+            padding: EdgeInsets.all(padding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.timeline,
-                      color: Colors.purple.shade700, size: 28),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Recent Activity',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
-                  onPressed: () {
-                    ref.invalidate(recentActivitiesProvider);
-                  },
-                  tooltip: 'Refresh',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Activity List
-            activitiesAsync.when(
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              error: (err, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text('Error loading activities'),
-                      TextButton(
-                        onPressed: () {
-                          ref.invalidate(recentActivitiesProvider);
-                        },
-                        child: const Text('Retry'),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade100,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
-                  ),
+                      child: Icon(Icons.timeline,
+                          color: Colors.purple.shade700, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Recent Activity',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: () {
+                        ref.invalidate(recentActivitiesProvider);
+                      },
+                      tooltip: 'Refresh',
+                    ),
+                  ],
                 ),
-              ),
-              data: (activities) {
-                if (activities.isEmpty) {
-                  return const Center(
+                const SizedBox(height: 24),
+                // Activity List
+                activitiesAsync.when(
+                  loading: () => Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32.0),
+                      padding: EdgeInsets.all(padding),
+                      child: const CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (err, stack) => Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(padding),
                       child: Column(
                         children: [
-                          Icon(Icons.history, size: 48, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text('No recent activities'),
+                          const Icon(Icons.error_outline,
+                              size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          const Text('Error loading activities'),
+                          TextButton(
+                            onPressed: () {
+                              ref.invalidate(recentActivitiesProvider);
+                            },
+                            child: const Text('Retry'),
+                          ),
                         ],
                       ),
                     ),
-                  );
-                }
+                  ),
+                  data: (activities) {
+                    if (activities.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(padding),
+                          child: const Column(
+                            children: [
+                              Icon(Icons.history, size: 48, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text('No recent activities'),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activities.length > 10 ? 10 : activities.length,
-                  separatorBuilder: (context, index) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final activity = activities[index];
-                    return _ActivityItem(activity: activity);
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: activities.length > 10 ? 10 : activities.length,
+                      separatorBuilder: (context, index) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final activity = activities[index];
+                        return _ActivityItem(activity: activity);
+                      },
+                    );
                   },
-                );
-              },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -54,73 +54,142 @@ class _AdvancedSearchWidgetState extends ConsumerState<AdvancedSearchWidget> {
               ],
             ),
             const SizedBox(height: 24),
-            // Search bar with category filter
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search across all dashboard data...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    onSubmitted: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'all',
-                      label: Text('All'),
-                      icon: Icon(Icons.all_inclusive, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: 'users',
-                      label: Text('Users'),
-                      icon: Icon(Icons.people, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: 'products',
-                      label: Text('Products'),
-                      icon: Icon(Icons.inventory_2, size: 16),
-                    ),
-                  ],
-                  selected: {_selectedCategory},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    setState(() {
-                      _selectedCategory = newSelection.first;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                        // Search bar with category filter
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth < 600) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search across all dashboard data...',
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.grey[50],
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                    },
+                                    onSubmitted: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SegmentedButton<String>(
+                                    segments: const [
+                                      ButtonSegment(
+                                        value: 'all',
+                                        label: Text('All'),
+                                        icon: Icon(Icons.all_inclusive, size: 16),
+                                      ),
+                                      ButtonSegment(
+                                        value: 'users',
+                                        label: Text('Users'),
+                                        icon: Icon(Icons.people, size: 16),
+                                      ),
+                                      ButtonSegment(
+                                        value: 'products',
+                                        label: Text('Products'),
+                                        icon: Icon(Icons.inventory_2, size: 16),
+                                      ),
+                                    ],
+                                    selected: {_selectedCategory},
+                                    onSelectionChanged: (Set<String> newSelection) {
+                                      setState(() {
+                                        _selectedCategory = newSelection.first;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search across all dashboard data...',
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.grey[50],
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                    },
+                                    onSubmitted: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                SegmentedButton<String>(
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: 'all',
+                                      label: Text('All'),
+                                      icon: Icon(Icons.all_inclusive, size: 16),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'users',
+                                      label: Text('Users'),
+                                      icon: Icon(Icons.people, size: 16),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'products',
+                                      label: Text('Products'),
+                                      icon: Icon(Icons.inventory_2, size: 16),
+                                    ),
+                                  ],
+                                  selected: {_selectedCategory},
+                                  onSelectionChanged: (Set<String> newSelection) {
+                                    setState(() {
+                                      _selectedCategory = newSelection.first;
+                                    });
+                                  },
+                                ),
+                              ],
+                            );
+                          }
+                        ),            const SizedBox(height: 24),
             // Search results
             if (_searchQuery.isEmpty)
               _buildEmptyState()

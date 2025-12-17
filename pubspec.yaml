@@ -59,7 +59,7 @@ dependencies:
   printing: ^5.14.2
   fl_chart: ^0.69.0        # رسوميات ومخططات
   data_table_2:            # جدول متقدم للويب
-  responsive_builder:      # اختياري لراحة تصميم responsive
+  responsive_builder: ^0.7.1      # اختياري لراحة تصميم responsive
   pdfrx: ^1.3.5
   gal: ^2.3.2
   image: ^4.0.17

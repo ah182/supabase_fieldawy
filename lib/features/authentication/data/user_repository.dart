@@ -255,7 +255,10 @@ class UserRepository {
   }
 
   // Get all users
-  Future<List<UserModel>> getAllUsers() async {
+  Future<List<UserModel>> getAllUsers({bool bypassCache = false}) async {
+    if (bypassCache) {
+      return _fetchAllUsers();
+    }
     // استخدام Cache-First للمستخدمين (تتغير ببطء)
     return await _cache.cacheFirst<List<UserModel>>(
       key: 'all_users',
@@ -290,15 +293,31 @@ class UserRepository {
   // Delete user (admin only)
   Future<bool> deleteUser(String userId) async {
     try {
-      await _client.from('users').delete().eq('id', userId);
+      print('🗑️ Attempting to delete user completely (Auth + DB)...');
+      // Call the RPC function to delete from auth.users
+      await _client.rpc('delete_user_completely', params: {'user_id': userId});
       
       // حذف الكاش بعد الحذف
       _invalidateUsersCache(userId);
       
+      print('✅ User deleted successfully via RPC');
       return true;
     } catch (e) {
-      print('Error deleting user: $e');
-      return false;
+      print('⚠️ RPC delete failed (Function might not exist yet): $e');
+      print('🔄 Falling back to public.users delete...');
+      
+      try {
+        await _client.from('users').delete().eq('id', userId);
+        
+        // حذف الكاش بعد الحذف
+        _invalidateUsersCache(userId);
+        
+        print('✅ User deleted from public.users (Fallback)');
+        return true;
+      } catch (e2) {
+        print('❌ Error deleting user: $e2');
+        return false;
+      }
     }
   }
 
@@ -354,17 +373,26 @@ class UserRepository {
   }
 
   // Update user status (admin only)
-  Future<bool> updateUserStatus(String userId, String newStatus) async {
+  Future<bool> updateUserStatus(String userId, String newStatus, {String? rejectionReason}) async {
     try {
       print('📝 Attempting to update user $userId to status: $newStatus');
       print('🔑 Current auth user: ${_client.auth.currentUser?.id}');
       
+      final Map<String, dynamic> updateData = {
+        'account_status': newStatus,
+      };
+
+      if (rejectionReason != null) {
+        updateData['rejection_reason'] = rejectionReason;
+      } else if (newStatus != 'rejected') {
+        // Clear rejection reason if status is not rejected
+        updateData['rejection_reason'] = null;
+      }
+      
       // Try without RLS first (direct update)
       final response = await _client
           .from('users')
-          .update({
-            'account_status': newStatus,
-          })
+          .update(updateData)
           .eq('id', userId)
           .select();
       
@@ -500,7 +528,7 @@ final allDistributorsProvider = FutureProvider<List<UserModel>>((ref) {
 });
 
 final allUsersListProvider = FutureProvider<List<UserModel>>((ref) {
-  return ref.watch(userRepositoryProvider).getAllUsers();
+  return ref.watch(userRepositoryProvider).getAllUsers(bypassCache: true);
 });
 
 final wasInvitedProvider = FutureProvider.autoDispose<bool>((ref) async {

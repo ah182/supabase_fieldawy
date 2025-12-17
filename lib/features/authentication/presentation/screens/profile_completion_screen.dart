@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
-import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -103,7 +103,7 @@ class _ProfileCompletionScreenState
       if (!mounted) return;
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const DrawerWrapper()),
+        MaterialPageRoute(builder: (context) => const AuthGate()),
         (Route<dynamic> route) => false,
       );
     } catch (e) {

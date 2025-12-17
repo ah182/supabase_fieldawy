@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:responsive_builder/responsive_builder.dart';
 
 class GeographicDistributionWidget extends ConsumerWidget {
   const GeographicDistributionWidget({super.key});
@@ -140,109 +141,160 @@ class GeographicDistributionWidget extends ConsumerWidget {
                 // Top 3 governorates
                 final top3 = sortedGovs.take(3).toList();
 
-                return Column(
-                  children: [
-                    // Summary Stats
-                    Row(
+                return ResponsiveBuilder(
+                  builder: (context, sizingInformation) {
+                    final isMobile = sizingInformation.isMobile;
+                    
+                    return Column(
                       children: [
-                        Expanded(
-                          child: _SummaryCard(
+                        // Summary Stats
+                        if (isMobile) ...[
+                          _SummaryCard(
                             label: 'Total Governorates',
                             value: govDistribution.length.toString(),
                             icon: Icons.location_city,
                             color: Colors.cyan,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SummaryCard(
+                          const SizedBox(height: 12),
+                          _SummaryCard(
                             label: 'Users with Location',
                             value: totalWithGov.toString(),
                             icon: Icons.people,
                             color: Colors.green,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SummaryCard(
+                          const SizedBox(height: 12),
+                          _SummaryCard(
                             label: 'Coverage',
                             value:
                                 '${(totalWithGov / users.length * 100).toStringAsFixed(0)}%',
                             icon: Icons.pie_chart,
                             color: Colors.orange,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Top 3 Governorates
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.cyan.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Top 3 Governorates',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 16),
+                        ] else ...[
                           Row(
-                            children: top3.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final gov = entry.value;
-                              final medal = index == 0
-                                  ? '🥇'
-                                  : index == 1
-                                      ? '🥈'
-                                      : '🥉';
-                              return Expanded(
-                                child: _TopGovCard(
-                                  rank: medal,
-                                  name: gov.key,
-                                  count: gov.value['total']!,
+                            children: [
+                              Expanded(
+                                child: _SummaryCard(
+                                  label: 'Total Governorates',
+                                  value: govDistribution.length.toString(),
+                                  icon: Icons.location_city,
+                                  color: Colors.cyan,
                                 ),
-                              );
-                            }).toList(),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _SummaryCard(
+                                  label: 'Users with Location',
+                                  value: totalWithGov.toString(),
+                                  icon: Icons.people,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _SummaryCard(
+                                  label: 'Coverage',
+                                  value:
+                                      '${(totalWithGov / users.length * 100).toStringAsFixed(0)}%',
+                                  icon: Icons.pie_chart,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // All Governorates List
-                    SizedBox(
-                      height: 400,
-                      child: ListView.separated(
-                        itemCount: sortedGovs.length,
-                        separatorBuilder: (context, index) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final entry = sortedGovs[index];
-                          final govName = entry.key;
-                          final data = entry.value;
-                          final total = data['total']!;
-                          final percentage =
-                              (total / totalWithGov * 100).toStringAsFixed(1);
+                        const SizedBox(height: 24),
+                        // Top 3 Governorates
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.cyan.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Top 3 Governorates',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                              const SizedBox(height: 16),
+                              if (isMobile)
+                                Column(
+                                  children: top3.asMap().entries.map((entry) {
+                                    final index = entry.key;
+                                    final gov = entry.value;
+                                    final medal = index == 0
+                                        ? '🥇'
+                                        : index == 1
+                                            ? '🥈'
+                                            : '🥉';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      child: _TopGovCard(
+                                        rank: medal,
+                                        name: gov.key,
+                                        count: gov.value['total']!,
+                                      ),
+                                    );
+                                  }).toList(),
+                                )
+                              else
+                                Row(
+                                  children: top3.asMap().entries.map((entry) {
+                                    final index = entry.key;
+                                    final gov = entry.value;
+                                    final medal = index == 0
+                                        ? '🥇'
+                                        : index == 1
+                                            ? '🥈'
+                                            : '🥉';
+                                    return Expanded(
+                                      child: _TopGovCard(
+                                        rank: medal,
+                                        name: gov.key,
+                                        count: gov.value['total']!,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // All Governorates List
+                        SizedBox(
+                          height: 400,
+                          child: ListView.separated(
+                            itemCount: sortedGovs.length,
+                            separatorBuilder: (context, index) => const Divider(),
+                            itemBuilder: (context, index) {
+                              final entry = sortedGovs[index];
+                              final govName = entry.key;
+                              final data = entry.value;
+                              final total = data['total']!;
+                              final percentage =
+                                  (total / totalWithGov * 100).toStringAsFixed(1);
 
-                          return _GovernorateItem(
-                            name: govName,
-                            total: total,
-                            percentage: percentage,
-                            doctors: data['doctor'] ?? 0,
-                            distributors: data['distributor'] ?? 0,
-                            companies: data['company'] ?? 0,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                              return _GovernorateItem(
+                                name: govName,
+                                total: total,
+                                percentage: percentage,
+                                doctors: data['doctor'] ?? 0,
+                                distributors: data['distributor'] ?? 0,
+                                companies: data['company'] ?? 0,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }
                 );
     }
 
@@ -368,98 +420,140 @@ class _GovernorateItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
+      child: Column(
         children: [
-          // Icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.cyan.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Icon(Icons.location_on,
-                  color: Colors.cyan.shade700, size: 24),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Name and details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    _RoleBadge(
-                        icon: Icons.medical_services,
-                        count: doctors,
-                        color: Colors.green),
-                    const SizedBox(width: 8),
-                    _RoleBadge(
-                        icon: Icons.local_shipping,
-                        count: distributors,
-                        color: Colors.purple),
-                    const SizedBox(width: 8),
-                    _RoleBadge(
-                        icon: Icons.business,
-                        count: companies,
-                        color: Colors.teal),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Count and percentage
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
-              Text(
-                '$total',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
+              // Icon
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                width: isMobile ? 32 : 40,
+                height: isMobile ? 32 : 40,
                 decoration: BoxDecoration(
                   color: Colors.cyan.shade100,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.cyan.shade700,
-                  ),
+                child: Center(
+                  child: Icon(Icons.location_on,
+                      color: Colors.cyan.shade700, size: isMobile ? 20 : 24),
                 ),
               ),
+              const SizedBox(width: 12),
+              // Name and details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isMobile ? 14 : 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (isMobile)
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          _RoleBadge(
+                              icon: Icons.medical_services,
+                              count: doctors,
+                              color: Colors.green),
+                          _RoleBadge(
+                              icon: Icons.local_shipping,
+                              count: distributors,
+                              color: Colors.purple),
+                          _RoleBadge(
+                              icon: Icons.business,
+                              count: companies,
+                              color: Colors.teal),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          _RoleBadge(
+                              icon: Icons.medical_services,
+                              count: doctors,
+                              color: Colors.green),
+                          const SizedBox(width: 8),
+                          _RoleBadge(
+                              icon: Icons.local_shipping,
+                              count: distributors,
+                              color: Colors.purple),
+                          const SizedBox(width: 8),
+                          _RoleBadge(
+                              icon: Icons.business,
+                              count: companies,
+                              color: Colors.teal),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              // Count and percentage
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$total',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMobile ? 16 : 20,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$percentage%',
+                      style: TextStyle(
+                        fontSize: isMobile ? 10 : 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.cyan.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 12),
+                // Progress bar (Desktop only)
+                SizedBox(
+                  width: 100,
+                  child: LinearProgressIndicator(
+                    value: double.parse(percentage) / 100,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade400),
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(width: 12),
-          // Progress bar
-          SizedBox(
-            width: 100,
-            child: LinearProgressIndicator(
-              value: double.parse(percentage) / 100,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade400),
-              minHeight: 8,
-              borderRadius: BorderRadius.circular(4),
+          // Progress bar for Mobile (below row)
+          if (isMobile)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0, left: 44),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: double.parse(percentage) / 100,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.cyan.shade400),
+                  minHeight: 6,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

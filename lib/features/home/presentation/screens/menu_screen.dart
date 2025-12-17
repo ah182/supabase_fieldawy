@@ -1,6 +1,7 @@
 import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
 // ignore: unused_import
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/admin_scaffold.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/theme/app_theme.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
@@ -22,6 +23,7 @@ import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_p
 import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
@@ -406,6 +408,10 @@ class MenuScreen extends ConsumerWidget {
     );
   }
 
+
+
+// ... existing code ...
+
   Widget _getAdminMenuItems(BuildContext context) {
     return _buildMenuItem(
       icon: Icons.admin_panel_settings,
@@ -414,7 +420,7 @@ class MenuScreen extends ConsumerWidget {
         ZoomDrawer.of(context)!.close();
         // استخدام النسخة Web المناسبة للإدارة
         Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => const AdminDashboardScreen()));
+            builder: (context) => const AdminScaffold()));
       },
     );
   }

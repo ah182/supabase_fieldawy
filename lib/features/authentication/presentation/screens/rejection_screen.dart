@@ -1,5 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_role.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
+import 'package:fieldawy_store/features/authentication/presentation/screens/document_upload_screen.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -80,20 +83,82 @@ class RejectionScreen extends ConsumerWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(height: 1.5),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
+              // Show Rejection Reason if available
+              Consumer(
+                builder: (context, ref, child) {
+                  final userDataAsync = ref.watch(userDataProvider);
+                  return userDataAsync.when(
+                    data: (user) {
+                      if (user != null &&
+                          user.rejectionReason != null &&
+                          user.rejectionReason!.isNotEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'auth.rejection.reason'.tr(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade800,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                user.rejectionReason!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.red.shade900),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
                   final user = ref.read(authServiceProvider).currentUser;
                   if (user != null) {
+                    final userData = await ref
+                        .read(userRepositoryProvider)
+                        .getUser(user.id);
+
                     await ref
                         .read(userRepositoryProvider)
                         .reInitiateOnboarding(user.id);
+
                     if (context.mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                            builder: (context) => const AuthGate()),
-                        (Route<dynamic> route) => false,
-                      );
+                      if (userData != null) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => DocumentUploadScreen(
+                              role: UserRoleHelper.fromString(userData.role),
+                              governorates: userData.governorates ?? [],
+                              centers: userData.centers ?? [],
+                            ),
+                          ),
+                          (Route<dynamic> route) => false,
+                        );
+                      } else {
+                        // Fallback in case user data is missing (unlikely)
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) => const AuthGate()),
+                          (Route<dynamic> route) => false,
+                        );
+                      }
                     }
                   }
                 },

@@ -667,6 +667,7 @@ class _UsersDataSource extends DataTableSource {
 
   void _showEditDialog(UserModel user) {
     String selectedStatus = user.accountStatus;
+    final rejectionReasonController = TextEditingController();
 
     showDialog(
       context: context,
@@ -710,6 +711,19 @@ class _UsersDataSource extends DataTableSource {
                   }
                 },
               ),
+              if (selectedStatus == 'rejected') ...[
+                const SizedBox(height: 16),
+                const Text('Rejection Reason:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: rejectionReasonController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter reason for rejection...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
             ],
           ),
           actions: [
@@ -750,6 +764,7 @@ class _UsersDataSource extends DataTableSource {
                 final success = await repository.updateUserStatus(
                   user.id,
                   selectedStatus,
+                  rejectionReason: selectedStatus == 'rejected' ? rejectionReasonController.text : null,
                 );
 
                 print('✅ Update result: $success');

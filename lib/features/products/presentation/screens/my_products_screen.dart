@@ -1503,6 +1503,21 @@ class MyProductsScreen extends HookConsumerWidget {
                                               .currentUser
                                               ?.id;
                                           if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .updateProductPriceInDistributorCatalog(
+                                                  distributorId: userId,
+                                                  productId: product.id,
+                                                  package: product.selectedPackage ?? '',
+                                                  newPrice: newPrice,
+                                                );
+
+                                            ref
+                                                .read(cachingServiceProvider)
+                                                .invalidateWithPrefix(
+                                                    'my_products_');
+                                            ref.invalidate(myProductsProvider);
+
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
@@ -1564,6 +1579,20 @@ class MyProductsScreen extends HookConsumerWidget {
                                               .currentUser
                                               ?.id;
                                           if (userId != null) {
+                                            await ref
+                                                .read(productRepositoryProvider)
+                                                .removeProductFromDistributorCatalog(
+                                                  distributorId: userId,
+                                                  productId: product.id,
+                                                  package: product.selectedPackage ?? '',
+                                                );
+
+                                            ref
+                                                .read(cachingServiceProvider)
+                                                .invalidateWithPrefix(
+                                                    'my_products_');
+                                            ref.invalidate(myProductsProvider);
+
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(

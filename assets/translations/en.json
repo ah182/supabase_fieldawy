@@ -175,7 +175,8 @@
       "documents_mismatch": "Documents Do Not Match",
       "rejection_message": "This application is designated for veterinarians and veterinary medicine distributors only. Access is not permitted for unauthorized categories.\n\nIf you belong to the mentioned categories, please re-upload the documents and wait for admin approval.",
       "reupload_documents": "Re-upload Documents",
-      "support_message": "Hello,\nI am having trouble with my account approval on the Fieldawy Store app and I need assistance.\nMy details are:\nEmail: {email} \n Name: {name}"
+      "support_message": "Hello,\nI am having trouble with my account approval on the Fieldawy Store app and I need assistance.\nMy details are:\nEmail: {email} \n Name: {name}",
+      "reason": "Reason for Rejection:"
     }
   },
   "home": {
@@ -856,6 +857,8 @@
             "title": "Leaderboard Info",
             "referral_code": "Your Referral Code",
             "code_copied": "Code Copied",
+            "referral_bonus_prefix": "You can enter the referral code sent to you by a friend to get 2 points in ",
+            "settings_page_link": "Settings Page",
             "rules_title": "Invite others to earn points:",
             "rule_1": "Invite a Veterinarian: You get 1 point, they get 2 points",
             "rule_2": "Invite a Distributor: You get 2 points, they get 2 points",

@@ -2,6 +2,7 @@ import 'package:fieldawy_store/features/authentication/data/user_repository.dart
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:responsive_builder/responsive_builder.dart';
 
 class PendingApprovalsWidget extends ConsumerWidget {
   const PendingApprovalsWidget({super.key});
@@ -34,7 +35,7 @@ class PendingApprovalsWidget extends ConsumerWidget {
     if (usersAsync.hasValue) {
       final users = usersAsync.value!;
         final pendingUsers = users
-            .where((u) => u.accountStatus == 'pending_review')
+            .where((u) => u.accountStatus == 'pending_review' || u.accountStatus == 'pending_re_review')
             .toList();
 
         final pendingDoctors =
@@ -62,6 +63,7 @@ class PendingApprovalsWidget extends ConsumerWidget {
                         'No Pending Approvals',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
+                              fontSize: 20
                             ),
                       ),
                     ],
@@ -76,128 +78,163 @@ class PendingApprovalsWidget extends ConsumerWidget {
 
         return Card(
           elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
+          child: ResponsiveBuilder(
+            builder: (context, sizingInformation) {
+              final isMobile = sizingInformation.isMobile;
+              
+              return Padding(
+                padding: EdgeInsets.all(isMobile ? 11.0 : 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.pending_actions,
-                          color: Colors.orange.shade700, size: 28),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pending Approvals',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          Text(
-                            '$totalPending requests waiting for review',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                          child: Icon(Icons.pending_actions,
+                              color: Colors.orange.shade700, size: isMobile ? 24 : 28),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pending Approvals',
+                                style: isMobile 
+                                    ? Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)
+                                    : Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '$totalPending requests waiting for review',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Colors.grey[600],
+                                      fontSize: isMobile ? 12 : null,
+                                    ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        if (!isMobile) // Show refresh button only on non-mobile or use icon only
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ref.invalidate(allUsersListProvider);
+                          },
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Refresh'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                          ),
+                        ) else
+                        IconButton(
+                          onPressed: () {
+                            ref.invalidate(allUsersListProvider);
+                          },
+                          icon: const Icon(Icons.refresh, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ref.invalidate(allUsersListProvider);
-                      },
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Refresh'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Pending counts
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PendingCount(
+                    const SizedBox(height: 24),
+                    // Pending counts
+                    if (isMobile) ...[
+                      _PendingCount(
                         icon: Icons.medical_services,
                         label: 'Doctors',
                         count: pendingDoctors.length,
                         color: Colors.green,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _PendingCount(
+                      const SizedBox(height: 8),
+                      _PendingCount(
                         icon: Icons.local_shipping,
                         label: 'Distributors',
                         count: pendingDistributors.length,
                         color: Colors.purple,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _PendingCount(
+                      const SizedBox(height: 8),
+                      _PendingCount(
                         icon: Icons.business,
                         label: 'Companies',
                         count: pendingCompanies.length,
                         color: Colors.teal,
-                    ),
-                    ),
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _PendingCount(
+                              icon: Icons.medical_services,
+                              label: 'Doctors',
+                              count: pendingDoctors.length,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _PendingCount(
+                              icon: Icons.local_shipping,
+                              label: 'Distributors',
+                              count: pendingDistributors.length,
+                              color: Colors.purple,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _PendingCount(
+                              icon: Icons.business,
+                              label: 'Companies',
+                              count: pendingCompanies.length,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    // Pending list
+                    ...pendingDoctors.take(3).map((user) => _UserPendingItem(
+                          user: user,
+                          onApprove: () => _approveUser(ref, user),
+                          onReject: () => _rejectUser(context, ref, user),
+                        )),
+                    ...pendingDistributors.take(3).map((user) => _UserPendingItem(
+                          user: user,
+                          onApprove: () => _approveUser(ref, user),
+                          onReject: () => _rejectUser(context, ref, user),
+                        )),
+                    ...pendingCompanies.take(3).map((user) => _UserPendingItem(
+                          user: user,
+                          onApprove: () => _approveUser(ref, user),
+                          onReject: () => _rejectUser(context, ref, user),
+                        )),
+                    if (totalPending > 9) ...[
+                      const SizedBox(height: 16),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            // Navigate to Users Management
+                            // You can implement navigation here
+                          },
+                          child: Text('View all $totalPending pending requests →'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-                // Pending list
-                ...pendingDoctors.take(3).map((user) => _UserPendingItem(
-                      user: user,
-                      onApprove: () => _approveUser(ref, user),
-                      onReject: () => _rejectUser(ref, user),
-                    )),
-                ...pendingDistributors.take(3).map((user) => _UserPendingItem(
-                      user: user,
-                      onApprove: () => _approveUser(ref, user),
-                      onReject: () => _rejectUser(ref, user),
-                    )),
-                ...pendingCompanies.take(3).map((user) => _UserPendingItem(
-                      user: user,
-                      onApprove: () => _approveUser(ref, user),
-                      onReject: () => _rejectUser(ref, user),
-                    )),
-                if (totalPending > 9) ...[
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        // Navigate to Users Management
-                        // You can implement navigation here
-                      },
-                      child: Text('View all $totalPending pending requests →'),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              );
+            },
           ),
         );
     }
-
     // Fallback
     return const Card(
       child: Padding(
@@ -219,16 +256,57 @@ class PendingApprovalsWidget extends ConsumerWidget {
     }
   }
 
-  Future<void> _rejectUser(WidgetRef ref, UserModel user) async {
-    try {
-      await ref
-          .read(userRepositoryProvider)
-          .updateUserStatus(user.id, 'rejected');
-      ref.invalidate(allUsersListProvider);
-    } catch (e) {
-      // Handle error
-      debugPrint('Error rejecting user: $e');
-    }
+  Future<void> _rejectUser(BuildContext context, WidgetRef ref, UserModel user) async {
+    print('Open reject dialog for user: ${user.id}');
+    final reasonController = TextEditingController();
+
+    return showDialog(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reject User'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please provide a reason for rejection:'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  hintText: 'Rejection reason...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  await ref.read(userRepositoryProvider).updateUserStatus(
+                        user.id,
+                        'rejected',
+                        rejectionReason: reasonController.text,
+                      );
+                  ref.invalidate(allUsersListProvider);
+                } catch (e) {
+                  debugPrint('Error rejecting user: $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: const Text('Reject'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   static void _showDocumentDialog(BuildContext context, String documentUrl) {
@@ -409,10 +487,14 @@ class _UserPendingItem extends StatelessWidget {
                 Text(
                   user.displayName ?? 'Unknown',
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   user.email ?? '',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

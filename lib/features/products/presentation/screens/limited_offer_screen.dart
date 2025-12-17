@@ -18,6 +18,39 @@ class LimitedOfferScreen extends ConsumerWidget {
   const LimitedOfferScreen({super.key});
 
   void _showAddDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            const Text('معلومة هامة'),
+          ],
+        ),
+        content: const Text(
+          'تنويه: مدة العرض المحدود هي 7 أيام فقط.\nسيتم عرض المنتج للمستخدمين لمدة 7 أيام ثم يتم حذفه تلقائياً من قائمة العروض.',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context); // Close info dialog
+              _showSelectionBottomSheet(context); // Open selection sheet
+            },
+            child: const Text('متابعة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSelectionBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -152,7 +185,18 @@ class LimitedOfferScreen extends ConsumerWidget {
       body: offersAsync.when(
         data: (offers) {
           if (offers.isEmpty) {
-            return _EmptyState(onAddPressed: () => _showAddDialog(context));
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(myOffersProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height - kToolbarHeight,
+                  child: _EmptyState(onAddPressed: () => _showAddDialog(context)),
+                ),
+              ),
+            );
           }
 
           return RefreshIndicator(

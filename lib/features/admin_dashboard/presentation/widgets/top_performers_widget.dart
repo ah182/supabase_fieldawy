@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/admin_dashboard/data/analytics_repository.dart';
+import 'package:responsive_builder/responsive_builder.dart';
 
 class TopPerformersWidget extends ConsumerStatefulWidget {
   const TopPerformersWidget({super.key});
@@ -38,58 +39,123 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.emoji_events,
-                      color: Colors.amber.shade700, size: 28),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Top Performers',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+            ResponsiveBuilder(
+              builder: (context, sizingInformation) {
+                final isMobile = sizingInformation.isMobile;
+                
+                if (isMobile) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.emoji_events,
+                                color: Colors.amber.shade700, size: 28),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Top Performers',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search users or products...',
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                         ),
-                  ),
-                ),
-                SizedBox(
-                  width: 300,
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search users or products...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
+                    ],
+                  );
+                }
+                
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      child: Icon(Icons.emoji_events,
+                          color: Colors.amber.shade700, size: 28),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Top Performers',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 300,
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search users or products...',
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }
             ),
             const SizedBox(height: 24),
             // Tabs
@@ -140,6 +206,8 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
 
   Widget _buildProductsList(List<ProductPerformanceStats> products,
       {bool isSearch = false}) {
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     if (products.isEmpty) {
       return Center(
         child: Column(
@@ -149,7 +217,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             const SizedBox(height: 16),
             Text(
               isSearch ? 'No products found' : 'No data available',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 12 : 14),
             ),
           ],
         ),
@@ -165,8 +233,8 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
         
         return ListTile(
           leading: Container(
-            width: 40,
-            height: 40,
+            width: isMobile ? 32 : 40,
+            height: isMobile ? 32 : 40,
             decoration: BoxDecoration(
               color: _getRankColor(rank),
               borderRadius: BorderRadius.circular(8),
@@ -174,35 +242,78 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             child: Center(
               child: Text(
                 isSearch ? '•' : '#$rank',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: isMobile ? 12 : 16,
                 ),
               ),
             ),
           ),
           title: Text(
             product.productName,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (product.company != null)
-                Text('Company: ${product.company}'),
-              Text('Distributor: ${product.distributorName ?? "N/A"}'),
-              Row(
-                children: [
-                  Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text('${product.totalViews} views'),
-                  const SizedBox(width: 16),
-                  Icon(Icons.medical_services, size: 14, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text('${product.doctorViews} doctor views'),
-                ],
+                Text(
+                  'Company: ${product.company}', 
+                  style: TextStyle(fontSize: isMobile ? 11 : 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              Text(
+                'Distributor: ${product.distributorName ?? "N/A"}', 
+                style: TextStyle(fontSize: isMobile ? 11 : 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+              if (isMobile)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.remove_red_eye, size: 12, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text('${product.totalViews} views', style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.medical_services, size: 12, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text('${product.doctorViews} doctor views', style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 4,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text('${product.totalViews} views', style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.medical_services, size: 14, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text('${product.doctorViews} doctor views', style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
             ],
           ),
           trailing: Column(
@@ -212,14 +323,14 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
               if (product.price != null)
                 Text(
                   '${product.price!.toStringAsFixed(0)} LE',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: isMobile ? 12 : 16,
                   ),
                 ),
               Text(
                 '${product.distributorCount} distributors',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: isMobile ? 9 : 12, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -252,6 +363,8 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
 
   Widget _buildUsersList(List<UserActivityStats> users,
       {bool isSearch = false}) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     if (users.isEmpty) {
       return Center(
         child: Column(
@@ -261,7 +374,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             const SizedBox(height: 16),
             Text(
               isSearch ? 'No users found' : 'No data available',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 12 : 14),
             ),
           ],
         ),
@@ -277,8 +390,8 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
 
         return ListTile(
           leading: Container(
-            width: 40,
-            height: 40,
+            width: isMobile ? 32 : 40,
+            height: isMobile ? 32 : 40,
             decoration: BoxDecoration(
               color: _getRankColor(rank),
               borderRadius: BorderRadius.circular(8),
@@ -286,35 +399,68 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             child: Center(
               child: Text(
                 isSearch ? '•' : '#$rank',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: isMobile ? 12 : 16,
                 ),
               ),
             ),
           ),
           title: Text(
             user.displayName,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 16),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(user.email ?? 'No email'),
-              Row(
-                children: [
-                  _getRoleChip(user.role),
-                  const SizedBox(width: 8),
-                  Icon(Icons.inventory_2, size: 14, color: Colors.blue[600]),
-                  const SizedBox(width: 4),
-                  Text('${user.totalProducts} products'),
-                  const SizedBox(width: 12),
-                  Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text('${user.totalViews} views'),
-                ],
+              Text(
+                user.email ?? 'No email', 
+                style: TextStyle(fontSize: isMobile ? 11 : 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+              if (isMobile)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _getRoleChip(user.role),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.inventory_2, size: 12, color: Colors.blue[600]),
+                        const SizedBox(width: 4),
+                        Text('${user.totalProducts} products', style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.remove_red_eye, size: 12, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text('${user.totalViews} views', style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    _getRoleChip(user.role),
+                    const SizedBox(width: 8),
+                    Icon(Icons.inventory_2, size: 14, color: Colors.blue[600]),
+                    const SizedBox(width: 4),
+                    Text('${user.totalProducts} products', style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text('${user.totalViews} views', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
             ],
           ),
           trailing: Column(
@@ -323,14 +469,14 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
             children: [
               Text(
                 '${user.totalProducts}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
+                  fontSize: isMobile ? 16 : 20,
                 ),
               ),
               Text(
                 'Products',
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                style: TextStyle(fontSize: isMobile ? 9 : 10, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -343,6 +489,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
   Widget _getRoleChip(String role) {
     Color color;
     IconData icon;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     switch (role) {
       case 'doctor':
@@ -363,7 +510,7 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
@@ -371,12 +518,12 @@ class _TopPerformersWidgetState extends ConsumerState<TopPerformersWidget>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: isMobile ? 10 : 12, color: color),
           const SizedBox(width: 4),
           Text(
             role.toUpperCase(),
             style: TextStyle(
-              fontSize: 10,
+              fontSize: isMobile ? 9 : 10,
               color: color,
               fontWeight: FontWeight.bold,
             ),
