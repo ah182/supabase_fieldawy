@@ -17,16 +17,26 @@ class DistributorSubscriptionService {
     }
   }
 
-  /// Subscribe to a distributor (save to Hive + Increment server count)
+  /// Subscribe to a distributor (save to DB + Hive + Increment server count)
   static Future<bool> subscribe(String distributorId) async {
     try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      // 1. Insert into Supabase table
+      await _supabase.from('distributor_subscriptions').insert({
+        'user_id': userId,
+        'distributor_id': distributorId,
+      });
+
+      // 2. Update local cache
       await SubscriptionCacheService.addSubscription(distributorId);
       
-      // زيادة العداد في السيرفر
+      // 3. Increment counter (RPC)
       try {
         await _supabase.rpc('increment_subscribers', params: {'user_id': distributorId});
       } catch (e) {
-        // Fallback: تحديث يدوي إذا فشل RPC
+        // Fallback: Manual update
         try {
           final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
           final currentCount = (user['subscribers_count'] as int?) ?? 0;
@@ -37,16 +47,31 @@ class DistributorSubscriptionService {
       return true;
     } catch (e) {
       print('Error subscribing to distributor: $e');
+      // If error is duplicate key (already subscribed), treat as success for UI
+      if (e.toString().contains('23505') || e.toString().contains('unique constraint')) {
+         await SubscriptionCacheService.addSubscription(distributorId);
+         return true;
+      }
       return false;
     }
   }
 
-  /// Unsubscribe from a distributor (remove from Hive + Decrement server count)
+  /// Unsubscribe from a distributor (remove from DB + Hive + Decrement server count)
   static Future<bool> unsubscribe(String distributorId) async {
     try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      // 1. Remove from Supabase table
+      await _supabase.from('distributor_subscriptions').delete().match({
+        'user_id': userId,
+        'distributor_id': distributorId,
+      });
+
+      // 2. Update local cache
       await SubscriptionCacheService.removeSubscription(distributorId);
       
-      // إنقاص العداد في السيرفر
+      // 3. Decrement counter (RPC)
       try {
         await _supabase.rpc('decrement_subscribers', params: {'user_id': distributorId});
       } catch (e) {
@@ -63,6 +88,27 @@ class DistributorSubscriptionService {
     } catch (e) {
       print('Error unsubscribing from distributor: $e');
       return false;
+    }
+  }
+
+  /// Sync local cache with Supabase (Call this on app start or screen load)
+  static Future<void> syncSubscriptions() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await _supabase
+          .from('distributor_subscriptions')
+          .select('distributor_id')
+          .eq('user_id', userId);
+      
+      final List<String> serverIds = (response as List)
+          .map((row) => row['distributor_id'] as String)
+          .toList();
+      
+      await SubscriptionCacheService.syncWithServer(serverIds);
+    } catch (e) {
+      print('Error syncing subscriptions: $e');
     }
   }
 

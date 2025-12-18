@@ -11,17 +11,17 @@ import 'package:fieldawy_store/features/products/data/product_repository.dart';
 
 // استخدام myExpireDrugsProvider بدل expireDrugsProvider في هذه الصفحة
 
-class ExpireDrugsScreen extends StatelessWidget {
+class ExpireDrugsScreen extends ConsumerWidget {
   const ExpireDrugsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
 
-    void openAddOptions() {
-      showModalBottomSheet(
+    Future<void> openAddOptions() async {
+      await showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -61,15 +61,17 @@ class ExpireDrugsScreen extends StatelessWidget {
                     ),
                     title: const Text('Add from Catalog'),
                     subtitle: Text('addProduct.expireSoon.subtitle'.tr()),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(sheetContext).pop();
-                      Navigator.of(context).push(
+                      await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const AddFromCatalogScreen(
                               catalogContext: CatalogContext.myProducts,
                               showExpirationDate: true),
                         ),
                       );
+                      // Invalidate provider after returning from AddFromCatalogScreen
+                      ref.invalidate(myExpireDrugsProvider);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -82,14 +84,16 @@ class ExpireDrugsScreen extends StatelessWidget {
                     ),
                     title: const Text('Add from your Gallery'),
                     subtitle: Text('addProduct.expireSoon.subtitle'.tr()),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(sheetContext).pop();
-                      Navigator.of(context).push(
+                      await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const AddProductOcrScreen(
                               showExpirationDate: true),
                         ),
                       );
+                      // Invalidate provider after returning from AddProductOcrScreen
+                      ref.invalidate(myExpireDrugsProvider);
                     },
                   ),
                 ],
@@ -106,8 +110,8 @@ class ExpireDrugsScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Consumer(
-          builder: (context, ref, _) {
+        child: Builder(
+          builder: (context) {
             final expireDrugsAsync = ref.watch(myExpireDrugsProvider);
 
             return AnimatedSwitcher(

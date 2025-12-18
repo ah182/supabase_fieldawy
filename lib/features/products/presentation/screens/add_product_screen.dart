@@ -76,13 +76,10 @@ class AddProductScreen extends ConsumerWidget {
             icon: Icons.medical_services_rounded,
             title: 'products.add_options.surgical'.tr(),
             subtitle: 'products.add_options.surgical_desc'.tr(),
-            isLocked: isRestricted,
+            isLocked: false,
             onTap: () {
-              if (isRestricted) {
-                showRestrictionMessage();
-              } else {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SurgicalToolsScreen()));
-              }
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const SurgicalToolsScreen()));
             },
           ),
           const SizedBox(height: 16),

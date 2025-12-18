@@ -141,12 +141,15 @@ class UserRepository {
   }
 
   // دالة لجلب بيانات المستخدم مرة واحدة
-  Future<UserModel?> getUser(String id) async {
+  Future<UserModel?> getUser(String id, {bool forceRefresh = false}) async {
     final cacheKey = 'user_$id';
-    final cachedUser = _cache.get<UserModel>(cacheKey);
-
-    if (cachedUser != null && cachedUser.referralCode != null) {
-      return cachedUser;
+    UserModel? cachedUser;
+    
+    if (!forceRefresh) {
+      cachedUser = _cache.get<UserModel>(cacheKey);
+      if (cachedUser != null && cachedUser.referralCode != null) {
+        return cachedUser;
+      }
     }
 
     try {

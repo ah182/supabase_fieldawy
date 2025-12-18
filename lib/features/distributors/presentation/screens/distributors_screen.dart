@@ -23,6 +23,15 @@ import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'dart:async';
 import 'package:fieldawy_store/services/subscription_cache_service.dart';
 
+final subscribedDistributorsIdsProvider = FutureProvider<Set<String>>((ref) async {
+  // Ensure cache is ready
+  await SubscriptionCacheService.init();
+  // Note: We don't sync here to avoid race conditions and network overhead on every refresh.
+  // Syncing happens once on screen load via useEffect.
+  final list = await DistributorSubscriptionService.getSubscribedDistributorIds();
+  return list.toSet();
+});
+
 final distributorsProvider =
     FutureProvider<List<DistributorModel>>((ref) async {
   final supabase = Supabase.instance.client;
@@ -171,6 +180,19 @@ class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
       }
       return null;
     }, [debouncedSearchQuery.value, filteredDistributors]);
+
+    // Sync subscriptions from server on load
+    useEffect(() {
+      Future<void> sync() async {
+        await SubscriptionCacheService.init();
+        await DistributorSubscriptionService.syncSubscriptions();
+        if (context.mounted) {
+          ref.invalidate(subscribedDistributorsIdsProvider);
+        }
+      }
+      sync();
+      return null;
+    }, []);
 
     // تم إزالة تحسين أسماء المنتجات في الخلفية
 
@@ -973,7 +995,7 @@ class DistributorCardShimmer extends StatelessWidget {
 }
 
 // Widget منفصل للكارت مع state management محلي
-class _DistributorCard extends HookWidget {
+class _DistributorCard extends HookConsumerWidget {
   final DistributorModel distributor;
   final ThemeData theme;
   final UserModel? currentUser;
@@ -988,35 +1010,14 @@ class _DistributorCard extends HookWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isCompany = distributor.distributorType == 'company';
-    final isSubscribed = useState<bool?>(null);
     final isLoading = useState(false);
     final subscribersCountLocal = useState(distributor.subscribersCount);
-
-
-
-// ... (Rest of imports)
-
-// ... (Inside _DistributorCard build method)
-
-    // Load initial subscription state
-    useEffect(() {
-      Future<void> loadSubscription() async {
-        try {
-          // Ensure cache is initialized
-          await SubscriptionCacheService.init();
-          final subscribed = await DistributorSubscriptionService.isSubscribed(distributor.id);
-          if (context.mounted) {
-            isSubscribed.value = subscribed;
-          }
-        } catch (e) {
-          print('Error loading subscription for ${distributor.id}: $e');
-        }
-      }
-      loadSubscription();
-      return null;
-    }, []); // Empty dependency array ensures this runs once on mount
+    
+    // Watch the subscription state provider
+    final subscribedIdsAsync = ref.watch(subscribedDistributorsIdsProvider);
+    final isSubscribed = subscribedIdsAsync.asData?.value.contains(distributor.id) ?? false;
 
     return Container(
       decoration: BoxDecoration(
@@ -1288,16 +1289,16 @@ class _DistributorCard extends HookWidget {
                   ),
                 ),
                 // أيقونة الجرس للاشتراك
-                if (isSubscribed.value != null)
-                  Container(
+                // استخدام حالة الاشتراك من المزود
+                Container(
                     width: 33,
                     height: 33,
                     decoration: BoxDecoration(
-                      color: isSubscribed.value!
+                      color: isSubscribed
                           ? theme.colorScheme.primary // لون صلب عند الاشتراك
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(10), // تعديل الانحناء
-                      border: isSubscribed.value!
+                      border: isSubscribed
                           ? null
                           : Border.all(
                               color: theme.colorScheme.outline.withOpacity(0.3),
@@ -1309,10 +1310,10 @@ class _DistributorCard extends HookWidget {
                       padding: EdgeInsets.zero, // إزالة الحواشي ليتناسب مع الكونتينر الصغير
                       constraints: const BoxConstraints(), // إزالة القيود الافتراضية
                       icon: Icon(
-                        isSubscribed.value!
+                        isSubscribed
                             ? Icons.notifications_active_rounded
                             : Icons.notifications_none_rounded, // تغيير الأيقونة لتكون أجمل
-                        color: isSubscribed.value!
+                        color: isSubscribed
                             ? Colors.white // أيقونة بيضاء عند الاشتراك
                             : theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
@@ -1320,14 +1321,16 @@ class _DistributorCard extends HookWidget {
                           ? null
                           : () async {
                               isLoading.value = true;
+                              // Toggle subscription
                               final success = await DistributorSubscriptionService
                                   .toggleSubscription(distributor.id);
 
-                              if (success && context.mounted) {
-                                isSubscribed.value = !isSubscribed.value!;
+                              if (success) {
+                                // Refresh the provider to update UI
+                                ref.invalidate(subscribedDistributorsIdsProvider);
                                 
-                                // تحديث العداد محلياً
-                                if (isSubscribed.value!) {
+                                // تحديث العداد محلياً (Visual feedback)
+                                if (!isSubscribed) {
                                   subscribersCountLocal.value++;
                                 } else {
                                   if (subscribersCountLocal.value > 0) {
@@ -1335,35 +1338,25 @@ class _DistributorCard extends HookWidget {
                                   }
                                 }
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      isSubscribed.value!
-                                          ? 'distributors_feature.subscribed'.tr(namedArgs: {'name': distributor.displayName})
-                                          : 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': distributor.displayName}),
-                                      style: const TextStyle(fontSize: 14),
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        !isSubscribed
+                                            ? 'distributors_feature.subscribed'.tr(namedArgs: {'name': distributor.displayName})
+                                            : 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': distributor.displayName}),
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                      duration: const Duration(seconds: 2),
                                     ),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
+                                  );
+                                }
                               }
                               isLoading.value = false;
                             },
-                      tooltip: isSubscribed.value!
+                      tooltip: isSubscribed
                           ? 'distributors_feature.unsubscribe_tooltip'.tr()
                           : 'distributors_feature.subscribe_tooltip'.tr(),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: theme.colorScheme.primary.withOpacity(0.5),
-                      ),
                     ),
                   ),
                 const SizedBox(width: 4),

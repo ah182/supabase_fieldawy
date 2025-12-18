@@ -12,5 +12,7 @@ final userDataProvider = FutureProvider<UserModel?>((ref) {
   }
 
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.getUser(userId);
+  // Use forceRefresh: true to ensure we get fresh data (like subscribers count)
+  // Riverpod will handle in-memory caching of this FutureProvider.
+  return userRepository.getUser(userId, forceRefresh: true);
 });
