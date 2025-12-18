@@ -174,16 +174,22 @@ class ReviewService {
   Future<Map<String, dynamic>> createReviewRequest({
     required String productId,
     String productType = 'product',
-    String? requestComment, // جديد: تعليق طالب التقييم
+    String? requestComment,
+    String? customName,
+    String? customImage,
+    String? customPackage,
   }) async {
     try {
-      print('🚀 Calling create_review_request RPC with productId: $productId, productType: $productType, requestComment: $requestComment');
+      print('🚀 Calling create_review_request RPC with productId: $productId, productType: $productType');
       final response = await _supabase.rpc(
         'create_review_request',
         params: {
           'p_product_id': productId,
           'p_product_type': productType,
           'p_request_comment': requestComment,
+          'p_custom_name': customName,
+          'p_custom_image': customImage,
+          'p_custom_package': customPackage,
         },
       );
 

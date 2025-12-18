@@ -96,12 +96,18 @@ class ProductRepository {
   Future<List<String>> getAllDistributorProductIds() async {
     final List<String> allIds = [];
     
-    // Get IDs from distributor_products
-    final regularRows = await _supabase.from('distributor_products').select('id, views');
+    // Get IDs from distributor_products - filter out products with expiration_date
+    final regularRows = await _supabase
+        .from('distributor_products')
+        .select('id, views')
+        .filter('expiration_date', 'is', null);
     allIds.addAll(regularRows.map((row) => 'regular_${row['id']}'));
     
-    // Get IDs from distributor_ocr_products
-    final ocrRows = await _supabase.from('distributor_ocr_products').select('distributor_id, ocr_product_id');
+    // Get IDs from distributor_ocr_products - filter out products with expiration_date
+    final ocrRows = await _supabase
+        .from('distributor_ocr_products')
+        .select('distributor_id, ocr_product_id')
+        .filter('expiration_date', 'is', null);
     allIds.addAll(ocrRows.map((row) => 'ocr_${row['distributor_id']}_${row['ocr_product_id']}'));
     
     return allIds;
@@ -509,7 +515,8 @@ class ProductRepository {
       final distProductsResponse = await _supabase
           .from('distributor_products')
           .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name, distributor_id, views');
+              'product_id, price, old_price, price_updated_at, package, distributor_name, distributor_id, views')
+          .filter('expiration_date', 'is', null);
 
       if (distProductsResponse.isNotEmpty) {
         final productIds = distProductsResponse
@@ -555,7 +562,8 @@ class ProductRepository {
       final distOcrProductsResponse = await _supabase
           .from('distributor_ocr_products')
           .select(
-              'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views');
+              'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
+          .filter('expiration_date', 'is', null);
 
       if (distOcrProductsResponse.isNotEmpty) {
         final ocrProductIds = distOcrProductsResponse

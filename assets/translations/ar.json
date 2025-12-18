@@ -311,6 +311,7 @@
             "title": "منتجات {name}",
             "load_error": "فشل تحميل تفاصيل الموزع",
             "view_order": "عرض الطلب",
+            "reset_order": "مسح الطلب",
             "details_tooltip": "تفاصيل الموزع",
             "products_count": "عدد المنتجات: {count}",
             "no_products": "لا توجد منتجات متاحة حاليًا.",

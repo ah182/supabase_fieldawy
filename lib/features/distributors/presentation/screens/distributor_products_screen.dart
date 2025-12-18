@@ -68,35 +68,18 @@ final distributorProductsProvider =
     try {
       final d = Map<String, dynamic>.from(productData);
       
-      // Check if this is an OCR product (has availablePackages field)
+      // استخدام fromMap الجديد والقوي الذي يدعم كافة الاحتمالات
+      final p = ProductModel.fromMap(d);
+      
+      // التأكد من وجود prefix لمنتجات OCR للتميز في الـ view tracking
       if (d.containsKey('availablePackages')) {
-        // OCR product - already in camelCase from Edge Function
-        // إضافة prefix 'ocr_' لتمييز OCR products في view tracking
-        return ProductModel(
-          id: 'ocr_${d['id']?.toString() ?? ''}',
-          name: d['name']?.toString() ?? '',
-          company: d['company']?.toString() ?? '',
-          activePrinciple: d['activePrinciple']?.toString() ?? '',
-          imageUrl: d['imageUrl']?.toString() ?? '',
-          availablePackages: (d['availablePackages'] as List?)?.map((e) => e.toString()).toList() ?? [],
-          selectedPackage: d['selectedPackage']?.toString(),
-          price: (d['price'] as num?)?.toDouble(),
-          oldPrice: (d['oldPrice'] as num?)?.toDouble(),
-          priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
-          distributorId: d['distributorId']?.toString(),
-          distributorUuid: distributorId,
-        );
-      } else {
-        // Regular product - use fromMap for snake_case fields
-        return ProductModel.fromMap(d).copyWith(
-          price: (d['price'] as num?)?.toDouble(),
-          oldPrice: (d['oldPrice'] as num?)?.toDouble(),
-          priceUpdatedAt: d['priceUpdatedAt'] != null ? DateTime.tryParse(d['priceUpdatedAt']) : null,
-          selectedPackage: d['selectedPackage']?.toString(),
-          distributorId: d['distributorId']?.toString(),
+        return p.copyWith(
+          id: 'ocr_${p.id}',
           distributorUuid: distributorId,
         );
       }
+      
+      return p.copyWith(distributorUuid: distributorId);
     } catch (e) {
       print('Error parsing product: $e');
       return null;
@@ -974,6 +957,47 @@ class DistributorProductsScreen extends HookConsumerWidget {
     );
   }
 
+  // ديالوج تأكيد مسح الطلب
+  void _showResetOrderDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('orders.confirm_delete_title'.tr()),
+        content: Text('orders.confirm_delete_all_msg'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('orders.cancel'.tr()),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(orderProvider.notifier).removeProductsByDistributor(_distributorName);
+              Navigator.pop(context);
+              scaffoldMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  elevation: 0,
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.transparent,
+                  content: AwesomeSnackbarContent(
+                    title: 'orders.success'.tr(),
+                    message: 'orders.all_deleted'.tr(),
+                    contentType: ContentType.success,
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('orders.delete'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
     @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync =
@@ -1012,24 +1036,42 @@ class DistributorProductsScreen extends HookConsumerWidget {
       },
       child: Scaffold(
         floatingActionButton: distributorOrderItems.isNotEmpty
-            ? FloatingActionButton.extended(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DistributorOrderDetailsScreen(
-                        distributorName: _distributorName,
-                        products: distributorOrderItems,
-                      ),
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    FloatingActionButton.extended(
+                      heroTag: 'reset_order',
+                      onPressed: () => _showResetOrderDialog(context, ref),
+                      label: Text('distributors_feature.products_screen.reset_order'.tr()),
+                      icon: const Icon(Icons.refresh_rounded),
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
                     ),
-                  );
-                },
-                label: Text('distributors_feature.products_screen.view_order'.tr()),
-                icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    FloatingActionButton.extended(
+                      heroTag: 'view_order',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DistributorOrderDetailsScreen(
+                              distributorName: _distributorName,
+                              products: distributorOrderItems,
+                            ),
+                          ),
+                        );
+                      },
+                      label: Text('distributors_feature.products_screen.view_order'.tr()),
+                      icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ],
+                ),
               )
             : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         appBar: AppBar(
           title: Text('distributors_feature.products_screen.title'.tr(namedArgs: {'name': _distributorName})),
           elevation: 0,

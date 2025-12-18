@@ -313,6 +313,7 @@
         "title": "{name} Products",
         "load_error": "Failed to load distributor details",
         "view_order": "View Order",
+        "reset_order": "Reset Order",
         "details_tooltip": "Distributor Details",
         "products_count": "Products Count: {count}",
         "no_products": "No products available currently.",

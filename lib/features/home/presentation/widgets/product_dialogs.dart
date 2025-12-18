@@ -1,4 +1,6 @@
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
+import 'package:fieldawy_store/widgets/user_details_sheet.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
@@ -41,6 +43,7 @@ class _ProductDialog extends StatefulWidget {
 
 class _ProductDialogState extends State<_ProductDialog> {
   String? _phoneNumber;
+  String? _role; // إضافة متغير لتخزين دور المستخدم
   bool _isLoadingPhone = false;
 
   @override
@@ -54,19 +57,42 @@ class _ProductDialogState extends State<_ProductDialog> {
     try {
       final supabase = Supabase.instance.client;
       
+      // Priority 1: Use UUID if available
+      if (widget.product.distributorUuid != null && widget.product.distributorUuid!.isNotEmpty) {
+        final response = await supabase
+            .from('users')
+            .select('whatsapp_number, role') // جلب الـ role أيضاً
+            .eq('id', widget.product.distributorUuid!)
+            .maybeSingle();
+
+        if (response != null) {
+          setState(() {
+            if (response['whatsapp_number'] != null) {
+              _phoneNumber = response['whatsapp_number'].toString();
+            }
+            _role = response['role']?.toString(); // تخزين الـ role
+          });
+          return;
+        }
+      }
+
+      // Priority 2: Fallback to display_name (legacy)
       if (widget.product.distributorId == null || widget.product.distributorId!.isEmpty) {
         return;
       }
       
       final response = await supabase
           .from('users')
-          .select('whatsapp_number')
+          .select('whatsapp_number, role') // جلب الـ role أيضاً
           .eq('display_name', widget.product.distributorId!)
           .maybeSingle();
 
-      if (response != null && response['whatsapp_number'] != null) {
+      if (response != null) {
         setState(() {
-          _phoneNumber = response['whatsapp_number'].toString();
+          if (response['whatsapp_number'] != null) {
+            _phoneNumber = response['whatsapp_number'].toString();
+          }
+          _role = response['role']?.toString(); // تخزين الـ role
         });
       }
     } catch (e) {
@@ -215,29 +241,67 @@ class _ProductDialogState extends State<_ProductDialog> {
                       Row(
                         children: [
                           if (widget.product.distributorUuid != null) ...[
-                            GestureDetector(
-                              onTap: () => DistributorDetailsSheet.show(
-                                  context, widget.product.distributorUuid!),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.location_on,
-                                  size: 20,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (_role == 'doctor') {
+                                      UserDetailsSheet.show(context, ref, widget.product.distributorUuid!);
+                                    } else {
+                                      DistributorDetailsSheet.show(context, widget.product.distributorUuid!);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _role == 'doctor' ? Icons.person : Icons.location_on,
+                                      size: 20,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                );
+                              }
                             ),
                             const SizedBox(width: 8),
                           ],
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async {
+                              if (_role == 'doctor') {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('تنبيه'),
+                                    content: const Text('هذا المنتج تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('حسناً'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                return;
+                              }
                               if (widget.product.distributorId != null) {
-                                Navigator.of(context).pop(); // Close the dialog
+                                // Show loading indicator
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                                );
+
+                                // Small delay for UX
+                                await Future.delayed(const Duration(milliseconds: 400));
+
+                                if (!context.mounted) return;
+                                Navigator.of(context).pop(); // Close loading
+                                Navigator.of(context).pop(); // Close the original dialog
+                                
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
                                     builder: (context) => DrawerWrapper(
@@ -459,7 +523,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                       ),
                     ),
                   // === زر الواتساب ===
-                  if (widget.product.distributorId != null && widget.product.distributorId!.isNotEmpty) ...[
+                  if ((widget.product.distributorId != null && widget.product.distributorId!.isNotEmpty) || (widget.product.distributorUuid != null && widget.product.distributorUuid!.isNotEmpty)) ...[
                     const SizedBox(height: 30),
                     Center(
                       child: Container(
@@ -577,6 +641,7 @@ class _OfferProductDialog extends StatefulWidget {
 
 class _OfferProductDialogState extends State<_OfferProductDialog> {
   String? _phoneNumber;
+  String? _role; // إضافة متغير لتخزين دور المستخدم
   bool _isLoadingPhone = false;
 
   @override
@@ -589,20 +654,43 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
     setState(() => _isLoadingPhone = true);
     try {
       final supabase = Supabase.instance.client;
+
+      // Priority 1: Use UUID if available
+      if (widget.offer.distributorUuid != null && widget.offer.distributorUuid!.isNotEmpty) {
+        final response = await supabase
+            .from('users')
+            .select('whatsapp_number, role') // جلب الـ role أيضاً
+            .eq('id', widget.offer.distributorUuid!)
+            .maybeSingle();
+
+        if (response != null) {
+          setState(() {
+            if (response['whatsapp_number'] != null) {
+              _phoneNumber = response['whatsapp_number'].toString();
+            }
+            _role = response['role']?.toString(); // تخزين الـ role
+          });
+          return;
+        }
+      }
       
+      // Priority 2: Fallback to display_name (legacy)
       if (widget.offer.distributorId == null || widget.offer.distributorId!.isEmpty) {
         return;
       }
       
       final response = await supabase
           .from('users')
-          .select('whatsapp_number')
+          .select('whatsapp_number, role') // جلب الـ role أيضاً
           .eq('display_name', widget.offer.distributorId!)
           .maybeSingle();
 
-      if (response != null && response['whatsapp_number'] != null) {
+      if (response != null) {
         setState(() {
-          _phoneNumber = response['whatsapp_number'].toString();
+          if (response['whatsapp_number'] != null) {
+            _phoneNumber = response['whatsapp_number'].toString();
+          }
+          _role = response['role']?.toString(); // تخزين الـ role
         });
       }
     } catch (e) {
@@ -751,22 +839,31 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       Row(
                         children: [
                           if (widget.offer.distributorUuid != null) ...[
-                            GestureDetector(
-                              onTap: () => DistributorDetailsSheet.show(
-                                  context, widget.offer.distributorUuid!),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.location_on,
-                                  size: 20,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (_role == 'doctor') {
+                                      UserDetailsSheet.show(context, ref, widget.offer.distributorUuid!);
+                                    } else {
+                                      DistributorDetailsSheet.show(context, widget.offer.distributorUuid!);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _role == 'doctor' ? Icons.person : Icons.location_on,
+                                      size: 20,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                );
+                              }
                             ),
                             const SizedBox(width: 8),
                           ],
@@ -853,8 +950,38 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       const Spacer(),
                       if (widget.offer.distributorId != null && widget.offer.distributorId!.isNotEmpty)
                         GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop(); // Close the dialog
+                          onTap: () async {
+                            if (_role == 'doctor') {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('تنبيه'),
+                                  content: const Text('هذا العرض تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('حسناً'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+                            
+                            // Show loading indicator
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => const Center(child: CircularProgressIndicator()),
+                            );
+
+                            // Small delay for UX
+                            await Future.delayed(const Duration(milliseconds: 400));
+
+                            if (!context.mounted) return;
+                            Navigator.of(context).pop(); // Close loading
+                            Navigator.of(context).pop(); // Close the original dialog
+                            
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
                                 builder: (context) => DrawerWrapper(
@@ -1071,7 +1198,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                     ),
                   ],
                   // === زر الواتساب ===
-                  if (widget.offer.distributorId != null && widget.offer.distributorId!.isNotEmpty) ...[
+                  if ((widget.offer.distributorId != null && widget.offer.distributorId!.isNotEmpty) || (widget.offer.distributorUuid != null && widget.offer.distributorUuid!.isNotEmpty)) ...[
                     const SizedBox(height: 30),
                     Center(
                       child: Container(
@@ -1232,6 +1359,7 @@ class _SurgicalToolDialog extends StatefulWidget {
 
 class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
   String? _phoneNumber;
+  String? _role; // إضافة متغير لتخزين دور المستخدم
   bool _isLoadingPhone = false;
 
   @override
@@ -1244,20 +1372,43 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
     setState(() => _isLoadingPhone = true);
     try {
       final supabase = Supabase.instance.client;
+
+      // Priority 1: Use UUID if available
+      if (widget.tool.distributorUuid != null && widget.tool.distributorUuid!.isNotEmpty) {
+        final response = await supabase
+            .from('users')
+            .select('whatsapp_number, role') // جلب الـ role أيضاً
+            .eq('id', widget.tool.distributorUuid!)
+            .maybeSingle();
+
+        if (response != null) {
+          setState(() {
+            if (response['whatsapp_number'] != null) {
+              _phoneNumber = response['whatsapp_number'].toString();
+            }
+            _role = response['role']?.toString(); // تخزين الـ role
+          });
+          return;
+        }
+      }
       
+      // Priority 2: Fallback to display_name (legacy)
       if (widget.tool.distributorId == null || widget.tool.distributorId!.isEmpty) {
         return;
       }
       
       final response = await supabase
           .from('users')
-          .select('whatsapp_number')
+          .select('whatsapp_number, role') // جلب الـ role أيضاً
           .eq('display_name', widget.tool.distributorId!)
           .maybeSingle();
 
-      if (response != null && response['whatsapp_number'] != null) {
+      if (response != null) {
         setState(() {
-          _phoneNumber = response['whatsapp_number'].toString();
+          if (response['whatsapp_number'] != null) {
+            _phoneNumber = response['whatsapp_number'].toString();
+          }
+          _role = response['role']?.toString(); // تخزين الـ role
         });
       }
     } catch (e) {
@@ -1395,28 +1546,67 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                         Row(
                           children: [
                             if (widget.tool.distributorUuid != null) ...[
-                              GestureDetector(
-                                onTap: () => DistributorDetailsSheet.show(
-                                    context, widget.tool.distributorUuid!),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.location_on,
-                                    size: 20,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
+                              Consumer(
+                                builder: (context, ref, child) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (_role == 'doctor') {
+                                        UserDetailsSheet.show(context, ref, widget.tool.distributorUuid!);
+                                      } else {
+                                        DistributorDetailsSheet.show(context, widget.tool.distributorUuid!);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary
+                                            .withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        _role == 'doctor' ? Icons.person : Icons.location_on,
+                                        size: 20,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  );
+                                }
                               ),
                               const SizedBox(width: 8),
                             ],
                             GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).pop(); // Close the dialog
+                              onTap: () async {
+                                if (_role == 'doctor') {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('تنبيه'),
+                                      content: const Text('هذه الأداة تمت إضافتها بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text('حسناً'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  return;
+                                }
+                                
+                                // Show loading indicator
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                                );
+
+                                // Small delay for UX
+                                await Future.delayed(const Duration(milliseconds: 400));
+
+                                if (!context.mounted) return;
+                                Navigator.of(context).pop(); // Close loading
+                                Navigator.of(context).pop(); // Close the original dialog
+                                
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
                                     builder: (context) => DrawerWrapper(
@@ -1644,7 +1834,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                           ),
                           
                           // زر الواتساب
-                          if (widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty) ...[
+                          if ((widget.tool.distributorId != null && widget.tool.distributorId!.isNotEmpty) || (widget.tool.distributorUuid != null && widget.tool.distributorUuid!.isNotEmpty)) ...[
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
@@ -1800,6 +1990,7 @@ class _OfferDialog extends StatefulWidget {
 
 class _OfferDialogState extends State<_OfferDialog> {
   String? _phoneNumber;
+  String? _role; // إضافة متغير لتخزين دور المستخدم
   bool _isLoadingPhone = false;
 
   @override
@@ -1813,20 +2004,42 @@ class _OfferDialogState extends State<_OfferDialog> {
     try {
       final supabase = Supabase.instance.client;
       
-      // جلب رقم الواتساب من جدول users بناءً على display_name
+      // Priority 1: Use UUID if available
+      if (widget.offer.distributorUuid != null && widget.offer.distributorUuid!.isNotEmpty) {
+        final response = await supabase
+            .from('users')
+            .select('whatsapp_number, role') // جلب الـ role أيضاً
+            .eq('id', widget.offer.distributorUuid!)
+            .maybeSingle();
+
+        if (response != null) {
+          setState(() {
+            if (response['whatsapp_number'] != null) {
+              _phoneNumber = response['whatsapp_number'].toString();
+            }
+            _role = response['role']?.toString(); // تخزين الـ role
+          });
+          return;
+        }
+      }
+
+      // Priority 2: Fallback to display_name (legacy)
       if (widget.offer.distributorId == null || widget.offer.distributorId!.isEmpty) {
         return;
       }
       
       final response = await supabase
           .from('users')
-          .select('whatsapp_number')
+          .select('whatsapp_number, role') // جلب الـ role أيضاً
           .eq('display_name', widget.offer.distributorId!)
           .maybeSingle();
 
-      if (response != null && response['whatsapp_number'] != null) {
+      if (response != null) {
         setState(() {
-          _phoneNumber = response['whatsapp_number'].toString();
+          if (response['whatsapp_number'] != null) {
+            _phoneNumber = response['whatsapp_number'].toString();
+          }
+          _role = response['role']?.toString(); // تخزين الـ role
         });
       }
     } catch (e) {
@@ -2000,6 +2213,47 @@ class _OfferDialogState extends State<_OfferDialog> {
                         Icons.store,
                         'offers.labels.distributor'.tr(),
                         widget.offer.distributorId!,
+                        onTap: () async {
+                          if (_role == 'doctor') {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('تنبيه'),
+                                content: const Text('هذا العرض تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('حسناً'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // Show loading indicator
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(child: CircularProgressIndicator()),
+                          );
+
+                          // Small delay for UX
+                          await Future.delayed(const Duration(milliseconds: 400));
+
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop(); // Close loading
+                          Navigator.of(context).pop(); // Close the original dialog
+                          
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) => DrawerWrapper(
+                                distributorId: widget.offer.distributorId,
+                              ),
+                            ),
+                            (route) => false,
+                          );
+                        }
                       ),
 
                     // الوصف
@@ -2131,42 +2385,45 @@ class _OfferDialogState extends State<_OfferDialog> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value, {VoidCallback? onTap}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: colorScheme.primary,
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

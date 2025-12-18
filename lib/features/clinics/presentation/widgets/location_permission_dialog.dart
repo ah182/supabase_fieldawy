@@ -107,14 +107,18 @@ class _LocationPermissionDialogState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       title: Row(
         children: [
-          Icon(Icons.location_on, color: Colors.blue, size: 28),
-          SizedBox(width: 10),
+          Icon(Icons.location_on, color: colorScheme.primary, size: 28),
+          const SizedBox(width: 10),
           Text('clinics_feature.permission_dialog.title'.tr()),
         ],
       ),
@@ -124,38 +128,51 @@ class _LocationPermissionDialogState
         children: [
           Text(
             'clinics_feature.permission_dialog.message'.tr(),
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 15),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: isDark 
+                  ? colorScheme.primary.withOpacity(0.1) 
+                  : Colors.blue.shade50,
               borderRadius: BorderRadius.circular(10),
+              border: isDark 
+                  ? Border.all(color: colorScheme.primary.withOpacity(0.2)) 
+                  : null,
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 20, color: Colors.blue),
-                    SizedBox(width: 8),
+                    Icon(
+                      Icons.info_outline, 
+                      size: 20, 
+                      color: isDark ? colorScheme.primary : Colors.blue
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'clinics_feature.permission_dialog.why_title'.tr(),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
+                          color: isDark ? colorScheme.primary : Colors.blue.shade900,
                         ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   '${"clinics_feature.permission_dialog.reason_1".tr()}\n'
                   '${"clinics_feature.permission_dialog.reason_2".tr()}\n'
                   '${"clinics_feature.permission_dialog.reason_3".tr()}',
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? colorScheme.onSurface.withOpacity(0.9) : Colors.black87,
+                  ),
                 ),
               ],
             ),
@@ -165,19 +182,29 @@ class _LocationPermissionDialogState
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: isDark 
+                    ? colorScheme.error.withOpacity(0.1) 
+                    : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.red.shade200),
+                border: Border.all(
+                  color: isDark 
+                      ? colorScheme.error.withOpacity(0.3) 
+                      : Colors.red.shade200
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  Icon(
+                    Icons.error_outline, 
+                    color: isDark ? colorScheme.error : Colors.red, 
+                    size: 20
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.red,
+                      style: TextStyle(
+                        color: isDark ? colorScheme.error : Colors.red,
                         fontSize: 13,
                       ),
                     ),
@@ -191,11 +218,11 @@ class _LocationPermissionDialogState
             Center(
               child: Column(
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 10),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 10),
                   Text(
                     'clinics_feature.permission_dialog.locating'.tr(),
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
@@ -212,6 +239,8 @@ class _LocationPermissionDialogState
           onPressed: _isLoading ? null : _requestLocationAndSave,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            backgroundColor: colorScheme.primary,
+            foregroundColor: colorScheme.onPrimary,
           ),
           child: Text('clinics_feature.permission_dialog.allow'.tr()),
         ),

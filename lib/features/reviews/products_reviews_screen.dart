@@ -538,10 +538,17 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
 
     final service = ref.read(reviewServiceProvider);
     print('🚀 Calling createReviewRequest...');
+    
+    // التحقق إذا كان المنتج مؤقتاً (OCR جديد لم يتم حفظه)
+    final isTempOcr = selectedProduct['product_id'] == 'temp_ocr';
+    
     final result = await service.createReviewRequest(
       productId: selectedProduct['product_id'],
       productType: selectedProduct['product_type'],
-      requestComment: requestComment.isEmpty ? null : requestComment, // جديد: إرسال التعليق
+      requestComment: requestComment.isEmpty ? null : requestComment,
+      customName: isTempOcr ? selectedProduct['product_name'] : null,
+      customImage: isTempOcr ? selectedProduct['product_image'] : null,
+      customPackage: isTempOcr ? selectedProduct['product_package'] : null,
     );
     print('📥 Result: $result');
 
@@ -550,7 +557,10 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
 
     if (result['success'] == true) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('reviews_feature.create_success'.tr())),
+        SnackBar(
+          content: Text('reviews_feature.create_success'.tr()),
+          backgroundColor: Colors.green,
+        ),
       );
       ref.invalidate(activeReviewRequestsProvider);
     } else {
@@ -564,7 +574,11 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
       }
 
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text(errorMessage)),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red, // جعل اللون أحمر عند الخطأ
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/products/data/expire_drugs_repository.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_from_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
@@ -122,6 +123,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                     return RefreshIndicator(
                       key: const ValueKey('empty_expire_drugs'),
                       onRefresh: () async {
+                        ref.read(expireDrugsRepositoryProvider).invalidateExpireDrugsCache();
                         ref.invalidate(myExpireDrugsProvider);
                         await ref.read(myExpireDrugsProvider.future);
                       },
@@ -146,6 +148,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                   return RefreshIndicator(
                     key: ValueKey('list_${items.length}'),
                     onRefresh: () async {
+                      ref.read(expireDrugsRepositoryProvider).invalidateExpireDrugsCache();
                       ref.invalidate(myExpireDrugsProvider);
                       await ref.read(myExpireDrugsProvider.future);
                     },

@@ -16,6 +16,7 @@ import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/product_card.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
+import 'package:fieldawy_store/widgets/user_details_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/user_data_provider.dart';
 import '../widgets/home_tabs_content.dart';
+import '../widgets/product_dialogs.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
@@ -524,401 +526,474 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildProductDetailDialog(
       BuildContext context, WidgetRef ref, ProductModel product) {
-    final size = MediaQuery.of(context).size;
-    final isSmallScreen = size.width < 600;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    return StatefulBuilder(
+      builder: (context, setState) {
+        String? role;
+        String? currentDistributorName = product.distributorId;
+        // ignore: unused_local_variable
+        bool isLoadingRole = true;
 
-    String formatPackageText(String package) {
-      final currentLocale = Localizations.localeOf(context).languageCode;
-      if (currentLocale == 'ar' &&
-          package.toLowerCase().contains(' ml') &&
-          package.toLowerCase().contains('vial')) {
-        final parts = package.split(' ');
-        if (parts.length >= 3) {
-          final number = parts.firstWhere(
-              (part) => RegExp(r'^\d+').hasMatch(part),
-              orElse: () => '');
-          final unit = parts.firstWhere(
-              (part) => part.toLowerCase().contains(' ml'),
-              orElse: () => '');
-          final container = parts.firstWhere(
-              (part) => part.toLowerCase().contains('vial'),
-              orElse: () => '');
-          if (number.isNotEmpty && unit.isNotEmpty && container.isNotEmpty) {
-            return '$number$unit $container';
+        // دالة لجلب بيانات المستخدم (الدور والاسم الأحدث)
+        Future<void> loadUserRole() async {
+          if (product.distributorUuid == null) {
+            if (context.mounted) setState(() => isLoadingRole = false);
+            return;
+          }
+          try {
+            final response = await Supabase.instance.client
+                .from('users')
+                .select('role, display_name')
+                .eq('id', product.distributorUuid!)
+                .maybeSingle();
+            if (context.mounted) {
+              setState(() {
+                role = response?['role']?.toString();
+                if (response?['display_name'] != null) {
+                  currentDistributorName = response!['display_name'].toString();
+                }
+                isLoadingRole = false;
+              });
+            }
+          } catch (e) {
+            if (context.mounted) setState(() => isLoadingRole = false);
           }
         }
-      }
-      return package;
-    }
 
-    final containerColor = isDark
-        ? Colors.grey.shade800.withOpacity(0.5)
-        : Colors.white.withOpacity(0.8);
-    final iconColor = isDark ? Colors.white70 : theme.colorScheme.primary;
-    final priceColor =
-        isDark ? Colors.lightGreenAccent.shade200 : Colors.green.shade700;
-    final favoriteColor =
-        isDark ? Colors.redAccent.shade100 : Colors.red.shade400;
-    final packageBgColor = isDark
-        ? const Color.fromARGB(255, 216, 222, 249).withOpacity(0.1)
-        : Colors.blue.shade50.withOpacity(0.8);
-    final packageBorderColor = isDark
-        ? const Color.fromARGB(255, 102, 126, 162)
-        : Colors.blue.shade200;
-    final imageBgColor = isDark
-        ? const Color.fromARGB(255, 21, 15, 15).withOpacity(0.3)
-        : Colors.white.withOpacity(0.7);
-    final backgroundColor =
-        isDark ? const Color(0xFF1E1E2E) : const Color(0xFFE3F2FD);
+        // تشغيل الجلب مرة واحدة
+        loadUserRole();
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Container(
-        width: isSmallScreen ? size.width * 0.95 : 400,
-        height: size.height * 0.85,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: 5,
-              offset: const Offset(0, 10),
+        final size = MediaQuery.of(context).size;
+        final isSmallScreen = size.width < 600;
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        String formatPackageText(String package) {
+          final currentLocale = Localizations.localeOf(context).languageCode;
+          if (currentLocale == 'ar' &&
+              package.toLowerCase().contains(' ml') &&
+              package.toLowerCase().contains('vial')) {
+            final parts = package.split(' ');
+            if (parts.length >= 3) {
+              final number = parts.firstWhere(
+                  (part) => RegExp(r'^\d+').hasMatch(part),
+                  orElse: () => '');
+              final unit = parts.firstWhere(
+                  (part) => part.toLowerCase().contains(' ml'),
+                  orElse: () => '');
+              final container = parts.firstWhere(
+                  (part) => part.toLowerCase().contains('vial'),
+                  orElse: () => '');
+              if (number.isNotEmpty && unit.isNotEmpty && container.isNotEmpty) {
+                return '$number$unit $container';
+              }
+            }
+          }
+          return package;
+        }
+
+        final containerColor = isDark
+            ? Colors.grey.shade800.withOpacity(0.5)
+            : Colors.white.withOpacity(0.8);
+        final iconColor = isDark ? Colors.white70 : theme.colorScheme.primary;
+        final priceColor =
+            isDark ? Colors.lightGreenAccent.shade200 : Colors.green.shade700;
+        final favoriteColor =
+            isDark ? Colors.redAccent.shade100 : Colors.red.shade400;
+        final packageBgColor = isDark
+            ? const Color.fromARGB(255, 216, 222, 249).withOpacity(0.1)
+            : Colors.blue.shade50.withOpacity(0.8);
+        final packageBorderColor = isDark
+            ? const Color.fromARGB(255, 102, 126, 162)
+            : Colors.blue.shade200;
+        final imageBgColor = isDark
+            ? const Color.fromARGB(255, 21, 15, 15).withOpacity(0.3)
+            : Colors.white.withOpacity(0.7);
+        final backgroundColor =
+            isDark ? const Color(0xFF1E1E2E) : const Color(0xFFE3F2FD);
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            width: isSmallScreen ? size.width * 0.95 : 400,
+            height: size.height * 0.85,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+              border: Border.all(
+                color: isDark
+                    ? Colors.grey.shade600.withOpacity(0.3)
+                    : Colors.grey.shade200,
+                width: 1,
+              ),
             ),
-          ],
-          border: Border.all(
-            color: isDark
-                ? Colors.grey.shade600.withOpacity(0.3)
-                : Colors.grey.shade200,
-            width: 1,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: containerColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.arrow_back, color: iconColor),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          if (product.distributorUuid != null) ...[
-                            GestureDetector(
-                              onTap: () => DistributorDetailsSheet.show(
-                                  context, product.distributorUuid!),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.location_on,
-                                  size: 20,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          GestureDetector(
-                            onTap: () {
-                              if (product.distributorId != null) {
-                                Navigator.of(context).pop(); // Close the dialog
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) => DrawerWrapper(
-                                      distributorId: product.distributorId,
-                                    ),
-                                  ),
-                                  (route) => false,
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                product.distributorId ??
-                                    'home.product_dialog.unknown_distributor'.tr(),
-                                style: TextStyle(
-                                  color: theme.colorScheme.onPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  if (product.company != null && product.company!.isNotEmpty)
-                    Text(
-                      product.company!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.name,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  if (product.activePrinciple != null &&
-                      product.activePrinciple!.isNotEmpty)
-                    Text(
-                      product.activePrinciple!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Directionality(
-                        textDirection: ui.TextDirection.ltr,
-                        child: Text(
-                          '${product.price?.toStringAsFixed(0) ?? '0'} ${'EGP'.tr()}',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: priceColor,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Consumer(
-                        builder: (context, ref, child) {
-                          final favoritesMap = ref.watch(favoritesProvider);
-                          final isFavorite = favoritesMap.containsKey(
-                              '${product.id}_${product.distributorId}_${product.selectedPackage}');
-                          return Container(
+                          Container(
                             decoration: BoxDecoration(
                               color: containerColor,
                               shape: BoxShape.circle,
                             ),
                             child: IconButton(
-                              icon: Icon(
-                                isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: isFavorite ? Colors.red : favoriteColor,
-                              ),
-                              onPressed: () {
-                                ref
-                                    .read(favoritesProvider.notifier)
-                                    .toggleFavorite(product);
-                                scaffoldMessengerKey.currentState?.showSnackBar(
-                                  SnackBar(
-                                    elevation: 0,
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: Colors.transparent,
-                                    content: AwesomeSnackbarContent(
-                                      title: 'Favorite Status',
-                                      key: ValueKey(
-                                          'favorite_snackbar_${DateTime.now().millisecondsSinceEpoch}'),
-                                      message: isFavorite
-                                          ? 'تمت إزالة ${product.name} من المفضلة'
-                                          : 'تمت إضافة ${product.name} للمفضلة',
-                                      contentType: isFavorite
-                                          ? ContentType.failure
-                                          : ContentType.success,
+                              icon: Icon(Icons.arrow_back, color: iconColor),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              if (product.distributorUuid != null) ...[
+                                GestureDetector(
+                                  onTap: () {
+                                    if (role == 'doctor') {
+                                      UserDetailsSheet.show(context, ref, product.distributorUuid!);
+                                    } else {
+                                      DistributorDetailsSheet.show(
+                                          context, product.distributorUuid!);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.1),
+                                      shape: BoxShape.circle,
                                     ),
-                                    duration: const Duration(seconds: 2),
+                                    child: Icon(
+                                      role == 'doctor' ? Icons.person : Icons.location_on,
+                                      size: 20,
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: RepaintBoundary(
-                      child: Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: imageBgColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: CachedNetworkImage(
-                          imageUrl: product.imageUrl,
-                          fit: BoxFit.contain,
-                          memCacheWidth: 800,
-                          memCacheHeight: 800,
-                          placeholder: (context, url) => const Center(
-                            child: ImageLoadingIndicator(size: 50),
-                          ),
-                          errorWidget: (context, url, error) => Icon(
-                            Icons.broken_image_outlined,
-                            size: 60,
-                            color: theme.colorScheme.onSurface.withOpacity(0.4),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'home.product_dialog.active_principle'.tr(),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        TextSpan(
-                          text: product.activePrinciple ?? 'غير محدد',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (product.selectedPackage != null &&
-                      product.selectedPackage!.isNotEmpty)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: packageBgColor,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: packageBorderColor,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 20,
-                              color: isDark
-                                  ? const Color.fromARGB(255, 6, 149, 245)
-                                  : const Color.fromARGB(255, 4, 90, 160),
-                            ),
-                            const SizedBox(width: 8),
-                            Directionality(
-                              textDirection: ui.TextDirection.ltr,
-                              child: Text(
-                                formatPackageText(product.selectedPackage!),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.primary,
-                                  fontSize: 13,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              GestureDetector(
+                                onTap: () async {
+                                  if (role == 'doctor') {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('تنبيه'),
+                                        content: const Text('هذا المنتج تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('حسناً'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  if (product.distributorId != null) {
+                                    // Show loading indicator
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                                    );
+
+                                    // Small delay for UX
+                                    await Future.delayed(const Duration(milliseconds: 400));
+
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop(); // Close loading
+                                    Navigator.of(context).pop(); // Close the original dialog
+                                    
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                        builder: (context) => DrawerWrapper(
+                                          distributorId: product.distributorId,
+                                        ),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: theme.colorScheme.primary
+                                            .withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    currentDistributorName ??
+                                        'home.product_dialog.unknown_distributor'.tr(),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primaryContainer.withOpacity(0.3),
-                            theme.colorScheme.secondaryContainer
-                                .withOpacity(0.2),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: theme.colorScheme.primary.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'home.product_dialog.medical_info_note'.tr(),
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontSize: 16,
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      if (product.company != null && product.company!.isNotEmpty)
+                        Text(
+                          product.company!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        product.name,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (product.activePrinciple != null &&
+                          product.activePrinciple!.isNotEmpty)
+                        Text(
+                          product.activePrinciple!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Directionality(
+                            textDirection: ui.TextDirection.ltr,
+                            child: Text(
+                              '${product.price?.toStringAsFixed(0) ?? '0'} ${'EGP'.tr()}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: priceColor,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Consumer(
+                            builder: (context, ref, child) {
+                              final favoritesMap = ref.watch(favoritesProvider);
+                              final isFavorite = favoritesMap.containsKey(
+                                  '${product.id}_${product.distributorId}_${product.selectedPackage}');
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: containerColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: Icon(
+                                    isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorite ? Colors.red : favoriteColor,
+                                  ),
+                                  onPressed: () {
+                                    ref
+                                        .read(favoritesProvider.notifier)
+                                        .toggleFavorite(product);
+                                    scaffoldMessengerKey.currentState?.showSnackBar(
+                                      SnackBar(
+                                        elevation: 0,
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.transparent,
+                                        content: AwesomeSnackbarContent(
+                                          title: 'Favorite Status',
+                                          key: ValueKey(
+                                              'favorite_snackbar_${DateTime.now().millisecondsSinceEpoch}'),
+                                          message: isFavorite
+                                              ? 'تمت إزالة ${product.name} من المفضلة'
+                                              : 'تمت إضافة ${product.name} للمفضلة',
+                                          contentType: isFavorite
+                                              ? ContentType.failure
+                                              : ContentType.success,
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: RepaintBoundary(
+                          child: Container(
+                            height: 200,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: imageBgColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: CachedNetworkImage(
+                              imageUrl: product.imageUrl,
+                              fit: BoxFit.contain,
+                              memCacheWidth: 800,
+                              memCacheHeight: 800,
+                              placeholder: (context, url) => const Center(
+                                child: ImageLoadingIndicator(size: 50),
+                              ),
+                              errorWidget: (context, url, error) => Icon(
+                                Icons.broken_image_outlined,
+                                size: 60,
+                                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'home.product_dialog.active_principle'.tr(),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextSpan(
+                              text: product.activePrinciple ?? 'غير محدد',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      if (product.selectedPackage != null &&
+                          product.selectedPackage!.isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: packageBgColor,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: packageBorderColor,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color.fromARGB(255, 6, 149, 245)
+                                      : const Color.fromARGB(255, 4, 90, 160),
+                                ),
+                                const SizedBox(width: 8),
+                                Directionality(
+                                  textDirection: ui.TextDirection.ltr,
+                                  child: Text(
+                                    formatPackageText(product.selectedPackage!),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 30),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.colorScheme.primaryContainer.withOpacity(0.3),
+                                theme.colorScheme.secondaryContainer
+                                    .withOpacity(0.2),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: theme.colorScheme.primary.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'home.product_dialog.medical_info_note'.tr(),
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontSize: 16,
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }
     );
   }
 
@@ -934,8 +1009,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     final allProductsForSearch =
         allDistributorProductsAsync.asData?.value ?? [];
+    
+    // جلب المنتجات منتهية الصلاحية لاستبعادها من بحث الهوم
+    final expireSoonItems = ref.watch(expireDrugsProvider).asData?.value ?? [];
+    final expireSoonIds = expireSoonItems.map((item) => item.product.id).toSet();
+
     final List<ProductModel> productsToFilter =
-        query.isNotEmpty ? allProductsForSearch : products;
+        query.isNotEmpty 
+            ? (_tabController.index == 0 
+                ? allProductsForSearch.where((p) => !expireSoonIds.contains(p.id)).toList()
+                : allProductsForSearch)
+            : products;
 
     // إنشاء Map للموزعين لسهولة الوصول
     final distributorsMap = <String, dynamic>{};

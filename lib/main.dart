@@ -6,7 +6,6 @@ import 'package:fieldawy_store/core/services/http_overrides.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:device_preview/device_preview.dart';
 
 import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/login_screen.dart';
@@ -912,11 +911,8 @@ Future<void> main() async {
 
   // Wrap with ProviderScope for Riverpod
   runApp(
-    DevicePreview(
-      enabled: !kIsWeb, // تفعيل على الموبايل فقط، تعطيل على الويب
-      builder: (context) => const ProviderScope(
-        child: ConnectivityHandler(),
-      ),
+    const ProviderScope(
+      child: ConnectivityHandler(),
     ),
   );
 }
@@ -1167,14 +1163,11 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Fieldawy Store',
-      // DevicePreview support
-      useInheritedMediaQuery: true,
       locale: context.locale,
       builder: (context, child) {
-        child = DevicePreview.appBuilder(context, child);
         return Directionality(
           textDirection: ui.TextDirection.ltr,
-          child: child,
+          child: child!,
         );
       },
       // Localization

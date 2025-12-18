@@ -597,7 +597,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       final activePrinciple = _activePrincipleController.text;
       String package = _packageController.text;
       
-      // عند الاستخدام من صفحة التقييمات، نضيف المنتج للكتالوج ونرجع ID
+      // عند الاستخدام من صفحة التقييمات، لا نحفظ في جدول ocr_products
+      // فقط نرجع البيانات الممسوحة والصورة المرفوعة
       if (widget.isFromReviewRequest) {
         if (_selectedPackageType != null &&
             !package
@@ -606,51 +607,18 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           package = '${package.trim()} $_selectedPackageType'.trim();
         }
 
-        final productRepo = ref.read(productRepositoryProvider);
-        final userId = ref.read(authServiceProvider).currentUser?.id;
-        final userData = await ref.read(userDataProvider.future);
-        final distributorName = userData?.displayName ?? 'Unknown Distributor';
-
-        String? ocrProductId;  // تعريف المتغير خارج الـ if
-        
-        if (userId != null) {
-          ocrProductId = await productRepo.addOcrProduct(
-            distributorId: userId,
-            distributorName: distributorName,
-            productName: name,
-            productCompany: company,
-            activePrinciple: activePrinciple,
-            package: package,
-            imageUrl: finalUrl,
-          );
-
-          // Debug: طباعة القيمة المُرجعة
-          print('🔍 OCR Product ID returned: $ocrProductId');
-          print('🔍 OCR Product ID type: ${ocrProductId.runtimeType}');
-          
-          if (ocrProductId != null && ocrProductId.isNotEmpty && mounted) {
-            // التحقق من أن الـ ID صالح
-            if (ocrProductId.length < 10) {
-              print('⚠️ Invalid product ID: too short');
-              throw Exception('Invalid product ID format');
-            }
-            
-            print('✅ Returning product ID: $ocrProductId');
-            setState(() => _isSaving = false);
-            Navigator.pop(context, {
-              'product_id': ocrProductId,
-              'product_type': 'ocr_product',
-              'product_name': name,
-              'product_image': finalUrl,
-            });
-            return;
-          } else {
-            print('❌ OCR Product ID is null or empty!');
-          }
-        } else {
-          print('❌ User ID is null!');
+        if (mounted) {
+          print('✅ OCR Process complete for Review Request - returning data without saving to DB');
+          setState(() => _isSaving = false);
+          Navigator.pop(context, {
+            'product_id': 'temp_ocr', // معرف مؤقت
+            'product_type': 'ocr_product',
+            'product_name': name,
+            'product_image': finalUrl,
+            'product_package': package,
+          });
+          return;
         }
-        throw Exception('Failed to add product: userId=${userId != null}, ocrProductId=$ocrProductId');
       }
       
       // Price is only required for new products (not editing) and not from review request

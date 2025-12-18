@@ -64,7 +64,12 @@ class ProductModel {
 
   // --- من Supabase (row) ---
   factory ProductModel.fromMap(Map<String, dynamic> data) {
+    // دعم كلا النمطين لاسم الحقل (snake_case و camelCase)
     final String packageString = data['package'] ?? '';
+    final String? selectedPkg = data['selected_package']?.toString() ?? data['selectedPackage']?.toString();
+    final String? distId = data['distributor_id']?.toString() ?? data['distributorId']?.toString();
+    final String? distUuid = data['distributor_uuid']?.toString() ?? data['distributorUuid']?.toString() ?? distId;
+    final String? priceUpdate = data['price_updated_at']?.toString() ?? data['priceUpdatedAt']?.toString();
 
     final packages = packageString
         .split('-')
@@ -74,25 +79,23 @@ class ProductModel {
 
     return ProductModel(
       id: data['id'].toString(),
-      name: data['name'] ?? 'Unnamed Product',
+      name: data['name'] ?? data['product_name'] ?? 'Unnamed Product',
       description: data['description'] as String?,
-      activePrinciple: data['active_principle'] as String?,
-      company: data['company'] as String?,
+      activePrinciple: (data['active_principle'] ?? data['activePrinciple']) as String?,
+      company: (data['company'] ?? data['product_company']) as String?,
       action: data['action'] as String?,
       package: packageString,
       availablePackages: packages.isNotEmpty ? packages : [packageString],
-      imageUrl: data['image_url'] ?? '',
+      imageUrl: data['image_url'] ?? data['imageUrl'] ?? '',
       price: (data['price'] as num?)?.toDouble(),
-      oldPrice: (data['old_price'] as num?)?.toDouble(),
-      distributorId: data['distributor_id'] as String?,
-      distributorUuid: data['distributor_uuid'] as String? ?? data['distributor_id'] as String?, // Map UUID here initially
-      createdAt: data['created_at'] != null
-          ? DateTime.tryParse(data['created_at'].toString())
+      oldPrice: (data['old_price'] ?? data['oldPrice'] as num?)?.toDouble(),
+      distributorId: distId,
+      distributorUuid: distUuid,
+      createdAt: (data['created_at'] ?? data['createdAt']) != null
+          ? DateTime.tryParse((data['created_at'] ?? data['createdAt']).toString())
           : null,
-      priceUpdatedAt: data['price_updated_at'] != null
-          ? DateTime.tryParse(data['price_updated_at'].toString())
-          : null,
-      selectedPackage: data['selected_package'] as String?,
+      priceUpdatedAt: priceUpdate != null ? DateTime.tryParse(priceUpdate) : null,
+      selectedPackage: selectedPkg,
       views: (data['views'] as int?) ?? 0,
     );
   }
