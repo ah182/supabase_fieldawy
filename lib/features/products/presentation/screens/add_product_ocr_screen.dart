@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -64,6 +67,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   final _expirationDateController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  final _packageFocusNode = FocusNode(); // جديد
+
   final List<String> _packageTypes = [
     'bottle',
     'vial',
@@ -83,6 +88,13 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   void initState() {
     super.initState();
     
+    // مستمع لتنظيف حقل العبوة عند فقدان التركيز
+    _packageFocusNode.addListener(() {
+      if (!_packageFocusNode.hasFocus) {
+        _cleanupPackageField();
+      }
+    });
+
     if (widget.productToEdit != null) {
       _initializeForEdit();
     }
@@ -101,6 +113,23 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _descriptionController.addListener(_validateForm);
   }
 
+  // دالة ذكية لاستخراج حجم العبوة فقط
+  void _cleanupPackageField() {
+    final text = _packageController.text.trim();
+    if (text.isEmpty) return;
+
+    final regex = RegExp(
+      r'(\d+(?:\.\d+)?\s*(?:ml|mg|g|kg|l|tab|caps|cap|piece|pcs))',
+      caseSensitive: false,
+    );
+    final match = regex.firstMatch(text);
+    if (match != null) {
+      setState(() {
+        _packageController.text = match.group(0)!.toLowerCase();
+      });
+    }
+  }
+
   Future<void> _showInstructionsDialog() async {
     await showDialog(
       context: context,
@@ -110,24 +139,34 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           children: [
             const Icon(Icons.info_outline, color: Colors.blue),
             const SizedBox(width: 10),
-            const Text('تعليمات هامة', style: TextStyle(fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Text(
+                'ocr.instructions_title'.tr(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text('📸 يرجى تصوير المنتج بوضوح ومن زاوية مناسبة.'),
-            SizedBox(height: 8),
-            Text('🔍 تأكد من أن جميع بيانات المنتج واضحة في الصورة.'),
-            SizedBox(height: 8),
-            Text('✍️ يرجى مراجعة البيانات المستخرجة بدقة قبل الحفظ أو التعديل.'),
+          children: [
+            Text('ocr.instruction_1'.tr()),
+            const SizedBox(height: 8),
+            Text('ocr.instruction_2'.tr()),
+            const SizedBox(height: 8),
+            Text('ocr.instruction_3'.tr()),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('فهمت'),
+            child: Text('ocr.got_it'.tr()),
           ),
         ],
       ),
@@ -207,21 +246,21 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Select Image Source'),
+        title: Text('ocr.select_image_source'.tr()),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _pickAndProcessImage(ImageSource.camera);
             },
-            child: const Text('Camera'),
+            child: Text('ocr.camera'.tr()),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _pickAndProcessImage(ImageSource.gallery);
             },
-            child: const Text('Gallery'),
+            child: Text('ocr.gallery'.tr()),
           ),
         ],
       ),
@@ -503,13 +542,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         packageType = entry.key;
         description = match.group(0) ?? '';
         
-        // نحاول نجيب السطر الكامل اللي فيه المعلومة دي
-        for (var line in lines) {
-          if (line.toLowerCase().contains(description.toLowerCase())) {
-            description = _cleanText(line);
-            break;
-          }
-        }
+        // تم إلغاء البحث عن السطر الكامل لضمان استخراج الحجم فقط
         break;
       }
     }
@@ -580,17 +613,23 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   }
 
   Future<void> _saveProduct() async {
-    if (!_isFormValid || _processedImageFile == null) return;
+    if (!_isFormValid) return;
 
     setState(() => _isSaving = true);
 
     try {
-      final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final finalUrl = await cloudinaryService.uploadImage(
-        imageFile: _processedImageFile!,
-        folder: 'ocr',
-      );
-      if (finalUrl == null) throw Exception('Failed to upload image');
+      String? finalUrl = _existingImageUrl;
+
+      // رفع صورة جديدة فقط إذا قام المستخدم بالتقاط/اختيار صورة
+      if (_processedImageFile != null) {
+        final cloudinaryService = ref.read(cloudinaryServiceProvider);
+        finalUrl = await cloudinaryService.uploadImage(
+          imageFile: _processedImageFile!,
+          folder: 'ocr',
+        );
+      }
+      
+      if (finalUrl == null) throw Exception('Image is required');
 
       final name = _nameController.text;
       final company = _companyController.text;
@@ -662,8 +701,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 behavior: SnackBarBehavior.floating,
                 backgroundColor: Colors.transparent,
                 content: AwesomeSnackbarContent(
-                  title: 'نجاح',
-                  message: 'Product updated successfully!',
+                  title: 'ocr.success_title'.tr(),
+                  message: 'ocr.update_success'.tr(),
                   contentType: ContentType.success,
                 ),
               ),
@@ -707,8 +746,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                   behavior: SnackBarBehavior.floating,
                   backgroundColor: Colors.transparent,
                   content: AwesomeSnackbarContent(
-                    title: 'نجاح',
-                    message: 'تم إضافة الأداة الجراحية بنجاح!',
+                    title: 'ocr.success_title'.tr(),
+                    message: 'ocr.surgical_add_success'.tr(),
                     contentType: ContentType.success,
                   ),
                 ),
@@ -769,8 +808,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     behavior: SnackBarBehavior.floating,
                     backgroundColor: Colors.transparent,
                     content: AwesomeSnackbarContent(
-                      title: 'نجاح',
-                      message: 'تم إضافة المنتج بنجاح',
+                      title: 'ocr.success_title'.tr(),
+                      message: 'ocr.add_success'.tr(),
                       contentType: ContentType.success,
                     ),
                   ),
@@ -808,8 +847,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                   behavior: SnackBarBehavior.floating,
                   backgroundColor: Colors.transparent,
                   content: AwesomeSnackbarContent(
-                    title: 'نجاح',
-                    message: 'Product added successfully!',
+                    title: 'ocr.success_title'.tr(),
+                    message: 'ocr.add_success'.tr(),
                     contentType: ContentType.success,
                   ),
                 ),
@@ -828,8 +867,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.transparent,
           content: AwesomeSnackbarContent(
-            title: 'خطأ',
-            message: 'Failed to save product: $e',
+            title: 'ocr.error_title'.tr(),
+            message: '${'ocr.save_failed'.tr()}: $e',
             contentType: ContentType.failure,
           ),
         ),
@@ -842,6 +881,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   @override
   void dispose() {
     _textRecognizer.close();
+    _packageFocusNode.dispose(); // جديد
     _nameController.dispose();
     _companyController.dispose();
     _activePrincipleController.dispose();
@@ -890,10 +930,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               )
             : Text(
                 widget.isFromReviewRequest 
-                    ? 'تأكيد الاختيار' 
+                    ? 'ocr.confirm_selection'.tr() 
                     : widget.productToEdit != null 
-                        ? 'Update Product' 
-                        : 'Save Product',
+                        ? 'ocr.update_product'.tr() 
+                        : 'ocr.save_product'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -906,8 +946,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       appBar: AppBar(
         title: Text(
           widget.productToEdit != null
-              ? 'تحديث منتج'
-              : (widget.isFromSurgicalTools ? 'Add Surgical Tool' : 'Add New Product'),
+              ? 'ocr.update_product_title'.tr()
+              : (widget.isFromSurgicalTools ? 'ocr.add_surgical_tool'.tr() : 'ocr.add_product_title'.tr()),
           style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -962,8 +1002,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           Expanded(
                             child: Text(
                               _processedImageBytes != null
-                                  ? 'Product Image Processed'
-                                  : 'Take product photo',
+                                  ? 'ocr.image_processed'.tr()
+                                  : 'ocr.take_photo'.tr(),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: _processedImageBytes != null
@@ -1012,7 +1052,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         color: inputBgColor,
                         child: Center(
                           child: Text(
-                            'No image selected',
+                            'ocr.no_image_selected'.tr(),
                             style: theme.textTheme.titleMedium?.copyWith(
                               color:
                                   theme.colorScheme.onSurface.withOpacity(0.6),
@@ -1034,10 +1074,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                         ),
                         label: Text(
                           _isProcessing
-                              ? 'Processing Image...'
+                              ? 'ocr.processing_image'.tr()
                               : _isSaving
-                                  ? 'Saving...'
-                                  : 'Scan Product',
+                                  ? 'ocr.saving'.tr()
+                                  : 'ocr.scan_product'.tr(),
                           style: const TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -1054,16 +1094,68 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
             Text(
-              'Product Information',
+              'ocr.product_info_title'.tr(),
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (widget.productToEdit != null) ...[
+              const SizedBox(height: 8),
+              Consumer(
+                builder: (context, ref, child) {
+                  final distributorsAsync = ref.watch(distributorsProvider);
+                  final currentName = distributorsAsync.maybeWhen(
+                    data: (distributors) {
+                      final dist = distributors.firstWhereOrNull((d) => 
+                        d.id == widget.productToEdit!.distributorUuid || 
+                        d.id == widget.productToEdit!.distributorId
+                      );
+                      return dist?.displayName;
+                    },
+                    orElse: () => null,
+                  );
+                  
+                  final finalDisplayName = currentName ?? 
+                    (widget.productToEdit!.distributorId != null && !widget.productToEdit!.distributorId!.contains('-') 
+                      ? widget.productToEdit!.distributorId 
+                      : null);
+
+                  if (finalDisplayName == null) return const SizedBox.shrink();
+                  
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_pin_rounded, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${'ocr.added_by'.tr()}: $finalDisplayName',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
-              'Fill in or verify the extracted details',
+              'ocr.product_info_subtitle'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -1080,7 +1172,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                   children: [
                     // الاسم - إجباري دائماً
                     _buildTextField(
-                        widget.isFromSurgicalTools ? 'Tool Name' : 'Product Name',
+                        widget.isFromSurgicalTools ? 'ocr.label_tool_name'.tr() : 'ocr.label_product_name'.tr(),
                         Icons.medical_services,
                         _nameController,
                         inputBgColor,
@@ -1091,7 +1183,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // الشركة - اختياري للأدوات الجراحية، إجباري للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
-                          'Company',
+                          'ocr.label_company'.tr(),
                           Icons.business,
                           _companyController,
                           inputBgColor,
@@ -1100,7 +1192,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       const SizedBox(height: 16),
                     ] else ...[
                       _buildTextField(
-                          'Company (Optional)',
+                          'ocr.label_company_optional'.tr(),
                           Icons.business,
                           _companyController,
                           inputBgColor,
@@ -1112,7 +1204,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // Active Principle - فقط للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
-                          'Active Principle',
+                          'ocr.label_active_principle'.tr(),
                           Icons.science,
                           _activePrincipleController,
                           inputBgColor,
@@ -1124,12 +1216,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // Package Description - فقط للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
-                          'Package Description',
+                          'ocr.label_package_desc'.tr(),
                           Icons.content_paste,
                           _packageController,
                           inputBgColor,
                           inputBorderColor,
-                          accentColor),
+                          accentColor,
+                          hintText: 'ocr.label_package_desc_hint'.tr(),
+                          focusNode: _packageFocusNode), // جديد
                       const SizedBox(height: 16),
                     ],
                     
@@ -1138,7 +1232,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       DropdownButtonFormField<String>(
                         value: _selectedPackageType,
                         decoration: InputDecoration(
-                          labelText: 'Package Type',
+                          labelText: 'ocr.label_package_type'.tr(),
                           prefixIcon: Icon(
                             FontAwesomeIcons.boxesStacked,
                             size: 20,
@@ -1168,7 +1262,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // Description - فقط للأدوات الجراحية، إجباري
                     if (widget.isFromSurgicalTools) ...[
                       _buildTextField(
-                          'Description',
+                          'ocr.label_description'.tr(),
                           Icons.description,
                           _descriptionController,
                           inputBgColor,
@@ -1181,7 +1275,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       DropdownButtonFormField<String>(
                         value: _selectedStatus,
                         decoration: InputDecoration(
-                          labelText: 'Tool Status / حالة الأداة',
+                          labelText: 'ocr.label_tool_status'.tr(),
                           prefixIcon: Icon(
                             Icons.info_outline,
                             color: accentColor,
@@ -1201,7 +1295,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                             borderSide: BorderSide(color: accentColor, width: 2),
                           ),
                         ),
-                        items: ['جديد', 'مستعمل', 'كسر زيرو'].map((String status) {
+                        items: ['ocr.status_new'.tr(), 'ocr.status_used'.tr(), 'ocr.status_like_new'.tr()].map((String status) {
                           return DropdownMenuItem<String>(
                             value: status,
                             child: Text(status),
@@ -1221,7 +1315,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // السعر - إجباري دائماً (مخفي عند isFromReviewRequest وعند التعديل productToEdit != null)
                     if (!widget.isFromReviewRequest && widget.productToEdit == null) ...[
                       _buildTextField(
-                          'Price',
+                          'ocr.label_price'.tr(),
                           Icons.attach_money,
                           _priceController,
                           inputBgColor,
@@ -1234,7 +1328,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     // Expiration Date - حسب showExpirationDate (مخفي عند التعديل productToEdit != null)
                     if (widget.showExpirationDate && widget.productToEdit == null)
                       _buildTextField(
-                        'Expiration Date',
+                        'ocr.label_expiration_date'.tr(),
                         Icons.calendar_today,
                         _expirationDateController,
                         inputBgColor,
@@ -1280,15 +1374,19 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     bool readOnly = false,
     VoidCallback? onTap,
     int maxLines = 1,
+    String? hintText,
+    FocusNode? focusNode,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType ?? TextInputType.text,
       readOnly: readOnly,
       onTap: onTap,
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
         prefixIcon: Icon(icon, color: iconColor),
         filled: true,
         fillColor: bgColor,

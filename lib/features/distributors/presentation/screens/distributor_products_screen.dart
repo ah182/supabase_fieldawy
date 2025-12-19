@@ -958,7 +958,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
   }
 
   // ديالوج تأكيد مسح الطلب
-  void _showResetOrderDialog(BuildContext context, WidgetRef ref) {
+  void _showResetOrderDialog(BuildContext context, WidgetRef ref, {String? dbName}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -971,7 +971,12 @@ class DistributorProductsScreen extends HookConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              ref.read(orderProvider.notifier).removeProductsByDistributor(_distributorName);
+              // مسح شامل باستخدام الـ ID، الاسم الحالي، والاسم القديم من DB
+              final namesToClear = [_distributorName];
+              if (dbName != null) namesToClear.add(dbName);
+              
+              ref.read(orderProvider.notifier).removeProductsByDistributorUuid(_distributorId, namesToClear);
+              
               Navigator.pop(context);
               scaffoldMessengerKey.currentState?.showSnackBar(
                 SnackBar(
@@ -1002,6 +1007,15 @@ class DistributorProductsScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync =
         ref.watch(distributorProductsProvider(_distributorId));
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    // تشغيل عملية التطهير فور تحميل قائمة الموزعين لضمان تصحيح البيانات القديمة في السلة
+    distributorsAsync.whenData((data) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(orderProvider.notifier).migrateOrders(data);
+      });
+    });
+
     final searchQuery = useState<String>('');
     final debouncedSearchQuery = useState<String>('');
     final searchController = useTextEditingController();
@@ -1026,7 +1040,45 @@ class DistributorProductsScreen extends HookConsumerWidget {
     }, [searchController]);
 
     final order = ref.watch(orderProvider);
-    final distributorOrderItems = order.where((item) => item.product.distributorId == _distributorName).toList();
+    
+    // استخراج "الاسم الأصلي" المخزن في قاعدة البيانات من المنتجات المحملة (للمساعدة في الربط)
+    String? databaseDistributorName;
+    productsAsync.whenData((products) {
+      if (products.isNotEmpty) {
+        databaseDistributorName = products.first.distributorId;
+      }
+    });
+
+    final distributorOrderItems = order.where((item) {
+      final product = item.product;
+      
+      // 1. إذا طابق الـ UUID (الأدق)
+      if (product.distributorUuid != null && product.distributorUuid == _distributorId) {
+        return true;
+      }
+      
+      // 2. إذا طابق الاسم الحالي المعروض
+      if (product.distributorId == _distributorName) {
+        return true;
+      }
+
+      // 3. إذا طابق الاسم الأصلي للموزع (في حال كان الـ _distributorName هو displayName المحدث)
+      if (distributor?.displayName == product.distributorId) {
+        return true;
+      }
+
+      // 4. إذا طابق الاسم المخزن في قاعدة البيانات (للمنتجات القديمة)
+      if (databaseDistributorName != null && product.distributorId == databaseDistributorName) {
+        return true;
+      }
+
+      // 5. إذا كان الـ UUID مخزناً كاسم قديم (حالة استثنائية وجدناها في الـ logs)
+      if (product.distributorUuid == databaseDistributorName || product.distributorUuid == _distributorName) {
+        return true;
+      }
+
+      return false;
+    }).toList();
 
     return GestureDetector(
       onTap: () {
@@ -1043,7 +1095,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   children: [
                     FloatingActionButton.extended(
                       heroTag: 'reset_order',
-                      onPressed: () => _showResetOrderDialog(context, ref),
+                      onPressed: () => _showResetOrderDialog(context, ref, dbName: databaseDistributorName),
                       label: Text('distributors_feature.products_screen.reset_order'.tr()),
                       icon: const Icon(Icons.refresh_rounded),
                       backgroundColor: Colors.red,

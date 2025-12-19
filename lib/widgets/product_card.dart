@@ -6,6 +6,8 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
+import 'package:collection/collection.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -247,8 +249,18 @@ class ProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // جلب أحدث اسم للموزع ديناميكياً
+    final distributorsAsync = ref.watch(distributorsProvider);
+    final currentDistributorName = distributorsAsync.maybeWhen(
+      data: (distributors) {
+        final dist = distributors.firstWhereOrNull((d) => d.id == product.distributorUuid);
+        return dist?.displayName ?? product.distributorId;
+      },
+      orElse: () => product.distributorId,
+    );
+
     // Debug print
-    print('ProductCard Build: name=${product.name}, distributorId=${product.distributorId}, distributorUuid=${product.distributorUuid}');
+    print('ProductCard Build: name=${product.name}, distributorId=${product.distributorId}, distributorUuid=${product.distributorUuid}, currentName=$currentDistributorName');
 
     final favoritesMap = ref.watch(favoritesProvider);
     final isFavorite = favoritesMap.containsKey(
@@ -535,7 +547,7 @@ class ProductCard extends ConsumerWidget {
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(
-                            product.distributorId ?? 'موزع غير معروف',
+                            currentDistributorName ?? 'موزع غير معروف',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall

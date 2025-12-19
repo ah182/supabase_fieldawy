@@ -54,17 +54,24 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
       return null; // Dispose is handled automatically by useAnimationController
     }, const []);
 
-    // Find the distributor
+    // Find the distributor using UUID or name
     final distributor = distributorsAsync.whenOrNull(
       data: (distributors) => distributors.firstWhereOrNull(
-        (d) => d.displayName == distributorName,
+        (d) => d.displayName == distributorName || (products.isNotEmpty && d.id == products.first.product.distributorUuid),
       ),
     );
     final whatsappNumber = distributor?.whatsappNumber;
 
-    final currentProducts = orderState
-        .where((item) => item.product.distributorId == distributorName)
-        .toList();
+    final currentProducts = orderState.where((item) {
+      final product = item.product;
+      // الفلترة بالـ UUID إذا توفر في أحد المنتجات الممرة
+      final targetUuid = products.firstWhereOrNull((p) => p.product.distributorUuid != null)?.product.distributorUuid;
+      if (targetUuid != null && product.distributorUuid == targetUuid) {
+        return true;
+      }
+      // الفلترة بالاسم كخيار احتياطي
+      return product.distributorId == distributorName;
+    }).toList();
 
     final totalPrice = currentProducts.fold<double>(0.0, (sum, item) {
       final price = item.product.price ?? 0.0;
@@ -85,6 +92,8 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
             fontWeight: FontWeight.w600,
             color: theme.colorScheme.onSurface,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -535,20 +544,24 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${NumberFormatter.formatCompact(totalPrice)} EGP',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onPrimaryContainer,
-                      letterSpacing: -0.2,
+                Flexible(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${NumberFormatter.formatCompact(totalPrice)} EGP',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onPrimaryContainer,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),

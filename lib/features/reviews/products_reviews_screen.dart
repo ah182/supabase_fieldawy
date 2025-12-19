@@ -1,5 +1,9 @@
+// ignore_for_file: unused_element
+
 import 'dart:async';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
+import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
+import 'package:fieldawy_store/widgets/user_details_sheet.dart';
 import 'package:flutter/material.dart';
 // ignore: unnecessary_import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -884,51 +888,40 @@ class ProductReviewCard extends ConsumerWidget {
               Row(
                 children: [
                   // صورة واسم طالب التقييم
-                  Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundImage: request.requesterPhoto != null
-                            ? NetworkImage(request.requesterPhoto!)
-                            : null,
-                        backgroundColor: colorScheme.primaryContainer,
-                        child: request.requesterPhoto == null
-                            ? Icon(Icons.person, size: 16, color: colorScheme.onPrimaryContainer)
-                            : null,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        request.requesterName,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10,
+                  GestureDetector(
+                    onTap: () {
+                      if (request.requesterRole == 'doctor') {
+                        UserDetailsSheet.show(context, ref, request.requestedBy);
+                      } else {
+                        DistributorDetailsSheet.show(context, request.requestedBy);
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundImage: request.requesterPhoto != null
+                              ? NetworkImage(request.requesterPhoto!)
+                              : null,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: request.requesterPhoto == null
+                              ? Icon(Icons.person, size: 16, color: colorScheme.onPrimaryContainer)
+                              : null,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  // دور طالب التقييم
-                  if (request.requesterRole != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getRoleColor(request.requesterRole!).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        _getRoleLabel(request.requesterRole!),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _getRoleColor(request.requesterRole!),
+                        const SizedBox(height: 4),
+                        Text(
+                          request.requesterName,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                            fontSize: 10,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                  ],
+                  ),
                   const Spacer(),
                   const Icon(Icons.access_time, size: 14, color: Colors.grey),
                   const SizedBox(width: 4),

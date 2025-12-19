@@ -1106,35 +1106,41 @@ class _DistributorCard extends HookConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isCompany
-                                  ? Icons.business_rounded
-                                  : Icons.person_outline_rounded,
-                              size: 12,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              distributor.companyName ??
-                                  (isCompany
-                                      ? 'distributors_feature.company'.tr()
-                                      : 'distributors_feature.individual'.tr()),
-                              style: theme.textTheme.labelSmall?.copyWith(
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isCompany
+                                    ? Icons.business_rounded
+                                    : Icons.person_outline_rounded,
+                                size: 12,
                                 color: theme.colorScheme.onSecondaryContainer,
-                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  distributor.companyName ??
+                                      (isCompany
+                                          ? 'distributors_feature.company'.tr()
+                                          : 'distributors_feature.individual'.tr()),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSecondaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1149,43 +1155,49 @@ class _DistributorCard extends HookConsumerWidget {
                                 userCenters: currentUser!.centers!,
                                 distributorCenters: distributor.centers,
                               ))
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.green.shade400,
-                                    Colors.green.shade600,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.green.shade400,
+                                      Colors.green.shade600,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withOpacity(0.3),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    size: 11,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'distributors_feature.near_you'.tr(),
-                                    style: theme.textTheme.labelSmall?.copyWith(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 11,
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 9,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        'distributors_feature.near_you'.tr(),
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 9,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                           // أيقونة للمحافظة فقط (بدون مركز مشترك)
@@ -1194,35 +1206,41 @@ class _DistributorCard extends HookConsumerWidget {
                                      userGovernorates: currentUser!.governorates!,
                                      distributorGovernorates: distributor.governorates,
                                    ))
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.blue.shade300,
-                                  width: 1,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.blue.shade300,
+                                    width: 1,
+                                  ),
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.location_city,
-                                    size: 10,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    'distributors_feature.same_governorate'.tr(),
-                                    style: theme.textTheme.labelSmall?.copyWith(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.location_city,
+                                      size: 10,
                                       color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 9,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        'distributors_feature.same_governorate'.tr(),
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: Colors.blue.shade700,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 9,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           // عداد المنتجات

@@ -381,6 +381,10 @@ class AdvancedViewsAnalyticsWidget extends ConsumerWidget {
   }
 
   Widget _buildGeographicViews(BuildContext context, List<Map<String, dynamic>> geographic) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -403,9 +407,9 @@ class AdvancedViewsAnalyticsWidget extends ConsumerWidget {
             return Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.05),
+                color: isDark ? colorScheme.primary.withOpacity(0.05) : Colors.purple.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.purple.withOpacity(0.2)),
+                border: Border.all(color: isDark ? colorScheme.outline.withOpacity(0.2) : Colors.purple.withOpacity(0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,15 +419,14 @@ class AdvancedViewsAnalyticsWidget extends ConsumerWidget {
                     children: [
                       Text(
                         region['region'] ?? 'منطقة غير معروفة',
-                        style: const TextStyle(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
                         ),
                       ),
                       Text(
                         '${region['views']} مشاهدة',
                         style: TextStyle(
-                          color: Colors.purple[700],
+                          color: isDark ? colorScheme.primary : Colors.purple[700],
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -433,16 +436,16 @@ class AdvancedViewsAnalyticsWidget extends ConsumerWidget {
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
                     value: percentage,
-                    backgroundColor: Colors.purple.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+                    backgroundColor: isDark ? colorScheme.outline.withOpacity(0.1) : Colors.purple.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(isDark ? colorScheme.primary : Colors.purple),
                   ),
                   const SizedBox(height: 4),
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
                       '${(percentage * 100).toInt()}% من إجمالي المشاهدات',
-                      style: TextStyle(
-                        color: Colors.purple[600],
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? colorScheme.onSurface.withOpacity(0.6) : Colors.purple[600],
                         fontSize: 10,
                       ),
                     ),

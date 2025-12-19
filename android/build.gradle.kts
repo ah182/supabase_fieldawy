@@ -11,8 +11,18 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 
-    // ✅ مهم: نضمن إن كل subprojects تستخدم نفس الـ repositories
-    
+    // ✅ إجبار جميع المكتبات على استخدام إصدار SDK موحد لحل مشكلة lStar ومتطلبات androidx.activity
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.extensions.getByName("android") as? com.android.build.gradle.BaseExtension
+            android?.apply {
+                compileSdkVersion(35)
+                defaultConfig {
+                    targetSdkVersion(35)
+                }
+            }
+        }
+    }
 }
 
 

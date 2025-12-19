@@ -88,6 +88,10 @@ class RegionalStatsWidget extends ConsumerWidget {
   }
 
   Widget _buildRegionalItem(BuildContext context, Map<String, dynamic> region) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     final views = region['views'] ?? 0;
     final regionName = region['region'] ?? 'منطقة غير معروفة';
     final percentage = (region['percentage'] as double?) ?? 0.0;
@@ -96,7 +100,8 @@ class RegionalStatsWidget extends ConsumerWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: Colors.grey[50],
+        color: isDark ? colorScheme.surfaceVariant.withOpacity(0.3) : Colors.grey[50],
+        border: isDark ? Border.all(color: colorScheme.outline.withOpacity(0.2)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,9 +112,8 @@ class RegionalStatsWidget extends ConsumerWidget {
               Expanded(
                 child: Text(
                   regionName,
-                  style: const TextStyle(
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
                   ),
                 ),
               ),
@@ -122,7 +126,7 @@ class RegionalStatsWidget extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.visibility, size: 14, color: Colors.purple),
+                    const Icon(Icons.visibility, size: 14, color: Colors.purple),
                     const SizedBox(width: 4),
                     Text(
                       '$views',
@@ -140,16 +144,16 @@ class RegionalStatsWidget extends ConsumerWidget {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: percentage.clamp(0.0, 1.0),
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+            backgroundColor: isDark ? colorScheme.outline.withOpacity(0.1) : Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               Text(
                 'مشاهدات المنتجات',
-                style: TextStyle(
-                  color: Colors.grey[600],
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                   fontSize: 11,
                 ),
               ),

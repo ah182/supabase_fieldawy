@@ -190,34 +190,42 @@ class ProfileScreen extends ConsumerWidget {
                               fontSize: 20,
                             ),
                             textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 8),
                           // ignore: unnecessary_null_comparison
                           if (userModel.role != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getRoleIcon(userModel.role),
-                                    size: 16,
-                                    color: colorScheme.onSecondaryContainer,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _getRoleDisplayName(userModel.role),
-                                    style: textTheme.bodySmall?.copyWith(
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _getRoleIcon(userModel.role),
+                                      size: 16,
                                       color: colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        _getRoleDisplayName(userModel.role),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSecondaryContainer,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           const SizedBox(height: 8),
@@ -227,93 +235,111 @@ class ProfileScreen extends ConsumerWidget {
                             runSpacing: 8,
                             children: [
                               if (userModel.distributionMethod != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.tertiaryContainer,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.local_shipping_rounded,
-                                        size: 14,
-                                        color: colorScheme.onTertiaryContainer,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        userModel.distributionMethod == 'direct_distribution'
-                                            ? 'profile_feature.distribution.direct'.tr()
-                                            : userModel.distributionMethod == 'order_delivery'
-                                                ? 'profile_feature.distribution.delivery'.tr()
-                                                : userModel.distributionMethod == 'both' 
-                                                    ? 'profile_feature.distribution.both'.tr()
-                                                    : userModel.distributionMethod!,
-                                        style: textTheme.bodySmall?.copyWith(
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.tertiaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.local_shipping_rounded,
+                                          size: 14,
                                           color: colorScheme.onTertiaryContainer,
-                                          fontWeight: FontWeight.w500,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            userModel.distributionMethod == 'direct_distribution'
+                                                ? 'profile_feature.distribution.direct'.tr()
+                                                : userModel.distributionMethod == 'order_delivery'
+                                                    ? 'profile_feature.distribution.delivery'.tr()
+                                                    : userModel.distributionMethod == 'both' 
+                                                        ? 'profile_feature.distribution.both'.tr()
+                                                        : userModel.distributionMethod!,
+                                            style: textTheme.bodySmall?.copyWith(
+                                              color: colorScheme.onTertiaryContainer,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               
                               if (userModel.subscribersCount != null && userModel.subscribersCount! > 0)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.orange.shade200),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.people_alt_rounded,
-                                        size: 14,
-                                        color: Colors.orange.shade800,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '${userModel.subscribersCount} ${'profile_feature.subscribers'.tr()}',
-                                        style: textTheme.bodySmall?.copyWith(
-                                          color: Colors.orange.shade900,
-                                          fontWeight: FontWeight.w600,
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade50,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.orange.shade200),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.people_alt_rounded,
+                                          size: 14,
+                                          color: Colors.orange.shade800,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            '${userModel.subscribersCount} ${'profile_feature.subscribers'.tr()}',
+                                            style: textTheme.bodySmall?.copyWith(
+                                              color: Colors.orange.shade900,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
 
                               if (userModel.distributionMethod == null && userModel.email != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.email_rounded,
-                                        size: 14,
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        userModel.email!,
-                                        style: textTheme.bodySmall?.copyWith(
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.email_rounded,
+                                          size: 14,
                                           color: colorScheme.onPrimaryContainer,
-                                          fontWeight: FontWeight.w500,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            userModel.email!,
+                                            style: textTheme.bodySmall?.copyWith(
+                                              color: colorScheme.onPrimaryContainer,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                             ],

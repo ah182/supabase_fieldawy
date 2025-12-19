@@ -9,8 +9,10 @@ import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
+import 'package:collection/collection.dart';
 import 'package:fieldawy_store/features/orders/application/orders_provider.dart';
+// ignore: unused_import
+import 'package:fieldawy_store/main.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -43,12 +45,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     super.dispose();
   }
 
-  void _toggleSelection(String distributorName) {
+  void _toggleSelection(String distributorUuid) {
     setState(() {
-      if (_selectedDistributors.contains(distributorName)) {
-        _selectedDistributors.remove(distributorName);
+      if (_selectedDistributors.contains(distributorUuid)) {
+        _selectedDistributors.remove(distributorUuid);
       } else {
-        _selectedDistributors.add(distributorName);
+        _selectedDistributors.add(distributorUuid);
       }
       if (_selectedDistributors.isEmpty) {
         _isSelectionMode = false;
@@ -56,10 +58,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     });
   }
 
-  void _startSelectionMode(String distributorName) {
+  void _startSelectionMode(String distributorUuid) {
     setState(() {
       _isSelectionMode = true;
-      _selectedDistributors.add(distributorName);
+      _selectedDistributors.add(distributorUuid);
     });
   }
 
@@ -215,452 +217,303 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     final distributorsAsync = ref.watch(distributorsProvider);
 
     return GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: MainScaffold(
-          selectedIndex: 2, // Index for Orders screen
-          appBar: _buildAppBar(context, ref, order.isNotEmpty),
-          body: distributorsAsync.when(
-            data: (distributorsData) {
-              final groupedByDistributor = <String, List<OrderItemModel>>{};
-              for (final item in order) {
-                final distributorName =
-                    item.product.distributorId ?? 'غير محدد';
-                if (groupedByDistributor.containsKey(distributorName)) {
-                  groupedByDistributor[distributorName]!.add(item);
-                } else {
-                  groupedByDistributor[distributorName] = [item];
-                }
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: MainScaffold(
+        selectedIndex: 2, // Index for Orders screen
+        appBar: _buildAppBar(context, ref, order.isNotEmpty),
+        body: distributorsAsync.when(
+          data: (distributorsData) {
+            // تشغيل عملية التطهير لضمان أن كل المنتجات في السلة لديها UUID
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref.read(orderProvider.notifier).migrateOrders(distributorsData);
+            });
+
+            final groupedByDistributor = <String, List<OrderItemModel>>{};
+            for (final item in order) {
+              final distributorUuid = item.product.distributorUuid ?? 'unknown';
+              if (groupedByDistributor.containsKey(distributorUuid)) {
+                groupedByDistributor[distributorUuid]!.add(item);
+              } else {
+                groupedByDistributor[distributorUuid] = [item];
               }
+            }
 
-              final distributors = groupedByDistributor.keys.toList();
+            final distributorUuuids = groupedByDistributor.keys.toList();
 
-              final filteredDistributors = _searchQuery.isEmpty
-                  ? distributors
-                  : distributors
-                      .where((d) =>
-                          d.toLowerCase().contains(_searchQuery.toLowerCase()))
-                      .toList();
+            final List<Map<String, dynamic>> displayDistributors = distributorUuuids.map((uuid) {
+              final distributor = distributorsData.firstWhereOrNull((d) => d.id == uuid);
+              return {
+                'uuid': uuid,
+                'name': distributor?.displayName ?? groupedByDistributor[uuid]!.first.product.distributorId ?? 'غير محدد',
+                'distributor': distributor,
+                'items': groupedByDistributor[uuid]!,
+              };
+            }).toList();
 
-              if (order.isEmpty && _isSelectionMode) {
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => _exitSelectionMode());
-              }
+            final filteredDistributors = _searchQuery.isEmpty
+                ? displayDistributors
+                : displayDistributors
+                    .where((d) =>
+                        (d['name'] as String).toLowerCase().contains(_searchQuery.toLowerCase()))
+                    .toList();
 
-              return Column(
-                children: [
-                  Expanded(
-                    child: order.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(50),
-                                  ),
-                                  child: Icon(
-                                    Icons.shopping_cart_outlined,
-                                    size: 64,
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.7),
-                                  ),
+            if (order.isEmpty && _isSelectionMode) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _exitSelectionMode());
+            }
+
+            if (order.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 64,
+                        color: theme.colorScheme.primary.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'orders.empty_cart'.tr(),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'orders.add_products_hint'.tr(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (filteredDistributors.isEmpty && _searchQuery.isNotEmpty) {
+              return Center(
+                child: Text('orders.no_search_results'.tr(namedArgs: {'query': _searchQuery})),
+              );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: filteredDistributors.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final displayData = filteredDistributors[index];
+                final distributorUuid = displayData['uuid'] as String;
+                final distributorName = displayData['name'] as String;
+                final products = displayData['items'] as List<OrderItemModel>;
+                final distributor = displayData['distributor'];
+                
+                final totalQuantity = products.fold<int>(
+                    0, (sum, item) => sum + item.quantity);
+
+                final role = distributor?.distributorType;
+                final isSelected = _selectedDistributors.contains(distributorUuid);
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary.withOpacity(0.2)
+                        : theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withOpacity(0.12),
+                      width: 1,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onLongPress: () {
+                        if (!_isSelectionMode) {
+                          _startSelectionMode(distributorUuid);
+                        }
+                      },
+                      onTap: () {
+                        if (_isSelectionMode) {
+                          _toggleSelection(distributorUuid);
+                        } else {
+                          showModalBottomSheet(
+                            context: context,
+                            builder: (ctx) => Wrap(
+                              children: <Widget>[
+                                ListTile(
+                                  leading: const Icon(Icons.receipt_long_outlined),
+                                  title: Text('orders.view_order_details'.tr()),
+                                  onTap: () {
+                                    Navigator.of(ctx).pop();
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => DistributorOrderDetailsScreen(
+                                          distributorName: distributorName,
+                                          products: products,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'orders.empty_cart'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.onSurface,
+                                if (distributor != null)
+                                  ListTile(
+                                    leading: const Icon(Icons.store_outlined),
+                                    title: Text('orders.go_to_distributor'.tr()),
+                                    onTap: () {
+                                      Navigator.of(ctx).pop();
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => DistributorProductsScreen(
+                                            distributor: distributor,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'orders.add_products_hint'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  textAlign: TextAlign.center,
+                                ListTile(
+                                  leading: Icon(Icons.delete_forever_outlined, color: theme.colorScheme.error),
+                                  title: Text('orders.start_new_order'.tr(),
+                                      style: TextStyle(color: theme.colorScheme.error)),
+                                  onTap: () {
+                                    Navigator.of(ctx).pop();
+                                    ref.read(orderProvider.notifier).removeProductsByDistributorUuid(distributorUuid);
+                                    if (distributor != null) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => DistributorProductsScreen(
+                                            distributor: distributor,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                               ],
                             ),
-                          )
-                        : filteredDistributors.isEmpty
-                            ? Center(
-                                child: Text(
-                                    'orders.no_search_results'.tr(namedArgs: {'query': _searchQuery})),
-                              )
-                            : ListView.separated(
-                                padding: const EdgeInsets.all(16.0),
-                                itemCount: filteredDistributors.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(height: 12),
-                                itemBuilder: (context, index) {
-                                  final distributorName =
-                                      filteredDistributors[index];
-                                  final products =
-                                      groupedByDistributor[distributorName]!;
-                                  final totalQuantity = products.fold<int>(
-                                      0, (sum, item) => sum + item.quantity);
-
-                                  final distributor =
-                                      distributorsData.firstWhere(
-                                    (d) => d.displayName == distributorName,
-                                    orElse: () => distributorsData.first,
-                                  );
-                                  final role = distributor.distributorType;
-                                  final isSelected = _selectedDistributors
-                                      .contains(distributorName);
-
-                                  return Container(
+                          );
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: distributor?.photoURL != null && distributor!.photoURL!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            imageUrl: distributor.photoURL!,
+                                            fit: BoxFit.contain,
+                                            placeholder: (context, url) => Container(color: theme.colorScheme.primaryContainer),
+                                            errorWidget: (context, url, error) => Icon(Icons.person, color: theme.colorScheme.onPrimaryContainer, size: 28),
+                                          )
+                                        : Icon(Icons.person, color: theme.colorScheme.onPrimaryContainer, size: 28),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Container(
+                                    width: 56,
+                                    height: 56,
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? theme.colorScheme.primary
-                                              .withOpacity(0.2)
-                                          : theme.colorScheme.surface,
+                                      color: theme.colorScheme.primary.withOpacity(0.5),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? theme.colorScheme.primary
-                                            : theme.colorScheme.outline
-                                                .withOpacity(0.12),
-                                        width: 1,
-                                      ),
                                     ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12),
-                                        onLongPress: () {
-                                          if (!_isSelectionMode) {
-                                            _startSelectionMode(
-                                                distributorName);
-                                          }
-                                        },
-                                        onTap: () {
-                                          if (_isSelectionMode) {
-                                            _toggleSelection(distributorName);
-                                          } else {
-                                            showModalBottomSheet(
-                                              context: context,
-                                              builder: (ctx) => Wrap(
-                                                children: <Widget>[
-                                                  ListTile(
-                                                    leading: const Icon(Icons
-                                                        .receipt_long_outlined),
-                                                    title: Text(
-                                                        'orders.view_order_details'.tr()),
-                                                    onTap: () {
-                                                      Navigator.of(ctx).pop();
-                                                      Navigator.of(context)
-                                                          .push(
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              DistributorOrderDetailsScreen(
-                                                            distributorName:
-                                                                distributorName,
-                                                            products: products,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  ListTile(
-                                                    leading: const Icon(
-                                                        Icons.store_outlined),
-                                                    title: Text(
-                                                        'orders.go_to_distributor'.tr()),
-                                                    onTap: () {
-                                                      Navigator.of(ctx).pop();
-                                                      Navigator.of(context)
-                                                          .push(
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              DistributorProductsScreen(
-                                                            distributor:
-                                                                distributor,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  ListTile(
-                                                    leading: Icon(
-                                                        Icons
-                                                            .delete_forever_outlined,
-                                                        color: theme
-                                                            .colorScheme.error),
-                                                    title: Text(
-                                                        'orders.start_new_order'.tr(),
-                                                        style: TextStyle(
-                                                            color: theme
-                                                                .colorScheme
-                                                                .error)),
-                                                    onTap: () {
-                                                      Navigator.of(ctx).pop();
-                                                      ref
-                                                          .read(orderProvider
-                                                              .notifier)
-                                                          .removeProductsByDistributor(
-                                                              distributorName);
-                                                      Navigator.of(context)
-                                                          .push(
-                                                        MaterialPageRoute(
-                                                          builder: (context) =>
-                                                              DistributorProductsScreen(
-                                                            distributor:
-                                                                distributor,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16.0),
-                                          child: Row(
-                                            children: [
-                                              Stack(
-                                                alignment: Alignment.center,
-                                                children: [
-                                                  Container(
-                                                    width: 56,
-                                                    height: 56,
-                                                    decoration: BoxDecoration(
-                                                      color: theme.colorScheme
-                                                          .primaryContainer,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                    ),
-                                                    child: ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                      child: distributor
-                                                                      .photoURL !=
-                                                                  null &&
-                                                              distributor
-                                                                  .photoURL!
-                                                                  .isNotEmpty
-                                                          ? CachedNetworkImage(
-                                                              imageUrl:
-                                                                  distributor
-                                                                      .photoURL!,
-                                                              fit: BoxFit.contain,
-                                                              placeholder:
-                                                                  (context,
-                                                                          url) =>
-                                                                      Container(
-                                                                color: theme
-                                                                    .colorScheme
-                                                                    .primaryContainer,
-                                                              ),
-                                                              errorWidget:
-                                                                  (context, url,
-                                                                          error) =>
-                                                                      Icon(
-                                                                Icons.person,
-                                                                color: theme
-                                                                    .colorScheme
-                                                                    .onPrimaryContainer,
-                                                                size: 28,
-                                                              ),
-                                                            )
-                                                          : Icon(
-                                                              Icons.person,
-                                                              color: theme
-                                                                  .colorScheme
-                                                                  .onPrimaryContainer,
-                                                              size: 28,
-                                                            ),
-                                                    ),
-                                                  ),
-                                                  if (isSelected)
-                                                    Container(
-                                                      width: 56,
-                                                      height: 56,
-                                                      decoration: BoxDecoration(
-                                                        color: theme
-                                                            .colorScheme.primary
-                                                            .withOpacity(0.5),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      child: Icon(Icons.check,
-                                                          color: Colors.white),
-                                                    ),
-                                                ],
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      distributorName,
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: theme.colorScheme
-                                                            .onSurface,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                    const SizedBox(height: 8),
-                                                    Row(
-                                                      children: [
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 4),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: theme
-                                                                .colorScheme
-                                                                .secondaryContainer,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: [
-                                                              Icon(
-                                                                Icons
-                                                                    .inventory_2_outlined,
-                                                                size: 14,
-                                                                color: theme
-                                                                    .colorScheme
-                                                                    .onSecondaryContainer,
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 4),
-                                                              Text(
-                                                                'orders.products_count'.tr(namedArgs: {'count': totalQuantity.toString()}),
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 12,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                  color: theme
-                                                                      .colorScheme
-                                                                      .onSecondaryContainer,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    if (role != null)
-                                                      Row(
-                                                        children: [
-                                                          Icon(
-                                                            role == 'company'
-                                                                ? Icons.business
-                                                                : Icons
-                                                                    .person_outline,
-                                                            size: 15,
-                                                            color: theme
-                                                                .colorScheme
-                                                                .primary,
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 4),
-                                                          Text(
-                                                            role == 'company'
-                                                                ? 'orders.distribution_company'.tr()
-                                                                : 'orders.individual_distributor'.tr(),
-                                                            style: TextStyle(
-                                                              color: theme
-                                                                  .colorScheme
-                                                                  .primary,
-                                                              fontSize: 13,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Icon(
-                                                Icons.arrow_forward_ios,
-                                                size: 16,
-                                                color: theme.colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
-                                            ],
-                                          ),
+                                    child: const Icon(Icons.check, color: Colors.white),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    distributorName,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.secondaryContainer,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.inventory_2_outlined, size: 14, color: theme.colorScheme.onSecondaryContainer),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'orders.products_count'.tr(namedArgs: {'count': totalQuantity.toString()}),
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: theme.colorScheme.onSecondaryContainer),
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (role != null)
+                                    Row(
+                                      children: [
+                                        Icon(role == 'company' ? Icons.business : Icons.person_outline, size: 15, color: theme.colorScheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          role == 'company' ? 'orders.distribution_company'.tr() : 'orders.individual_distributor'.tr(),
+                                          style: TextStyle(color: theme.colorScheme.primary, fontSize: 13, fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
                                     ),
-                                  );
-                                },
+                                ],
                               ),
-                ),
-                ],
-              );
-        },
-        loading: () => Center(
-          child: CircularProgressIndicator(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: theme.colorScheme.error.withOpacity(0.7),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'orders.load_error'.tr(),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$err',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+                            ),
+                            Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('orders.load_error'.tr())),
         ),
       ),
-        ));
+    );
   }
 }

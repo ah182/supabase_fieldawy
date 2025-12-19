@@ -15,6 +15,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
+import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
+import 'package:fieldawy_store/widgets/user_details_sheet.dart';
+import 'package:intl/intl.dart';
 
 // ============================================================================
 // 📦 MODELS
@@ -669,7 +672,7 @@ class _RatingInputState extends State<RatingInput> {
 // ========================================
 // REVIEW REQUEST CARD
 // ========================================
-class ReviewRequestCard extends StatelessWidget {
+class ReviewRequestCard extends ConsumerWidget {
   final ReviewRequestModel request;
   final VoidCallback? onTap;
 
@@ -680,7 +683,7 @@ class ReviewRequestCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -715,14 +718,23 @@ class ReviewRequestCard extends StatelessWidget {
               // Requester info
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundImage: request.requesterPhoto != null
-                        ? CachedNetworkImageProvider(request.requesterPhoto!)
-                        : null,
-                    child: request.requesterPhoto == null
-                        ? const Icon(Icons.person, size: 14)
-                        : null,
+                  GestureDetector(
+                    onTap: () {
+                      if (request.requesterRole == 'doctor') {
+                        UserDetailsSheet.show(context, ref, request.requestedBy);
+                      } else {
+                        DistributorDetailsSheet.show(context, request.requestedBy);
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: 12,
+                      backgroundImage: request.requesterPhoto != null
+                          ? CachedNetworkImageProvider(request.requesterPhoto!)
+                          : null,
+                      child: request.requesterPhoto == null
+                          ? const Icon(Icons.person, size: 14)
+                          : null,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(

@@ -1,6 +1,8 @@
 // ignore_for_file: unused_import
 
+import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert'; // Added for jsonDecode
@@ -221,24 +223,36 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   }
 
   Future<bool> _showTipsDialog() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: colorScheme.surface,
         contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // --- العنوان ---
-            const Text(
+            Text(
               "تحويل الصورة إلى بيانات",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               "صورالورقة بوضوح واجعلها في شكل جدول كما هو موضح ادناه باللغة الانجليزية، وسيتولى الذكاء الاصطناعي الباقي! 🚀\nسيتم استخراج البيانات (اسم الدواء، الحجم، السعر) تلقائياً وتنظيمها في جدول لتوفير وقتك ومجهودك.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.5),
+              style: TextStyle(
+                color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[600],
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -246,12 +260,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.receipt_long_rounded, size: 40, color: Colors.blueGrey),
+                Icon(Icons.receipt_long_rounded, size: 40, color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.blueGrey),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.arrow_forward_rounded, color: Theme.of(context).primaryColor),
+                  child: Icon(Icons.arrow_forward_rounded, color: colorScheme.primary),
                 ),
-                const Icon(Icons.table_chart_rounded, size: 40, color: Colors.green),
+                Icon(Icons.table_chart_rounded, size: 40, color: isDark ? Colors.greenAccent : Colors.green),
               ],
             ),
             const SizedBox(height: 20),
@@ -259,7 +273,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             // --- الجدول التوضيحي (Responsive Table) ---
             Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: isDark ? colorScheme.outline.withOpacity(0.3) : Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: ClipRRect(
@@ -272,12 +286,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   },
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   border: TableBorder(
-                    horizontalInside: BorderSide(color: Colors.grey.shade200, width: 1),
+                    horizontalInside: BorderSide(color: isDark ? colorScheme.outline.withOpacity(0.2) : Colors.grey.shade200, width: 1),
                   ),
                   children: [
                     // Header Row
                     TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade100),
+                      decoration: BoxDecoration(color: isDark ? colorScheme.surfaceVariant.withOpacity(0.5) : Colors.grey.shade100),
                       children: const [
                         Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                         Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
@@ -285,10 +299,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                       ],
                     ),
                     // Data Rows
-                    _buildTableRow("Diflam", "100ml vial", "45"),
-                    _buildTableRow("Histacure", "100ml vial", "130"),
-                    _buildTableRow("Antoplex", "100ml vial", "600"),
-                    _buildTableRow("Gentacure", "50ml vial", "125"),
+                    _buildTableRow("Diflam", "100ml vial", "45", isDark, colorScheme),
+                    _buildTableRow("Histacure", "100ml vial", "130", isDark, colorScheme),
+                    _buildTableRow("Antoplex", "100ml vial", "600", isDark, colorScheme),
+                    _buildTableRow("Gentacure", "50ml vial", "125", isDark, colorScheme),
                   ],
                 ),
               ),
@@ -314,8 +328,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                     icon: const Icon(Icons.camera_alt, size: 18),
                     label: const Text("تصوير"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -328,12 +342,31 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     ) ?? false;
   }
 
-  TableRow _buildTableRow(String name, String pack, String price) {
+  TableRow _buildTableRow(String name, String pack, String price, bool isDark, ColorScheme colorScheme) {
     return TableRow(
       children: [
         Padding(padding: const EdgeInsets.all(10), child: Text(name, style: const TextStyle(fontSize: 12))),
-        Padding(padding: const EdgeInsets.all(10), child: Text(pack, style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
-        Padding(padding: const EdgeInsets.all(10), child: Text(price, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))),
+        Padding(
+          padding: const EdgeInsets.all(10), 
+          child: Text(
+            pack, 
+            style: TextStyle(
+              fontSize: 12, 
+              color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[700]
+            )
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(10), 
+          child: Text(
+            price, 
+            style: TextStyle(
+              fontSize: 12, 
+              fontWeight: FontWeight.bold, 
+              color: isDark ? Colors.greenAccent : Colors.green
+            )
+          )
+        ),
       ],
     );
   }
@@ -474,24 +507,35 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   }
 
   Future<bool> _showExcelTipsDialog() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: colorScheme.surface,
         contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // --- العنوان ---
-            const Text(
+            Text(
               "استيراد ملف Excel",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               "يجب أن يكون ملف الإكسل منظماً بنفس تنسيق الجدول أدناه (باللغة الإنجليزية) لضمان قراءة البيانات بشكل صحيح.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              style: TextStyle(
+                color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[600],
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -499,12 +543,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(FontAwesomeIcons.fileExcel, size: 40, color: Colors.green),
+                Icon(FontAwesomeIcons.fileExcel, size: 40, color: isDark ? Colors.greenAccent : Colors.green),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.arrow_forward_rounded, color: Theme.of(context).primaryColor),
+                  child: Icon(Icons.arrow_forward_rounded, color: colorScheme.primary),
                 ),
-                const Icon(Icons.table_chart_rounded, size: 40, color: Colors.blueGrey),
+                Icon(Icons.table_chart_rounded, size: 40, color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.blueGrey),
               ],
             ),
             const SizedBox(height: 20),
@@ -512,7 +556,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             // --- الجدول التوضيحي (Responsive Table) ---
             Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: isDark ? colorScheme.outline.withOpacity(0.3) : Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: ClipRRect(
@@ -525,12 +569,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                   },
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   border: TableBorder(
-                    horizontalInside: BorderSide(color: Colors.grey.shade200, width: 1),
+                    horizontalInside: BorderSide(color: isDark ? colorScheme.outline.withOpacity(0.2) : Colors.grey.shade200, width: 1),
                   ),
                   children: [
                     // Header Row
                     TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade100),
+                      decoration: BoxDecoration(color: isDark ? colorScheme.surfaceVariant.withOpacity(0.5) : Colors.grey.shade100),
                       children: const [
                         Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                         Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
@@ -538,10 +582,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                       ],
                     ),
                     // Data Rows
-                    _buildTableRow("Diflam", "100ml vial", "45"),
-                    _buildTableRow("Histacure", "100ml vial", "130"),
-                    _buildTableRow("Antoplex", "100ml vial", "600"),
-                    _buildTableRow("Gentacure", "50ml vial", "125"),
+                    _buildTableRow("Diflam", "100ml vial", "45", isDark, colorScheme),
+                    _buildTableRow("Histacure", "100ml vial", "130", isDark, colorScheme),
+                    _buildTableRow("Antoplex", "100ml vial", "600", isDark, colorScheme),
+                    _buildTableRow("Gentacure", "50ml vial", "125", isDark, colorScheme),
                   ],
                 ),
               ),
@@ -567,8 +611,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                     icon: const Icon(Icons.upload_file, size: 15),
                     label: const Text("اختيار"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -2607,14 +2651,55 @@ class _ProductCatalogItem extends HookConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            product.name,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              // عرض اسم الموزع الأصلي في تاب الـ OCR فقط
+                              if (product.distributorUuid != null || (product.distributorId != null && product.distributorId!.isNotEmpty))
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final distributorsAsync = ref.watch(distributorsProvider);
+                                    // محاولة البحث بالـ UUID أو بالاسم (في حال كان الـ ID مخزناً في حقل distributorId)
+                                    final currentName = distributorsAsync.maybeWhen(
+                                      data: (distributors) {
+                                        final dist = distributors.firstWhereOrNull((d) => 
+                                          d.id == product.distributorUuid || 
+                                          d.id == product.distributorId
+                                        );
+                                        return dist?.displayName;
+                                      },
+                                      orElse: () => null,
+                                    );
+                                    
+                                    // إذا لم نجد الاسم في القائمة، نعرض الاسم المخزن بشرط ألا يكون UUID
+                                    final finalDisplayName = currentName ?? 
+                                      (product.distributorId != null && !product.distributorId!.contains('-') 
+                                        ? product.distributorId 
+                                        : null);
+
+                                    if (finalDisplayName == null) return const SizedBox.shrink();
+                                    
+                                    return Text(
+                                      'بواسطة: $finalDisplayName',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                                        fontSize: 10,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
                                 ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            ],
                           ),
                         ),
                         if (canEdit && onEdit != null)
