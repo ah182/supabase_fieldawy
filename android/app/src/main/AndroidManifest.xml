@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.fieldawy_store">
+    package="com.fieldawy.store">
 
 
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -29,7 +29,6 @@
     <application
         android:label="Fieldawy Store"
         android:name="${applicationName}"
-        android:requestLegacyExternalStorage="true" 
         android:icon="@mipmap/launcher_icon">
         
         <meta-data

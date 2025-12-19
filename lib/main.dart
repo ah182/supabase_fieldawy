@@ -81,7 +81,7 @@ class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     return FirebaseOptions(
       apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
-      appId: "1:665551059689:android:cd266cedbef84f5c888e78",
+      appId: "1:665551059689:android:fdc9431301e441a2888e78",
       messagingSenderId: "665551059689",
       projectId: "fieldawy-store-app",
       storageBucket: "fieldawy-store-app.firebasestorage.app",

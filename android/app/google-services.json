@@ -48,6 +48,50 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:665551059689:android:fdc9431301e441a2888e78",
+        "android_client_info": {
+          "package_name": "com.fieldawy.store"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "665551059689-iaf2iovl8foid1mt7jl9pn10kn0h3da7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fieldawy.store",
+            "certificate_hash": "e5e678e76c9e1b7b433b61aa5ea8edb1cd4b587e"
+          }
+        },
+        {
+          "client_id": "665551059689-h6md8lhpskrquaje7ffhlth0vpqd1ph0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAySg6p5glXrsJUV2xPqzx47DDj0f3hy3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "665551059689-bb1albh5unnoh05erboo4s7piardjfsk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "665551059689-l8f6ctcfbcennv0ksg2gqomg3k2pneou.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fieldawyStore"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

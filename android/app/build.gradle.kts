@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fieldawy_store"
+    namespace = "com.fieldawy.store"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.fieldawy_store"
+        applicationId = "com.fieldawy.store"
         minSdk = 23
         targetSdk = 35
         versionCode = flutter.versionCode

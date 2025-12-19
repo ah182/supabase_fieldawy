@@ -285,7 +285,7 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
                                   ),
                                   child: Text(
                                     'لديك',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
