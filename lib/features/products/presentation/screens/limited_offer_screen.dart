@@ -26,17 +26,23 @@ class LimitedOfferScreen extends ConsumerWidget {
           children: [
             Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
-            const Text('معلومة هامة'),
+            Expanded(
+              child: Text(
+                'offers.limited.info_title'.tr(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'تنويه: مدة العرض المحدود هي 7 أيام فقط.\nسيتم عرض المنتج للمستخدمين لمدة 7 أيام ثم يتم حذفه تلقائياً من قائمة العروض.',
-          style: TextStyle(height: 1.5),
+        content: Text(
+          'offers.limited.info_desc'.tr(),
+          style: const TextStyle(height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text('profile_feature.cancel'.tr()),
           ),
           FilledButton(
             onPressed: () {
@@ -44,7 +50,7 @@ class LimitedOfferScreen extends ConsumerWidget {
               Navigator.pop(context); // Close info dialog
               _showSelectionBottomSheet(context, navigator); // Open selection sheet with stable navigator
             },
-            child: const Text('متابعة'),
+            child: Text('offers.limited.continue'.tr()),
           ),
         ],
       ),
@@ -90,8 +96,8 @@ class LimitedOfferScreen extends ConsumerWidget {
                     child: Icon(Icons.inventory_2_outlined,
                         color: Theme.of(context).colorScheme.primary),
                   ),
-                  title: const Text('Add from Catalog'),
-                  subtitle: const Text('اختر من الكتالوج'),
+                  title: Text('offers.limited.add_from_catalog'.tr()),
+                  subtitle: Text('offers.limited.choose_from_catalog'.tr()),
                   onTap: () {
                     Navigator.pop(modalContext);
                     navigator.push(MaterialPageRoute(
@@ -111,8 +117,8 @@ class LimitedOfferScreen extends ConsumerWidget {
                     child: Icon(Icons.photo_library_outlined,
                         color: Colors.orange),
                   ),
-                  title: const Text('Add from Gallery'),
-                  subtitle: const Text('إضافة من المعرض'),
+                  title: Text('offers.limited.add_from_gallery'.tr()),
+                  subtitle: Text('offers.limited.choose_from_gallery'.tr()),
                   onTap: () {
                     Navigator.pop(modalContext);
                     navigator.push(MaterialPageRoute(
@@ -161,7 +167,7 @@ class LimitedOfferScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Text('العروض المحدودة'),
+            Text('offers.limited.title'.tr()),
           ],
         ),
         centerTitle: true,
@@ -172,9 +178,9 @@ class LimitedOfferScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add_rounded, size: 24),
-        label: const Text(
-          'إضافة عرض',
-          style: TextStyle(
+        label: Text(
+          'offers.limited.add_offer'.tr(),
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),
@@ -189,6 +195,7 @@ class LimitedOfferScreen extends ConsumerWidget {
             return RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(myOffersProvider);
+                await ref.read(myOffersProvider.future);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -203,6 +210,7 @@ class LimitedOfferScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(myOffersProvider);
+              await ref.read(myOffersProvider.future);
             },
             color: theme.colorScheme.primary,
             child: CustomScrollView(
@@ -265,7 +273,7 @@ class LimitedOfferScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'جاري تحميل العروض...',
+                'offers.limited.loading'.tr(),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
@@ -311,7 +319,7 @@ class _StatsCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            'Active Offers :',
+            'offers.limited.active_count_label'.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontWeight: FontWeight.w500,
@@ -372,19 +380,19 @@ class _ModernOfferCard extends ConsumerWidget {
 
     if (isOfferExpired || daysUntilDeletion == 0) {
       statusColor = colorScheme.error;
-      statusText = daysUntilDeletion == 0 ? 'ينتهي اليوم' : 'منتهي';
+      statusText = daysUntilDeletion == 0 ? 'offers.limited.expires_today'.tr() : 'offers.limited.expired'.tr();
       statusBgColor = colorScheme.errorContainer;
     } else if (daysUntilDeletion <= 2) {
       statusColor = Colors.red.shade700;
-      statusText = 'ينتهي قريباً جداً';
+      statusText = 'offers.limited.expires_very_soon'.tr();
       statusBgColor = Colors.red.shade100;
     } else if (daysUntilDeletion <= 4) {
       statusColor = Colors.orange.shade700;
-      statusText = 'ينتهي قريباً';
+      statusText = 'offers.limited.expires_soon'.tr();
       statusBgColor = Colors.orange.shade100;
     } else {
       statusColor = Colors.green.shade600;
-      statusText = 'ساري';
+      statusText = 'offers.limited.active'.tr();
       statusBgColor = Colors.green.shade100;
     }
 
@@ -694,16 +702,16 @@ class _ModernOfferCard extends ConsumerWidget {
                                     size: 28,
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text('حذف العرض'),
+                                  Text('offers.limited.delete_title'.tr()),
                                 ],
                               ),
-                              content: const Text(
-                                'هل أنت متأكد من حذف هذا العرض؟\nلن تتمكن من التراجع عن هذا الإجراء.',
+                              content: Text(
+                                'offers.limited.delete_confirm'.tr(),
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(dialogContext, false),
-                                  child: const Text('إلغاء'),
+                                  child: Text('profile_feature.cancel'.tr()),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
@@ -714,7 +722,7 @@ class _ModernOfferCard extends ConsumerWidget {
                                     ),
                                   ),
                                   onPressed: () => Navigator.pop(dialogContext, true),
-                                  child: const Text('حذف'),
+                                  child: Text('profile_feature.delete'.tr()),
                                 ),
                               ],
                             ),
@@ -740,7 +748,7 @@ class _ModernOfferCard extends ConsumerWidget {
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            'تم حذف العرض بنجاح',
+                                            'offers.limited.delete_success'.tr(),
                                             style: TextStyle(
                                               color: colorScheme.onErrorContainer,
                                               fontWeight: FontWeight.w600,
@@ -770,7 +778,7 @@ class _ModernOfferCard extends ConsumerWidget {
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            'فشل حذف العرض',
+                                            'offers.limited.delete_error'.tr(),
                                             style: TextStyle(
                                               color: colorScheme.onErrorContainer,
                                             ),
@@ -828,10 +836,12 @@ class _ModernOfferCard extends ConsumerWidget {
                             const SizedBox(width: 6),
                             Text(
                               isOfferExpired
-                                  ? 'تم الحذف'
+                                  ? 'offers.limited.deleted'.tr()
                                   : daysUntilDeletion == 0
-                                      ? 'يُحذف اليوم'
-                                      : 'باقي ${daysUntilDeletion > 0 ? daysUntilDeletion : 0} ${daysUntilDeletion == 1 ? 'يوم' : 'أيام'}',
+                                      ? 'offers.limited.deletes_today'.tr()
+                                      : daysUntilDeletion == 1
+                                          ? 'offers.limited.day_remaining'.tr()
+                                          : 'offers.limited.days_remaining'.tr(namedArgs: {'days': daysUntilDeletion.toString()}),
                               style: textTheme.labelSmall?.copyWith(
                                 color: daysUntilDeletion <= 2
                                     ? Colors.red.shade700
@@ -893,7 +903,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              'لا توجد عروض متاحة حالياً',
+              'offers.limited.empty_title'.tr(),
               textAlign: TextAlign.center,
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: theme.colorScheme.onSurface,
@@ -902,7 +912,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'أضف عرضك الأول لجذب المزيد من العملاء\nوزيادة مبيعاتك',
+              'offers.limited.empty_desc'.tr(),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -913,9 +923,9 @@ class _EmptyState extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onAddPressed,
               icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'إضافة عرض جديد',
-                style: TextStyle(
+              label: Text(
+                'offers.limited.add_new'.tr(),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -976,7 +986,7 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'حدث خطأ في تحميل العروض',
+              'offers.limited.error_title'.tr(),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -996,9 +1006,9 @@ class _ErrorState extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text(
-                'إعادة المحاولة',
-                style: TextStyle(
+              label: Text(
+                'distributors_feature.retry'.tr(),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),

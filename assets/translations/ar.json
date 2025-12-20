@@ -781,6 +781,36 @@
         "no_products_distributor": "لا توجد منتجات لهذا الموزع"
     },
     "offers": {
+        "limited": {
+            "title": "العروض المحدودة",
+            "add_offer": "إضافة عرض",
+            "info_title": "معلومة هامة",
+            "info_desc": "تنويه: مدة العرض المحدود هي 7 أيام فقط.\nسيتم عرض المنتج للمستخدمين لمدة 7 أيام ثم يتم حذفه تلقائياً من قائمة العروض.",
+            "continue": "متابعة",
+            "add_from_catalog": "Add from Catalog",
+            "choose_from_catalog": "اختر من الكتالوج",
+            "add_from_gallery": "Add from Gallery",
+            "choose_from_gallery": "إضافة من المعرض",
+            "loading": "جاري تحميل العروض...",
+            "active_count_label": "العروض النشطة :",
+            "expires_today": "ينتهي اليوم",
+            "expired": "منتهي",
+            "expires_very_soon": "ينتهي قريباً جداً",
+            "expires_soon": "ينتهي قريباً",
+            "active": "ساري",
+            "delete_title": "حذف العرض",
+            "delete_confirm": "هل أنت متأكد من حذف هذا العرض؟\nلن تتمكن من التراجع عن هذا الإجراء.",
+            "delete_success": "تم حذف العرض بنجاح",
+            "delete_error": "فشل حذف العرض",
+            "deleted": "تم الحذف",
+            "deletes_today": "يُحذف اليوم",
+            "days_remaining": "باقي {days} أيام",
+            "day_remaining": "باقي يوم واحد",
+            "empty_title": "لا توجد عروض متاحة حالياً",
+            "empty_desc": "أضف عرضك الأول لجذب المزيد من العملاء\nوزيادة مبيعاتك",
+            "add_new": "إضافة عرض جديد",
+            "error_title": "حدث خطأ في تحميل العروض"
+        },
         "tabs": {
             "title": "العروض",
             "no_offers": "لا توجد عروض متاحة",
@@ -1017,6 +1047,7 @@
         }
     },
     "products": {
+        "product_label": "منتج",
         "my_medicines": "أدويتي",
         "add_product": "إضافة منتج",
         "scan_camera": "مسح بالكاميرا",

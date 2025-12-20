@@ -359,6 +359,36 @@
       "no_products_distributor": "No products for this distributor"
   },
       "offers": {
+        "limited": {
+            "title": "Limited Offers",
+            "add_offer": "Add Offer",
+            "info_title": "Important Information",
+            "info_desc": "Notice: Limited offer duration is 7 days only.\nThe product will be displayed to users for 7 days then automatically deleted from the offers list.",
+            "continue": "Continue",
+            "add_from_catalog": "Add from Catalog",
+            "choose_from_catalog": "Choose from Catalog",
+            "add_from_gallery": "Add from Gallery",
+            "choose_from_gallery": "Add from Gallery",
+            "loading": "Loading offers...",
+            "active_count_label": "Active Offers :",
+            "expires_today": "Expires Today",
+            "expired": "Expired",
+            "expires_very_soon": "Expires Very Soon",
+            "expires_soon": "Expires Soon",
+            "active": "Active",
+            "delete_title": "Delete Offer",
+            "delete_confirm": "Are you sure you want to delete this offer?\nThis action cannot be undone.",
+            "delete_success": "Offer deleted successfully",
+            "delete_error": "Failed to delete offer",
+            "deleted": "Deleted",
+            "deletes_today": "Deletes Today",
+            "days_remaining": "{days} days left",
+            "day_remaining": "1 day left",
+            "empty_title": "No offers available currently",
+            "empty_desc": "Add your first offer to attract more customers\nand increase your sales",
+            "add_new": "Add New Offer",
+            "error_title": "Error loading offers"
+        },
         "tabs": {
           "title": "Offers",
           "no_offers": "No offers available currently",
@@ -568,6 +598,7 @@
         }
     },
     "products": {
+        "product_label": "Product",
         "my_medicines": "My Medicines",
         "add_product": "Add Product",
         "scan_camera": "Scan Camera",

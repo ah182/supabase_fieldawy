@@ -60,7 +60,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                       child: Icon(Icons.inventory_2_outlined,
                           color: colorScheme.primary),
                     ),
-                    title: const Text('Add from Catalog'),
+                    title: Text('offers.limited.add_from_catalog'.tr()),
                     subtitle: Text('addProduct.expireSoon.subtitle'.tr()),
                     onTap: () async {
                       Navigator.of(sheetContext).pop();
@@ -83,7 +83,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                       child: Icon(Icons.photo_library_outlined,
                           color: colorScheme.tertiary),
                     ),
-                    title: const Text('Add from your Gallery'),
+                    title: Text('offers.limited.add_from_gallery'.tr()),
                     subtitle: Text('addProduct.expireSoon.subtitle'.tr()),
                     onTap: () async {
                       Navigator.of(sheetContext).pop();
@@ -182,7 +182,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                                     ? '${expirationDate.month.toString().padLeft(2, '0')}/${expirationDate.year}'
                                     : null;
                                 final priceLabel =
-                                    '${product.price?.toStringAsFixed(2) ?? '0.00'} ${'EGP'.tr()}';
+                                    '${product.price?.toStringAsFixed(2) ?? '0.00'} ${'products.currency'.tr()}';
 
                                 Widget buildInfoChip({
                                   required IconData icon,
@@ -247,10 +247,10 @@ class ExpireDrugsScreen extends ConsumerWidget {
                                             TextField(
                                               controller: expDateController,
                                               readOnly: true,
-                                              decoration: const InputDecoration(
+                                              decoration: InputDecoration(
                                                 labelText:
-                                                    'تاريخ الصلاحية (MM-YYYY)',
-                                                suffixIcon: Icon(Icons
+                                                    'offers.expiration_date_label'.tr() + ' (MM-YYYY)',
+                                                suffixIcon: const Icon(Icons
                                                     .calendar_month_outlined),
                                               ),
                                               onTap: () async {
@@ -264,9 +264,9 @@ class ExpireDrugsScreen extends ConsumerWidget {
                                                       now.year, now.month),
                                                   lastDate: DateTime(2101, 12),
                                                   helpText:
-                                                      'اختر تاريخ الصلاحية',
+                                                      'offers.expiration_date_label'.tr(),
                                                   fieldLabelText:
-                                                      'تاريخ الصلاحية',
+                                                      'offers.expiration_date_label'.tr(),
                                                   fieldHintText: 'MM-YYYY',
                                                 );
                                                 if (picked != null) {
@@ -302,7 +302,7 @@ class ExpireDrugsScreen extends ConsumerWidget {
                                                 'expirationDate': pickedDate,
                                               });
                                             },
-                                            child: const Text('حفظ'),
+                                            child: Text('profile_feature.edit.save'.tr()),
                                           ),
                                         ],
                                       );
@@ -353,8 +353,8 @@ class ExpireDrugsScreen extends ConsumerWidget {
                                     context: context,
                                     builder: (dialogContext) => AlertDialog(
                                       title: Text('delete'.tr()),
-                                      content: const Text(
-                                          'هل أنت متأكد أنك تريد حذف هذا المنتج؟'),
+                                      content: Text(
+                                          'products.confirm_delete_generic_msg'.tr()),
                                       actions: [
                                         TextButton(
                                           onPressed: () => Navigator.pop(

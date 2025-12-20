@@ -246,8 +246,9 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
 
   Future<void> _refreshTools() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() => _isLoading = false);
+    // لا حاجة لـ invalidate هنا لأننا نستخدم FutureBuilder يستدعي الدالة مباشرة
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -313,49 +314,50 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: ref.read(productRepositoryProvider).getMySurgicalTools(userId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting ||
-              _isLoading) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'surgical_tools_feature.messages.loading_tools'.tr(),
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+      body: RefreshIndicator(
+        onRefresh: _refreshTools,
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: ref.read(productRepositoryProvider).getMySurgicalTools(userId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                _isLoading) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: theme.colorScheme.primary,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'surgical_tools_feature.messages.loading_tools'.tr(),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return _ErrorState(
+                error: snapshot.error.toString(),
+                onRetry: _refreshTools,
+              );
+            }
+
+            final tools = snapshot.data ?? [];
+
+            if (tools.isEmpty) {
+              return _EmptyState(onAddPressed: () => _showAddDialog(context));
+            }
+
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return _ErrorState(
-              error: snapshot.error.toString(),
-              onRetry: _refreshTools,
-            );
-          }
-
-          final tools = snapshot.data ?? [];
-
-          if (tools.isEmpty) {
-            return _EmptyState(onAddPressed: () => _showAddDialog(context));
-          }
-
-          return RefreshIndicator(
-            onRefresh: _refreshTools,
-            color: theme.colorScheme.primary,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -426,9 +428,9 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
                   ),
                 ),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
