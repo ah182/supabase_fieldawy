@@ -40,8 +40,9 @@ class LimitedOfferScreen extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
+              final navigator = Navigator.of(context);
               Navigator.pop(context); // Close info dialog
-              _showSelectionBottomSheet(context); // Open selection sheet
+              _showSelectionBottomSheet(context, navigator); // Open selection sheet with stable navigator
             },
             child: const Text('متابعة'),
           ),
@@ -50,7 +51,7 @@ class LimitedOfferScreen extends ConsumerWidget {
     );
   }
 
-  void _showSelectionBottomSheet(BuildContext context) {
+  void _showSelectionBottomSheet(BuildContext context, NavigatorState navigator) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -93,7 +94,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                   subtitle: const Text('اختر من الكتالوج'),
                   onTap: () {
                     Navigator.pop(modalContext);
-                    Navigator.of(context).push(MaterialPageRoute(
+                    navigator.push(MaterialPageRoute(
                       builder: (context) => const AddFromCatalogScreen(
                         catalogContext: CatalogContext.offers,
                         showExpirationDate: true,
@@ -114,7 +115,7 @@ class LimitedOfferScreen extends ConsumerWidget {
                   subtitle: const Text('إضافة من المعرض'),
                   onTap: () {
                     Navigator.pop(modalContext);
-                    Navigator.of(context).push(MaterialPageRoute(
+                    navigator.push(MaterialPageRoute(
                       builder: (context) => const AddProductOcrScreen(
                         showExpirationDate: true,
                         isFromOfferScreen: true,

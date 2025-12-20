@@ -216,11 +216,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('   Distributor ID: ${distributorId ?? "None"}');
   print('   Title: $title');
   
-  // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (لا يجب أن يستقبل إشعاراته الخاصة)
-  if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
-    print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
-    return;
-  }
+  // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
   
   // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
   // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
@@ -773,11 +769,7 @@ Future<void> main() async {
     print('   Distributor ID: ${distributorId ?? "None"}');
     print('   Title: $title');
     
-    // ⏭️ تخطي الإشعار إذا كان المرسل هو المستقبل (لا يجب أن يستقبل إشعاراته الخاصة)
-    if (distributorId != null && currentUserId != null && distributorId == currentUserId) {
-      print('⏭️ تم تخطي الإشعار: المرسل هو المستقبل');
-      return;
-    }
+    // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
 
     // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
     // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي

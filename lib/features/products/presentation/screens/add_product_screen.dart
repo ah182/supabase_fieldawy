@@ -139,23 +139,51 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // تحديد ألوان ديناميكية للحالة المقفلة
+    final lockedBgColor = isDark 
+        ? theme.colorScheme.surfaceVariant.withOpacity(0.3) 
+        : Colors.grey.shade100;
+    final lockedIconColor = isDark ? Colors.white24 : Colors.grey;
+    final lockedTextColor = isDark ? Colors.white38 : Colors.grey.shade600;
+
     return Opacity(
-      opacity: isLocked ? 0.5 : 1.0,
+      opacity: isLocked ? 0.6 : 1.0,
       child: Card(
         elevation: 2.0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        color: isLocked ? Colors.grey.shade100 : null,
+        color: isLocked ? lockedBgColor : null,
         child: Stack(
           children: [
             ListTile(
               contentPadding:
                   const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-              leading: Icon(icon, size: 40, color: isLocked ? Colors.grey : Theme.of(context).colorScheme.primary),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(subtitle),
-              trailing: Icon(isLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded),
+              leading: Icon(
+                icon, 
+                size: 40, 
+                color: isLocked ? lockedIconColor : theme.colorScheme.primary
+              ),
+              title: Text(
+                title, 
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isLocked ? lockedTextColor : null,
+                )
+              ),
+              subtitle: Text(
+                subtitle,
+                style: TextStyle(
+                  color: isLocked ? lockedTextColor.withOpacity(0.7) : null,
+                ),
+              ),
+              trailing: Icon(
+                isLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded,
+                color: isLocked ? lockedIconColor : null,
+              ),
               onTap: onTap,
             ),
             if (badge != null)

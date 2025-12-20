@@ -85,7 +85,8 @@ class CoursesTab extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(allCoursesNotifierProvider);
-            await Future.delayed(const Duration(milliseconds: 500));
+            // ننتظر قليلاً للتأكد من اكتمال الـ rebuild وظهور حالة التحميل
+            await Future.delayed(const Duration(milliseconds: 300));
           },
           child: ListView.builder(
             itemCount: filteredCourses.length,
@@ -389,7 +390,8 @@ class BooksTab extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(allBooksNotifierProvider);
-            await Future.delayed(const Duration(milliseconds: 500));
+            // ننتظر قليلاً للتأكد من اكتمال الـ rebuild وظهور حالة التحميل
+            await Future.delayed(const Duration(milliseconds: 300));
           },
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -710,7 +712,10 @@ class ExpireSoonTab extends ConsumerWidget {
         }
 
         return RefreshIndicator(
-          onRefresh: () => ref.refresh(expireDrugsProvider.future),
+          onRefresh: () async {
+            ref.invalidate(expireDrugsProvider);
+            await ref.read(expireDrugsProvider.future);
+          },
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -869,7 +874,10 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
         }
 
         return RefreshIndicator(
-          onRefresh: () => ref.refresh(surgicalToolsHomeProvider.future),
+          onRefresh: () async {
+            ref.invalidate(surgicalToolsHomeProvider);
+            await ref.read(surgicalToolsHomeProvider.future);
+          },
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -1046,7 +1054,10 @@ class OffersTab extends ConsumerWidget {
         }
 
         return RefreshIndicator(
-          onRefresh: () => ref.refresh(offersHomeProvider.future),
+          onRefresh: () async {
+            ref.invalidate(offersHomeProvider);
+            await ref.read(offersHomeProvider.future);
+          },
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,

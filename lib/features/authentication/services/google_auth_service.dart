@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Web Client ID (serverClientId) — اللي أنت ذكرته
 const kWebClientId =
-    '665551059689-bb1albh5unnoh05erboo4s7piardjfsk.apps.googleusercontent.com';
+    '665551059689-h6md8lhpskrquaje7ffhlth0vpqd1ph0.apps.googleusercontent.com';
 
 // لو مش هتستخدم iOS سيبه فاضي أو احذفه
 const String? kIosClientId = null;

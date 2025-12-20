@@ -20,7 +20,7 @@ class SupabaseAuthService {
   })  : _auth = auth,
         _userRepository = userRepository,
         _googleSignIn = GoogleSignIn(
-          serverClientId: '665551059689-bb1albh5unnoh05erboo4s7piardjfsk.apps.googleusercontent.com',
+          serverClientId: '665551059689-h6md8lhpskrquaje7ffhlth0vpqd1ph0.apps.googleusercontent.com',
           scopes: [
             'email',
             'https://www.googleapis.com/auth/userinfo.profile',

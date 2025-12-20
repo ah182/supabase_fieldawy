@@ -618,6 +618,24 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     setState(() => _isSaving = true);
 
     try {
+      // ✅ التحقق من تاريخ الصلاحية في الحالات الإلزامية
+      if ((widget.showExpirationDate || widget.isFromOfferScreen) && _expirationDateController.text.isEmpty) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.transparent,
+            content: AwesomeSnackbarContent(
+              title: 'ocr.error_title'.tr(),
+              message: 'يرجى اختيار تاريخ انتهاء الصلاحية أولاً',
+              contentType: ContentType.warning,
+            ),
+          ),
+        );
+        return;
+      }
+
       String? finalUrl = _existingImageUrl;
 
       // رفع صورة جديدة فقط إذا قام المستخدم بالتقاط/اختيار صورة

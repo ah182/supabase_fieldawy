@@ -1718,7 +1718,10 @@ class PriceUpdateTab extends ConsumerWidget {
           );
         }
         return RefreshIndicator(
-          onRefresh: () => ref.refresh(priceUpdatesProvider.future),
+          onRefresh: () async {
+            ref.invalidate(priceUpdatesProvider);
+            await ref.read(priceUpdatesProvider.future);
+          },
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,

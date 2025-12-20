@@ -1239,8 +1239,35 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                             throw Exception('User not authenticated');
                           }
 
+                          final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
                           final List<Map<String, dynamic>> ocrProductsToAdd = [];
                           final Set<String> keysToClear = {};
+
+                          // ✅ فحص تواريخ الصلاحية قبل البدء (لـ OCR)
+                          if (widget.showExpirationDate || widget.isFromOfferScreen) {
+                            for (var item in _ocrCatalogShuffledDisplayItems) {
+                              final ProductModel product = item['product'];
+                              final String package = item['package'];
+                              final String key = '${product.id}_$package';
+                              
+                              if (selection.selectedKeys.contains(key) && selection.expirationDates[key] == null) {
+                                setState(() => _isSaving = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    elevation: 0,
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.transparent,
+                                    content: AwesomeSnackbarContent(
+                                      title: 'تنبيه',
+                                      message: 'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
+                                      contentType: ContentType.warning,
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                            }
+                          }
 
                           for (var item in _ocrCatalogShuffledDisplayItems) {
                             final ProductModel product = item['product'];
@@ -1415,6 +1442,34 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                           final String package = item['package'];
                           return '${product.id}_$package';
                         }).toSet();
+
+                        final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
+
+                        // ✅ فحص تواريخ الصلاحية قبل البدء (للكتالوج الرئيسي)
+                        if (widget.showExpirationDate || widget.isFromOfferScreen) {
+                          for (var item in _mainCatalogShuffledDisplayItems) {
+                            final ProductModel product = item['product'];
+                            final String package = item['package'];
+                            final String key = '${product.id}_$package';
+                            
+                            if (selection.selectedKeys.contains(key) && selection.expirationDates[key] == null) {
+                              setState(() => _isSaving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  elevation: 0,
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.transparent,
+                                  content: AwesomeSnackbarContent(
+                                    title: 'تنبيه',
+                                    message: 'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
+                                    contentType: ContentType.warning,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                          }
+                        }
 
                         if (widget.isFromOfferScreen) {
                           // حفظ في جدول offers
