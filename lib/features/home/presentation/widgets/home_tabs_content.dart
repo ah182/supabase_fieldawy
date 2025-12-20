@@ -29,10 +29,16 @@ class CoursesTab extends ConsumerWidget {
     final coursesAsync = ref.watch(allCoursesNotifierProvider);
 
     return coursesAsync.when(
-      loading: () => ListView.builder(
-        itemCount: 4,
-        itemBuilder: (context, index) => _CourseCardShimmer(),
-        padding: const EdgeInsets.all(16.0),
+      loading: () => GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8.0,
+          mainAxisSpacing: 8.0,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: 6,
+        itemBuilder: (context, index) => const ProductCardShimmer(),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
       error: (err, stack) => Center(
         child: Column(
@@ -1252,105 +1258,6 @@ class _BookCard extends StatelessWidget {
 }
 
 // ===================================================================
-// Course Card Shimmer (for loading state)
-// ===================================================================
-class _CourseCardShimmer extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        height: 140,
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // Image placeholder
-            Container(
-              width: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Content placeholder
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 16,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 16,
-                        width: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 14,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        height: 28,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      Container(
-                        height: 16,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 20,
-              color: Colors.grey[300],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ===================================================================
 // Course Card Horizontal Widget (for home tab)
 // ===================================================================

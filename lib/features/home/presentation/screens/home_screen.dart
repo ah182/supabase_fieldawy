@@ -1119,7 +1119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           );
         }
 
-        if (paginatedState.isLoading && products.isEmpty) {
+        if (paginatedState.isLoading && products.isEmpty || (paginatedState.isLoading && !paginatedState.hasMore)) {
           return GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
