@@ -1,5 +1,6 @@
 import 'package:fieldawy_store/features/surgical_tools/domain/surgical_tool_model.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -28,29 +29,31 @@ class SurgicalToolsRepository {
   }
 
   Future<List<SurgicalTool>> _fetchAllSurgicalTools() async {
-    try {
-      final response = await _supabase
-          .from('surgical_tools')
-          .select('''
-            id,
-            tool_name,
-            company,
-            image_url,
-            created_by,
-            created_at,
-            updated_at
-          ''')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('surgical_tools')
+            .select('''
+              id,
+              tool_name,
+              company,
+              image_url,
+              created_by,
+              created_at,
+              updated_at
+            ''')
+            .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Cache as JSON List
-      _cache.set('all_surgical_tools', data, duration: CacheDurations.long);
-      
-      return data.map((json) => SurgicalTool.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch surgical tools: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON List
+        _cache.set('all_surgical_tools', data, duration: CacheDurations.long);
+        
+        return data.map((json) => SurgicalTool.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch surgical tools: $e');
+      }
+    });
   }
 
   // Admin: Get all distributor surgical tools with joined data
@@ -68,82 +71,88 @@ class SurgicalToolsRepository {
   }
 
   Future<List<DistributorSurgicalTool>> _fetchAllDistributorSurgicalTools() async {
-    try {
-      final response = await _supabase
-          .from('distributor_surgical_tools')
-          .select('''
-            id,
-            distributor_id,
-            distributor_name,
-            surgical_tool_id,
-            description,
-            price,
-            created_at,
-            updated_at,
-            surgical_tools!inner(
-              tool_name,
-              company,
-              image_url
-            )
-          ''')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('distributor_surgical_tools')
+            .select('''
+              id,
+              distributor_id,
+              distributor_name,
+              surgical_tool_id,
+              description,
+              price,
+              created_at,
+              updated_at,
+              surgical_tools!inner(
+                tool_name,
+                company,
+                image_url
+              )
+            ''')
+            .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Process and flatten data
-      final processedData = data.map((json) {
-        final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
-        // Flatten the surgical_tools nested object
-        if (map['surgical_tools'] != null) {
-          final toolData = map['surgical_tools'] as Map<String, dynamic>;
-          map['tool_name'] = toolData['tool_name'];
-          map['company'] = toolData['company'];
-          map['image_url'] = toolData['image_url'];
-        }
-        return map;
-      }).toList();
-      
-      // Cache as JSON List
-      _cache.set('all_distributor_surgical_tools', processedData, duration: CacheDurations.medium);
-      
-      return processedData.map((json) => DistributorSurgicalTool.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch distributor surgical tools: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Process and flatten data
+        final processedData = data.map((json) {
+          final map = Map<String, dynamic>.from(json as Map<String, dynamic>);
+          // Flatten the surgical_tools nested object
+          if (map['surgical_tools'] != null) {
+            final toolData = map['surgical_tools'] as Map<String, dynamic>;
+            map['tool_name'] = toolData['tool_name'];
+            map['company'] = toolData['company'];
+            map['image_url'] = toolData['image_url'];
+          }
+          return map;
+        }).toList();
+        
+        // Cache as JSON List
+        _cache.set('all_distributor_surgical_tools', processedData, duration: CacheDurations.medium);
+        
+        return processedData.map((json) => DistributorSurgicalTool.fromJson(json)).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch distributor surgical tools: $e');
+      }
+    });
   }
 
   // Admin: Delete surgical tool from catalog
   Future<bool> adminDeleteSurgicalTool(String id) async {
-    try {
-      await _supabase
-          .from('surgical_tools')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('surgical_tools')
+            .delete()
+            .eq('id', id);
 
-      // حذف الكاش بعد الحذف
-      _invalidateSurgicalToolsCache();
+        // حذف الكاش بعد الحذف
+        _invalidateSurgicalToolsCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete surgical tool: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete surgical tool: $e');
+      }
+    });
   }
 
   // Admin: Delete distributor surgical tool
   Future<bool> adminDeleteDistributorSurgicalTool(String id) async {
-    try {
-      await _supabase
-          .from('distributor_surgical_tools')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_surgical_tools')
+            .delete()
+            .eq('id', id);
 
-      // حذف الكاش بعد الحذف
-      _invalidateSurgicalToolsCache();
+        // حذف الكاش بعد الحذف
+        _invalidateSurgicalToolsCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete distributor surgical tool: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete distributor surgical tool: $e');
+      }
+    });
   }
 
   // Admin: Update distributor surgical tool
@@ -152,22 +161,24 @@ class SurgicalToolsRepository {
     required String description,
     required double price,
   }) async {
-    try {
-      await _supabase
-          .from('distributor_surgical_tools')
-          .update({
-            'description': description,
-            'price': price,
-          })
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_surgical_tools')
+            .update({
+              'description': description,
+              'price': price,
+            })
+            .eq('id', id);
 
-      // حذف الكاش بعد التعديل
-      _invalidateSurgicalToolsCache();
+        // حذف الكاش بعد التعديل
+        _invalidateSurgicalToolsCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update distributor surgical tool: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update distributor surgical tool: $e');
+      }
+    });
   }
 
   /// حذف كاش الأدوات الجراحية

@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -77,22 +78,24 @@ class ActivityRepository {
   }
 
   Future<List<ActivityLog>> _fetchRecentActivities(int limit) async {
-    try {
-      final response = await _supabase
-          .from('activity_logs')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(limit);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('activity_logs')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Cache as JSON List
-      _cache.set('recent_activities_$limit', data, duration: CacheDurations.veryShort);
-      
-      return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch recent activities: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON List
+        _cache.set('recent_activities_$limit', data, duration: CacheDurations.veryShort);
+        
+        return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch recent activities: $e');
+      }
+    });
   }
 
   // Get activities by type
@@ -110,40 +113,44 @@ class ActivityRepository {
   }
 
   Future<List<ActivityLog>> _fetchActivitiesByType(String activityType, int limit) async {
-    try {
-      final response = await _supabase
-          .from('activity_logs')
-          .select()
-          .eq('activity_type', activityType)
-          .order('created_at', ascending: false)
-          .limit(limit);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('activity_logs')
+            .select()
+            .eq('activity_type', activityType)
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Cache as JSON List
-      _cache.set('activities_by_type_${activityType}_$limit', data, duration: CacheDurations.veryShort);
-      
-      return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch activities by type: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON List
+        _cache.set('activities_by_type_${activityType}_$limit', data, duration: CacheDurations.veryShort);
+        
+        return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch activities by type: $e');
+      }
+    });
   }
 
   // Get activities by user
   Future<List<ActivityLog>> getActivitiesByUser(String userId, {int limit = 20}) async {
-    try {
-      final response = await _supabase
-          .from('activity_logs')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: false)
-          .limit(limit);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('activity_logs')
+            .select()
+            .eq('user_id', userId)
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch activities by user: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        return data.map((json) => ActivityLog.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch activities by user: $e');
+      }
+    });
   }
 
   // Log a custom activity (manual logging)
@@ -155,64 +162,70 @@ class ActivityRepository {
     required String description,
     Map<String, dynamic>? metadata,
   }) async {
-    try {
-      final response = await _supabase
-          .from('activity_logs')
-          .insert({
-            'activity_type': activityType,
-            'user_id': userId,
-            'user_name': userName,
-            'user_role': userRole,
-            'description': description,
-            'metadata': metadata,
-          })
-          .select()
-          .single();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('activity_logs')
+            .insert({
+              'activity_type': activityType,
+              'user_id': userId,
+              'user_name': userName,
+              'user_role': userRole,
+              'description': description,
+              'metadata': metadata,
+            })
+            .select()
+            .single();
 
-      return ActivityLog.fromJson(response);
-    } catch (e) {
-      throw Exception('Failed to log activity: $e');
-    }
+        return ActivityLog.fromJson(response);
+      } catch (e) {
+        throw Exception('Failed to log activity: $e');
+      }
+    });
   }
 
   // Get activities count by type
   Future<Map<String, int>> getActivitiesCountByType() async {
-    try {
-      final response = await _supabase
-          .from('activity_logs')
-          .select('activity_type')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('activity_logs')
+            .select('activity_type')
+            .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      final Map<String, int> counts = {};
-      for (var item in data) {
-        final type = item['activity_type'] as String;
-        counts[type] = (counts[type] ?? 0) + 1;
+        final List<dynamic> data = response as List<dynamic>;
+        
+        final Map<String, int> counts = {};
+        for (var item in data) {
+          final type = item['activity_type'] as String;
+          counts[type] = (counts[type] ?? 0) + 1;
+        }
+        
+        return counts;
+      } catch (e) {
+        throw Exception('Failed to get activities count: $e');
       }
-      
-      return counts;
-    } catch (e) {
-      throw Exception('Failed to get activities count: $e');
-    }
+    });
   }
 
   // Delete old activities (older than days)
   Future<int> deleteOldActivities({int olderThanDays = 90}) async {
-    try {
-      final cutoffDate = DateTime.now().subtract(Duration(days: olderThanDays));
-      
-      final response = await _supabase
-          .from('activity_logs')
-          .delete()
-          .lt('created_at', cutoffDate.toIso8601String())
-          .select();
+    return await NetworkGuard.execute(() async {
+      try {
+        final cutoffDate = DateTime.now().subtract(Duration(days: olderThanDays));
+        
+        final response = await _supabase
+            .from('activity_logs')
+            .delete()
+            .lt('created_at', cutoffDate.toIso8601String())
+            .select();
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.length;
-    } catch (e) {
-      throw Exception('Failed to delete old activities: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        return data.length;
+      } catch (e) {
+        throw Exception('Failed to delete old activities: $e');
+      }
+    });
   }
 }
 

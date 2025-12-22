@@ -22,6 +22,7 @@ import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'dart:async';
 import 'package:fieldawy_store/services/subscription_cache_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة الاستيراد
 
 final subscribedDistributorsIdsProvider = FutureProvider<Set<String>>((ref) async {
   // Ensure cache is ready
@@ -39,8 +40,10 @@ final distributorsProvider =
   const cacheKey = 'distributors_edge';
 
   // Stale-While-Revalidate Logic
-  // 1. Start the network fetch immediately, but don't wait for it.
-  final networkFuture = supabase.functions.invoke('get-distributors').then((response) {
+  // 1. Start the network fetch with NetworkGuard
+  final networkFuture = NetworkGuard.execute(() async {
+    return await supabase.functions.invoke('get-distributors');
+  }).then((response) {
     if (response.data == null) {
       print('Failed to fetch fresh distributors');
       return <DistributorModel>[]; 
@@ -53,7 +56,7 @@ final distributorsProvider =
     return result;
   }).catchError((error) {
     // معالجة أخطاء الشبكة
-    print('خطأ في جلب الموزعين: $error');
+    print('خطأ في جلب الموزعين بعد المحاولات: $error');
     return <DistributorModel>[];
   });
 

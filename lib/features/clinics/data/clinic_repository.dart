@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/clinic_model.dart';
 
@@ -26,66 +27,72 @@ class ClinicRepository {
   }
 
   Future<List<ClinicWithDoctorInfo>> _fetchAllClinicsWithDoctorInfo() async {
-    try {
-      final response = await _client
-          .from('clinics_with_doctor_info')
-          .select()
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _client
+            .from('clinics_with_doctor_info')
+            .select()
+            .order('created_at', ascending: false);
 
-      // Convert to JSON list first
-      final List<dynamic> jsonList = response as List<dynamic>;
-      
-      // Cache as JSON List
-      _cache.set('all_clinics_with_doctor_info', jsonList, duration: CacheDurations.veryLong);
-      
-      final clinics = jsonList
-          .map((json) => ClinicWithDoctorInfo.fromMap(json as Map<String, dynamic>))
-          .toList();
-      
-      return clinics;
-    } catch (e, stackTrace) {
-      print('❌ Error fetching clinics with doctor info: $e');
-      print('📚 Stack trace: $stackTrace');
-      return [];
-    }
+        // Convert to JSON list first
+        final List<dynamic> jsonList = response as List<dynamic>;
+        
+        // Cache as JSON List
+        _cache.set('all_clinics_with_doctor_info', jsonList, duration: CacheDurations.veryLong);
+        
+        final clinics = jsonList
+            .map((json) => ClinicWithDoctorInfo.fromMap(json as Map<String, dynamic>))
+            .toList();
+        
+        return clinics;
+      } catch (e, stackTrace) {
+        print('❌ Error fetching clinics with doctor info: $e');
+        print('📚 Stack trace: $stackTrace');
+        return [];
+      }
+    });
   }
 
   // Get all clinics (original method, can be kept for other purposes if needed)
   Future<List<ClinicModel>> getAllClinics() async {
-    try {
-      final response = await _client
-          .from('clinics')
-          .select()
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _client
+            .from('clinics')
+            .select()
+            .order('created_at', ascending: false);
 
-      final clinics = (response as List)
-          .map((json) => ClinicModel.fromMap(json))
-          .toList();
-      
-      return clinics;
-    } catch (e, stackTrace) {
-      print('❌ Error fetching all clinics: $e');
-      print('📚 Stack trace: $stackTrace');
-      return [];
-    }
+        final clinics = (response as List)
+            .map((json) => ClinicModel.fromMap(json))
+            .toList();
+        
+        return clinics;
+      } catch (e, stackTrace) {
+        print('❌ Error fetching all clinics: $e');
+        print('📚 Stack trace: $stackTrace');
+        return [];
+      }
+    });
   }
 
   // Get clinic by user ID
   Future<ClinicModel?> getClinicByUserId(String userId) async {
-    try {
-      final response = await _client
-          .from('clinics')
-          .select()
-          .eq('user_id', userId)
-          .maybeSingle();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _client
+            .from('clinics')
+            .select()
+            .eq('user_id', userId)
+            .maybeSingle();
 
-      if (response == null) return null;
+        if (response == null) return null;
 
-      return ClinicModel.fromMap(response);
-    } catch (e) {
-      print('Error fetching clinic by user ID: $e');
-      return null;
-    }
+        return ClinicModel.fromMap(response);
+      } catch (e) {
+        print('Error fetching clinic by user ID: $e');
+        return null;
+      }
+    });
   }
 
   // Create or update clinic (upsert) using a dedicated RPC function
@@ -97,24 +104,26 @@ class ClinicRepository {
     String? address,
     String? phoneNumber,
   }) async {
-    try {
-      await _client.rpc('upsert_clinic', params: {
-        'p_user_id': userId,
-        'p_clinic_name': clinicName,
-        'p_latitude': latitude,
-        'p_longitude': longitude,
-        'p_address': address,
-        'p_phone_number': phoneNumber,
-      });
-      
-      // حذف الكاش بعد التحديث
-      _invalidateClinicsCache();
-      
-      return true;
-    } catch (e) {
-      print('❌ Error upserting clinic: $e');
-      return false;
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _client.rpc('upsert_clinic', params: {
+          'p_user_id': userId,
+          'p_clinic_name': clinicName,
+          'p_latitude': latitude,
+          'p_longitude': longitude,
+          'p_address': address,
+          'p_phone_number': phoneNumber,
+        });
+        
+        // حذف الكاش بعد التحديث
+        _invalidateClinicsCache();
+        
+        return true;
+      } catch (e) {
+        print('❌ Error upserting clinic: $e');
+        return false;
+      }
+    });
   }
 
   /// حذف كاش العيادات
@@ -126,17 +135,19 @@ class ClinicRepository {
 
   // Delete clinic
   Future<bool> deleteClinic(String userId) async {
-    try {
-      await _client.from('clinics').delete().eq('user_id', userId);
-      
-      // حذف الكاش بعد الحذف
-      _invalidateClinicsCache();
-      
-      return true;
-    } catch (e) {
-      print('Error deleting clinic: $e');
-      return false;
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _client.from('clinics').delete().eq('user_id', userId);
+        
+        // حذف الكاش بعد الحذف
+        _invalidateClinicsCache();
+        
+        return true;
+      } catch (e) {
+        print('Error deleting clinic: $e');
+        return false;
+      }
+    });
   }
 
   // Get nearby clinics efficiently using PostGIS RPC function
@@ -145,22 +156,24 @@ class ClinicRepository {
     required double longitude,
     double radiusInKm = 50.0,
   }) async {
-    try {
-      final response = await _client.rpc('get_nearby_clinics', params: {
-        'p_lat': latitude,
-        'p_long': longitude,
-        'p_radius_meters': radiusInKm * 1000, // Convert km to meters
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _client.rpc('get_nearby_clinics', params: {
+          'p_lat': latitude,
+          'p_long': longitude,
+          'p_radius_meters': radiusInKm * 1000, // Convert km to meters
+        });
 
-      final clinics = (response as List)
-          .map((json) => ClinicModel.fromMap(json))
-          .toList();
+        final clinics = (response as List)
+            .map((json) => ClinicModel.fromMap(json))
+            .toList();
 
-      return clinics;
-    } catch (e) {
-      print('❌ Error fetching nearby clinics: $e');
-      return [];
-    }
+        return clinics;
+      } catch (e) {
+        print('❌ Error fetching nearby clinics: $e');
+        return [];
+      }
+    });
   }
 }
 

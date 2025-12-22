@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 /// Performance Logger Service
 /// Tracks performance metrics in Supabase (FREE!)
@@ -115,7 +116,9 @@ class PerformanceLogger {
       };
 
       // Log to Supabase (async, don't wait)
-      _supabase.from('performance_logs').insert(metricData).then(
+      NetworkGuard.execute(() async {
+        await _supabase.from('performance_logs').insert(metricData);
+      }).then(
         (_) {
           if (durationMs > 1000) {
             debugPrint('⚠️ Slow query: $metricName took ${durationMs}ms');

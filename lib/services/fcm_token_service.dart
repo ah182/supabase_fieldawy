@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import '../utils/string_extensions.dart';
 
 class FCMTokenService {
@@ -14,92 +15,94 @@ class FCMTokenService {
 
   /// حفظ أو تحديث FCM Token في Supabase
   Future<void> saveToken(String token) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      
-      if (userId == null) {
-        print('⚠️ لا يوجد مستخدم مسجل الدخول - لن يتم حفظ Token');
-        return;
-      }
-
-      // الحصول على معلومات الجهاز
-      String deviceType = 'Unknown';
-      String? deviceName;
-      
+    return await NetworkGuard.execute(() async {
       try {
-        final deviceInfo = DeviceInfoPlugin();
+        final userId = _supabase.auth.currentUser?.id;
         
-        // تحديد نوع المنصة أولاً
-        if (kIsWeb) {
-          // Web Platform
-          deviceType = 'Web';
-          try {
-            final webInfo = await deviceInfo.webBrowserInfo;
-            deviceName = '${webInfo.browserName} on ${webInfo.platform}';
-            // مثال: Chrome on Windows
-          } catch (e) {
-            deviceName = 'Web Browser';
-          }
-        } else if (Platform.isAndroid) {
-          // Android Platform
-          deviceType = 'Android';
-          try {
-            final androidInfo = await deviceInfo.androidInfo;
-            final manufacturer = androidInfo.manufacturer.capitalize();
-            final model = androidInfo.model;
-            deviceName = '$manufacturer $model';
-            // مثال: Samsung SM-G991B
-            print('📱 Android Info:');
-            print('   Manufacturer: ${androidInfo.manufacturer}');
-            print('   Model: ${androidInfo.model}');
-            print('   Brand: ${androidInfo.brand}');
-            print('   Device: ${androidInfo.device}');
-            print('   Android Version: ${androidInfo.version.release}');
-          } catch (e) {
-            deviceName = 'Android Device';
-            print('⚠️ خطأ في الحصول على معلومات Android: $e');
-          }
-        } else if (Platform.isIOS) {
-          // iOS Platform
-          deviceType = 'iOS';
-          try {
-            final iosInfo = await deviceInfo.iosInfo;
-            deviceName = iosInfo.name;
-            // مثال: iPhone 13
-            print('📱 iOS Info:');
-            print('   Name: ${iosInfo.name}');
-            print('   Model: ${iosInfo.model}');
-            print('   System Version: ${iosInfo.systemVersion}');
-          } catch (e) {
-            deviceName = 'iOS Device';
-            print('⚠️ خطأ في الحصول على معلومات iOS: $e');
-          }
-        } else {
-          // Other platforms (Linux, Windows, macOS)
-          deviceType = 'Desktop';
-          deviceName = Platform.operatingSystem;
+        if (userId == null) {
+          print('⚠️ لا يوجد مستخدم مسجل الدخول - لن يتم حفظ Token');
+          return;
         }
+
+        // الحصول على معلومات الجهاز
+        String deviceType = 'Unknown';
+        String? deviceName;
+        
+        try {
+          final deviceInfo = DeviceInfoPlugin();
+          
+          // تحديد نوع المنصة أولاً
+          if (kIsWeb) {
+            // Web Platform
+            deviceType = 'Web';
+            try {
+              final webInfo = await deviceInfo.webBrowserInfo;
+              deviceName = '${webInfo.browserName} on ${webInfo.platform}';
+              // مثال: Chrome on Windows
+            } catch (e) {
+              deviceName = 'Web Browser';
+            }
+          } else if (Platform.isAndroid) {
+            // Android Platform
+            deviceType = 'Android';
+            try {
+              final androidInfo = await deviceInfo.androidInfo;
+              final manufacturer = androidInfo.manufacturer.capitalize();
+              final model = androidInfo.model;
+              deviceName = '$manufacturer $model';
+              // مثال: Samsung SM-G991B
+              print('📱 Android Info:');
+              print('   Manufacturer: ${androidInfo.manufacturer}');
+              print('   Model: ${androidInfo.model}');
+              print('   Brand: ${androidInfo.brand}');
+              print('   Device: ${androidInfo.device}');
+              print('   Android Version: ${androidInfo.version.release}');
+            } catch (e) {
+              deviceName = 'Android Device';
+              print('⚠️ خطأ في الحصول على معلومات Android: $e');
+            }
+          } else if (Platform.isIOS) {
+            // iOS Platform
+            deviceType = 'iOS';
+            try {
+              final iosInfo = await deviceInfo.iosInfo;
+              deviceName = iosInfo.name;
+              // مثال: iPhone 13
+              print('📱 iOS Info:');
+              print('   Name: ${iosInfo.name}');
+              print('   Model: ${iosInfo.model}');
+              print('   System Version: ${iosInfo.systemVersion}');
+            } catch (e) {
+              deviceName = 'iOS Device';
+              print('⚠️ خطأ في الحصول على معلومات iOS: $e');
+            }
+          } else {
+            // Other platforms (Linux, Windows, macOS)
+            deviceType = 'Desktop';
+            deviceName = Platform.operatingSystem;
+          }
+        } catch (e) {
+          print('❌ خطأ عام في الحصول على معلومات الجهاز: $e');
+          deviceType = 'Unknown';
+          deviceName = 'Unknown Device';
+        }
+
+        // حفظ أو تحديث Token باستخدام الدالة المخصصة
+        await _supabase.rpc('upsert_user_token', params: {
+          'p_user_id': userId,
+          'p_token': token,
+          'p_device_type': deviceType,
+          'p_device_name': deviceName,
+        });
+
+        print('✅ تم حفظ FCM Token في Supabase بنجاح');
+        print('   User ID: $userId');
+        print('   Device: $deviceType');
+        print('   Device Name: $deviceName');
       } catch (e) {
-        print('❌ خطأ عام في الحصول على معلومات الجهاز: $e');
-        deviceType = 'Unknown';
-        deviceName = 'Unknown Device';
+        print('❌ خطأ في حفظ FCM Token: $e');
       }
-
-      // حفظ أو تحديث Token باستخدام الدالة المخصصة
-      await _supabase.rpc('upsert_user_token', params: {
-        'p_user_id': userId,
-        'p_token': token,
-        'p_device_type': deviceType,
-        'p_device_name': deviceName,
-      });
-
-      print('✅ تم حفظ FCM Token في Supabase بنجاح');
-      print('   User ID: $userId');
-      print('   Device: $deviceType');
-      print('   Device Name: $deviceName');
-    } catch (e) {
-      print('❌ خطأ في حفظ FCM Token: $e');
-    }
+    });
   }
 
   /// الحصول على FCM Token وحفظه
@@ -123,57 +126,63 @@ class FCMTokenService {
 
   /// حذف Token لمستخدم محدد عند تسجيل الخروج
   Future<void> deleteToken(String token) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      
-      if (userId == null) return;
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        
+        if (userId == null) return;
 
-      // حذف token للمستخدم الحالي فقط
-      // لو نفس الجهاز مستخدم من حساب آخر، مش هيتأثر
-      await _supabase.rpc('delete_user_token', params: {
-        'p_user_id': userId,
-        'p_token': token,
-      });
-      
-      print('✅ تم حذف FCM Token من Supabase للمستخدم الحالي');
-    } catch (e) {
-      print('❌ خطأ في حذف FCM Token: $e');
-    }
+        // حذف token للمستخدم الحالي فقط
+        // لو نفس الجهاز مستخدم من حساب آخر، مش هيتأثر
+        await _supabase.rpc('delete_user_token', params: {
+          'p_user_id': userId,
+          'p_token': token,
+        });
+        
+        print('✅ تم حذف FCM Token من Supabase للمستخدم الحالي');
+      } catch (e) {
+        print('❌ خطأ في حذف FCM Token: $e');
+      }
+    });
   }
 
   /// حذف جميع tokens المستخدم الحالي
   Future<void> deleteAllUserTokens() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      
-      if (userId == null) return;
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        
+        if (userId == null) return;
 
-      await _supabase
-          .from('user_tokens')
-          .delete()
-          .eq('user_id', userId);
-      
-      print('✅ تم حذف جميع FCM Tokens للمستخدم');
-    } catch (e) {
-      print('❌ خطأ في حذف FCM Tokens: $e');
-    }
+        await _supabase
+            .from('user_tokens')
+            .delete()
+            .eq('user_id', userId);
+        
+        print('✅ تم حذف جميع FCM Tokens للمستخدم');
+      } catch (e) {
+        print('❌ خطأ في حذف FCM Tokens: $e');
+      }
+    });
   }
 
   /// الحصول على جميع tokens المستخدم الحالي
   Future<List<Map<String, dynamic>>> getUserTokens() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      
-      if (userId == null) return [];
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        
+        if (userId == null) return [];
 
-      final response = await _supabase
-          .rpc('get_user_tokens', params: {'p_user_id': userId});
-      
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('❌ خطأ في الحصول على Tokens: $e');
-      return [];
-    }
+        final response = await _supabase
+            .rpc('get_user_tokens', params: {'p_user_id': userId});
+        
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        print('❌ خطأ في الحصول على Tokens: $e');
+        return [];
+      }
+    });
   }
 
   /// إعداد مستمع لتحديثات Token

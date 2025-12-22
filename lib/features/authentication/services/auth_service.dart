@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -33,74 +34,80 @@ class SupabaseAuthService {
       _auth.onAuthStateChange.map((data) => data.session?.user);
 
   Future<bool> signInWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.signIn();
+    return await NetworkGuard.execute(() async {
+      try {
+        final googleUser = await _googleSignIn.signIn();
 
-      if (googleUser == null) {
-        return false;
+        if (googleUser == null) {
+          return false;
+        }
+        final googleAuth = await googleUser.authentication;
+        final accessToken = googleAuth.accessToken;
+        final idToken = googleAuth.idToken;
+
+        if (idToken == null) {
+          throw 'Google Sign-In failed: Missing ID token.';
+        }
+
+        final response = await _auth.signInWithIdToken(
+          provider: OAuthProvider.google,
+          idToken: idToken,
+          accessToken: accessToken,
+        );
+
+        final user = response.user;
+        if (user == null) {
+          throw 'Sign-in failed: No user returned from Supabase';
+        }
+
+        final isNewUser = await _userRepository.saveNewUser(user);
+        return isNewUser;
+
+      } catch (e) {
+        print('Error signing in with Google: $e');
+        await _googleSignIn.signOut();
+        rethrow;
       }
-      final googleAuth = await googleUser.authentication;
-      final accessToken = googleAuth.accessToken;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        throw 'Google Sign-In failed: Missing ID token.';
-      }
-
-      final response = await _auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
-
-      final user = response.user;
-      if (user == null) {
-        throw 'Sign-in failed: No user returned from Supabase';
-      }
-
-      final isNewUser = await _userRepository.saveNewUser(user);
-      return isNewUser;
-
-    } catch (e) {
-      print('Error signing in with Google: $e');
-      await _googleSignIn.signOut();
-      rethrow;
-    }
+    });
   }
 
   Future<void> signOut() async {
-    try {
-      // Sign out from Supabase and Google to allow account selection next time.
-      await Future.wait([
-        _auth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
-    } catch (e) {
-      print('Error signing out: $e');
-    }
+    await NetworkGuard.execute(() async {
+      try {
+        // Sign out from Supabase and Google to allow account selection next time.
+        await Future.wait([
+          _auth.signOut(),
+          _googleSignIn.signOut(),
+        ]);
+      } catch (e) {
+        print('Error signing out: $e');
+      }
+    });
   }
 
   Future<void> deleteAccount() async {
-    try {
-      final userId = currentUser?.id;
-      if (userId == null) throw 'No user logged in';
+    await NetworkGuard.execute(() async {
+      try {
+        final userId = currentUser?.id;
+        if (userId == null) throw 'No user logged in';
 
-      // Call Supabase RPC to delete user data (and trigger auth deletion via Edge Function or Postgres Trigger if set up)
-      // For strict Google Play compliance, we often need a dedicated Edge Function or a 'soft delete' flag first.
-      // Here we assume an RPC 'delete_own_account' exists which deletes public.users entry.
-      // The actual auth.users deletion usually requires Service Role key in an Edge Function.
-      
-      // For now, we'll try to call an RPC that handles data cleanup.
-      await Supabase.instance.client.rpc('delete_own_account');
+        // Call Supabase RPC to delete user data (and trigger auth deletion via Edge Function or Postgres Trigger if set up)
+        // For strict Google Play compliance, we often need a dedicated Edge Function or a 'soft delete' flag first.
+        // Here we assume an RPC 'delete_own_account' exists which deletes public.users entry.
+        // The actual auth.users deletion usually requires Service Role key in an Edge Function.
+        
+        // For now, we'll try to call an RPC that handles data cleanup.
+        await Supabase.instance.client.rpc('delete_own_account');
 
-      await signOut();
-    } catch (e) {
-      print('Error deleting account: $e');
-      // If RPC fails (e.g. doesn't exist yet), just sign out for UI demo purposes
-      // In production, you MUST ensure the account is actually deleted or flagged.
-      await signOut();
-      rethrow; 
-    }
+        await signOut();
+      } catch (e) {
+        print('Error deleting account: $e');
+        // If RPC fails (e.g. doesn't exist yet), just sign out for UI demo purposes
+        // In production, you MUST ensure the account is actually deleted or flagged.
+        await signOut();
+        rethrow; 
+      }
+    });
   }
 }
 

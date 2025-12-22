@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة الاستيراد
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
@@ -18,8 +19,10 @@ class ProductRepository {
   // دالة لزيادة عدد المشاهدات للمنتج
   static Future<void> incrementViews(String productId) async {
     try {
-      await Supabase.instance.client.rpc('increment_product_views', params: {
-        'product_id': productId,
+      await NetworkGuard.execute(() async {
+        await Supabase.instance.client.rpc('increment_product_views', params: {
+          'product_id': productId,
+        });
       });
     } catch (e) {
       print('خطأ في زيادة مشاهدات المنتج: $e');
@@ -29,12 +32,14 @@ class ProductRepository {
   // New Unified View Tracking Method
   Future<bool> trackUnifiedView({required String productType, required String productId, String? distributorName}) async {
     try {
-      final response = await _supabase.rpc('increment_unified_view', params: {
-        'p_type': productType,
-        'p_id': productId,
-        'p_distributor_name': distributorName,
+      return await NetworkGuard.execute(() async {
+        final response = await _supabase.rpc('increment_unified_view', params: {
+          'p_type': productType,
+          'p_id': productId,
+          'p_distributor_name': distributorName,
+        });
+        return response as bool;
       });
-      return response as bool;
     } catch (e) {
       print('Error tracking view: $e');
       return false;
@@ -48,24 +53,26 @@ class ProductRepository {
     required double newPrice,
     required DateTime? expirationDate,
   }) async {
-    // استخدم match بدلاً من id فقط لدعم product_id النصي أو أي قيمة
-    final Map<String, Object> matchMap = {
-      'distributor_id': distributorId,
-      'product_id': productId,
-      if (package.isNotEmpty) 'package': package,
-    };
-    final response = await _supabase
-        .from('distributor_products')
-        .select('price')
-        .match(matchMap)
-        .maybeSingle();
-    final oldPrice = (response != null && response['price'] != null) ? (response['price'] as num?)?.toDouble() : null;
-    await _supabase.from('distributor_products').update({
-      'price': newPrice,
-      'old_price': oldPrice,
-      'price_updated_at': DateTime.now().toIso8601String(),
-      'expiration_date': expirationDate?.toIso8601String(),
-    }).match(matchMap);
+    await NetworkGuard.execute(() async {
+      // استخدم match بدلاً من id فقط لدعم product_id النصي أو أي قيمة
+      final Map<String, Object> matchMap = {
+        'distributor_id': distributorId,
+        'product_id': productId,
+        if (package.isNotEmpty) 'package': package,
+      };
+      final response = await _supabase
+          .from('distributor_products')
+          .select('price')
+          .match(matchMap)
+          .maybeSingle();
+      final oldPrice = (response != null && response['price'] != null) ? (response['price'] as num?)?.toDouble() : null;
+      await _supabase.from('distributor_products').update({
+        'price': newPrice,
+        'old_price': oldPrice,
+        'price_updated_at': DateTime.now().toIso8601String(),
+        'expiration_date': expirationDate?.toIso8601String(),
+      }).match(matchMap);
+    });
     _scheduleCacheInvalidation();
   }
 
@@ -75,12 +82,14 @@ class ProductRepository {
     required double newPrice,
     required DateTime? expirationDate,
   }) async {
-    await _supabase.from('distributor_ocr_products').update({
-      'price': newPrice,
-      'expiration_date': expirationDate?.toIso8601String(),
-    }).match({
-      'distributor_id': distributorId,
-      'ocr_product_id': ocrProductId,
+    await NetworkGuard.execute(() async {
+      await _supabase.from('distributor_ocr_products').update({
+        'price': newPrice,
+        'expiration_date': expirationDate?.toIso8601String(),
+      }).match({
+        'distributor_id': distributorId,
+        'ocr_product_id': ocrProductId,
+      });
     });
     _scheduleCacheInvalidation();
   }
@@ -94,147 +103,79 @@ class ProductRepository {
         _ref = ref;
 
   Future<List<String>> getAllDistributorProductIds() async {
-    final List<String> allIds = [];
-    
-    // Get IDs from distributor_products - filter out products with expiration_date
-    final regularRows = await _supabase
-        .from('distributor_products')
-        .select('id, views')
-        .filter('expiration_date', 'is', null);
-    allIds.addAll(regularRows.map((row) => 'regular_${row['id']}'));
-    
-    // Get IDs from distributor_ocr_products - filter out products with expiration_date
-    final ocrRows = await _supabase
-        .from('distributor_ocr_products')
-        .select('distributor_id, ocr_product_id')
-        .filter('expiration_date', 'is', null);
-    allIds.addAll(ocrRows.map((row) => 'ocr_${row['distributor_id']}_${row['ocr_product_id']}'));
-    
-    return allIds;
+    return await NetworkGuard.execute(() async {
+      final List<String> allIds = [];
+      
+      // Get IDs from distributor_products - filter out products with expiration_date
+      final regularRows = await _supabase
+          .from('distributor_products')
+          .select('id, views')
+          .filter('expiration_date', 'is', null);
+      allIds.addAll(regularRows.map((row) => 'regular_${row['id']}'));
+      
+      // Get IDs from distributor_ocr_products - filter out products with expiration_date
+      final ocrRows = await _supabase
+          .from('distributor_ocr_products')
+          .select('distributor_id, ocr_product_id')
+          .filter('expiration_date', 'is', null);
+      allIds.addAll(ocrRows.map((row) => 'ocr_${row['distributor_id']}_${row['ocr_product_id']}'));
+      
+      return allIds;
+    });
   }
 
   Future<List<ProductModel>> getProductsByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
 
-    final List<ProductModel> orderedProducts = [];
-    
-    // Separate regular and OCR IDs
-    final regularIds = ids.where((id) => id.startsWith('regular_')).map((id) => id.substring(8)).toList();
-    final ocrIdsPrefixed = ids.where((id) => id.startsWith('ocr_')).toList();
-
-    // ========================================
-    // 1. Fetch regular products
-    // ========================================
-    if (regularIds.isNotEmpty) {
-      final rows = await _supabase
-          .from('distributor_products')
-          .select('*, views')
-          .inFilter('id', regularIds);
-
-      if (rows.isNotEmpty) {
-        final distributorProductDetailsMap = {
-          for (var row in rows) row['id'].toString(): row
-        };
-
-        final productIds =
-            rows.map((row) => row['product_id'] as String).toSet().toList();
-
-        final productDocs =
-            await _supabase.from('products').select('*').inFilter('id', productIds);
-
-        final productsMap = {
-          for (var doc in productDocs)
-            doc['id'].toString(): ProductModel.fromMap(doc)
-        };
-
-        for (final id in ids) {
-          if (id.startsWith('regular_')) {
-            final actualId = id.substring(8);
-            final distributorProductRow = distributorProductDetailsMap[actualId];
-            if (distributorProductRow != null) {
-              final productDetails = productsMap[distributorProductRow['product_id']];
-              if (productDetails != null) {
-                orderedProducts.add(productDetails.copyWith(
-                  price: (distributorProductRow['price'] as num?)?.toDouble(),
-                  oldPrice: (distributorProductRow['old_price'] as num?)?.toDouble(),
-                  priceUpdatedAt: distributorProductRow['price_updated_at'] != null
-                      ? DateTime.tryParse(distributorProductRow['price_updated_at'])
-                      : null,
-                  selectedPackage: distributorProductRow['package'] as String?,
-                  distributorId: distributorProductRow['distributor_name'] as String?,
-                  distributorUuid: distributorProductRow['distributor_id'] as String?,
-                  views: (distributorProductRow['views'] as int?) ?? 0,
-                ));
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // ========================================
-    // 2. Fetch OCR products
-    // ========================================
-    if (ocrIdsPrefixed.isNotEmpty) {
-      // Parse OCR IDs to get ocr_product_id
-      final ocrProductIds = <String>{};
+    return await NetworkGuard.execute(() async {
+      final List<ProductModel> orderedProducts = [];
       
-      for (final id in ocrIdsPrefixed) {
-        final parts = id.split('_');
-        if (parts.length >= 3) {
-          final ocrProductId = parts.sublist(2).join('_');
-          ocrProductIds.add(ocrProductId);
-        }
-      }
+      // Separate regular and OCR IDs
+      final regularIds = ids.where((id) => id.startsWith('regular_')).map((id) => id.substring(8)).toList();
+      final ocrIdsPrefixed = ids.where((id) => id.startsWith('ocr_')).toList();
 
-      if (ocrProductIds.isNotEmpty) {
-        // Fetch distributor_ocr_products
-        final distOcrRows = await _supabase
-            .from('distributor_ocr_products')
-            .select('ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
-            .inFilter('ocr_product_id', ocrProductIds.toList());
+      // ========================================
+      // 1. Fetch regular products
+      // ========================================
+      if (regularIds.isNotEmpty) {
+        final rows = await _supabase
+            .from('distributor_products')
+            .select('*, views')
+            .inFilter('id', regularIds);
 
-        if (distOcrRows.isNotEmpty) {
-          // Create a map for quick lookup
-          final distOcrMap = <String, Map<String, dynamic>>{};
-          for (var row in distOcrRows) {
-            final key = 'ocr_${row['distributor_id']}_${row['ocr_product_id']}';
-            distOcrMap[key] = row;
-          }
-          
-          // Fetch the corresponding OCR products
-          final ocrProductDocs = await _supabase
-              .from('ocr_products')
-              .select('*')
-              .inFilter('id', ocrProductIds.toList());
+        if (rows.isNotEmpty) {
+          final distributorProductDetailsMap = {
+            for (var row in rows) row['id'].toString(): row
+          };
 
-          final ocrProductsMap = {
-            for (var doc in ocrProductDocs) doc['id'].toString(): doc
+          final productIds =
+              rows.map((row) => row['product_id'] as String).toSet().toList();
+
+          final productDocs =
+              await _supabase.from('products').select('*').inFilter('id', productIds);
+
+          final productsMap = {
+            for (var doc in productDocs)
+              doc['id'].toString(): ProductModel.fromMap(doc)
           };
 
           for (final id in ids) {
-            if (id.startsWith('ocr_')) {
-              final row = distOcrMap[id];
-              if (row != null) {
-                final ocrProductData = ocrProductsMap[row['ocr_product_id']];
-                if (ocrProductData != null) {
-                  final packageStr = ocrProductData['package'] ?? '';
-                  orderedProducts.add(ProductModel(
-                    id: ocrProductData['id'].toString(),
-                    name: ocrProductData['product_name'] ?? '',
-                    company: ocrProductData['product_company'] ?? '',
-                    activePrinciple: ocrProductData['active_principle'] ?? '',
-                    imageUrl: ocrProductData['image_url'] ?? '',
-                    availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
-                    selectedPackage: packageStr,
-                    price: (row['price'] as num?)?.toDouble(),
-                    oldPrice: (row['old_price'] as num?)?.toDouble(),
-                    priceUpdatedAt: row['price_updated_at'] != null
-                        ? DateTime.tryParse(row['price_updated_at'])
+            if (id.startsWith('regular_')) {
+              final actualId = id.substring(8);
+              final distributorProductRow = distributorProductDetailsMap[actualId];
+              if (distributorProductRow != null) {
+                final productDetails = productsMap[distributorProductRow['product_id']];
+                if (productDetails != null) {
+                  orderedProducts.add(productDetails.copyWith(
+                    price: (distributorProductRow['price'] as num?)?.toDouble(),
+                    oldPrice: (distributorProductRow['old_price'] as num?)?.toDouble(),
+                    priceUpdatedAt: distributorProductRow['price_updated_at'] != null
+                        ? DateTime.tryParse(distributorProductRow['price_updated_at'])
                         : null,
-                    distributorId: row['distributor_name'] as String?,
-                    distributorUuid: row['distributor_id'] as String?,
-                    views: (row['views'] as int?) ?? 0,
+                    selectedPackage: distributorProductRow['package'] as String?,
+                    distributorId: distributorProductRow['distributor_name'] as String?,
+                    distributorUuid: distributorProductRow['distributor_id'] as String?,
+                    views: (distributorProductRow['views'] as int?) ?? 0,
                   ));
                 }
               }
@@ -242,147 +183,221 @@ class ProductRepository {
           }
         }
       }
-    }
 
-    return orderedProducts;
-  }
+      // ========================================
+      // 2. Fetch OCR products
+      // ========================================
+      if (ocrIdsPrefixed.isNotEmpty) {
+        // Parse OCR IDs to get ocr_product_id
+        final ocrProductIds = <String>{};
+        
+        for (final id in ocrIdsPrefixed) {
+          final parts = id.split('_');
+          if (parts.length >= 3) {
+            final ocrProductId = parts.sublist(2).join('_');
+            ocrProductIds.add(ocrProductId);
+          }
+        }
 
-  Future<List<ProductModel>> getProductsWithPriceUpdates() async {
-    // جلب المنتجات العادية من الكتالوج
-    final response = await _supabase
-        .from('distributor_products')
-        .select()
-        .not('old_price', 'is', null)
-        .order('price_updated_at', ascending: false);
+        if (ocrProductIds.isNotEmpty) {
+          // Fetch distributor_ocr_products
+          final distOcrRows = await _supabase
+              .from('distributor_ocr_products')
+              .select('ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
+              .inFilter('ocr_product_id', ocrProductIds.toList());
 
-    final productIds =
-        response.map((row) => row['product_id'] as String).toSet().toList();
-
-    List<ProductModel> catalogProducts = [];
-    if (productIds.isNotEmpty) {
-      final productDocs =
-          await _supabase.from('products').select().inFilter('id', productIds);
-
-      final productsMap = {
-        for (var doc in productDocs)
-          doc['id'].toString(): ProductModel.fromMap(doc)
-      };
-
-      catalogProducts = response
-          .map((row) {
-            final productDetails = productsMap[row['product_id']];
-            if (productDetails != null) {
-              return productDetails.copyWith(
-                price: (row['price'] as num?)?.toDouble(),
-                oldPrice: (row['old_price'] as num?)?.toDouble(),
-                priceUpdatedAt: row['price_updated_at'] != null
-                    ? DateTime.tryParse(row['price_updated_at'])
-                    : null,
-                selectedPackage: row['package'] as String?,
-                distributorId: row['distributor_name'] as String?,
-                distributorUuid: row['distributor_id'] as String?,
-                views: (row['views'] as int?) ?? 0,
-              );
+          if (distOcrRows.isNotEmpty) {
+            // Create a map for quick lookup
+            final distOcrMap = <String, Map<String, dynamic>>{};
+            for (var row in distOcrRows) {
+              final key = 'ocr_${row['distributor_id']}_${row['ocr_product_id']}';
+              distOcrMap[key] = row;
             }
-            return null;
-          })
-          .whereType<ProductModel>()
-          .toList();
-    }
+            
+            // Fetch the corresponding OCR products
+            final ocrProductDocs = await _supabase
+                .from('ocr_products')
+                .select('*')
+                .inFilter('id', ocrProductIds.toList());
 
-    // جلب منتجات OCR التي تغير سعرها
-    final ocrResponse = await _supabase
-        .from('distributor_ocr_products')
-        .select()
-        .not('old_price', 'is', null)
-        .order('price_updated_at', ascending: false);
+            final ocrProductsMap = {
+              for (var doc in ocrProductDocs) doc['id'].toString(): doc
+            };
 
-    final ocrProductIds = ocrResponse
-        .map((row) => row['ocr_product_id'] as String)
-        .toSet()
-        .toList();
-
-    List<ProductModel> ocrProducts = [];
-    if (ocrProductIds.isNotEmpty) {
-      final ocrProductDocs = await _supabase
-          .from('ocr_products')
-          .select()
-          .inFilter('id', ocrProductIds);
-
-      final ocrProductsMap = <String, Map<String, dynamic>>{
-        for (var doc in ocrProductDocs) doc['id'].toString(): doc
-      };
-
-      // جلب أسماء الموزعين
-      final distributorIds = ocrResponse
-          .map((row) => row['distributor_id'] as String?)
-          .where((id) => id != null)
-          .toSet()
-          .toList();
-
-      Map<String, String> distributorNames = {};
-      if (distributorIds.isNotEmpty) {
-        final usersData = await _supabase
-            .from('users')
-            .select('id, display_name')
-            .inFilter('id', distributorIds);
-
-        for (final user in usersData) {
-          distributorNames[user['id'].toString()] =
-              user['display_name']?.toString() ?? 'موزع غير معروف';
+            for (final id in ids) {
+              if (id.startsWith('ocr_')) {
+                final row = distOcrMap[id];
+                if (row != null) {
+                  final ocrProductData = ocrProductsMap[row['ocr_product_id']];
+                  if (ocrProductData != null) {
+                    final packageStr = ocrProductData['package'] ?? '';
+                    orderedProducts.add(ProductModel(
+                      id: ocrProductData['id'].toString(),
+                      name: ocrProductData['product_name'] ?? '',
+                      company: ocrProductData['product_company'] ?? '',
+                      activePrinciple: ocrProductData['active_principle'] ?? '',
+                      imageUrl: ocrProductData['image_url'] ?? '',
+                      availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
+                      selectedPackage: packageStr,
+                      price: (row['price'] as num?)?.toDouble(),
+                      oldPrice: (row['old_price'] as num?)?.toDouble(),
+                      priceUpdatedAt: row['price_updated_at'] != null
+                          ? DateTime.tryParse(row['price_updated_at'])
+                          : null,
+                      distributorId: row['distributor_name'] as String?,
+                      distributorUuid: row['distributor_id'] as String?,
+                      views: (row['views'] as int?) ?? 0,
+                    ));
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
-      ocrProducts = ocrResponse
-          .map((row) {
-            final ocrProductDoc = ocrProductsMap[row['ocr_product_id']];
-            if (ocrProductDoc != null) {
-              final distributorName =
-                  distributorNames[row['distributor_id']] ?? 'موزع غير معروف';
-              return ProductModel(
-                id: ocrProductDoc['id']?.toString() ?? '',
-                name: ocrProductDoc['product_name']?.toString() ?? '',
-                description: ocrProductDoc['description']?.toString(),
-                activePrinciple: ocrProductDoc['active_principle']?.toString(),
-                company: ocrProductDoc['product_company']?.toString(),
-                action: '',
-                package: ocrProductDoc['package']?.toString() ?? '',
-                imageUrl:
-                    (ocrProductDoc['image_url']?.toString() ?? '').startsWith('http')
-                        ? ocrProductDoc['image_url'].toString()
-                        : '',
-                price: (row['price'] as num?)?.toDouble(),
-                oldPrice: (row['old_price'] as num?)?.toDouble(),
-                priceUpdatedAt: row['price_updated_at'] != null
-                    ? DateTime.tryParse(row['price_updated_at'])
-                    : null,
-                distributorId: distributorName,
-                distributorUuid: row['distributor_id'] as String?,
-                createdAt: row['created_at'] != null
-                    ? DateTime.tryParse(row['created_at'].toString())
-                    : null,
-                availablePackages: [ocrProductDoc['package']?.toString() ?? ''],
-                selectedPackage: ocrProductDoc['package']?.toString() ?? '',
-                isFavorite: false,
-                views: (row['views'] as int?) ?? 0,
-              );
-            }
-            return null;
-          })
-          .whereType<ProductModel>()
-          .toList();
-    }
-
-    // دمج القائمتين وترتيبهم حسب تاريخ تحديث السعر
-    final allProducts = [...catalogProducts, ...ocrProducts];
-    allProducts.sort((a, b) {
-      if (a.priceUpdatedAt == null && b.priceUpdatedAt == null) return 0;
-      if (a.priceUpdatedAt == null) return 1;
-      if (b.priceUpdatedAt == null) return -1;
-      return b.priceUpdatedAt!.compareTo(a.priceUpdatedAt!);
+      return orderedProducts;
     });
+  }
 
-    return allProducts;
+  Future<List<ProductModel>> getProductsWithPriceUpdates() async {
+    return await NetworkGuard.execute(() async {
+      // جلب المنتجات العادية من الكتالوج
+      final response = await _supabase
+          .from('distributor_products')
+          .select()
+          .not('old_price', 'is', null)
+          .order('price_updated_at', ascending: false);
+
+      final productIds =
+          response.map((row) => row['product_id'] as String).toSet().toList();
+
+      List<ProductModel> catalogProducts = [];
+      if (productIds.isNotEmpty) {
+        final productDocs =
+            await _supabase.from('products').select().inFilter('id', productIds);
+
+        final productsMap = {
+          for (var doc in productDocs)
+            doc['id'].toString(): ProductModel.fromMap(doc)
+        };
+
+        catalogProducts = response
+            .map((row) {
+              final productDetails = productsMap[row['product_id']];
+              if (productDetails != null) {
+                return productDetails.copyWith(
+                  price: (row['price'] as num?)?.toDouble(),
+                  oldPrice: (row['old_price'] as num?)?.toDouble(),
+                  priceUpdatedAt: row['price_updated_at'] != null
+                      ? DateTime.tryParse(row['price_updated_at'])
+                      : null,
+                  selectedPackage: row['package'] as String?,
+                  distributorId: row['distributor_name'] as String?,
+                  distributorUuid: row['distributor_id'] as String?,
+                  views: (row['views'] as int?) ?? 0,
+                );
+              }
+              return null;
+            })
+            .whereType<ProductModel>()
+            .toList();
+      }
+
+      // جلب منتجات OCR التي تغير سعرها
+      final ocrResponse = await _supabase
+          .from('distributor_ocr_products')
+          .select()
+          .not('old_price', 'is', null)
+          .order('price_updated_at', ascending: false);
+
+      final ocrProductIds = ocrResponse
+          .map((row) => row['ocr_product_id'] as String)
+          .toSet()
+          .toList();
+
+      List<ProductModel> ocrProducts = [];
+      if (ocrProductIds.isNotEmpty) {
+        final ocrProductDocs = await _supabase
+            .from('ocr_products')
+            .select()
+            .inFilter('id', ocrProductIds);
+
+        final ocrProductsMap = <String, Map<String, dynamic>>{
+          for (var doc in ocrProductDocs) doc['id'].toString(): doc
+        };
+
+        // جلب أسماء الموزعين
+        final distributorIds = ocrResponse
+            .map((row) => row['distributor_id'] as String?)
+            .where((id) => id != null)
+            .toSet()
+            .toList();
+
+        Map<String, String> distributorNames = {};
+        if (distributorIds.isNotEmpty) {
+          final usersData = await _supabase
+              .from('users')
+              .select('id, display_name')
+              .inFilter('id', distributorIds);
+
+          for (final user in usersData) {
+            distributorNames[user['id'].toString()] =
+                user['display_name']?.toString() ?? 'موزع غير معروف';
+          }
+        }
+
+        ocrProducts = ocrResponse
+            .map((row) {
+              final ocrProductDoc = ocrProductsMap[row['ocr_product_id']];
+              if (ocrProductDoc != null) {
+                final distributorName =
+                    distributorNames[row['distributor_id']] ?? 'موزع غير معروف';
+                return ProductModel(
+                  id: ocrProductDoc['id']?.toString() ?? '',
+                  name: ocrProductDoc['product_name']?.toString() ?? '',
+                  description: ocrProductDoc['description']?.toString(),
+                  activePrinciple: ocrProductDoc['active_principle']?.toString(),
+                  company: ocrProductDoc['product_company']?.toString(),
+                  action: '',
+                  package: ocrProductDoc['package']?.toString() ?? '',
+                  imageUrl:
+                      (ocrProductDoc['image_url']?.toString() ?? '').startsWith('http')
+                          ? ocrProductDoc['image_url'].toString()
+                          : '',
+                  price: (row['price'] as num?)?.toDouble(),
+                  oldPrice: (row['old_price'] as num?)?.toDouble(),
+                  priceUpdatedAt: row['price_updated_at'] != null
+                      ? DateTime.tryParse(row['price_updated_at'])
+                      : null,
+                  distributorId: distributorName,
+                  distributorUuid: row['distributor_id'] as String?,
+                  createdAt: row['created_at'] != null
+                      ? DateTime.tryParse(row['created_at'].toString())
+                      : null,
+                  availablePackages: [ocrProductDoc['package']?.toString() ?? ''],
+                  selectedPackage: ocrProductDoc['package']?.toString() ?? '',
+                  isFavorite: false,
+                  views: (row['views'] as int?) ?? 0,
+                );
+              }
+              return null;
+            })
+            .whereType<ProductModel>()
+            .toList();
+      }
+
+      // دمج القائمتين وترتيبهم حسب تاريخ تحديث السعر
+      final allProducts = [...catalogProducts, ...ocrProducts];
+      allProducts.sort((a, b) {
+        if (a.priceUpdatedAt == null && b.priceUpdatedAt == null) return 0;
+        if (a.priceUpdatedAt == null) return 1;
+        if (b.priceUpdatedAt == null) return -1;
+        return b.priceUpdatedAt!.compareTo(a.priceUpdatedAt!);
+      });
+
+      return allProducts;
+    });
   }
 
   Future<List<ProductModel>> getAllProducts() async {
@@ -398,23 +413,25 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> _fetchAllProductsFromServer() async {
-    try {
-      final response = await _supabase.functions.invoke('get-products');
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.functions.invoke('get-products');
 
-      if (response.data == null) {
-        throw Exception('Function get-products returned null data');
+        if (response.data == null) {
+          throw Exception('Function get-products returned null data');
+        }
+
+        final List<dynamic> responseData = response.data;
+        final products = responseData
+            .map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row)))
+            .toList();
+
+        return products;
+      } catch (e) {
+        print('Error fetching products from server: $e');
+        return [];
       }
-
-      final List<dynamic> responseData = response.data;
-      final products = responseData
-          .map((row) => ProductModel.fromMap(Map<String, dynamic>.from(row)))
-          .toList();
-
-      return products;
-    } catch (e) {
-      print('Error fetching products from server: $e');
-      return [];
-    }
+    });
   }
 
   Future<List<ProductModel>> getAllDistributorProducts(
@@ -435,189 +452,193 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
-    try {
-      // Call Edge Function instead of direct queries for better performance
-      final response = await _supabase.functions.invoke('get-all-distributor-products');
+    return await NetworkGuard.execute(() async {
+      try {
+        // Call Edge Function instead of direct queries for better performance
+        final response = await _supabase.functions.invoke('get-all-distributor-products');
 
-      if (response.data == null) {
-        throw Exception('Edge function get-all-distributor-products returned null data');
-      }
-
-      final List<dynamic> responseData = response.data;
-      
-      // Convert response to ProductModel list
-      final products = responseData.map((productData) {
-        try {
-          final data = Map<String, dynamic>.from(productData);
-          
-          // Handle both regular products and OCR products
-          if (data.containsKey('availablePackages')) {
-            // OCR product - already formatted by Edge Function
-            return ProductModel(
-              id: data['id']?.toString() ?? '',
-              name: data['name']?.toString() ?? '',
-              company: data['company']?.toString() ?? '',
-              activePrinciple: data['activePrinciple']?.toString() ?? '',
-              imageUrl: data['imageUrl']?.toString() ?? '',
-              availablePackages: (data['availablePackages'] as List?)
-                      ?.map((e) => e.toString())
-                      .toList() ??
-                  [],
-              selectedPackage: data['selectedPackage']?.toString(),
-              price: (data['price'] as num?)?.toDouble(),
-              oldPrice: (data['oldPrice'] as num?)?.toDouble(),
-              priceUpdatedAt: data['priceUpdatedAt'] != null
-                  ? DateTime.tryParse(data['priceUpdatedAt'])
-                  : null,
-              distributorId: data['distributorId']?.toString(),
-              distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
-              views: (data['views'] as num?)?.toInt() ?? 0,
-            );
-          } else {
-            // Regular product - use fromMap
-            return ProductModel.fromMap(data).copyWith(
-              price: (data['price'] as num?)?.toDouble(),
-              oldPrice: (data['oldPrice'] as num?)?.toDouble(),
-              priceUpdatedAt: data['priceUpdatedAt'] != null
-                  ? DateTime.tryParse(data['priceUpdatedAt'])
-                  : null,
-              selectedPackage: data['selectedPackage']?.toString(),
-              distributorId: data['distributorId']?.toString(),
-              distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
-              views: (data['views'] as num?)?.toInt() ?? 0,
-            );
-          }
-        } catch (e) {
-          print('Error parsing product: $e');
-          return null;
+        if (response.data == null) {
+          throw Exception('Edge function get-all-distributor-products returned null data');
         }
-      }).whereType<ProductModel>().toList();
 
-      return products;
-    } catch (e) {
-      print('Error fetching all distributor products from Edge Function: $e');
-      print('Falling back to direct queries...');
-      
-      // Fallback to direct queries if Edge Function fails
-      return _fetchAllDistributorProductsDirectly();
-    }
+        final List<dynamic> responseData = response.data;
+        
+        // Convert response to ProductModel list
+        final products = responseData.map((productData) {
+          try {
+            final data = Map<String, dynamic>.from(productData);
+            
+            // Handle both regular products and OCR products
+            if (data.containsKey('availablePackages')) {
+              // OCR product - already formatted by Edge Function
+              return ProductModel(
+                id: data['id']?.toString() ?? '',
+                name: data['name']?.toString() ?? '',
+                company: data['company']?.toString() ?? '',
+                activePrinciple: data['activePrinciple']?.toString() ?? '',
+                imageUrl: data['imageUrl']?.toString() ?? '',
+                availablePackages: (data['availablePackages'] as List?)
+                        ?.map((e) => e.toString())
+                        .toList() ??
+                    [],
+                selectedPackage: data['selectedPackage']?.toString(),
+                price: (data['price'] as num?)?.toDouble(),
+                oldPrice: (data['oldPrice'] as num?)?.toDouble(),
+                priceUpdatedAt: data['priceUpdatedAt'] != null
+                    ? DateTime.tryParse(data['priceUpdatedAt'])
+                    : null,
+                distributorId: data['distributorId']?.toString(),
+                distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
+                views: (data['views'] as num?)?.toInt() ?? 0,
+              );
+            } else {
+              // Regular product - use fromMap
+              return ProductModel.fromMap(data).copyWith(
+                price: (data['price'] as num?)?.toDouble(),
+                oldPrice: (data['oldPrice'] as num?)?.toDouble(),
+                priceUpdatedAt: data['priceUpdatedAt'] != null
+                    ? DateTime.tryParse(data['priceUpdatedAt'])
+                    : null,
+                selectedPackage: data['selectedPackage']?.toString(),
+                distributorId: data['distributorId']?.toString(),
+                distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
+                views: (data['views'] as num?)?.toInt() ?? 0,
+              );
+            }
+          } catch (e) {
+            print('Error parsing product: $e');
+            return null;
+          }
+        }).whereType<ProductModel>().toList();
+
+        return products;
+      } catch (e) {
+        print('Error fetching all distributor products from Edge Function: $e');
+        print('Falling back to direct queries...');
+        
+        // Fallback to direct queries if Edge Function fails
+        return _fetchAllDistributorProductsDirectly();
+      }
+    });
   }
 
   /// Fallback method using direct queries (in case Edge Function fails)
   Future<List<ProductModel>> _fetchAllDistributorProductsDirectly() async {
-    const cacheKey = 'all_distributor_products';
-    try {
-      final List<ProductModel> allProducts = [];
-      
-      // ========================================
-      // 1. Fetch from distributor_products
-      // ========================================
-      final distProductsResponse = await _supabase
-          .from('distributor_products')
-          .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name, distributor_id, views')
-          .filter('expiration_date', 'is', null);
-
-      if (distProductsResponse.isNotEmpty) {
-        final productIds = distProductsResponse
-            .map((row) => row['product_id'] as String)
-            .toSet()
-            .toList();
-
-        final productDocs =
-            await _supabase.from('products').select().inFilter('id', productIds);
-
-        final productsMap = {
-          for (var doc in productDocs)
-            doc['id'].toString(): ProductModel.fromMap(doc)
-        };
-
-        final products = distProductsResponse
-            .map((row) {
-              final productDetails = productsMap[row['product_id']];
-              if (productDetails != null) {
-                return productDetails.copyWith(
-                  price: (row['price'] as num?)?.toDouble(),
-                  oldPrice: (row['old_price'] as num?)?.toDouble(),
-                  priceUpdatedAt: row['price_updated_at'] != null
-                      ? DateTime.tryParse(row['price_updated_at'])
-                      : null,
-                  selectedPackage: row['package'] as String?,
-                  distributorId: row['distributor_name'] as String?,
-                  distributorUuid: row['distributor_id'] as String?,
-                  views: (row['views'] as int?) ?? 0,
-                );
-              }
-              return null;
-            })
-            .whereType<ProductModel>()
-            .toList();
+    return await NetworkGuard.execute(() async {
+      const cacheKey = 'all_distributor_products';
+      try {
+        final List<ProductModel> allProducts = [];
         
-        allProducts.addAll(products);
+        // ========================================
+        // 1. Fetch from distributor_products
+        // ========================================
+        final distProductsResponse = await _supabase
+            .from('distributor_products')
+            .select(
+                'product_id, price, old_price, price_updated_at, package, distributor_name, distributor_id, views')
+            .filter('expiration_date', 'is', null);
+
+        if (distProductsResponse.isNotEmpty) {
+          final productIds = distProductsResponse
+              .map((row) => row['product_id'] as String)
+              .toSet()
+              .toList();
+
+          final productDocs =
+              await _supabase.from('products').select().inFilter('id', productIds);
+
+          final productsMap = {
+            for (var doc in productDocs)
+              doc['id'].toString(): ProductModel.fromMap(doc)
+          };
+
+          final products = distProductsResponse
+              .map((row) {
+                final productDetails = productsMap[row['product_id']];
+                if (productDetails != null) {
+                  return productDetails.copyWith(
+                    price: (row['price'] as num?)?.toDouble(),
+                    oldPrice: (row['old_price'] as num?)?.toDouble(),
+                    priceUpdatedAt: row['price_updated_at'] != null
+                        ? DateTime.tryParse(row['price_updated_at'])
+                        : null,
+                    selectedPackage: row['package'] as String?,
+                    distributorId: row['distributor_name'] as String?,
+                    distributorUuid: row['distributor_id'] as String?,
+                    views: (row['views'] as int?) ?? 0,
+                  );
+                }
+                return null;
+              })
+              .whereType<ProductModel>()
+              .toList();
+          
+          allProducts.addAll(products);
+        }
+
+        // ========================================
+        // 2. Fetch from distributor_ocr_products
+        // ========================================
+        final distOcrProductsResponse = await _supabase
+            .from('distributor_ocr_products')
+            .select(
+                'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
+            .filter('expiration_date', 'is', null);
+
+        if (distOcrProductsResponse.isNotEmpty) {
+          final ocrProductIds = distOcrProductsResponse
+              .map((row) => row['ocr_product_id'] as String)
+              .toSet()
+              .toList();
+
+          final ocrProductDocs = await _supabase
+              .from('ocr_products')
+              .select()
+              .inFilter('id', ocrProductIds);
+
+          final ocrProductsMap = {
+            for (var doc in ocrProductDocs) doc['id'].toString(): doc
+          };
+
+          final ocrProducts = distOcrProductsResponse
+              .map((row) {
+                final ocrProductData = ocrProductsMap[row['ocr_product_id']];
+                if (ocrProductData != null) {
+                  final packageStr = ocrProductData['package'] ?? '';
+                  return ProductModel(
+                    id: ocrProductData['id'].toString(),
+                    name: ocrProductData['product_name'] ?? '',
+                    company: ocrProductData['product_company'] ?? '',
+                    activePrinciple: ocrProductData['active_principle'] ?? '',
+                    imageUrl: ocrProductData['image_url'] ?? '',
+                    availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
+                    selectedPackage: packageStr,
+                    price: (row['price'] as num?)?.toDouble(),
+                    oldPrice: (row['old_price'] as num?)?.toDouble(),
+                    priceUpdatedAt: row['price_updated_at'] != null
+                        ? DateTime.tryParse(row['price_updated_at'])
+                        : null,
+                    distributorId: row['distributor_name'] as String?,
+                    distributorUuid: row['distributor_id'] as String?,
+                    views: (row['views'] as int?) ?? 0,
+                  );
+                }
+                return null;
+              })
+              .whereType<ProductModel>()
+              .toList();
+          
+          allProducts.addAll(ocrProducts);
+        }
+
+        _cache.set(cacheKey, allProducts, duration: const Duration(minutes: 30));
+
+        return allProducts;
+      } catch (e) {
+        print('Error in fallback direct queries: $e');
+        return [];
       }
-
-      // ========================================
-      // 2. Fetch from distributor_ocr_products
-      // ========================================
-      final distOcrProductsResponse = await _supabase
-          .from('distributor_ocr_products')
-          .select(
-              'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
-          .filter('expiration_date', 'is', null);
-
-      if (distOcrProductsResponse.isNotEmpty) {
-        final ocrProductIds = distOcrProductsResponse
-            .map((row) => row['ocr_product_id'] as String)
-            .toSet()
-            .toList();
-
-        final ocrProductDocs = await _supabase
-            .from('ocr_products')
-            .select()
-            .inFilter('id', ocrProductIds);
-
-        final ocrProductsMap = {
-          for (var doc in ocrProductDocs) doc['id'].toString(): doc
-        };
-
-        final ocrProducts = distOcrProductsResponse
-            .map((row) {
-              final ocrProductData = ocrProductsMap[row['ocr_product_id']];
-              if (ocrProductData != null) {
-                final packageStr = ocrProductData['package'] ?? '';
-                return ProductModel(
-                  id: ocrProductData['id'].toString(),
-                  name: ocrProductData['product_name'] ?? '',
-                  company: ocrProductData['product_company'] ?? '',
-                  activePrinciple: ocrProductData['active_principle'] ?? '',
-                  imageUrl: ocrProductData['image_url'] ?? '',
-                  availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
-                  selectedPackage: packageStr,
-                  price: (row['price'] as num?)?.toDouble(),
-                  oldPrice: (row['old_price'] as num?)?.toDouble(),
-                  priceUpdatedAt: row['price_updated_at'] != null
-                      ? DateTime.tryParse(row['price_updated_at'])
-                      : null,
-                  distributorId: row['distributor_name'] as String?,
-                  distributorUuid: row['distributor_id'] as String?,
-                  views: (row['views'] as int?) ?? 0,
-                );
-              }
-              return null;
-            })
-            .whereType<ProductModel>()
-            .toList();
-        
-        allProducts.addAll(ocrProducts);
-      }
-
-      _cache.set(cacheKey, allProducts, duration: const Duration(minutes: 30));
-
-      return allProducts;
-    } catch (e) {
-      print('Error in fallback direct queries: $e');
-      return [];
-    }
+    });
   }
 
   /// Admin: Get ALL products (Catalog + Distributor) for admin panel
@@ -641,58 +662,60 @@ class ProductRepository {
   
   /// Admin: Get ONLY regular distributor products (excluding OCR products)
   Future<List<ProductModel>> getOnlyDistributorProducts({bool bypassCache = false}) async {
-    try {
-      final List<ProductModel> allProducts = [];
-      
-      // Fetch ONLY from distributor_products table (NOT ocr)
-      final distProductsResponse = await _supabase
-          .from('distributor_products')
-          .select(
-              'product_id, price, old_price, price_updated_at, package, distributor_name, views')
-          .order('price_updated_at', ascending: false);
-
-      if (distProductsResponse.isNotEmpty) {
-        final productIds = distProductsResponse
-            .map((row) => row['product_id'] as String)
-            .toSet()
-            .toList();
-
-        final productDocs =
-            await _supabase.from('products').select().inFilter('id', productIds);
-
-        final productsMap = {
-          for (var doc in productDocs)
-            doc['id'].toString(): ProductModel.fromMap(doc)
-        };
-
-        final products = distProductsResponse
-            .map((row) {
-              final productDetails = productsMap[row['product_id']];
-              if (productDetails != null) {
-                return productDetails.copyWith(
-                  price: (row['price'] as num?)?.toDouble(),
-                  oldPrice: (row['old_price'] as num?)?.toDouble(),
-                  priceUpdatedAt: row['price_updated_at'] != null
-                      ? DateTime.tryParse(row['price_updated_at'])
-                      : null,
-                  selectedPackage: row['package'] as String?,
-                  distributorId: row['distributor_name'] as String?,
-                  views: (row['views'] as int?) ?? 0,
-                );
-              }
-              return null;
-            })
-            .whereType<ProductModel>()
-            .toList();
+    return await NetworkGuard.execute(() async {
+      try {
+        final List<ProductModel> allProducts = [];
         
-        allProducts.addAll(products);
-      }
+        // Fetch ONLY from distributor_products table (NOT ocr)
+        final distProductsResponse = await _supabase
+            .from('distributor_products')
+            .select(
+                'product_id, price, old_price, price_updated_at, package, distributor_name, views')
+            .order('price_updated_at', ascending: false);
 
-      return allProducts;
-    } catch (e) {
-      print('Error fetching distributor products only: $e');
-      return [];
-    }
+        if (distProductsResponse.isNotEmpty) {
+          final productIds = distProductsResponse
+              .map((row) => row['product_id'] as String)
+              .toSet()
+              .toList();
+
+          final productDocs =
+              await _supabase.from('products').select().inFilter('id', productIds);
+
+          final productsMap = {
+            for (var doc in productDocs)
+              doc['id'].toString(): ProductModel.fromMap(doc)
+          };
+
+          final products = distProductsResponse
+              .map((row) {
+                final productDetails = productsMap[row['product_id']];
+                if (productDetails != null) {
+                  return productDetails.copyWith(
+                    price: (row['price'] as num?)?.toDouble(),
+                    oldPrice: (row['old_price'] as num?)?.toDouble(),
+                    priceUpdatedAt: row['price_updated_at'] != null
+                        ? DateTime.tryParse(row['price_updated_at'])
+                        : null,
+                    selectedPackage: row['package'] as String?,
+                    distributorId: row['distributor_name'] as String?,
+                    views: (row['views'] as int?) ?? 0,
+                  );
+                }
+                return null;
+              })
+              .whereType<ProductModel>()
+              .toList();
+          
+          allProducts.addAll(products);
+        }
+
+        return allProducts;
+      } catch (e) {
+        print('Error fetching distributor products only: $e');
+        return [];
+      }
+    });
   }
 
   Future<void> addMultipleProductsToDistributorCatalog({
@@ -700,25 +723,27 @@ class ProductRepository {
     required String distributorName,
     required Map<String, Map<String, dynamic>> productsToAdd,
   }) async {
-    final rows = productsToAdd.entries.map((entry) {
-      final parts = entry.key.split('_');
-      final productId = parts[0];
-      final package = parts.sublist(1).join('_');
-      final productData = entry.value;
+    await NetworkGuard.execute(() async {
+      final rows = productsToAdd.entries.map((entry) {
+        final parts = entry.key.split('_');
+        final productId = parts[0];
+        final package = parts.sublist(1).join('_');
+        final productData = entry.value;
 
-      return {
-        'id': '${distributorId}_${entry.key}',
-        'distributor_id': distributorId,
-        'distributor_name': distributorName,
-        'product_id': productId,
-        'package': package,
-        'price': productData['price'],
-        'expiration_date': productData['expiration_date'],
-        'added_at': DateTime.now().toIso8601String(),
-      };
-    }).toList();
+        return {
+          'id': '${distributorId}_${entry.key}',
+          'distributor_id': distributorId,
+          'distributor_name': distributorName,
+          'product_id': productId,
+          'package': package,
+          'price': productData['price'],
+          'expiration_date': productData['expiration_date'],
+          'added_at': DateTime.now().toIso8601String(),
+        };
+      }).toList();
 
-    await _supabase.from('distributor_products').upsert(rows);
+      await _supabase.from('distributor_products').upsert(rows);
+    });
 
     _scheduleCacheInvalidation();
   }
@@ -728,8 +753,10 @@ class ProductRepository {
     required String productId,
     required String package,
   }) async {
-    final docId = '${distributorId}_${productId}_$package';
-    await _supabase.from('distributor_products').delete().eq('id', docId);
+    await NetworkGuard.execute(() async {
+      final docId = '${distributorId}_${productId}_$package';
+      await _supabase.from('distributor_products').delete().eq('id', docId);
+    });
 
     _scheduleCacheInvalidation();
   }
@@ -738,9 +765,11 @@ class ProductRepository {
     required String distributorId,
     required String ocrProductId,
   }) async {
-    await _supabase.from('distributor_ocr_products').delete().match({
-      'distributor_id': distributorId,
-      'ocr_product_id': ocrProductId,
+    await NetworkGuard.execute(() async {
+      await _supabase.from('distributor_ocr_products').delete().match({
+        'distributor_id': distributorId,
+        'ocr_product_id': ocrProductId,
+      });
     });
 
     _scheduleCacheInvalidation();
@@ -751,15 +780,17 @@ class ProductRepository {
     required List<String> productIdsWithPackage,
   }) async {
     try {
-      final List<String> docIdsToDelete =
-          productIdsWithPackage.map((idWithPackage) {
-        return "${distributorId}_$idWithPackage";
-      }).toList();
+      await NetworkGuard.execute(() async {
+        final List<String> docIdsToDelete =
+            productIdsWithPackage.map((idWithPackage) {
+          return "${distributorId}_$idWithPackage";
+        }).toList();
 
-      await _supabase
-          .from('distributor_products')
-          .delete()
-          .inFilter('id', docIdsToDelete);
+        await _supabase
+            .from('distributor_products')
+            .delete()
+            .inFilter('id', docIdsToDelete);
+      });
 
       _scheduleCacheInvalidation();
     } catch (e) {
@@ -773,11 +804,13 @@ class ProductRepository {
     required List<String> ocrProductIds,
   }) async {
     try {
-      await _supabase
-          .from('distributor_ocr_products')
-          .delete()
-          .match({'distributor_id': distributorId})
-          .inFilter('ocr_product_id', ocrProductIds);
+      await NetworkGuard.execute(() async {
+        await _supabase
+            .from('distributor_ocr_products')
+            .delete()
+            .match({'distributor_id': distributorId})
+            .inFilter('ocr_product_id', ocrProductIds);
+      });
 
       _scheduleCacheInvalidation();
     } catch (e) {
@@ -795,19 +828,21 @@ class ProductRepository {
     required String package,
     String imageUrl = '',
   }) async {
-    final response = await _supabase.from('ocr_products').insert({
-      'distributor_id': distributorId,
-      'distributor_name': distributorName,
-      'product_name': productName,
-      'product_company': productCompany,
-      'active_principle': activePrinciple,
-      'package': package,
-      'image_url': imageUrl,
-    }).select();
-    if (response.isNotEmpty) {
-      return response.first['id'].toString();
-    }
-    return null;
+    return await NetworkGuard.execute(() async {
+      final response = await _supabase.from('ocr_products').insert({
+        'distributor_id': distributorId,
+        'distributor_name': distributorName,
+        'product_name': productName,
+        'product_company': productCompany,
+        'active_principle': activePrinciple,
+        'package': package,
+        'image_url': imageUrl,
+      }).select();
+      if (response.isNotEmpty) {
+        return response.first['id'].toString();
+      }
+      return null;
+    });
   }
 
   Future<bool> updateOcrProduct({
@@ -820,25 +855,27 @@ class ProductRepository {
     String? imageUrl,
   }) async {
     try {
-      final updates = <String, dynamic>{};
-      if (name != null) updates['product_name'] = name;
-      if (company != null) updates['product_company'] = company;
-      if (activePrinciple != null) updates['active_principle'] = activePrinciple;
-      if (package != null) updates['package'] = package;
-      if (imageUrl != null) updates['image_url'] = imageUrl;
+      return await NetworkGuard.execute(() async {
+        final updates = <String, dynamic>{};
+        if (name != null) updates['product_name'] = name;
+        if (company != null) updates['product_company'] = company;
+        if (activePrinciple != null) updates['active_principle'] = activePrinciple;
+        if (package != null) updates['package'] = package;
+        if (imageUrl != null) updates['image_url'] = imageUrl;
 
-      if (updates.isEmpty) return false;
+        if (updates.isEmpty) return false;
 
-      await _supabase
-          .from('ocr_products')
-          .update(updates)
-          .match({
-            'id': ocrProductId,
-            'distributor_id': distributorId,
-          });
+        await _supabase
+            .from('ocr_products')
+            .update(updates)
+            .match({
+              'id': ocrProductId,
+              'distributor_id': distributorId,
+            });
 
-      _scheduleCacheInvalidation();
-      return true;
+        _scheduleCacheInvalidation();
+        return true;
+      });
     } catch (e) {
       print('Error updating OCR product: $e');
       return false;
@@ -852,15 +889,17 @@ class ProductRepository {
     required double price,
     DateTime? expirationDate,
   }) async {
-    final response = await _supabase.from('distributor_ocr_products').insert({
-      'distributor_id': distributorId,
-      'distributor_name': distributorName,
-      'ocr_product_id': ocrProductId,
-      'price': price,
-      'expiration_date': expirationDate?.toIso8601String(),
-    }).select();
-    print(
-        'DEBUG: distributor_ocr_products insert response: \u001b[36m$response\u001b[0m');
+    await NetworkGuard.execute(() async {
+      final response = await _supabase.from('distributor_ocr_products').insert({
+        'distributor_id': distributorId,
+        'distributor_name': distributorName,
+        'ocr_product_id': ocrProductId,
+        'price': price,
+        'expiration_date': expirationDate?.toIso8601String(),
+      }).select();
+      print(
+          'DEBUG: distributor_ocr_products insert response: \u001b[36m$response\u001b[0m');
+    });
   }
 
   Future<void> addMultipleDistributorOcrProducts({
@@ -868,17 +907,19 @@ class ProductRepository {
     required String distributorName,
     required List<Map<String, dynamic>> ocrProducts, // List of {ocrProductId: String, price: double}
   }) async {
-    final rows = ocrProducts.map((product) {
-      return {
-        'distributor_id': distributorId,
-        'distributor_name': distributorName,
-        'ocr_product_id': product['ocrProductId'] as String,
-        'price': product['price'] as double,
-        'expiration_date': product['expiration_date'],
-      };
-    }).toList();
+    await NetworkGuard.execute(() async {
+      final rows = ocrProducts.map((product) {
+        return {
+          'distributor_id': distributorId,
+          'distributor_name': distributorName,
+          'ocr_product_id': product['ocrProductId'] as String,
+          'price': product['price'] as double,
+          'expiration_date': product['expiration_date'],
+        };
+      }).toList();
 
-    await _supabase.from('distributor_ocr_products').upsert(rows, onConflict: 'distributor_id,ocr_product_id');
+      await _supabase.from('distributor_ocr_products').upsert(rows, onConflict: 'distributor_id,ocr_product_id');
+    });
   }
 
   Future<List<ProductModel>> getOcrProducts() async {
@@ -894,60 +935,62 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> _fetchOcrProductsFromServer() async {
-    try {
-      // Fetch all OCR products from the ocr_products table
-      final ocrProductsResponse = await _supabase
-          .from('ocr_products')
-          .select('*')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        // Fetch all OCR products from the ocr_products table
+        final ocrProductsResponse = await _supabase
+            .from('ocr_products')
+            .select('*')
+            .order('created_at', ascending: false);
 
-      if (ocrProductsResponse.isEmpty) {
-        return [];
-      }
-
-      // Convert OCR products to ProductModel instances
-      final ocrProducts = ocrProductsResponse.map((row) {
-        // Map OCR product fields to ProductModel
-        String imageUrl = row['image_url']?.toString() ?? '';
-
-        // Validate and fix image URL if needed
-        if (imageUrl.isNotEmpty) {
-          // Check if the URL starts with http/https
-          if (!imageUrl.startsWith('http://') &&
-              !imageUrl.startsWith('https://')) {
-            // If it's not a proper URL format, set as empty to use placeholder
-            imageUrl = '';
-          }
-        } else {
-          imageUrl = '';
+        if (ocrProductsResponse.isEmpty) {
+          return [];
         }
 
-        return ProductModel(
-          id: row['id']?.toString() ?? '',
-          name: row['product_name']?.toString() ?? '',
-          description: '', // OCR products don't have description in the schema
-          activePrinciple: row['active_principle']?.toString(),
-          company: row['product_company']?.toString(),
-          action: '', // OCR products don't have action in the schema
-          package: row['package']?.toString() ?? '',
-          imageUrl: imageUrl,
-          price: null, // OCR products don't have price in main table
-          distributorId: row['distributor_id']?.toString(),
-          createdAt: row['created_at'] != null
-              ? DateTime.tryParse(row['created_at'].toString())
-              : null,
-          availablePackages: [
-            row['package']?.toString() ?? ''
-          ], // Single package from OCR
-          selectedPackage: row['package']?.toString() ?? '',
-        );
-      }).toList();
+        // Convert OCR products to ProductModel instances
+        final ocrProducts = ocrProductsResponse.map((row) {
+          // Map OCR product fields to ProductModel
+          String imageUrl = row['image_url']?.toString() ?? '';
 
-      return ocrProducts;
-    } catch (e) {
-      print('Error fetching OCR products: $e');
-      return [];
-    }
+          // Validate and fix image URL if needed
+          if (imageUrl.isNotEmpty) {
+            // Check if the URL starts with http/https
+            if (!imageUrl.startsWith('http://') &&
+                !imageUrl.startsWith('https://')) {
+              // If it's not a proper URL format, set as empty to use placeholder
+              imageUrl = '';
+            }
+          } else {
+            imageUrl = '';
+          }
+
+          return ProductModel(
+            id: row['id']?.toString() ?? '',
+            name: row['product_name']?.toString() ?? '',
+            description: '', // OCR products don't have description in the schema
+            activePrinciple: row['active_principle']?.toString(),
+            company: row['product_company']?.toString(),
+            action: '', // OCR products don't have action in the schema
+            package: row['package']?.toString() ?? '',
+            imageUrl: imageUrl,
+            price: null, // OCR products don't have price in main table
+            distributorId: row['distributor_id']?.toString(),
+            createdAt: row['created_at'] != null
+                ? DateTime.tryParse(row['created_at'].toString())
+                : null,
+            availablePackages: [
+              row['package']?.toString() ?? ''
+            ], // Single package from OCR
+            selectedPackage: row['package']?.toString() ?? '',
+          );
+        }).toList();
+
+        return ocrProducts;
+      } catch (e) {
+        print('Error fetching OCR products: $e');
+        return [];
+      }
+    });
   }
 
   Future<List<ProductModel>> getMyOcrProducts(String distributorId) async {
@@ -962,93 +1005,97 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> _fetchMyOcrProducts(String distributorId) async {
-    try {
-      // Fetch distributor OCR products for this specific distributor
-      final distributorOcrResponse = await _supabase
-          .from('distributor_ocr_products')
-          .select('ocr_product_id, price, created_at, views')
-          .eq('distributor_id', distributorId)
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        // Fetch distributor OCR products for this specific distributor
+        final distributorOcrResponse = await _supabase
+            .from('distributor_ocr_products')
+            .select('ocr_product_id, price, created_at, views')
+            .eq('distributor_id', distributorId)
+            .order('created_at', ascending: false);
 
-      if (distributorOcrResponse.isEmpty) {
-        return [];
-      }
+        if (distributorOcrResponse.isEmpty) {
+          return [];
+        }
 
-      // Get unique OCR product IDs
-      final ocrProductIds = distributorOcrResponse
-          .map((row) => row['ocr_product_id'] as String)
-          .toList();
+        // Get unique OCR product IDs
+        final ocrProductIds = distributorOcrResponse
+            .map((row) => row['ocr_product_id'] as String)
+            .toList();
 
-      // Fetch the corresponding OCR products
-      final ocrProductsResponse = await _supabase
-          .from('ocr_products')
-          .select('*')
-          .inFilter('id', ocrProductIds);
+        // Fetch the corresponding OCR products
+        final ocrProductsResponse = await _supabase
+            .from('ocr_products')
+            .select('*')
+            .inFilter('id', ocrProductIds);
 
-      if (ocrProductsResponse.isEmpty) {
-        return [];
-      }
+        if (ocrProductsResponse.isEmpty) {
+          return [];
+        }
 
-      // Create a map of OCR products for quick lookup
-      final ocrProductsMap = {
-        for (var row in ocrProductsResponse) row['id'].toString(): row
-      };
+        // Create a map of OCR products for quick lookup
+        final ocrProductsMap = {
+          for (var row in ocrProductsResponse) row['id'].toString(): row
+        };
 
-      // Join the data
-      final products = distributorOcrResponse
-          .map((distRow) {
-            final ocrProduct = ocrProductsMap[distRow['ocr_product_id']];
-            if (ocrProduct != null) {
-              String imageUrl = ocrProduct['image_url']?.toString() ?? '';
+        // Join the data
+        final products = distributorOcrResponse
+            .map((distRow) {
+              final ocrProduct = ocrProductsMap[distRow['ocr_product_id']];
+              if (ocrProduct != null) {
+                String imageUrl = ocrProduct['image_url']?.toString() ?? '';
 
-              // Validate and fix image URL if needed
-              if (imageUrl.isNotEmpty) {
-                if (!imageUrl.startsWith('http://') &&
-                    !imageUrl.startsWith('https://')) {
-                  imageUrl = '';
+                // Validate and fix image URL if needed
+                if (imageUrl.isNotEmpty) {
+                  if (!imageUrl.startsWith('http://') &&
+                      !imageUrl.startsWith('https://')) {
+                    imageUrl = '';
+                  }
                 }
+
+                return ProductModel(
+                  id: ocrProduct['id']?.toString() ?? '',
+                  name: ocrProduct['product_name']?.toString() ?? '',
+                  description: '',
+                  activePrinciple: ocrProduct['active_principle']?.toString(),
+                  company: ocrProduct['product_company']?.toString(),
+                  action: '',
+                  package: ocrProduct['package']?.toString() ?? '',
+                  imageUrl: imageUrl,
+                  price: (distRow['price'] as num?)?.toDouble(),
+                  distributorId: ocrProduct['distributor_name']?.toString(),
+                  distributorUuid: distributorId,
+                  createdAt: distRow['created_at'] != null
+                      ? DateTime.tryParse(distRow['created_at'].toString())
+                      : null,
+                  availablePackages: [ocrProduct['package']?.toString() ?? ''],
+                  selectedPackage: ocrProduct['package']?.toString() ?? '',
+                  views: (distRow['views'] as int?) ?? 0,
+                );
               }
+              return null;
+            })
+            .whereType<ProductModel>()
+            .toList();
 
-              return ProductModel(
-                id: ocrProduct['id']?.toString() ?? '',
-                name: ocrProduct['product_name']?.toString() ?? '',
-                description: '',
-                activePrinciple: ocrProduct['active_principle']?.toString(),
-                company: ocrProduct['product_company']?.toString(),
-                action: '',
-                package: ocrProduct['package']?.toString() ?? '',
-                imageUrl: imageUrl,
-                price: (distRow['price'] as num?)?.toDouble(),
-                distributorId: ocrProduct['distributor_name']?.toString(),
-                distributorUuid: distributorId,
-                createdAt: distRow['created_at'] != null
-                    ? DateTime.tryParse(distRow['created_at'].toString())
-                    : null,
-                availablePackages: [ocrProduct['package']?.toString() ?? ''],
-                selectedPackage: ocrProduct['package']?.toString() ?? '',
-                views: (distRow['views'] as int?) ?? 0,
-              );
-            }
-            return null;
-          })
-          .whereType<ProductModel>()
-          .toList();
-
-      return products;
-    } catch (e) {
-      print('Error fetching my OCR products: $e');
-      return [];
-    }
+        return products;
+      } catch (e) {
+        print('Error fetching my OCR products: $e');
+        return [];
+      }
+    });
   }
 
   Future<String?> addProductToCatalog(ProductModel product) async {
-    final response =
-        await _supabase.from('products').insert(product.toMap()).select();
-    if (response.isNotEmpty) {
-      _scheduleCacheInvalidation();
-      return response.first['id'].toString();
-    }
-    return null;
+    return await NetworkGuard.execute(() async {
+      final response =
+          await _supabase.from('products').insert(product.toMap()).select();
+      if (response.isNotEmpty) {
+        _scheduleCacheInvalidation();
+        return response.first['id'].toString();
+      }
+      return null;
+    });
   }
 
   Future<void> addProductToDistributorCatalog({
@@ -1058,15 +1105,17 @@ class ProductRepository {
     required String package,
     required double price,
   }) async {
-    final docId = '${distributorId}_${productId}_$package';
-    await _supabase.from('distributor_products').upsert({
-      'id': docId,
-      'distributor_id': distributorId,
-      'distributor_name': distributorName,
-      'product_id': productId,
-      'package': package,
-      'price': price,
-      'added_at': DateTime.now().toIso8601String(),
+    await NetworkGuard.execute(() async {
+      final docId = '${distributorId}_${productId}_$package';
+      await _supabase.from('distributor_products').upsert({
+        'id': docId,
+        'distributor_id': distributorId,
+        'distributor_name': distributorName,
+        'product_id': productId,
+        'package': package,
+        'price': price,
+        'added_at': DateTime.now().toIso8601String(),
+      });
     });
 
     _scheduleCacheInvalidation();
@@ -1078,21 +1127,23 @@ class ProductRepository {
     required String package,
     required double newPrice,
   }) async {
-    final docId = '${distributorId}_${productId}_$package';
+    await NetworkGuard.execute(() async {
+      final docId = '${distributorId}_${productId}_$package';
 
-    final response = await _supabase
-        .from('distributor_products')
-        .select('price')
-        .eq('id', docId)
-        .single();
+      final response = await _supabase
+          .from('distributor_products')
+          .select('price')
+          .eq('id', docId)
+          .single();
 
-    final oldPrice = (response['price'] as num?)?.toDouble();
+      final oldPrice = (response['price'] as num?)?.toDouble();
 
-    await _supabase.from('distributor_products').update({
-      'price': newPrice,
-      'old_price': oldPrice,
-      'price_updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', docId);
+      await _supabase.from('distributor_products').update({
+        'price': newPrice,
+        'old_price': oldPrice,
+        'price_updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', docId);
+    });
 
     _scheduleCacheInvalidation();
   }
@@ -1102,26 +1153,28 @@ class ProductRepository {
     required String ocrProductId,
     required double newPrice,
   }) async {
-    // جلب السعر القديم أولاً
-    final response = await _supabase
-        .from('distributor_ocr_products')
-        .select('price')
-        .match({
-          'distributor_id': distributorId,
-          'ocr_product_id': ocrProductId,
-        })
-        .maybeSingle();
+    await NetworkGuard.execute(() async {
+      // جلب السعر القديم أولاً
+      final response = await _supabase
+          .from('distributor_ocr_products')
+          .select('price')
+          .match({
+            'distributor_id': distributorId,
+            'ocr_product_id': ocrProductId,
+          })
+          .maybeSingle();
 
-    final oldPrice = (response?['price'] as num?)?.toDouble();
+      final oldPrice = (response?['price'] as num?)?.toDouble();
 
-    // تحديث السعر الجديد مع حفظ السعر القديم وتاريخ التحديث
-    await _supabase.from('distributor_ocr_products').update({
-      'price': newPrice,
-      'old_price': oldPrice,
-      'price_updated_at': DateTime.now().toIso8601String(),
-    }).match({
-      'distributor_id': distributorId,
-      'ocr_product_id': ocrProductId,
+      // تحديث السعر الجديد مع حفظ السعر القديم وتاريخ التحديث
+      await _supabase.from('distributor_ocr_products').update({
+        'price': newPrice,
+        'old_price': oldPrice,
+        'price_updated_at': DateTime.now().toIso8601String(),
+      }).match({
+        'distributor_id': distributorId,
+        'ocr_product_id': ocrProductId,
+      });
     });
 
     _scheduleCacheInvalidation();
@@ -1162,8 +1215,10 @@ class ProductRepository {
   // دالة لزيادة عدد مشاهدات العرض
   static Future<void> incrementOfferViews(String offerId) async {
     try {
-      await Supabase.instance.client.rpc('increment_offer_views', params: {
-        'p_offer_id': int.tryParse(offerId) ?? 0,
+      await NetworkGuard.execute(() async {
+        await Supabase.instance.client.rpc('increment_offer_views', params: {
+          'p_offer_id': int.tryParse(offerId) ?? 0,
+        });
       });
     } catch (e) {
       print('خطأ في زيادة مشاهدات العرض: $e');
@@ -1179,29 +1234,33 @@ class ProductRepository {
     String? description,
     String? package,
   }) async {
-    final response = await _supabase.from('offers').insert({
-      'product_id': productId,
-      'is_ocr': isOcr,
-      'user_id': userId,
-      'price': price,
-      'expiration_date': expirationDate.toIso8601String(),
-      'description': description,
-      'package': package,
-    }).select();
-    
-    if (response.isNotEmpty) {
-      return response.first['id'].toString();
-    }
-    return null;
+    return await NetworkGuard.execute(() async {
+      final response = await _supabase.from('offers').insert({
+        'product_id': productId,
+        'is_ocr': isOcr,
+        'user_id': userId,
+        'price': price,
+        'expiration_date': expirationDate.toIso8601String(),
+        'description': description,
+        'package': package,
+      }).select();
+      
+      if (response.isNotEmpty) {
+        return response.first['id'].toString();
+      }
+      return null;
+    });
   }
 
   Future<void> updateOfferDescription({
     required String offerId,
     required String description,
   }) async {
-    await _supabase.from('offers').update({
-      'description': description,
-    }).eq('id', offerId);
+    await NetworkGuard.execute(() async {
+      await _supabase.from('offers').update({
+        'description': description,
+      }).eq('id', offerId);
+    });
   }
 
   Future<void> updateOffer({
@@ -1210,11 +1269,13 @@ class ProductRepository {
     required double price,
     required DateTime expirationDate,
   }) async {
-    await _supabase.from('offers').update({
-      'description': description,
-      'price': price,
-      'expiration_date': expirationDate.toIso8601String(),
-    }).eq('id', offerId);
+    await NetworkGuard.execute(() async {
+      await _supabase.from('offers').update({
+        'description': description,
+        'price': price,
+        'expiration_date': expirationDate.toIso8601String(),
+      }).eq('id', offerId);
+    });
   }
 
   Future<List<OfferModel>> getMyOffers(String userId) async {
@@ -1229,33 +1290,39 @@ class ProductRepository {
   }
 
   Future<List<OfferModel>> _fetchMyOffers(String userId) async {
-    try {
-      final response = await _supabase
-          .from('offers')
-          .select('*, views')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('offers')
+            .select('*, views')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
 
-      return response.map((row) => OfferModel.fromMap(row)).toList();
-    } catch (e) {
-      print('Error fetching offers: $e');
-      return [];
-    }
+        return response.map((row) => OfferModel.fromMap(row)).toList();
+      } catch (e) {
+        print('Error fetching offers: $e');
+        return [];
+      }
+    });
   }
 
   Future<void> deleteOffer(String offerId) async {
-    await _supabase.from('offers').delete().eq('id', offerId);
+    await NetworkGuard.execute(() async {
+      await _supabase.from('offers').delete().eq('id', offerId);
+    });
   }
 
   // حذف العروض القديمة (أكثر من 7 أيام من تاريخ الإنشاء)
   Future<void> deleteExpiredOffers() async {
     try {
-      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-      await _supabase
-          .from('offers')
-          .delete()
-          .lt('created_at', sevenDaysAgo.toIso8601String());
-      print('Deleted offers created before: $sevenDaysAgo');
+      await NetworkGuard.execute(() async {
+        final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+        await _supabase
+            .from('offers')
+            .delete()
+            .lt('created_at', sevenDaysAgo.toIso8601String());
+        print('Deleted offers created before: $sevenDaysAgo');
+      });
     } catch (e) {
       print('Error deleting expired offers: $e');
     }
@@ -1272,96 +1339,98 @@ class ProductRepository {
   }
 
   Future<List<Map<String, dynamic>>> _fetchMyOffersWithProducts(String userId) async {
-    try {
-      // حذف العروض المنتهية منذ أكثر من 7 أيام قبل جلب القائمة
-      await deleteExpiredOffers();
-      
-      final offers = await _supabase
-          .from('offers')
-          .select('*, views')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      print('📋 Found ${offers.length} offers for user: $userId');
-
-      final List<Map<String, dynamic>> offersWithProducts = [];
-
-      for (var offer in offers) {
-        final isOcr = offer['is_ocr'] as bool;
-        final productId = offer['product_id'] as String;
+    return await NetworkGuard.execute(() async {
+      try {
+        // حذف العروض المنتهية منذ أكثر من 7 أيام قبل جلب القائمة
+        await deleteExpiredOffers();
         
-        print('🔍 Processing offer: id=${offer['id']}, is_ocr=$isOcr, product_id=$productId');
+        final offers = await _supabase
+            .from('offers')
+            .select('*, views')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
 
-        Map<String, dynamic>? productData;
+        print('📋 Found ${offers.length} offers for user: $userId');
 
-        if (isOcr) {
-          // جلب من ocr_products
-          final ocrProduct = await _supabase
-              .from('ocr_products')
-              .select()
-              .eq('id', productId)
-              .maybeSingle();
+        final List<Map<String, dynamic>> offersWithProducts = [];
+
+        for (var offer in offers) {
+          final isOcr = offer['is_ocr'] as bool;
+          final productId = offer['product_id'] as String;
           
-          if (ocrProduct != null) {
-            productData = {
-              'id': ocrProduct['id'],
-              'name': ocrProduct['product_name'],
-              'company': ocrProduct['product_company'] ?? '',
-              'package': ocrProduct['package'] ?? '',
-              'imageUrl': ocrProduct['image_url'] ?? '',
-            };
+          print('🔍 Processing offer: id=${offer['id']}, is_ocr=$isOcr, product_id=$productId');
+
+          Map<String, dynamic>? productData;
+
+          if (isOcr) {
+            // جلب من ocr_products
+            final ocrProduct = await _supabase
+                .from('ocr_products')
+                .select()
+                .eq('id', productId)
+                .maybeSingle();
             
-            print('OCR Product Data: name=${ocrProduct['product_name']}, company=${ocrProduct['product_company']}, package=${ocrProduct['package']}');
-          }
-        } else {
-          // جلب بيانات المنتج من products
-          print('🔎 Fetching from products table with id: $productId');
-          
-          final product = await _supabase
-              .from('products')
-              .select('id, name, company, image_url')
-              .eq('id', productId)
-              .maybeSingle();
-          
-          print('📦 Product result: $product');
-          
-          if (product != null) {
-            // جلب الباكدج من جدول offers نفسه (الباكدج التي اختارها المستخدم عند إنشاء العرض)
-            final packageName = (offer['package'] as String?) ?? '';
-            
-            print('📦 Package from offer: $packageName');
-            
-            productData = {
-              'id': product['id'],
-              'name': product['name'] ?? '',
-              'company': product['company'] ?? '',
-              'package': packageName,
-              'imageUrl': product['image_url'] ?? '',
-            };
-            
-            print('✅ Final Product Data: name=${product['name']}, company=${product['company']}, package=$packageName');
+            if (ocrProduct != null) {
+              productData = {
+                'id': ocrProduct['id'],
+                'name': ocrProduct['product_name'],
+                'company': ocrProduct['product_company'] ?? '',
+                'package': ocrProduct['package'] ?? '',
+                'imageUrl': ocrProduct['image_url'] ?? '',
+              };
+              
+              print('OCR Product Data: name=${ocrProduct['product_name']}, company=${ocrProduct['product_company']}, package=${ocrProduct['package']}');
+            }
           } else {
-            print('❌ Product not found in products table for id: $productId');
+            // جلب بيانات المنتج من products
+            print('🔎 Fetching from products table with id: $productId');
+            
+            final product = await _supabase
+                .from('products')
+                .select('id, name, company, image_url')
+                .eq('id', productId)
+                .maybeSingle();
+            
+            print('📦 Product result: $product');
+            
+            if (product != null) {
+              // جلب الباكدج من جدول offers نفسه (الباكدج التي اختارها المستخدم عند إنشاء العرض)
+              final packageName = (offer['package'] as String?) ?? '';
+              
+              print('📦 Package from offer: $packageName');
+              
+              productData = {
+                'id': product['id'],
+                'name': product['name'] ?? '',
+                'company': product['company'] ?? '',
+                'package': packageName,
+                'imageUrl': product['image_url'] ?? '',
+              };
+              
+              print('✅ Final Product Data: name=${product['name']}, company=${product['company']}, package=$packageName');
+            } else {
+              print('❌ Product not found in products table for id: $productId');
+            }
+          }
+
+          if (productData != null) {
+            offersWithProducts.add({
+              'offer': offer,
+              'product': productData,
+            });
+            print('✅ Added offer with product: ${productData['name']}');
+          } else {
+            print('⚠️ Skipping offer ${offer['id']} - product data is null');
           }
         }
 
-        if (productData != null) {
-          offersWithProducts.add({
-            'offer': offer,
-            'product': productData,
-          });
-          print('✅ Added offer with product: ${productData['name']}');
-        } else {
-          print('⚠️ Skipping offer ${offer['id']} - product data is null');
-        }
+        print('📊 Total offers with products: ${offersWithProducts.length}');
+        return offersWithProducts;
+      } catch (e) {
+        print('Error fetching offers with products: $e');
+        return [];
       }
-
-      print('📊 Total offers with products: ${offersWithProducts.length}');
-      return offersWithProducts;
-    } catch (e) {
-      print('Error fetching offers with products: $e');
-      return [];
-    }
+    });
   }
 
   // ============================================
@@ -1375,19 +1444,21 @@ class ProductRepository {
     String? imageUrl,
     required String createdBy,
   }) async {
-    try {
-      final response = await _supabase.from('surgical_tools').insert({
-        'tool_name': toolName,
-        if (company != null && company.isNotEmpty) 'company': company,
-        if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
-        'created_by': createdBy,
-      }).select('id').single();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.from('surgical_tools').insert({
+          'tool_name': toolName,
+          if (company != null && company.isNotEmpty) 'company': company,
+          if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
+          'created_by': createdBy,
+        }).select('id').single();
 
-      return response['id'] as String?;
-    } catch (e) {
-      print('Error adding surgical tool: $e');
-      return null;
-    }
+        return response['id'] as String?;
+      } catch (e) {
+        print('Error adding surgical tool: $e');
+        return null;
+      }
+    });
   }
 
   /// ربط أداة جراحية بالموزع (مع السعر والوصف الخاص به)
@@ -1399,64 +1470,70 @@ class ProductRepository {
     required double price,
     String status = 'جديد',
   }) async {
-    try {
-      await _supabase.from('distributor_surgical_tools').insert({
-        'distributor_id': distributorId,
-        'distributor_name': distributorName,
-        'surgical_tool_id': surgicalToolId,
-        'description': description,
-        'price': price,
-        'status': status,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase.from('distributor_surgical_tools').insert({
+          'distributor_id': distributorId,
+          'distributor_name': distributorName,
+          'surgical_tool_id': surgicalToolId,
+          'description': description,
+          'price': price,
+          'status': status,
+        });
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      print('Error adding distributor surgical tool: $e');
-      return false;
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        print('Error adding distributor surgical tool: $e');
+        return false;
+      }
+    });
   }
 
   /// جلب أدوات موزع معين
   Future<List<Map<String, dynamic>>> getMySurgicalTools(String distributorId) async {
-    try {
-      final response = await _supabase
-          .from('distributor_surgical_tools')
-          .select('''
-            id,
-            description,
-            price,
-            status,
-            created_at,
-            surgical_tools (
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('distributor_surgical_tools')
+            .select('''
               id,
-              tool_name,
-              company,
-              image_url
-            )
-          ''')
-          .eq('distributor_id', distributorId)
-          .order('created_at', ascending: false);
+              description,
+              price,
+              status,
+              created_at,
+              surgical_tools (
+                id,
+                tool_name,
+                company,
+                image_url
+              )
+            ''')
+            .eq('distributor_id', distributorId)
+            .order('created_at', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error fetching my surgical tools: $e');
-      return [];
-    }
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        print('Error fetching my surgical tools: $e');
+        return [];
+      }
+    });
   }
 
   /// البحث في الأدوات الجراحية
   Future<List<Map<String, dynamic>>> searchSurgicalTools(String searchQuery) async {
-    try {
-      final response = await _supabase.rpc('search_surgical_tools', params: {
-        'search_query': searchQuery,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('search_surgical_tools', params: {
+          'search_query': searchQuery,
+        });
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error searching surgical tools: $e');
-      return [];
-    }
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        print('Error searching surgical tools: $e');
+        return [];
+      }
+    });
   }
 
   /// تحديث أداة جراحية للموزع
@@ -1466,85 +1543,93 @@ class ProductRepository {
     double? price,
     String? status,
   }) async {
-    try {
-      final updates = <String, dynamic>{};
-      if (description != null) updates['description'] = description;
-      if (price != null) updates['price'] = price;
-      if (status != null) updates['status'] = status;
+    return await NetworkGuard.execute(() async {
+      try {
+        final updates = <String, dynamic>{};
+        if (description != null) updates['description'] = description;
+        if (price != null) updates['price'] = price;
+        if (status != null) updates['status'] = status;
 
-      if (updates.isEmpty) return false;
+        if (updates.isEmpty) return false;
 
-      await _supabase
-          .from('distributor_surgical_tools')
-          .update(updates)
-          .eq('id', id);
+        await _supabase
+            .from('distributor_surgical_tools')
+            .update(updates)
+            .eq('id', id);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      print('Error updating distributor surgical tool: $e');
-      return false;
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        print('Error updating distributor surgical tool: $e');
+        return false;
+      }
+    });
   }
 
   /// حذف أداة جراحية للموزع
   Future<bool> deleteDistributorSurgicalTool(String id) async {
-    try {
-      await _supabase
-          .from('distributor_surgical_tools')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_surgical_tools')
+            .delete()
+            .eq('id', id);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      print('Error deleting distributor surgical tool: $e');
-      return false;
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        print('Error deleting distributor surgical tool: $e');
+        return false;
+      }
+    });
   }
 
   /// جلب جميع الأدوات الجراحية من جميع الموزعين
   Future<List<Map<String, dynamic>>> getAllSurgicalTools() async {
-    try {
-      final response = await _supabase
-          .from('distributor_surgical_tools')
-          .select('''
-            id,
-            description,
-            price,
-            status,
-            distributor_name,
-            distributor_id,
-            created_at,
-            surgical_tools (
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('distributor_surgical_tools')
+            .select('''
               id,
-              tool_name,
-              company,
-              image_url
-            )
-          ''')
-          .order('created_at', ascending: false);
+              description,
+              price,
+              status,
+              distributor_name,
+              distributor_id,
+              created_at,
+              surgical_tools (
+                id,
+                tool_name,
+                company,
+                image_url
+              )
+            ''')
+            .order('created_at', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error fetching all surgical tools: $e');
-      return [];
-    }
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        print('Error fetching all surgical tools: $e');
+        return [];
+      }
+    });
   }
 
   /// جلب كتالوج الأدوات الجراحية (من جدول surgical_tools)
   Future<List<Map<String, dynamic>>> getSurgicalToolsCatalog() async {
-    try {
-      final response = await _supabase
-          .from('surgical_tools')
-          .select('id, tool_name, company, image_url, created_at')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('surgical_tools')
+            .select('id, tool_name, company, image_url, created_at')
+            .order('created_at', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error fetching surgical tools catalog: $e');
-      return [];
-    }
+        return List<Map<String, dynamic>>.from(response);
+      } catch (e) {
+        print('Error fetching surgical tools catalog: $e');
+        return [];
+      }
+    });
   }
 
   /// إضافة أداة جراحية من الكتالوج إلى مخزون الموزع
@@ -1555,31 +1640,33 @@ class ProductRepository {
     required double price,
     required String status,
   }) async {
-    try {
-      // جلب معلومات المستخدم للحصول على الاسم
-      final userResponse = await _supabase
-          .from('users')
-          .select('display_name')
-          .eq('id', userId)
-          .maybeSingle();
+    await NetworkGuard.execute(() async {
+      try {
+        // جلب معلومات المستخدم للحصول على الاسم
+        final userResponse = await _supabase
+            .from('users')
+            .select('display_name')
+            .eq('id', userId)
+            .maybeSingle();
 
-      final distributorName = userResponse?['display_name'] ?? 'Unknown';
+        final distributorName = userResponse?['display_name'] ?? 'Unknown';
 
-      await _supabase.from('distributor_surgical_tools').insert({
-        'distributor_id': userId,
-        'surgical_tool_id': toolId,
-        'description': description,
-        'price': price,
-        'status': status,
-        'distributor_name': distributorName,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+        await _supabase.from('distributor_surgical_tools').insert({
+          'distributor_id': userId,
+          'surgical_tool_id': toolId,
+          'description': description,
+          'price': price,
+          'status': status,
+          'distributor_name': distributorName,
+          'created_at': DateTime.now().toIso8601String(),
+        });
 
-      _scheduleCacheInvalidation();
-    } catch (e) {
-      print('Error adding tool to inventory: $e');
-      rethrow;
-    }
+        _scheduleCacheInvalidation();
+      } catch (e) {
+        print('Error adding tool to inventory: $e');
+        rethrow;
+      }
+    });
   }
 
   // ===================================================================
@@ -1588,18 +1675,20 @@ class ProductRepository {
 
   // Delete a product (for admin)
   Future<bool> deleteProduct(String productId) async {
-    try {
-      await _supabase
-          .from('distributor_products')
-          .delete()
-          .eq('id', productId);
-      
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      print('Error deleting product: $e');
-      return false;
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_products')
+            .delete()
+            .eq('id', productId);
+        
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        print('Error deleting product: $e');
+        return false;
+      }
+    });
   }
 
   // Update a product price (for admin)
@@ -1607,89 +1696,95 @@ class ProductRepository {
     required String id,
     required double price,
   }) async {
-    try {
-      await _supabase
-          .from('distributor_products')
-          .update({'price': price})
-          .eq('id', id);
-      
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      print('Error updating product: $e');
-      return false;
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_products')
+            .update({'price': price})
+            .eq('id', id);
+        
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        print('Error updating product: $e');
+        return false;
+      }
+    });
   }
 
   // ===== ADMIN METHODS FOR DISTRIBUTOR_OCR_PRODUCTS =====
 
   // Admin: Get all distributor OCR products with image URLs
   Future<List<Map<String, dynamic>>> adminGetAllDistributorOcrProducts() async {
-    try {
-      // First get distributor OCR products
-      final distOcrResponse = await _supabase
-          .from('distributor_ocr_products')
-          .select('''
-            id,
-            distributor_id,
-            ocr_product_id,
-            distributor_name,
-            price,
-            old_price,
-            price_updated_at,
-            expiration_date,
-            created_at
-          ''')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        // First get distributor OCR products
+        final distOcrResponse = await _supabase
+            .from('distributor_ocr_products')
+            .select('''
+              id,
+              distributor_id,
+              ocr_product_id,
+              distributor_name,
+              price,
+              old_price,
+              price_updated_at,
+              expiration_date,
+              created_at
+            ''')
+            .order('created_at', ascending: false);
 
-      if (distOcrResponse.isEmpty) {
-        return [];
+        if (distOcrResponse.isEmpty) {
+          return [];
+        }
+
+        // Get unique OCR product IDs
+        final ocrProductIds = (distOcrResponse as List)
+            .map((item) => item['ocr_product_id'] as String)
+            .toSet()
+            .toList();
+
+        // Fetch OCR products data including image URLs
+        final ocrProductsResponse = await _supabase
+            .from('ocr_products')
+            .select('id, image_url')
+            .inFilter('id', ocrProductIds);
+
+        // Create a map for quick lookup
+        final ocrProductsMap = <String, String>{};
+        for (var product in ocrProductsResponse) {
+          ocrProductsMap[product['id']] = product['image_url'] ?? '';
+        }
+
+        // Merge image URLs into distributor OCR products
+        final result = (distOcrResponse as List).map((item) {
+          final Map<String, dynamic> product = Map.from(item);
+          product['image_url'] = ocrProductsMap[item['ocr_product_id']] ?? '';
+          return product;
+        }).toList();
+
+        return result;
+      } catch (e) {
+        throw Exception('Failed to fetch distributor OCR products: $e');
       }
-
-      // Get unique OCR product IDs
-      final ocrProductIds = (distOcrResponse as List)
-          .map((item) => item['ocr_product_id'] as String)
-          .toSet()
-          .toList();
-
-      // Fetch OCR products data including image URLs
-      final ocrProductsResponse = await _supabase
-          .from('ocr_products')
-          .select('id, image_url')
-          .inFilter('id', ocrProductIds);
-
-      // Create a map for quick lookup
-      final ocrProductsMap = <String, String>{};
-      for (var product in ocrProductsResponse) {
-        ocrProductsMap[product['id']] = product['image_url'] ?? '';
-      }
-
-      // Merge image URLs into distributor OCR products
-      final result = (distOcrResponse as List).map((item) {
-        final Map<String, dynamic> product = Map.from(item);
-        product['image_url'] = ocrProductsMap[item['ocr_product_id']] ?? '';
-        return product;
-      }).toList();
-
-      return result;
-    } catch (e) {
-      throw Exception('Failed to fetch distributor OCR products: $e');
-    }
+    });
   }
 
   // Admin: Delete distributor OCR product
   Future<bool> adminDeleteDistributorOcrProduct(String id) async {
-    try {
-      await _supabase
-          .from('distributor_ocr_products')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_ocr_products')
+            .delete()
+            .eq('id', id);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete distributor OCR product: $e');
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete distributor OCR product: $e');
+      }
+    });
   }
 
   // Admin: Update distributor OCR product
@@ -1698,25 +1793,27 @@ class ProductRepository {
     required double price,
     DateTime? expirationDate,
   }) async {
-    try {
-      final updateData = <String, dynamic>{
-        'price': price,
-      };
-      
-      if (expirationDate != null) {
-        updateData['expiration_date'] = expirationDate.toIso8601String();
+    return await NetworkGuard.execute(() async {
+      try {
+        final updateData = <String, dynamic>{
+          'price': price,
+        };
+        
+        if (expirationDate != null) {
+          updateData['expiration_date'] = expirationDate.toIso8601String();
+        }
+
+        await _supabase
+            .from('distributor_ocr_products')
+            .update(updateData)
+            .eq('id', id);
+
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update distributor OCR product: $e');
       }
-
-      await _supabase
-          .from('distributor_ocr_products')
-          .update(updateData)
-          .eq('id', id);
-
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update distributor OCR product: $e');
-    }
+    });
   }
 
   // Admin: Update catalog product (products table)
@@ -1726,41 +1823,45 @@ class ProductRepository {
     required String company,
     String? activePrinciple,
   }) async {
-    try {
-      final updateData = <String, dynamic>{
-        'name': name,
-        'company': company,
-      };
-      
-      if (activePrinciple != null && activePrinciple.isNotEmpty) {
-        updateData['active_principle'] = activePrinciple;
+    return await NetworkGuard.execute(() async {
+      try {
+        final updateData = <String, dynamic>{
+          'name': name,
+          'company': company,
+        };
+        
+        if (activePrinciple != null && activePrinciple.isNotEmpty) {
+          updateData['active_principle'] = activePrinciple;
+        }
+
+        await _supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', id);
+
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update product: $e');
       }
-
-      await _supabase
-          .from('products')
-          .update(updateData)
-          .eq('id', id);
-
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update product: $e');
-    }
+    });
   }
 
   // Admin: Delete catalog product
   Future<bool> adminDeleteProduct(String id) async {
-    try {
-      await _supabase
-          .from('products')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('products')
+            .delete()
+            .eq('id', id);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete product: $e');
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete product: $e');
+      }
+    });
   }
 
   // Admin: Update distributor product
@@ -1770,22 +1871,24 @@ class ProductRepository {
     required String package,
     required double price,
   }) async {
-    try {
-      await _supabase
-          .from('distributor_products')
-          .update({
-            'price': price,
-            'package': package,
-          })
-          .eq('distributor_id', distributorId)
-          .eq('product_id', productId)
-          .eq('package', package);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_products')
+            .update({
+              'price': price,
+              'package': package,
+            })
+            .eq('distributor_id', distributorId)
+            .eq('product_id', productId)
+            .eq('package', package);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update distributor product: $e');
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update distributor product: $e');
+      }
+    });
   }
 
   // Admin: Delete distributor product
@@ -1794,19 +1897,21 @@ class ProductRepository {
     required String productId,
     required String package,
   }) async {
-    try {
-      await _supabase
-          .from('distributor_products')
-          .delete()
-          .eq('distributor_id', distributorId)
-          .eq('product_id', productId)
-          .eq('package', package);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('distributor_products')
+            .delete()
+            .eq('distributor_id', distributorId)
+            .eq('product_id', productId)
+            .eq('package', package);
 
-      _scheduleCacheInvalidation();
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete distributor product: $e');
-    }
+        _scheduleCacheInvalidation();
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete distributor product: $e');
+      }
+    });
   }
 }
 
@@ -1948,40 +2053,42 @@ final paginatedProductsProvider =
 
 final internalAllProductsProvider =
     FutureProvider<List<ProductModel>>((ref) async {
-  final supabase = Supabase.instance.client;
-  final rows = await supabase.from('distributor_products').select();
-  if (rows.isEmpty) {
-    return [];
-  }
+  return await NetworkGuard.execute(() async {
+    final supabase = Supabase.instance.client;
+    final rows = await supabase.from('distributor_products').select();
+    if (rows.isEmpty) {
+      return [];
+    }
 
-  final productIds =
-      rows.map((row) => row['product_id'] as String).toSet().toList();
+    final productIds =
+        rows.map((row) => row['product_id'] as String).toSet().toList();
 
-  final productDocs =
-      await supabase.from('products').select().inFilter('id', productIds);
+    final productDocs =
+        await supabase.from('products').select().inFilter('id', productIds);
 
-  final productsMap = {
-    for (var doc in productDocs)
-      doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
-  };
+    final productsMap = {
+      for (var doc in productDocs)
+        doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+    };
 
-  final products = rows
-      .map((row) {
-        final productDetails = productsMap[row['product_id']];
-        if (productDetails != null) {
-          return productDetails.copyWith(
-            price: (row['price'] as num?)?.toDouble(),
-            selectedPackage: row['package'] as String?,
-            distributorId: row['distributor_name'] as String?,
-            views: (row['views'] as int?) ?? 0,
-          );
-        }
-        return null;
-      })
-      .whereType<ProductModel>()
-      .toList();
+    final products = rows
+        .map((row) {
+          final productDetails = productsMap[row['product_id']];
+          if (productDetails != null) {
+            return productDetails.copyWith(
+              price: (row['price'] as num?)?.toDouble(),
+              selectedPackage: row['package'] as String?,
+              distributorId: row['distributor_name'] as String?,
+              views: (row['views'] as int?) ?? 0,
+            );
+          }
+          return null;
+        })
+        .whereType<ProductModel>()
+        .toList();
 
-  return products;
+    return products;
+  });
 });
 
 final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
@@ -2003,47 +2110,49 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
     return cachedData.map((item) => item as ProductModel).toList();
   }
 
-  final rows = await supabase
-      .from('distributor_products')
-      .select()
-      .eq('distributor_id', userId);
+  return await NetworkGuard.execute(() async {
+    final rows = await supabase
+        .from('distributor_products')
+        .select()
+        .eq('distributor_id', userId);
 
-  if (rows.isEmpty) {
-    cache.set(timestampedCacheKey, [], duration: const Duration(minutes: 20));
-    return [];
-  }
+    if (rows.isEmpty) {
+      cache.set(timestampedCacheKey, [], duration: const Duration(minutes: 20));
+      return [];
+    }
 
-  final productIds =
-      rows.map((row) => row['product_id'] as String).toSet().toList();
+    final productIds =
+        rows.map((row) => row['product_id'] as String).toSet().toList();
 
-  final productDocs =
-      await supabase.from('products').select().inFilter('id', productIds);
+    final productDocs =
+        await supabase.from('products').select().inFilter('id', productIds);
 
-  final productsMap = {
-    for (var doc in productDocs)
-      doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
-  };
+    final productsMap = {
+      for (var doc in productDocs)
+        doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+    };
 
-  final products = rows
-      .where((row) => row['expiration_date'] == null)
-      .map((row) {
-        final productDetails = productsMap[row['product_id']];
-        if (productDetails != null) {
-          return productDetails.copyWith(
-            price: (row['price'] as num?)?.toDouble(),
-            selectedPackage: row['package'] as String?,
-            distributorId: row['distributor_name'] as String?,
-            views: (row['views'] as int?) ?? 0,
-          );
-        }
-        return null;
-      })
-      .whereType<ProductModel>()
-      .toList();
+    final products = rows
+        .where((row) => row['expiration_date'] == null)
+        .map((row) {
+          final productDetails = productsMap[row['product_id']];
+          if (productDetails != null) {
+            return productDetails.copyWith(
+              price: (row['price'] as num?)?.toDouble(),
+              selectedPackage: row['package'] as String?,
+              distributorId: row['distributor_name'] as String?,
+              views: (row['views'] as int?) ?? 0,
+            );
+          }
+          return null;
+        })
+        .whereType<ProductModel>()
+        .toList();
 
-  cache.set(timestampedCacheKey, products,
-      duration: const Duration(minutes: 20));
-  return products;
+    cache.set(timestampedCacheKey, products,
+        duration: const Duration(minutes: 20));
+    return products;
+  });
 });
 
 final allDistributorProductsProvider =

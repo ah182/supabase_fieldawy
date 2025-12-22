@@ -1,5 +1,6 @@
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -24,22 +25,24 @@ class VetSuppliesRepository {
   }
 
   Future<List<VetSupply>> _fetchAllVetSupplies() async {
-    try {
-      final response = await _supabase.rpc('get_all_vet_supplies');
-      
-      if (response == null) {
-        return [];
-      }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('get_all_vet_supplies');
+        
+        if (response == null) {
+          return [];
+        }
 
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Cache as JSON
-      _cache.set('all_vet_supplies', data, duration: CacheDurations.long);
-      
-      return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch vet supplies: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON
+        _cache.set('all_vet_supplies', data, duration: CacheDurations.long);
+        
+        return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch vet supplies: $e');
+      }
+    });
   }
 
   // Get current user's vet supplies
@@ -63,24 +66,26 @@ class VetSuppliesRepository {
   }
 
   Future<List<VetSupply>> _fetchMyVetSupplies(String userId) async {
-    try {
-      final response = await _supabase.rpc('get_my_vet_supplies', params: {
-        'p_user_id': userId,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('get_my_vet_supplies', params: {
+          'p_user_id': userId,
+        });
 
-      if (response == null) {
-        return [];
+        if (response == null) {
+          return [];
+        }
+
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON
+        _cache.set('my_vet_supplies_$userId', data, duration: CacheDurations.medium);
+        
+        return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch my vet supplies: $e');
       }
-
-      final List<dynamic> data = response as List<dynamic>;
-      
-      // Cache as JSON
-      _cache.set('my_vet_supplies_$userId', data, duration: CacheDurations.medium);
-      
-      return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch my vet supplies: $e');
-    }
+    });
   }
 
   // Create a new vet supply
@@ -91,22 +96,24 @@ class VetSuppliesRepository {
     required String imageUrl,
     required String phone,
   }) async {
-    try {
-      final response = await _supabase.rpc('create_vet_supply', params: {
-        'p_name': name,
-        'p_description': description,
-        'p_price': price,
-        'p_image_url': imageUrl,
-        'p_phone': phone,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('create_vet_supply', params: {
+          'p_name': name,
+          'p_description': description,
+          'p_price': price,
+          'p_image_url': imageUrl,
+          'p_phone': phone,
+        });
 
-      // حذف الكاش بعد الإضافة
-      _invalidateVetSuppliesCache();
+        // حذف الكاش بعد الإضافة
+        _invalidateVetSuppliesCache();
 
-      return response as String;
-    } catch (e) {
-      throw Exception('Failed to create vet supply: $e');
-    }
+        return response as String;
+      } catch (e) {
+        throw Exception('Failed to create vet supply: $e');
+      }
+    });
   }
 
   // Update a vet supply
@@ -118,39 +125,43 @@ class VetSuppliesRepository {
     required String imageUrl,
     required String phone,
   }) async {
-    try {
-      await _supabase.rpc('update_vet_supply', params: {
-        'p_supply_id': id,
-        'p_name': name,
-        'p_description': description,
-        'p_price': price,
-        'p_image_url': imageUrl,
-        'p_phone': phone,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase.rpc('update_vet_supply', params: {
+          'p_supply_id': id,
+          'p_name': name,
+          'p_description': description,
+          'p_price': price,
+          'p_image_url': imageUrl,
+          'p_phone': phone,
+        });
 
-      // حذف الكاش بعد التعديل
-      _invalidateVetSuppliesCache();
+        // حذف الكاش بعد التعديل
+        _invalidateVetSuppliesCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update vet supply: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update vet supply: $e');
+      }
+    });
   }
 
   // Delete a vet supply
   Future<bool> deleteVetSupply(String id) async {
-    try {
-      await _supabase.rpc('delete_vet_supply', params: {
-        'p_supply_id': id,
-      });
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase.rpc('delete_vet_supply', params: {
+          'p_supply_id': id,
+        });
 
-      // حذف الكاش بعد الحذف
-      _invalidateVetSuppliesCache();
+        // حذف الكاش بعد الحذف
+        _invalidateVetSuppliesCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete vet supply: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete vet supply: $e');
+      }
+    });
   }
 
   /// حذف كاش المستلزمات البيطرية
@@ -164,8 +175,10 @@ class VetSuppliesRepository {
   // Increment views count - SINGLE FUNCTION ONLY
   Future<void> incrementViews(String id) async {
     try {
-      await _supabase.rpc('increment_vet_supply_views', params: {
-        'p_supply_id': id,
+      await NetworkGuard.execute(() async {
+        await _supabase.rpc('increment_vet_supply_views', params: {
+          'p_supply_id': id,
+        });
       });
     } catch (e) {
       // Silently fail - views count is not critical
@@ -177,62 +190,68 @@ class VetSuppliesRepository {
 
   // Admin: Get all vet supplies (including inactive)
   Future<List<VetSupply>> adminGetAllVetSupplies() async {
-    try {
-      final response = await _supabase
-          .from('vet_supplies')
-          .select('''
-            id,
-            user_id,
-            name,
-            description,
-            price,
-            image_url,
-            phone,
-            status,
-            views_count,
-            created_at,
-            updated_at
-          ''')
-          .order('created_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('vet_supplies')
+            .select('''
+              id,
+              user_id,
+              name,
+              description,
+              price,
+              image_url,
+              phone,
+              status,
+              views_count,
+              created_at,
+              updated_at
+            ''')
+            .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) {
-        final map = json as Map<String, dynamic>;
-        // Add empty user_name since we don't need it for admin view
-        map['user_name'] = '';
-        return VetSupply.fromJson(map);
-      }).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch all vet supplies: $e');
-    }
+        final List<dynamic> data = response as List<dynamic>;
+        return data.map((json) {
+          final map = json as Map<String, dynamic>;
+          // Add empty user_name since we don't need it for admin view
+          map['user_name'] = '';
+          return VetSupply.fromJson(map);
+        }).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch all vet supplies: $e');
+      }
+    });
   }
 
   // Admin: Delete any vet supply
   Future<bool> adminDeleteVetSupply(String id) async {
-    try {
-      await _supabase
-          .from('vet_supplies')
-          .delete()
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('vet_supplies')
+            .delete()
+            .eq('id', id);
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete vet supply: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete vet supply: $e');
+      }
+    });
   }
 
   // Admin: Update vet supply status
   Future<bool> adminUpdateVetSupplyStatus(String id, String status) async {
-    try {
-      await _supabase
-          .from('vet_supplies')
-          .update({'status': status})
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('vet_supplies')
+            .update({'status': status})
+            .eq('id', id);
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update vet supply status: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update vet supply status: $e');
+      }
+    });
   }
 
   // Admin: Update vet supply (full edit)
@@ -244,25 +263,27 @@ class VetSuppliesRepository {
     required String phone,
     required String status,
   }) async {
-    try {
-      await _supabase
-          .from('vet_supplies')
-          .update({
-            'name': name,
-            'description': description,
-            'price': price,
-            'phone': phone,
-            'status': status,
-          })
-          .eq('id', id);
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('vet_supplies')
+            .update({
+              'name': name,
+              'description': description,
+              'price': price,
+              'phone': phone,
+              'status': status,
+            })
+            .eq('id', id);
 
-      // حذف الكاش بعد التعديل
-      _invalidateVetSuppliesCache();
+        // حذف الكاش بعد التعديل
+        _invalidateVetSuppliesCache();
 
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update vet supply: $e');
-    }
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update vet supply: $e');
+      }
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 /// Import Service
 /// Imports data from CSV files
@@ -133,7 +134,9 @@ class ImportService {
             : parsedData.length;
         final batch = parsedData.sublist(i, end);
         
-        await _supabase.from(tableName).insert(batch);
+        await NetworkGuard.execute(() async {
+          await _supabase.from(tableName).insert(batch);
+        });
         insertedCount += batch.length;
         
         // Show progress

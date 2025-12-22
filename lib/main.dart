@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/core/services/http_overrides.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -37,10 +40,8 @@ import 'services/notification_preferences_service.dart';
 import 'services/distributor_subscription_service.dart';
 import 'services/subscription_cache_service.dart';
 import 'core/supabase/supabase_init.dart';
-import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
-import 'package:fieldawy_store/core/caching/caching_service.dart';
-import 'package:fieldawy_store/features/orders/domain/order_item_model.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -471,11 +472,13 @@ void _performNavigation(BuildContext context, String screen, String? distributor
         
         // جلب بيانات الـ request من Supabase
         try {
-          final response = await Supabase.instance.client
-              .from('review_requests')
-              .select()
-              .eq('id', reviewRequestId)
-              .single();
+          final response = await NetworkGuard.execute(() async {
+            return await Supabase.instance.client
+                .from('review_requests')
+                .select()
+                .eq('id', reviewRequestId)
+                .single();
+          });
           
           final request = ReviewRequestModel.fromJson(response);
           

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 // Conditional import for web functionality
 import 'backup_restore_service_stub.dart'
@@ -53,7 +54,9 @@ class BackupRestoreService {
         );
         
         try {
-          final data = await _supabase.from(tableName).select();
+          final data = await NetworkGuard.execute(() async {
+            return await _supabase.from(tableName).select();
+          });
           backupData['tables'][tableName] = data;
         } catch (e) {
           debugPrint('Failed to backup $tableName: $e');
@@ -147,7 +150,9 @@ class BackupRestoreService {
               final end = (j + batchSize < data.length) ? j + batchSize : data.length;
               final batch = data.sublist(j, end);
               
-              await _supabase.from(tableName).upsert(batch);
+              await NetworkGuard.execute(() async {
+                await _supabase.from(tableName).upsert(batch);
+              });
             }
             
             restoredCount++;

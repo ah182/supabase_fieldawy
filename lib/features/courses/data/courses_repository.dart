@@ -1,5 +1,6 @@
 import 'package:fieldawy_store/features/courses/domain/course_model.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -24,18 +25,20 @@ class CoursesRepository {
   }
 
   Future<List<Course>> _fetchAllCourses() async {
-    try {
-      final response = await _supabase.rpc('get_all_courses');
-      
-      if (response == null) return [];
-      
-      final List<dynamic> data = response as List<dynamic>;
-      // Cache as JSON List instead of Course objects
-      _cache.set('all_courses', data, duration: CacheDurations.long);
-      return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to load courses: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('get_all_courses');
+        
+        if (response == null) return [];
+        
+        final List<dynamic> data = response as List<dynamic>;
+        // Cache as JSON List instead of Course objects
+        _cache.set('all_courses', data, duration: CacheDurations.long);
+        return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to load courses: $e');
+      }
+    });
   }
 
   /// Get current user's courses
@@ -57,20 +60,22 @@ class CoursesRepository {
   }
 
   Future<List<Course>> _fetchMyCourses() async {
-    try {
-      final response = await _supabase.rpc('get_my_courses');
-      
-      if (response == null) return [];
-      
-      final List<dynamic> data = response as List<dynamic>;
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId != null) {
-        _cache.set('my_courses_$userId', data, duration: CacheDurations.medium);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('get_my_courses');
+        
+        if (response == null) return [];
+        
+        final List<dynamic> data = response as List<dynamic>;
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId != null) {
+          _cache.set('my_courses_$userId', data, duration: CacheDurations.medium);
+        }
+        return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
+      } catch (e) {
+        throw Exception('Failed to load my courses: $e');
       }
-      return data.map((json) => Course.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      throw Exception('Failed to load my courses: $e');
-    }
+    });
   }
 
   /// Create a new course
@@ -81,22 +86,24 @@ class CoursesRepository {
     required String phone,
     required String imageUrl,
   }) async {
-    try {
-      final response = await _supabase.rpc('create_course', params: {
-        'p_title': title,
-        'p_description': description,
-        'p_price': price,
-        'p_phone': phone,
-        'p_image_url': imageUrl,
-      });
-      
-      // حذف الكاش بعد الإضافة
-      _invalidateCoursesCache();
-      
-      return response as String;
-    } catch (e) {
-      throw Exception('Failed to create course: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('create_course', params: {
+          'p_title': title,
+          'p_description': description,
+          'p_price': price,
+          'p_phone': phone,
+          'p_image_url': imageUrl,
+        });
+        
+        // حذف الكاش بعد الإضافة
+        _invalidateCoursesCache();
+        
+        return response as String;
+      } catch (e) {
+        throw Exception('Failed to create course: $e');
+      }
+    });
   }
 
   /// Update an existing course
@@ -108,39 +115,43 @@ class CoursesRepository {
     required String phone,
     required String imageUrl,
   }) async {
-    try {
-      final response = await _supabase.rpc('update_course', params: {
-        'p_course_id': courseId,
-        'p_title': title,
-        'p_description': description,
-        'p_price': price,
-        'p_phone': phone,
-        'p_image_url': imageUrl,
-      });
-      
-      // حذف الكاش بعد التعديل
-      _invalidateCoursesCache();
-      
-      return response as bool;
-    } catch (e) {
-      throw Exception('Failed to update course: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('update_course', params: {
+          'p_course_id': courseId,
+          'p_title': title,
+          'p_description': description,
+          'p_price': price,
+          'p_phone': phone,
+          'p_image_url': imageUrl,
+        });
+        
+        // حذف الكاش بعد التعديل
+        _invalidateCoursesCache();
+        
+        return response as bool;
+      } catch (e) {
+        throw Exception('Failed to update course: $e');
+      }
+    });
   }
 
   /// Delete a course
   Future<bool> deleteCourse(String courseId) async {
-    try {
-      final response = await _supabase.rpc('delete_course', params: {
-        'p_course_id': courseId,
-      });
-      
-      // حذف الكاش بعد الحذف
-      _invalidateCoursesCache();
-      
-      return response as bool;
-    } catch (e) {
-      throw Exception('Failed to delete course: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('delete_course', params: {
+          'p_course_id': courseId,
+        });
+        
+        // حذف الكاش بعد الحذف
+        _invalidateCoursesCache();
+        
+        return response as bool;
+      } catch (e) {
+        throw Exception('Failed to delete course: $e');
+      }
+    });
   }
 
   /// حذف كاش الكورسات
@@ -153,8 +164,10 @@ class CoursesRepository {
   /// Increment course views
   Future<void> incrementCourseViews(String courseId) async {
     try {
-      await _supabase.rpc('increment_course_views', params: {
-        'p_course_id': courseId,
+      await NetworkGuard.execute(() async {
+        await _supabase.rpc('increment_course_views', params: {
+          'p_course_id': courseId,
+        });
       });
     } catch (e) {
       // Silent fail for views
@@ -168,32 +181,36 @@ class CoursesRepository {
   
   /// Admin: Get all courses
   Future<List<Course>> adminGetAllCourses() async {
-    try {
-      final response = await _supabase
-          .from('vet_courses')
-          .select()
-          .order('created_at', ascending: false);
-      
-      return (response as List<dynamic>)
-          .map((json) => Course.fromJson(json as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      throw Exception('Failed to load all courses: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('vet_courses')
+            .select()
+            .order('created_at', ascending: false);
+        
+        return (response as List<dynamic>)
+            .map((json) => Course.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        throw Exception('Failed to load all courses: $e');
+      }
+    });
   }
 
   /// Admin: Delete any course
   Future<bool> adminDeleteCourse(String courseId) async {
-    try {
-      await _supabase.from('vet_courses').delete().eq('id', courseId);
-      
-      // حذف الكاش
-      _invalidateCoursesCache();
-      
-      return true;
-    } catch (e) {
-      throw Exception('Failed to delete course: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase.from('vet_courses').delete().eq('id', courseId);
+        
+        // حذف الكاش
+        _invalidateCoursesCache();
+        
+        return true;
+      } catch (e) {
+        throw Exception('Failed to delete course: $e');
+      }
+    });
   }
 
   /// Admin: Update any course
@@ -204,24 +221,26 @@ class CoursesRepository {
     required String phone,
     required String description,
   }) async {
-    try {
-      await _supabase
-          .from('vet_courses')
-          .update({
-            'title': title,
-            'price': price,
-            'phone': phone,
-            'description': description,
-          })
-          .eq('id', courseId);
-      
-      // حذف الكاش
-      _invalidateCoursesCache();
-      
-      return true;
-    } catch (e) {
-      throw Exception('Failed to update course: $e');
-    }
+    return await NetworkGuard.execute(() async {
+      try {
+        await _supabase
+            .from('vet_courses')
+            .update({
+              'title': title,
+              'price': price,
+              'phone': phone,
+              'description': description,
+            })
+            .eq('id', courseId);
+        
+        // حذف الكاش
+        _invalidateCoursesCache();
+        
+        return true;
+      } catch (e) {
+        throw Exception('Failed to update course: $e');
+      }
+    });
   }
 }
 

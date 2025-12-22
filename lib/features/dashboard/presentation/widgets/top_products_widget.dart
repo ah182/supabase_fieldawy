@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 class TopProductsWidget extends ConsumerWidget {
   const TopProductsWidget({super.key});
@@ -352,435 +353,437 @@ class TopProductsWidget extends ConsumerWidget {
   }
 
   Future<String?> _getTopProductImageFromDatabase(String productId, String source) async {
-    try {
-      print('🏆 Fetching top product image for ID: $productId, Source: $source');
-      
-      if (productId.isEmpty) {
-        print('⚠️ Product ID is empty');
-        return null;
-      }
-      
-      String? imageUrl;
-      
-      // محاولة جلب الصورة حسب نوع المصدر (نفس طريقة التوصيات)
-      switch (source.toLowerCase()) {
-        case 'catalog':
-        case 'product':
-        case 'products':
-          try {
-            // أولاً: محاولة البحث المباشر في products
-            final response = await Supabase.instance.client
-                .from('products')
-                .select('image_url, name')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (response.isNotEmpty && response.first['image_url'] != null) {
-              imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top catalog product: ${response.first['name']}, Image: $imageUrl');
-            } else {
-              // ثانياً: محاولة البحث في distributor_products مع JOIN
-              final distributorResponse = await Supabase.instance.client
-                  .from('distributor_products')
-                  .select('products!inner(image_url, name)')
-                  .eq('id', productId)
-                  .limit(1);
-              
-              if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
-                final product = distributorResponse.first['products'];
-                imageUrl = product['image_url']?.toString();
-                print('✅ Found top distributor product: ${product['name']}, Image: $imageUrl');
-              }
-            }
-          } catch (e) {
-            print('❌ Error fetching from products: $e');
-            // Fallback: محاولة استخراج UUID من المعرف المركب
+    return await NetworkGuard.execute(() async {
+      try {
+        print('🏆 Fetching top product image for ID: $productId, Source: $source');
+        
+        if (productId.isEmpty) {
+          print('⚠️ Product ID is empty');
+          return null;
+        }
+        
+        String? imageUrl;
+        
+        // محاولة جلب الصورة حسب نوع المصدر (نفس طريقة التوصيات)
+        switch (source.toLowerCase()) {
+          case 'catalog':
+          case 'product':
+          case 'products':
             try {
-              String actualProductId = productId;
-              if (productId.contains('_')) {
-                actualProductId = productId.split('_')[0];
-                print('🔧 Extracted top UUID: $actualProductId from: $productId');
-              }
-              
-              final fallbackResponse = await Supabase.instance.client
+              // أولاً: محاولة البحث المباشر في products
+              final response = await Supabase.instance.client
                   .from('products')
                   .select('image_url, name')
-                  .eq('id', actualProductId)
-                  .limit(1);
-              
-              if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
-                imageUrl = fallbackResponse.first['image_url']?.toString();
-                print('✅ Found top product (UUID extraction): ${fallbackResponse.first['name']}, Image: $imageUrl');
-              }
-            } catch (fallbackError) {
-              print('❌ Top product fallback failed: $fallbackError');
-            }
-          }
-          break;
-          
-        case 'surgical':
-        case 'surgical_tool':
-        case 'surgical_tools':
-          try {
-            // البحث في جدول distributor_surgical_tools مع join للجدول الرئيسي
-            final response = await Supabase.instance.client
-                .from('distributor_surgical_tools')
-                .select('surgical_tools!inner(image_url, tool_name)')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (response.isNotEmpty && response.first['surgical_tools'] != null) {
-              final surgicalTool = response.first['surgical_tools'];
-              imageUrl = surgicalTool['image_url']?.toString();
-              print('✅ Found top surgical tool: ${surgicalTool['tool_name']}, Image: $imageUrl');
-            }
-          } catch (e) {
-            print('❌ Error fetching from distributor_surgical_tools: $e');
-            // Fallback: محاولة البحث المباشر في surgical_tools
-            try {
-              final fallbackResponse = await Supabase.instance.client
-                  .from('surgical_tools')
-                  .select('image_url, tool_name')
                   .eq('id', productId)
                   .limit(1);
               
-              if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
-                imageUrl = fallbackResponse.first['image_url']?.toString();
-                print('✅ Found top surgical tool (fallback): ${fallbackResponse.first['tool_name']}, Image: $imageUrl');
-              }
-            } catch (fallbackError) {
-              print('❌ Fallback also failed: $fallbackError');
-            }
-          }
-          break;
-          
-        case 'ocr':
-        case 'ocr_product':
-        case 'ocr_products':
-          try {
-            // محاولة البحث في distributor_ocr_products مع JOIN
-            final response = await Supabase.instance.client
-                .from('distributor_ocr_products')
-                .select('ocr_products!inner(image_url, product_name)')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (response.isNotEmpty && response.first['ocr_products'] != null) {
-              final data = response.first['ocr_products'];
-              Map<String, dynamic>? ocrProduct;
-              
-              if (data is List && data.isNotEmpty) {
-                ocrProduct = data.first as Map<String, dynamic>;
-              } else if (data is Map) {
-                ocrProduct = data as Map<String, dynamic>;
-              }
-
-              if (ocrProduct != null) {
-                imageUrl = ocrProduct['image_url']?.toString();
-                print('✅ Found top OCR product: ${ocrProduct['product_name']}, Image: $imageUrl');
-              }
-            }
-          } catch (e) {
-            print('❌ Error fetching from distributor_ocr_products: $e');
-            // Fallback: البحث المباشر إذا كان الآيدي هو آيدي المنتج نفسه
-            try {
-              final directResponse = await Supabase.instance.client
-                  .from('ocr_products')
-                  .select('image_url, product_name')
-                  .eq('id', productId)
-                  .limit(1);
-              if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
-                imageUrl = directResponse.first['image_url']?.toString();
-              }
-            } catch (_) {}
-          }
-          break;
-          
-        case 'offer':
-        case 'offers':
-          try {
-            // أولاً: جلب تفاصيل العرض لمعرفة المنتج المرتبط
-            final offerResponse = await Supabase.instance.client
-                .from('offers')
-                .select('product_id, is_ocr')
-                .eq('id', productId)
-                .limit(1);
-
-            if (offerResponse.isNotEmpty) {
-              final offer = offerResponse.first;
-              
-              // نبحث عن صورة المنتج المرتبط
-              if (offer['product_id'] != null) {
-                final isOcr = offer['is_ocr'] == true;
-                final linkedProductId = offer['product_id'];
-                
-                if (isOcr) {
-                   // البحث في ocr_products
-                   final productResponse = await Supabase.instance.client
-                      .from('ocr_products')
-                      .select('image_url')
-                      .eq('ocr_product_id', linkedProductId)
-                      .maybeSingle();
-                   
-                   if (productResponse != null) {
-                     imageUrl = productResponse['image_url']?.toString();
-                   } else {
-                     // Fallback: Try with 'id' just in case
-                     final fallbackResponse = await Supabase.instance.client
-                        .from('ocr_products')
-                        .select('image_url')
-                        .eq('id', linkedProductId)
-                        .maybeSingle();
-                     if (fallbackResponse != null) {
-                       imageUrl = fallbackResponse['image_url']?.toString();
-                     }
-                   }
-                } else {
-                   final productResponse = await Supabase.instance.client
-                      .from('products')
-                      .select('image_url')
-                      .eq('id', linkedProductId)
-                      .maybeSingle();
-                   
-                   if (productResponse != null) {
-                     imageUrl = productResponse['image_url']?.toString();
-                   }
-                }
-                print('✅ Found top offer linked product image: $imageUrl');
-              }
-            }
-          } catch (e) {
-            print('❌ Error fetching from offers: $e');
-          }
-          break;
-          
-        case 'course':
-        case 'courses':
-          try {
-            final response = await Supabase.instance.client
-                .from('vet_courses')
-                .select('image_url, title')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (response.isNotEmpty && response.first['image_url'] != null) {
-              imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top course: ${response.first['title']}, Image: $imageUrl');
-            }
-          } catch (e) {
-            print('❌ Error fetching from courses: $e');
-          }
-          break;
-          
-        case 'book':
-        case 'books':
-          try {
-            final response = await Supabase.instance.client
-                .from('vet_books')
-                .select('image_url, name')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (response.isNotEmpty && response.first['image_url'] != null) {
-              imageUrl = response.first['image_url']?.toString();
-              print('✅ Found top book: ${response.first['name']}, Image: $imageUrl');
-            }
-          } catch (e) {
-            print('❌ Error fetching from books: $e');
-          }
-          break;
-          
-        default:
-          print('🔍 Unknown source, trying all tables for top products...');
-          // البحث المتدرج في جميع الجداول
-          
-          // 1. محاولة المنتجات العادية
-          try {
-            final productsResponse = await Supabase.instance.client
-                .from('products')
-                .select('image_url, name')
-                .eq('id', productId)
-                .limit(1);
-            
-            if (productsResponse.isNotEmpty && productsResponse.first['image_url'] != null) {
-              imageUrl = productsResponse.first['image_url'].toString();
-              print('✅ Found in products table: ${productsResponse.first['name']}');
-            } else {
-              // محاولة distributor_products
-              final distributorResponse = await Supabase.instance.client
-                  .from('distributor_products')
-                  .select('products!inner(image_url, name)')
-                  .eq('id', productId)
-                  .limit(1);
-              
-              if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
-                final product = distributorResponse.first['products'];
-                imageUrl = product['image_url']?.toString();
-                print('✅ Found in top distributor_products table: ${product['name']}');
+              if (response.isNotEmpty && response.first['image_url'] != null) {
+                imageUrl = response.first['image_url']?.toString();
+                print('✅ Found top catalog product: ${response.first['name']}, Image: $imageUrl');
               } else {
-                // محاولة استخراج UUID
+                // ثانياً: محاولة البحث في distributor_products مع JOIN
+                final distributorResponse = await Supabase.instance.client
+                    .from('distributor_products')
+                    .select('products!inner(image_url, name)')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
+                  final product = distributorResponse.first['products'];
+                  imageUrl = product['image_url']?.toString();
+                  print('✅ Found top distributor product: ${product['name']}, Image: $imageUrl');
+                }
+              }
+            } catch (e) {
+              print('❌ Error fetching from products: $e');
+              // Fallback: محاولة استخراج UUID من المعرف المركب
+              try {
                 String actualProductId = productId;
                 if (productId.contains('_')) {
                   actualProductId = productId.split('_')[0];
-                  print('🔧 Top fallback: Extracted UUID $actualProductId from: $productId');
-                  
-                  final uuidResponse = await Supabase.instance.client
-                      .from('products')
-                      .select('image_url, name')
-                      .eq('id', actualProductId)
-                      .limit(1);
-                  
-                  if (uuidResponse.isNotEmpty && uuidResponse.first['image_url'] != null) {
-                    imageUrl = uuidResponse.first['image_url'].toString();
-                    print('✅ Found in top products table (UUID): ${uuidResponse.first['name']}');
-                  }
+                  print('🔧 Extracted top UUID: $actualProductId from: $productId');
                 }
+                
+                final fallbackResponse = await Supabase.instance.client
+                    .from('products')
+                    .select('image_url, name')
+                    .eq('id', actualProductId)
+                    .limit(1);
+                
+                if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
+                  imageUrl = fallbackResponse.first['image_url']?.toString();
+                  print('✅ Found top product (UUID extraction): ${fallbackResponse.first['name']}, Image: $imageUrl');
+                }
+              } catch (fallbackError) {
+                print('❌ Top product fallback failed: $fallbackError');
               }
             }
-          } catch (e) {
-            print('❌ Top products fallback failed: $e');
-          }
-          
-          // 2. الأدوات الجراحية
-          if (imageUrl == null) {
+            break;
+            
+          case 'surgical':
+          case 'surgical_tool':
+          case 'surgical_tools':
             try {
-              final toolsResponse = await Supabase.instance.client
+              // البحث في جدول distributor_surgical_tools مع join للجدول الرئيسي
+              final response = await Supabase.instance.client
                   .from('distributor_surgical_tools')
                   .select('surgical_tools!inner(image_url, tool_name)')
                   .eq('id', productId)
                   .limit(1);
               
-              if (toolsResponse.isNotEmpty && toolsResponse.first['surgical_tools'] != null) {
-                final surgicalTool = toolsResponse.first['surgical_tools'];
-                imageUrl = surgicalTool['image_url'].toString();
-                print('✅ Found in distributor_surgical_tools table: ${surgicalTool['tool_name']}');
+              if (response.isNotEmpty && response.first['surgical_tools'] != null) {
+                final surgicalTool = response.first['surgical_tools'];
+                imageUrl = surgicalTool['image_url']?.toString();
+                print('✅ Found top surgical tool: ${surgicalTool['tool_name']}, Image: $imageUrl');
               }
             } catch (e) {
-              print('❌ Distributor surgical tools fallback failed: $e');
-              // Fallback للجدول الرئيسي
+              print('❌ Error fetching from distributor_surgical_tools: $e');
+              // Fallback: محاولة البحث المباشر في surgical_tools
               try {
-                final directResponse = await Supabase.instance.client
+                final fallbackResponse = await Supabase.instance.client
                     .from('surgical_tools')
                     .select('image_url, tool_name')
                     .eq('id', productId)
                     .limit(1);
                 
-                if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
-                  imageUrl = directResponse.first['image_url'].toString();
-                  print('✅ Found in surgical_tools table (direct): ${directResponse.first['tool_name']}');
+                if (fallbackResponse.isNotEmpty && fallbackResponse.first['image_url'] != null) {
+                  imageUrl = fallbackResponse.first['image_url']?.toString();
+                  print('✅ Found top surgical tool (fallback): ${fallbackResponse.first['tool_name']}, Image: $imageUrl');
                 }
-              } catch (directError) {
-                print('❌ Direct surgical tools fallback failed: $directError');
+              } catch (fallbackError) {
+                print('❌ Fallback also failed: $fallbackError');
               }
             }
-          }
-          
-          // 3. العروض
-          if (imageUrl == null) {
+            break;
+            
+          case 'ocr':
+          case 'ocr_product':
+          case 'ocr_products':
             try {
-              final offersResponse = await Supabase.instance.client
+              // محاولة البحث في distributor_ocr_products مع JOIN
+              final response = await Supabase.instance.client
+                  .from('distributor_ocr_products')
+                  .select('ocr_products!inner(image_url, product_name)')
+                  .eq('id', productId)
+                  .limit(1);
+              
+              if (response.isNotEmpty && response.first['ocr_products'] != null) {
+                final data = response.first['ocr_products'];
+                Map<String, dynamic>? ocrProduct;
+                
+                if (data is List && data.isNotEmpty) {
+                  ocrProduct = data.first as Map<String, dynamic>;
+                } else if (data is Map) {
+                  ocrProduct = data as Map<String, dynamic>;
+                }
+
+                if (ocrProduct != null) {
+                  imageUrl = ocrProduct['image_url']?.toString();
+                  print('✅ Found top OCR product: ${ocrProduct['product_name']}, Image: $imageUrl');
+                }
+              }
+            } catch (e) {
+              print('❌ Error fetching from distributor_ocr_products: $e');
+              // Fallback: البحث المباشر إذا كان الآيدي هو آيدي المنتج نفسه
+              try {
+                final directResponse = await Supabase.instance.client
+                    .from('ocr_products')
+                    .select('image_url, product_name')
+                    .eq('id', productId)
+                    .limit(1);
+                if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
+                  imageUrl = directResponse.first['image_url']?.toString();
+                }
+              } catch (_) {}
+            }
+            break;
+            
+          case 'offer':
+          case 'offers':
+            try {
+              // أولاً: جلب تفاصيل العرض لمعرفة المنتج المرتبط
+              final offerResponse = await Supabase.instance.client
                   .from('offers')
                   .select('product_id, is_ocr')
                   .eq('id', productId)
                   .limit(1);
-              
-              if (offersResponse.isNotEmpty) {
-                final offer = offersResponse.first;
+
+              if (offerResponse.isNotEmpty) {
+                final offer = offerResponse.first;
+                
+                // نبحث عن صورة المنتج المرتبط
                 if (offer['product_id'] != null) {
-                  final linkedId = offer['product_id'];
                   final isOcr = offer['is_ocr'] == true;
+                  final linkedProductId = offer['product_id'];
                   
                   if (isOcr) {
-                     final ocrResp = await Supabase.instance.client
+                     // البحث في ocr_products
+                     final productResponse = await Supabase.instance.client
                         .from('ocr_products')
                         .select('image_url')
-                        .eq('ocr_product_id', linkedId)
+                        .eq('ocr_product_id', linkedProductId)
                         .maybeSingle();
-                     imageUrl = ocrResp?['image_url']?.toString();
+                     
+                     if (productResponse != null) {
+                       imageUrl = productResponse['image_url']?.toString();
+                     } else {
+                       // Fallback: Try with 'id' just in case
+                       final fallbackResponse = await Supabase.instance.client
+                          .from('ocr_products')
+                          .select('image_url')
+                          .eq('id', linkedProductId)
+                          .maybeSingle();
+                       if (fallbackResponse != null) {
+                         imageUrl = fallbackResponse['image_url']?.toString();
+                       }
+                     }
                   } else {
-                     final prodResp = await Supabase.instance.client
+                     final productResponse = await Supabase.instance.client
                         .from('products')
                         .select('image_url')
-                        .eq('id', linkedId)
+                        .eq('id', linkedProductId)
                         .maybeSingle();
-                     imageUrl = prodResp?['image_url']?.toString();
+                     
+                     if (productResponse != null) {
+                       imageUrl = productResponse['image_url']?.toString();
+                     }
                   }
-                  print('✅ Found in offers table (via linked product): $imageUrl');
+                  print('✅ Found top offer linked product image: $imageUrl');
                 }
               }
             } catch (e) {
-              print('❌ Offers fallback failed: $e');
+              print('❌ Error fetching from offers: $e');
             }
-          }
-          
-          // 4. الكورسات
-          if (imageUrl == null) {
+            break;
+            
+          case 'course':
+          case 'courses':
             try {
-              final coursesResponse = await Supabase.instance.client
+              final response = await Supabase.instance.client
                   .from('vet_courses')
                   .select('image_url, title')
                   .eq('id', productId)
                   .limit(1);
               
-              if (coursesResponse.isNotEmpty && coursesResponse.first['image_url'] != null) {
-                imageUrl = coursesResponse.first['image_url'].toString();
-                print('✅ Found in courses table: ${coursesResponse.first['title']}');
+              if (response.isNotEmpty && response.first['image_url'] != null) {
+                imageUrl = response.first['image_url']?.toString();
+                print('✅ Found top course: ${response.first['title']}, Image: $imageUrl');
               }
             } catch (e) {
-              print('❌ Courses fallback failed: $e');
+              print('❌ Error fetching from courses: $e');
             }
-          }
-          
-          // 5. الكتب
-          if (imageUrl == null) {
+            break;
+            
+          case 'book':
+          case 'books':
             try {
-              final booksResponse = await Supabase.instance.client
+              final response = await Supabase.instance.client
                   .from('vet_books')
                   .select('image_url, name')
                   .eq('id', productId)
                   .limit(1);
               
-              if (booksResponse.isNotEmpty && booksResponse.first['image_url'] != null) {
-                imageUrl = booksResponse.first['image_url'].toString();
-                print('✅ Found in books table: ${booksResponse.first['name']}');
+              if (response.isNotEmpty && response.first['image_url'] != null) {
+                imageUrl = response.first['image_url']?.toString();
+                print('✅ Found top book: ${response.first['name']}, Image: $imageUrl');
               }
             } catch (e) {
-              print('❌ Books fallback failed: $e');
+              print('❌ Error fetching from books: $e');
             }
-          }
-          
-          // 6. منتجات OCR
-          if (imageUrl == null) {
+            break;
+            
+          default:
+            print('🔍 Unknown source, trying all tables for top products...');
+            // البحث المتدرج في جميع الجداول
+            
+            // 1. محاولة المنتجات العادية
             try {
-              final ocrResponse = await Supabase.instance.client
-                  .from('ocr_products')
-                  .select('image_url, product_name')
+              final productsResponse = await Supabase.instance.client
+                  .from('products')
+                  .select('image_url, name')
                   .eq('id', productId)
                   .limit(1);
               
-              if (ocrResponse.isNotEmpty && ocrResponse.first['image_url'] != null) {
-                imageUrl = ocrResponse.first['image_url'].toString();
-                print('✅ Found in ocr_products table: ${ocrResponse.first['product_name']}');
+              if (productsResponse.isNotEmpty && productsResponse.first['image_url'] != null) {
+                imageUrl = productsResponse.first['image_url'].toString();
+                print('✅ Found in products table: ${productsResponse.first['name']}');
+              } else {
+                // محاولة distributor_products
+                final distributorResponse = await Supabase.instance.client
+                    .from('distributor_products')
+                    .select('products!inner(image_url, name)')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (distributorResponse.isNotEmpty && distributorResponse.first['products'] != null) {
+                  final product = distributorResponse.first['products'];
+                  imageUrl = product['image_url']?.toString();
+                  print('✅ Found in top distributor_products table: ${product['name']}');
+                } else {
+                  // محاولة استخراج UUID
+                  String actualProductId = productId;
+                  if (productId.contains('_')) {
+                    actualProductId = productId.split('_')[0];
+                    print('🔧 Top fallback: Extracted UUID $actualProductId from: $productId');
+                    
+                    final uuidResponse = await Supabase.instance.client
+                        .from('products')
+                        .select('image_url, name')
+                        .eq('id', actualProductId)
+                        .limit(1);
+                    
+                    if (uuidResponse.isNotEmpty && uuidResponse.first['image_url'] != null) {
+                      imageUrl = uuidResponse.first['image_url'].toString();
+                      print('✅ Found in top products table (UUID): ${uuidResponse.first['name']}');
+                    }
+                  }
+                }
               }
             } catch (e) {
-              print('❌ OCR products fallback failed: $e');
+              print('❌ Top products fallback failed: $e');
             }
-          }
-          break;
-      }
-      
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        print('🎉 Final top product image URL: $imageUrl');
-        return imageUrl;
-      } else {
-        print('⚠️ No image found for top product $productId');
+            
+            // 2. الأدوات الجراحية
+            if (imageUrl == null) {
+              try {
+                final toolsResponse = await Supabase.instance.client
+                    .from('distributor_surgical_tools')
+                    .select('surgical_tools!inner(image_url, tool_name)')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (toolsResponse.isNotEmpty && toolsResponse.first['surgical_tools'] != null) {
+                  final surgicalTool = toolsResponse.first['surgical_tools'];
+                  imageUrl = surgicalTool['image_url'].toString();
+                  print('✅ Found in distributor_surgical_tools table: ${surgicalTool['tool_name']}');
+                }
+              } catch (e) {
+                print('❌ Distributor surgical tools fallback failed: $e');
+                // Fallback للجدول الرئيسي
+                try {
+                  final directResponse = await Supabase.instance.client
+                      .from('surgical_tools')
+                      .select('image_url, tool_name')
+                      .eq('id', productId)
+                      .limit(1);
+                  
+                  if (directResponse.isNotEmpty && directResponse.first['image_url'] != null) {
+                    imageUrl = directResponse.first['image_url'].toString();
+                    print('✅ Found in surgical_tools table (direct): ${directResponse.first['tool_name']}');
+                  }
+                } catch (directError) {
+                  print('❌ Direct surgical tools fallback failed: $directError');
+                }
+              }
+            }
+            
+            // 3. العروض
+            if (imageUrl == null) {
+              try {
+                final offersResponse = await Supabase.instance.client
+                    .from('offers')
+                    .select('product_id, is_ocr')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (offersResponse.isNotEmpty) {
+                  final offer = offersResponse.first;
+                  if (offer['product_id'] != null) {
+                    final linkedId = offer['product_id'];
+                    final isOcr = offer['is_ocr'] == true;
+                    
+                    if (isOcr) {
+                       final ocrResp = await Supabase.instance.client
+                          .from('ocr_products')
+                          .select('image_url')
+                          .eq('ocr_product_id', linkedId)
+                          .maybeSingle();
+                       imageUrl = ocrResp?['image_url']?.toString();
+                    } else {
+                       final prodResp = await Supabase.instance.client
+                          .from('products')
+                          .select('image_url')
+                          .eq('id', linkedId)
+                          .maybeSingle();
+                       imageUrl = prodResp?['image_url']?.toString();
+                    }
+                    print('✅ Found in offers table (via linked product): $imageUrl');
+                  }
+                }
+              } catch (e) {
+                print('❌ Offers fallback failed: $e');
+              }
+            }
+            
+            // 4. الكورسات
+            if (imageUrl == null) {
+              try {
+                final coursesResponse = await Supabase.instance.client
+                    .from('vet_courses')
+                    .select('image_url, title')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (coursesResponse.isNotEmpty && coursesResponse.first['image_url'] != null) {
+                  imageUrl = coursesResponse.first['image_url'].toString();
+                  print('✅ Found in courses table: ${coursesResponse.first['title']}');
+                }
+              } catch (e) {
+                print('❌ Courses fallback failed: $e');
+              }
+            }
+            
+            // 5. الكتب
+            if (imageUrl == null) {
+              try {
+                final booksResponse = await Supabase.instance.client
+                    .from('vet_books')
+                    .select('image_url, name')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (booksResponse.isNotEmpty && booksResponse.first['image_url'] != null) {
+                  imageUrl = booksResponse.first['image_url'].toString();
+                  print('✅ Found in books table: ${booksResponse.first['name']}');
+                }
+              } catch (e) {
+                print('❌ Books fallback failed: $e');
+              }
+            }
+            
+            // 6. منتجات OCR
+            if (imageUrl == null) {
+              try {
+                final ocrResponse = await Supabase.instance.client
+                    .from('ocr_products')
+                    .select('image_url, product_name')
+                    .eq('id', productId)
+                    .limit(1);
+                
+                if (ocrResponse.isNotEmpty && ocrResponse.first['image_url'] != null) {
+                  imageUrl = ocrResponse.first['image_url'].toString();
+                  print('✅ Found in ocr_products table: ${ocrResponse.first['product_name']}');
+                }
+              } catch (e) {
+                print('❌ OCR products fallback failed: $e');
+              }
+            }
+            break;
+        }
+        
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          print('🎉 Final top product image URL: $imageUrl');
+          return imageUrl;
+        } else {
+          print('⚠️ No image found for top product $productId');
+          return null;
+        }
+        
+      } catch (e) {
+        print('❌ Error fetching top product image: $e');
         return null;
       }
-      
-    } catch (e) {
-      print('❌ Error fetching top product image: $e');
-      return null;
-    }
+    });
   }
 
   Widget _buildCompactSourceBadge(String source) {

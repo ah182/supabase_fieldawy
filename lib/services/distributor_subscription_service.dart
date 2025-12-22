@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'subscription_cache_service.dart';
 
 /// Service for managing user subscriptions to distributors
@@ -19,97 +20,103 @@ class DistributorSubscriptionService {
 
   /// Subscribe to a distributor (save to DB + Hive + Increment server count)
   static Future<bool> subscribe(String distributorId) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return false;
-
-      // 1. Insert into Supabase table
-      await _supabase.from('distributor_subscriptions').insert({
-        'user_id': userId,
-        'distributor_id': distributorId,
-      });
-
-      // 2. Update local cache
-      await SubscriptionCacheService.addSubscription(distributorId);
-      
-      // 3. Increment counter (RPC)
+    return await NetworkGuard.execute(() async {
       try {
-        await _supabase.rpc('increment_subscribers', params: {'user_id': distributorId});
-      } catch (e) {
-        // Fallback: Manual update
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) return false;
+
+        // 1. Insert into Supabase table
+        await _supabase.from('distributor_subscriptions').insert({
+          'user_id': userId,
+          'distributor_id': distributorId,
+        });
+
+        // 2. Update local cache
+        await SubscriptionCacheService.addSubscription(distributorId);
+        
+        // 3. Increment counter (RPC)
         try {
-          final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
-          final currentCount = (user['subscribers_count'] as int?) ?? 0;
-          await _supabase.from('users').update({'subscribers_count': currentCount + 1}).eq('id', distributorId);
-        } catch (_) {}
+          await _supabase.rpc('increment_subscribers', params: {'user_id': distributorId});
+        } catch (e) {
+          // Fallback: Manual update
+          try {
+            final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
+            final currentCount = (user['subscribers_count'] as int?) ?? 0;
+            await _supabase.from('users').update({'subscribers_count': currentCount + 1}).eq('id', distributorId);
+          } catch (_) {}
+        }
+        
+        return true;
+      } catch (e) {
+        print('Error subscribing to distributor: $e');
+        // If error is duplicate key (already subscribed), treat as success for UI
+        if (e.toString().contains('23505') || e.toString().contains('unique constraint')) {
+           await SubscriptionCacheService.addSubscription(distributorId);
+           return true;
+        }
+        return false;
       }
-      
-      return true;
-    } catch (e) {
-      print('Error subscribing to distributor: $e');
-      // If error is duplicate key (already subscribed), treat as success for UI
-      if (e.toString().contains('23505') || e.toString().contains('unique constraint')) {
-         await SubscriptionCacheService.addSubscription(distributorId);
-         return true;
-      }
-      return false;
-    }
+    });
   }
 
   /// Unsubscribe from a distributor (remove from DB + Hive + Decrement server count)
   static Future<bool> unsubscribe(String distributorId) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return false;
-
-      // 1. Remove from Supabase table
-      await _supabase.from('distributor_subscriptions').delete().match({
-        'user_id': userId,
-        'distributor_id': distributorId,
-      });
-
-      // 2. Update local cache
-      await SubscriptionCacheService.removeSubscription(distributorId);
-      
-      // 3. Decrement counter (RPC)
+    return await NetworkGuard.execute(() async {
       try {
-        await _supabase.rpc('decrement_subscribers', params: {'user_id': distributorId});
-      } catch (e) {
-        // Fallback
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) return false;
+
+        // 1. Remove from Supabase table
+        await _supabase.from('distributor_subscriptions').delete().match({
+          'user_id': userId,
+          'distributor_id': distributorId,
+        });
+
+        // 2. Update local cache
+        await SubscriptionCacheService.removeSubscription(distributorId);
+        
+        // 3. Decrement counter (RPC)
         try {
-          final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
-          final currentCount = (user['subscribers_count'] as int?) ?? 0;
-          final newCount = (currentCount - 1) < 0 ? 0 : (currentCount - 1);
-          await _supabase.from('users').update({'subscribers_count': newCount}).eq('id', distributorId);
-        } catch (_) {}
+          await _supabase.rpc('decrement_subscribers', params: {'user_id': distributorId});
+        } catch (e) {
+          // Fallback
+          try {
+            final user = await _supabase.from('users').select('subscribers_count').eq('id', distributorId).single();
+            final currentCount = (user['subscribers_count'] as int?) ?? 0;
+            final newCount = (currentCount - 1) < 0 ? 0 : (currentCount - 1);
+            await _supabase.from('users').update({'subscribers_count': newCount}).eq('id', distributorId);
+          } catch (_) {}
+        }
+        
+        return true;
+      } catch (e) {
+        print('Error unsubscribing from distributor: $e');
+        return false;
       }
-      
-      return true;
-    } catch (e) {
-      print('Error unsubscribing from distributor: $e');
-      return false;
-    }
+    });
   }
 
   /// Sync local cache with Supabase (Call this on app start or screen load)
   static Future<void> syncSubscriptions() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) return;
 
-      final response = await _supabase
-          .from('distributor_subscriptions')
-          .select('distributor_id')
-          .eq('user_id', userId);
-      
-      final List<String> serverIds = (response as List)
-          .map((row) => row['distributor_id'] as String)
-          .toList();
-      
-      await SubscriptionCacheService.syncWithServer(serverIds);
-    } catch (e) {
-      print('Error syncing subscriptions: $e');
-    }
+        final response = await _supabase
+            .from('distributor_subscriptions')
+            .select('distributor_id')
+            .eq('user_id', userId);
+        
+        final List<String> serverIds = (response as List)
+            .map((row) => row['distributor_id'] as String)
+            .toList();
+        
+        await SubscriptionCacheService.syncWithServer(serverIds);
+      } catch (e) {
+        print('Error syncing subscriptions: $e');
+      }
+    });
   }
 
   /// Toggle subscription (subscribe if not subscribed, unsubscribe if subscribed)
@@ -148,27 +155,29 @@ class DistributorSubscriptionService {
 
       // Get user details for all distributors in parallel
       final futures = distributorIds.map((distributorId) async {
-        try {
-          final userResponse = await _supabase
-              .from('users')
-              .select('display_name')
-              .eq('id', distributorId)
-              .maybeSingle();
+        return await NetworkGuard.execute(() async {
+          try {
+            final userResponse = await _supabase
+                .from('users')
+                .select('display_name')
+                .eq('id', distributorId)
+                .maybeSingle();
 
-          return {
-            'distributor_id': distributorId,
-            'distributor_name': userResponse?['display_name'] ?? 'موزع',
-            'created_at': null, // No creation date in Hive
-          };
-        } catch (e) {
-          // If we can't get user details, add with default name
-          print('Error fetching user details for $distributorId: $e');
-          return {
-            'distributor_id': distributorId,
-            'distributor_name': 'موزع',
-            'created_at': null,
-          };
-        }
+            return {
+              'distributor_id': distributorId,
+              'distributor_name': userResponse?['display_name'] ?? 'موزع',
+              'created_at': null, // No creation date in Hive
+            };
+          } catch (e) {
+            // If we can't get user details, add with default name
+            print('Error fetching user details for $distributorId: $e');
+            return {
+              'distributor_id': distributorId,
+              'distributor_name': 'موزع',
+              'created_at': null,
+            };
+          }
+        });
       }).toList();
 
       final results = await Future.wait(futures);

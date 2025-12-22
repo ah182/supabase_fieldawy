@@ -17,6 +17,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:fieldawy_store/widgets/user_details_sheet.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:intl/intl.dart';
 
 // ============================================================================
@@ -182,47 +183,49 @@ class ReviewService {
     String? customImage,
     String? customPackage,
   }) async {
-    try {
-      print('🚀 Calling create_review_request RPC with productId: $productId, productType: $productType');
-      final response = await _supabase.rpc(
-        'create_review_request',
-        params: {
-          'p_product_id': productId,
-          'p_product_type': productType,
-          'p_request_comment': requestComment,
-          'p_custom_name': customName,
-          'p_custom_image': customImage,
-          'p_custom_package': customPackage,
-        },
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        print('🚀 Calling create_review_request RPC with productId: $productId, productType: $productType');
+        final response = await _supabase.rpc(
+          'create_review_request',
+          params: {
+            'p_product_id': productId,
+            'p_product_type': productType,
+            'p_request_comment': requestComment,
+            'p_custom_name': customName,
+            'p_custom_image': customImage,
+            'p_custom_package': customPackage,
+          },
+        );
 
-      print('✅ create_review_request RPC response: $response');
+        print('✅ create_review_request RPC response: $response');
 
-      if (response is Map<String, dynamic>) {
-        return response;
-      }
-      
-      return {
-        'success': false,
-        'error': 'invalid_response',
-        'message': 'invalid_response_from_server'.tr()
-      };
-    } catch (e) {
-      print('❌ Error in createReviewRequest: $e');
-      if (e is PostgrestException) {
-        print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
+        
         return {
           'success': false,
-          'error': e.code,
-          'message': '${e.message} (${e.code})',
+          'error': 'invalid_response',
+          'message': 'invalid_response_from_server'.tr()
+        };
+      } catch (e) {
+        print('❌ Error in createReviewRequest: $e');
+        if (e is PostgrestException) {
+          print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
+          return {
+            'success': false,
+            'error': e.code,
+            'message': '${e.message} (${e.code})',
+          };
+        }
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr() + ' ($e)',
         };
       }
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr() + ' ($e)',
-      };
-    }
+    });
   }
 
   // ========================================
@@ -233,44 +236,46 @@ class ReviewService {
     required int rating,
     String? comment,
   }) async {
-    try {
-      print('🚀 Adding review - RequestID: $requestId, Rating: $rating');
-      final response = await _supabase.rpc(
-        'add_product_review',
-        params: {
-          'p_request_id': requestId,
-          'p_rating': rating,
-          'p_comment': comment,
-        },
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        print('🚀 Adding review - RequestID: $requestId, Rating: $rating');
+        final response = await _supabase.rpc(
+          'add_product_review',
+          params: {
+            'p_request_id': requestId,
+            'p_rating': rating,
+            'p_comment': comment,
+          },
+        );
 
-      print('✅ Add review response: $response');
+        print('✅ Add review response: $response');
 
-      if (response is Map<String, dynamic>) {
-        return response;
-      }
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
 
-      return {
-        'success': false,
-        'error': 'invalid_response',
-        'message': 'invalid_response_from_server'.tr()
-      };
-    } catch (e) {
-      print('❌ Error adding review: $e');
-      if (e is PostgrestException) {
-        print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
         return {
           'success': false,
-          'error': e.code,
-          'message': '${e.message} (${e.code})',
+          'error': 'invalid_response',
+          'message': 'invalid_response_from_server'.tr()
+        };
+      } catch (e) {
+        print('❌ Error adding review: $e');
+        if (e is PostgrestException) {
+          print('   Code: ${e.code}, Message: ${e.message}, Details: ${e.details}');
+          return {
+            'success': false,
+            'error': e.code,
+            'message': '${e.message} (${e.code})',
+          };
+        }
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr() + ' ($e)',
         };
       }
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr() + ' ($e)',
-      };
-    }
+    });
   }
 
   // ========================================
@@ -280,51 +285,55 @@ class ReviewService {
     required String reviewId,
     required bool isHelpful,
   }) async {
-    try {
-      final response = await _supabase.rpc(
-        'vote_review_helpful',
-        params: {
-          'p_review_id': reviewId,
-          'p_is_helpful': isHelpful,
-        },
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc(
+          'vote_review_helpful',
+          params: {
+            'p_review_id': reviewId,
+            'p_is_helpful': isHelpful,
+          },
+        );
 
-      if (response is Map<String, dynamic>) {
-        return response;
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
+
+        return {'success': true, 'message': 'تم تسجيل تصويتك'.tr()};
+      } catch (e) {
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr(),
+        };
       }
-
-      return {'success': true, 'message': 'تم تسجيل تصويتك'.tr()};
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr(),
-      };
-    }
+    });
   }
 
   // ========================================
   // DELETE MY REVIEW
   // ========================================
   Future<Map<String, dynamic>> deleteMyReview(String reviewId) async {
-    try {
-      final response = await _supabase.rpc(
-        'delete_my_review',
-        params: {'p_review_id': reviewId},
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc(
+          'delete_my_review',
+          params: {'p_review_id': reviewId},
+        );
 
-      if (response is Map<String, dynamic>) {
-        return response;
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
+
+        return {'success': true, 'message': 'تم حذف التقييم'.tr()};
+      } catch (e) {
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr(),
+        };
       }
-
-      return {'success': true, 'message': 'تم حذف التقييم'.tr()};
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr(),
-      };
-    }
+    });
   }
 
   // ========================================
@@ -335,52 +344,56 @@ class ReviewService {
     required String reason,
     String? description,
   }) async {
-    try {
-      final response = await _supabase.rpc(
-        'report_review',
-        params: {
-          'p_review_id': reviewId,
-          'p_reason': reason,
-          'p_description': description,
-        },
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc(
+          'report_review',
+          params: {
+            'p_review_id': reviewId,
+            'p_reason': reason,
+            'p_description': description,
+          },
+        );
 
-      if (response is Map<String, dynamic>) {
-        return response;
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
+
+        return {'success': true, 'message': 'تم إرسال البلاغ بنجاح'.tr()};
+      } catch (e) {
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr(),
+        };
       }
-
-      return {'success': true, 'message': 'تم إرسال البلاغ بنجاح'.tr()};
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr(),
-      };
-    }
+    });
   }
 
   // ========================================
   // DELETE MY REVIEW REQUEST
   // ========================================
   Future<Map<String, dynamic>> deleteMyReviewRequest(String requestId) async {
-    try {
-      final response = await _supabase.rpc(
-        'delete_my_review_request',
-        params: {'p_request_id': requestId},
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc(
+          'delete_my_review_request',
+          params: {'p_request_id': requestId},
+        );
 
-      if (response is Map<String, dynamic>) {
-        return response;
+        if (response is Map<String, dynamic>) {
+          return response;
+        }
+
+        return {'success': true, 'message': 'تم حذف طلب التقييم'.tr()};
+      } catch (e) {
+        return {
+          'success': false,
+          'error': 'exception',
+          'message': 'unexpected_error'.tr(),
+        };
       }
-
-      return {'success': true, 'message': 'تم حذف طلب التقييم'.tr()};
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'exception',
-        'message': 'unexpected_error'.tr(),
-      };
-    }
+    });
   }
 
   // ========================================
@@ -390,40 +403,44 @@ class ReviewService {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      // استخدام RPC function بدلاً من view
-      final response = await _supabase.rpc('get_active_review_requests');
+    return await NetworkGuard.execute(() async {
+      try {
+        // استخدام RPC function بدلاً من view
+        final response = await _supabase.rpc('get_active_review_requests');
 
-      if (response is List) {
-        return response
-            .map((json) => ReviewRequestModel.fromJson(json as Map<String, dynamic>))
-            .toList();
+        if (response is List) {
+          return response
+              .map((json) => ReviewRequestModel.fromJson(json as Map<String, dynamic>))
+              .toList();
+        }
+        
+        return [];
+      } catch (e) {
+        print('Error fetching active review requests: $e');
+        return [];
       }
-      
-      return [];
-    } catch (e) {
-      print('Error fetching active review requests: $e');
-      return [];
-    }
+    });
   }
 
   // ========================================
   // GET MY REVIEW REQUESTS
   // ========================================
   Future<List<ReviewRequestModel>> getMyReviewRequests() async {
-    try {
-      final response = await _supabase
-          .from('my_review_requests')
-          .select()
-          .order('requested_at', ascending: false);
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('my_review_requests')
+            .select()
+            .order('requested_at', ascending: false);
 
-      return (response as List)
-          .map((json) => ReviewRequestModel.fromJson(json))
-          .toList();
-    } catch (e) {
-      print('Error fetching my review requests: $e');
-      return [];
-    }
+        return (response as List)
+            .map((json) => ReviewRequestModel.fromJson(json))
+            .toList();
+      } catch (e) {
+        print('Error fetching my review requests: $e');
+        return [];
+      }
+    });
   }
 
   // ========================================
@@ -436,32 +453,34 @@ class ReviewService {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      final response = await _supabase.rpc(
-        'get_product_reviews',
-        params: {
-          'p_product_id': productId,
-          'p_product_type': productType,
-          'p_sort_by': sortBy,
-          'p_limit': limit,
-          'p_offset': offset,
-        },
-      );
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc(
+          'get_product_reviews',
+          params: {
+            'p_product_id': productId,
+            'p_product_type': productType,
+            'p_sort_by': sortBy,
+            'p_limit': limit,
+            'p_offset': offset,
+          },
+        );
 
-      final reviews = (response as List)
-          .map((json) {
-            print('📦 Review from DB: id=${json['id']}, helpful=${json['helpful_count']}, unhelpful=${json['unhelpful_count']}');
-            print('   👤 User: name=${json['user_name']}, photo=${json['user_photo']}');
-            return ProductReviewModel.fromJson(json);
-          })
-          .toList();
-      
-      print('✅ Total reviews fetched: ${reviews.length}');
-      return reviews;
-    } catch (e) {
-      print('Error fetching product reviews: $e');
-      return [];
-    }
+        final reviews = (response as List)
+            .map((json) {
+              print('📦 Review from DB: id=${json['id']}, helpful=${json['helpful_count']}, unhelpful=${json['unhelpful_count']}');
+              print('   👤 User: name=${json['user_name']}, photo=${json['user_photo']}');
+              return ProductReviewModel.fromJson(json);
+            })
+            .toList();
+        
+        print('✅ Total reviews fetched: ${reviews.length}');
+        return reviews;
+      } catch (e) {
+        print('Error fetching product reviews: $e');
+        return [];
+      }
+    });
   }
 
   // ========================================
@@ -471,20 +490,22 @@ class ReviewService {
     required String productId,
     String productType = 'product',
   }) async {
-    try {
-      final response = await _supabase
-          .from('review_requests_with_details')
-          .select()
-          .eq('product_id', productId)
-          .eq('product_type', productType)
-          .maybeSingle();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('review_requests_with_details')
+            .select()
+            .eq('product_id', productId)
+            .eq('product_type', productType)
+            .maybeSingle();
 
-      if (response == null) return null;
-      return ReviewRequestModel.fromJson(response);
-    } catch (e) {
-      print('Error fetching request by product: $e');
-      return null;
-    }
+        if (response == null) return null;
+        return ReviewRequestModel.fromJson(response);
+      } catch (e) {
+        print('Error fetching request by product: $e');
+        return null;
+      }
+    });
   }
 
   // ========================================
@@ -494,20 +515,22 @@ class ReviewService {
     required String requestId,
     required String userId,
   }) async {
-    try {
-      final response = await _supabase
-          .from('product_reviews_with_details')
-          .select()
-          .eq('review_request_id', requestId)
-          .eq('user_id', userId)
-          .maybeSingle();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('product_reviews_with_details')
+            .select()
+            .eq('review_request_id', requestId)
+            .eq('user_id', userId)
+            .maybeSingle();
 
-      if (response == null) return null;
-      return ProductReviewModel.fromJson(response);
-    } catch (e) {
-      print('Error fetching user review: $e');
-      return null;
-    }
+        if (response == null) return null;
+        return ProductReviewModel.fromJson(response);
+      } catch (e) {
+        print('Error fetching user review: $e');
+        return null;
+      }
+    });
   }
 }
 

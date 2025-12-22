@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,65 +25,67 @@ class SurgicalToolsHomeRepository {
   }
 
   Future<List<ProductModel>> _fetchAllSurgicalTools() async {
-    // جلب جميع الأدوات الجراحية من جميع الموزعين
-    final rows = await _supabase
-        .from('distributor_surgical_tools')
-        .select('''
-          id,
-          description,
-          price,
-          status,
-          distributor_name,
-          distributor_id,
-          created_at,
-          views,
-          surgical_tools (
+    return await NetworkGuard.execute(() async {
+      // جلب جميع الأدوات الجراحية من جميع الموزعين
+      final rows = await _supabase
+          .from('distributor_surgical_tools')
+          .select('''
             id,
-            tool_name,
-            company,
-            image_url
-          )
-        ''')
-        .order('created_at', ascending: false);
+            description,
+            price,
+            status,
+            distributor_name,
+            distributor_id,
+            created_at,
+            views,
+            surgical_tools (
+              id,
+              tool_name,
+              company,
+              image_url
+            )
+          ''')
+          .order('created_at', ascending: false);
 
-    // تحويل البيانات إلى ProductModel
-    final tools = <ProductModel>[];
-    for (final row in rows) {
-      final surgicalTool = row['surgical_tools'] as Map<String, dynamic>?;
-      if (surgicalTool != null) {
-        tools.add(ProductModel(
-          id: row['id']?.toString() ?? '',
-          name: surgicalTool['tool_name']?.toString() ?? '',
-          description: row['description']?.toString() ?? '',
-          activePrinciple: row['status']?.toString(),
-          company: surgicalTool['company']?.toString(),
-          action: '',
-          package: '',
-          imageUrl: (surgicalTool['image_url']?.toString() ?? '').startsWith('http')
-              ? surgicalTool['image_url'].toString()
-              : '',
-          price: (row['price'] as num?)?.toDouble(),
-          distributorId: row['distributor_name']?.toString(),
-          distributorUuid: row['distributor_id']?.toString(),
-          createdAt: row['created_at'] != null
-              ? DateTime.tryParse(row['created_at'].toString())
-              : null,
-          availablePackages: [],
-          selectedPackage: null,
-          isFavorite: false,
-          oldPrice: null,
-          priceUpdatedAt: null,
-          views: (row['views'] as int?) ?? 0,
-          surgicalToolId: surgicalTool['id']?.toString(),
-        ));
+      // تحويل البيانات إلى ProductModel
+      final tools = <ProductModel>[];
+      for (final row in rows) {
+        final surgicalTool = row['surgical_tools'] as Map<String, dynamic>?;
+        if (surgicalTool != null) {
+          tools.add(ProductModel(
+            id: row['id']?.toString() ?? '',
+            name: surgicalTool['tool_name']?.toString() ?? '',
+            description: row['description']?.toString() ?? '',
+            activePrinciple: row['status']?.toString(),
+            company: surgicalTool['company']?.toString(),
+            action: '',
+            package: '',
+            imageUrl: (surgicalTool['image_url']?.toString() ?? '').startsWith('http')
+                ? surgicalTool['image_url'].toString()
+                : '',
+            price: (row['price'] as num?)?.toDouble(),
+            distributorId: row['distributor_name']?.toString(),
+            distributorUuid: row['distributor_id']?.toString(),
+            createdAt: row['created_at'] != null
+                ? DateTime.tryParse(row['created_at'].toString())
+                : null,
+            availablePackages: [],
+            selectedPackage: null,
+            isFavorite: false,
+            oldPrice: null,
+            priceUpdatedAt: null,
+            views: (row['views'] as int?) ?? 0,
+            surgicalToolId: surgicalTool['id']?.toString(),
+          ));
+        }
       }
-    }
 
-    // Cache as JSON
-    final jsonList = tools.map((t) => t.toMap()).toList();
-    _cache.set('all_surgical_tools_home', jsonList, duration: CacheDurations.long);
+      // Cache as JSON
+      final jsonList = tools.map((t) => t.toMap()).toList();
+      _cache.set('all_surgical_tools_home', jsonList, duration: CacheDurations.long);
 
-    return tools;
+      return tools;
+    });
   }
 
   /// حذف كاش الأدوات الجراحية

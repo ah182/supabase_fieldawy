@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'dart:ui' as ui;
 
 // Set لتتبع المنتجات التي تم حساب مشاهداتها لتجنب التكرار
@@ -29,7 +30,7 @@ bool _isValidUUID(String id) {
 
 // دالة مساعدة لزيادة مشاهدات المنتج (Regular, OCR, Surgical, Offer)
 // تستخدم النظام الجديد الذي يسجل في الجداول المحددة
-void _incrementProductViews(ProductModel product, {String? productType}) {
+void _incrementProductViews(ProductModel product, {String? productType}) async {
   try {
     String productId = product.id;
     String? distributorId = product.distributorId;
@@ -51,33 +52,35 @@ void _incrementProductViews(ProductModel product, {String? productType}) {
 
     if (_isValidUUID(productId)) {
       // للمعرفات UUID، نبحث في الجداول المحتملة
-      Supabase.instance.client
-          .from('distributor_ocr_products')
-          .select('id')
-          .eq('ocr_product_id', productId)
-          .maybeSingle()
-          .then((ocrResponse) {
-        if (ocrResponse != null) {
-          _trackView(productId, 'ocr', distributorName: distributorId);
-        } else {
-          // إذا لم يكن OCR، تحقق من Surgical
-          Supabase.instance.client
-              .from('distributor_surgical_tools')
+      await NetworkGuard.execute(() async {
+        try {
+          final ocrResponse = await Supabase.instance.client
+              .from('distributor_ocr_products')
               .select('id')
-              .eq('id', productId) // Surgical يستخدم Row ID
-              .maybeSingle()
-              .then((surgicalResponse) {
+              .eq('ocr_product_id', productId)
+              .maybeSingle();
+
+          if (ocrResponse != null) {
+            _trackView(productId, 'ocr', distributorName: distributorId);
+          } else {
+            // إذا لم يكن OCR، تحقق من Surgical
+            final surgicalResponse = await Supabase.instance.client
+                .from('distributor_surgical_tools')
+                .select('id')
+                .eq('id', productId) // Surgical يستخدم Row ID
+                .maybeSingle();
+
             if (surgicalResponse != null) {
               _trackView(productId, 'surgical', distributorName: distributorId);
             } else {
               // الملاذ الأخير: اعتبره Regular (لأن Row ID قد يكون UUID)
               _trackView(productId, 'regular', distributorName: distributorId);
             }
-          });
+          }
+        } catch (e) {
+          // في حالة حدوث خطأ، نعتبره Regular كخيار آمن
+          _trackView(productId, 'regular', distributorName: distributorId);
         }
-      }).catchError((_) {
-        // في حالة حدوث خطأ، نعتبره Regular كخيار آمن
-         _trackView(productId, 'regular', distributorName: distributorId);
       });
     } else {
       // إذا لم يكن UUID، فهو بالتأكيد Regular
@@ -98,10 +101,12 @@ Future<void> _trackView(String productId, String productType, {String? distribut
 
   try {
     // استخدام الدالة الموحدة الجديدة increment_unified_view
-    final response = await Supabase.instance.client.rpc('increment_unified_view', params: {
-      'p_type': productType,
-      'p_id': productId,
-      'p_distributor_name': distributorName,
+    final response = await NetworkGuard.execute(() async {
+      return await Supabase.instance.client.rpc('increment_unified_view', params: {
+        'p_type': productType,
+        'p_id': productId,
+        'p_distributor_name': distributorName,
+      });
     });
 
     print('✅ [_trackView] View tracked successfully!');

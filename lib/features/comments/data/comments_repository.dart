@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/comment_model.dart';
 import 'package:fieldawy_store/features/profile/application/blocking_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 enum CommentType { course, book, surgicalTool }
 
@@ -20,62 +21,64 @@ class CommentsRepository {
     required CommentType type,
     int? limit, // إضافة limit parameter اختياري
   }) async {
-    try {
-      String tableName;
-      String itemIdKey;
-      
-      switch (type) {
-        case CommentType.course:
-          tableName = 'course_comments';
-          itemIdKey = 'course_id';
-          break;
-        case CommentType.book:
-          tableName = 'book_comments';
-          itemIdKey = 'book_id';
-          break;
-        case CommentType.surgicalTool:
-          tableName = 'surgical_tool_comments';
-          itemIdKey = 'distributor_surgical_tool_id';
-          break;
-      }
+    return await NetworkGuard.execute(() async {
+      try {
+        String tableName;
+        String itemIdKey;
+        
+        switch (type) {
+          case CommentType.course:
+            tableName = 'course_comments';
+            itemIdKey = 'course_id';
+            break;
+          case CommentType.book:
+            tableName = 'book_comments';
+            itemIdKey = 'book_id';
+            break;
+          case CommentType.surgicalTool:
+            tableName = 'surgical_tool_comments';
+            itemIdKey = 'distributor_surgical_tool_id';
+            break;
+        }
 
-      var query = _supabase
-          .from(tableName)
-          .select('''
-            *,
-            users!inner(
-              display_name,
-              photo_url,
-              role
-            )
-          ''')
-          .eq(itemIdKey, itemId)
-          .order('created_at', ascending: false);
-      
-      // تطبيق limit إذا تم تحديده
-      if (limit != null) {
-        query = query.limit(limit);
-      }
-      
-      final response = await query;
-      final blockedUsers = await _blockingService.getBlockedUsers();
+        var query = _supabase
+            .from(tableName)
+            .select('''
+              *,
+              users!inner(
+                display_name,
+                photo_url,
+                role
+              )
+            ''')
+            .eq(itemIdKey, itemId)
+            .order('created_at', ascending: false);
+        
+        // تطبيق limit إذا تم تحديده
+        if (limit != null) {
+          query = query.limit(limit);
+        }
+        
+        final response = await query;
+        final blockedUsers = await _blockingService.getBlockedUsers();
 
-      return (response as List)
-          .where((json) => !blockedUsers.contains(json['user_id']))
-          .map((json) {
-            // دمج بيانات المستخدم في object واحد
-            final userdata = json['users'];
-            json['user_name'] = userdata['display_name'];
-            json['user_photo_url'] = userdata['photo_url'];
-            json['user_role'] = userdata['role'];
-            
-            return Comment.fromJson(json, itemIdKey: itemIdKey);
-          })
-          .toList();
-    } catch (e) {
-      print('خطأ في جلب التعليقات: $e');
-      return [];
-    }
+        return (response as List)
+            .where((json) => !blockedUsers.contains(json['user_id']))
+            .map((json) {
+              // دمج بيانات المستخدم في object واحد
+              final userdata = json['users'];
+              json['user_name'] = userdata['display_name'];
+              json['user_photo_url'] = userdata['photo_url'];
+              json['user_role'] = userdata['role'];
+              
+              return Comment.fromJson(json, itemIdKey: itemIdKey);
+            })
+            .toList();
+      } catch (e) {
+        print('خطأ في جلب التعليقات: $e');
+        return [];
+      }
+    });
   }
 
   // إضافة تعليق جديد
@@ -84,58 +87,60 @@ class CommentsRepository {
     required String commentText,
     required CommentType type,
   }) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('يجب تسجيل الدخول أولاً');
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) {
+          throw Exception('يجب تسجيل الدخول أولاً');
+        }
+
+        String tableName;
+        String itemIdKey;
+        
+        switch (type) {
+          case CommentType.course:
+            tableName = 'course_comments';
+            itemIdKey = 'course_id';
+            break;
+          case CommentType.book:
+            tableName = 'book_comments';
+            itemIdKey = 'book_id';
+            break;
+          case CommentType.surgicalTool:
+            tableName = 'surgical_tool_comments';
+            itemIdKey = 'distributor_surgical_tool_id';
+            break;
+        }
+
+        final response = await _supabase
+            .from(tableName)
+            .insert({
+              itemIdKey: itemId,
+              'user_id': userId,
+              'comment_text': commentText.trim(),
+            })
+            .select('''
+              *,
+              users!inner(
+                display_name,
+                photo_url,
+                role
+              )
+            ''')
+            .single();
+
+        // دمج بيانات المستخدم
+        final userData = response['users'];
+        response['user_name'] = userData['display_name'];
+        response['user_photo_url'] = userData['photo_url'];
+        response['user_role'] = userData['role'];
+
+        return Comment.fromJson(response, itemIdKey: itemIdKey);
+      } catch (e) {
+        print('خطأ في إضافة التعليق: $e');
+        return null;
       }
-
-      String tableName;
-      String itemIdKey;
-      
-      switch (type) {
-        case CommentType.course:
-          tableName = 'course_comments';
-          itemIdKey = 'course_id';
-          break;
-        case CommentType.book:
-          tableName = 'book_comments';
-          itemIdKey = 'book_id';
-          break;
-        case CommentType.surgicalTool:
-          tableName = 'surgical_tool_comments';
-          itemIdKey = 'distributor_surgical_tool_id';
-          break;
-      }
-
-      final response = await _supabase
-          .from(tableName)
-          .insert({
-            itemIdKey: itemId,
-            'user_id': userId,
-            'comment_text': commentText.trim(),
-          })
-          .select('''
-            *,
-            users!inner(
-              display_name,
-              photo_url,
-              role
-            )
-          ''')
-          .single();
-
-      // دمج بيانات المستخدم
-      final userData = response['users'];
-      response['user_name'] = userData['display_name'];
-      response['user_photo_url'] = userData['photo_url'];
-      response['user_role'] = userData['role'];
-
-      return Comment.fromJson(response, itemIdKey: itemIdKey);
-    } catch (e) {
-      print('خطأ في إضافة التعليق: $e');
-      return null;
-    }
+    });
   }
 
   // حذف تعليق
@@ -143,31 +148,33 @@ class CommentsRepository {
     required String commentId,
     required CommentType type,
   }) async {
-    try {
-      String tableName;
-      
-      switch (type) {
-        case CommentType.course:
-          tableName = 'course_comments';
-          break;
-        case CommentType.book:
-          tableName = 'book_comments';
-          break;
-        case CommentType.surgicalTool:
-          tableName = 'surgical_tool_comments';
-          break;
-      }
-      
-      await _supabase
-          .from(tableName)
-          .delete()
-          .eq('id', commentId);
+    return await NetworkGuard.execute(() async {
+      try {
+        String tableName;
+        
+        switch (type) {
+          case CommentType.course:
+            tableName = 'course_comments';
+            break;
+          case CommentType.book:
+            tableName = 'book_comments';
+            break;
+          case CommentType.surgicalTool:
+            tableName = 'surgical_tool_comments';
+            break;
+        }
+        
+        await _supabase
+            .from(tableName)
+            .delete()
+            .eq('id', commentId);
 
-      return true;
-    } catch (e) {
-      print('خطأ في حذف التعليق: $e');
-      return false;
-    }
+        return true;
+      } catch (e) {
+        print('خطأ في حذف التعليق: $e');
+        return false;
+      }
+    });
   }
 
   // تعديل تعليق
@@ -176,53 +183,55 @@ class CommentsRepository {
     required String newText,
     required CommentType type,
   }) async {
-    try {
-      String tableName;
-      String itemIdKey;
-      
-      switch (type) {
-        case CommentType.course:
-          tableName = 'course_comments';
-          itemIdKey = 'course_id';
-          break;
-        case CommentType.book:
-          tableName = 'book_comments';
-          itemIdKey = 'book_id';
-          break;
-        case CommentType.surgicalTool:
-          tableName = 'surgical_tool_comments';
-          itemIdKey = 'distributor_surgical_tool_id';
-          break;
+    return await NetworkGuard.execute(() async {
+      try {
+        String tableName;
+        String itemIdKey;
+        
+        switch (type) {
+          case CommentType.course:
+            tableName = 'course_comments';
+            itemIdKey = 'course_id';
+            break;
+          case CommentType.book:
+            tableName = 'book_comments';
+            itemIdKey = 'book_id';
+            break;
+          case CommentType.surgicalTool:
+            tableName = 'surgical_tool_comments';
+            itemIdKey = 'distributor_surgical_tool_id';
+            break;
+        }
+
+        final response = await _supabase
+            .from(tableName)
+            .update({
+              'comment_text': newText.trim(),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', commentId)
+            .select('''
+              *,
+              users!inner(
+                display_name,
+                photo_url,
+                role
+              )
+            ''')
+            .single();
+
+        // دمج بيانات المستخدم
+        final userData = response['users'];
+        response['user_name'] = userData['display_name'];
+        response['user_photo_url'] = userData['photo_url'];
+        response['user_role'] = userData['role'];
+
+        return Comment.fromJson(response, itemIdKey: itemIdKey);
+      } catch (e) {
+        print('خطأ في تعديل التعليق: $e');
+        return null;
       }
-
-      final response = await _supabase
-          .from(tableName)
-          .update({
-            'comment_text': newText.trim(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', commentId)
-          .select('''
-            *,
-            users!inner(
-              display_name,
-              photo_url,
-              role
-            )
-          ''')
-          .single();
-
-      // دمج بيانات المستخدم
-      final userData = response['users'];
-      response['user_name'] = userData['display_name'];
-      response['user_photo_url'] = userData['photo_url'];
-      response['user_role'] = userData['role'];
-
-      return Comment.fromJson(response, itemIdKey: itemIdKey);
-    } catch (e) {
-      print('خطأ في تعديل التعليق: $e');
-      return null;
-    }
+    });
   }
 
   // حساب عدد التعليقات
@@ -230,35 +239,37 @@ class CommentsRepository {
     required String itemId,
     required CommentType type,
   }) async {
-    try {
-      String tableName;
-      String itemIdKey;
-      
-      switch (type) {
-        case CommentType.course:
-          tableName = 'course_comments';
-          itemIdKey = 'course_id';
-          break;
-        case CommentType.book:
-          tableName = 'book_comments';
-          itemIdKey = 'book_id';
-          break;
-        case CommentType.surgicalTool:
-          tableName = 'surgical_tool_comments';
-          itemIdKey = 'distributor_surgical_tool_id';
-          break;
+    return await NetworkGuard.execute(() async {
+      try {
+        String tableName;
+        String itemIdKey;
+        
+        switch (type) {
+          case CommentType.course:
+            tableName = 'course_comments';
+            itemIdKey = 'course_id';
+            break;
+          case CommentType.book:
+            tableName = 'book_comments';
+            itemIdKey = 'book_id';
+            break;
+          case CommentType.surgicalTool:
+            tableName = 'surgical_tool_comments';
+            itemIdKey = 'distributor_surgical_tool_id';
+            break;
+        }
+
+        final response = await _supabase
+            .from(tableName)
+            .select('id')
+            .eq(itemIdKey, itemId);
+
+        return (response as List).length;
+      } catch (e) {
+        print('خطأ في حساب التعليقات: $e');
+        return 0;
       }
-
-      final response = await _supabase
-          .from(tableName)
-          .select('id')
-          .eq(itemIdKey, itemId);
-
-      return (response as List).length;
-    } catch (e) {
-      print('خطأ في حساب التعليقات: $e');
-      return 0;
-    }
+    });
   }
 
   // الاستماع للتعليقات الجديدة (Realtime)

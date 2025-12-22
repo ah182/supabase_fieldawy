@@ -30,11 +30,10 @@ import "package:fieldawy_store/features/products/application/favorites_provider.
 import "package:fieldawy_store/main.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:fieldawy_store/features/authentication/domain/user_model.dart";
-import "package:fieldawy_store/services/distributor_subscription_service.dart";
+import 'package:fieldawy_store/services/distributor_subscription_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة الاستيراد
 
 
-/* -------------------------------------------------------------------------- */
-/*                               DATA PROVIDERS                               */
 /* -------------------------------------------------------------------------- */
 
 // Provider to get products for a specific distributor from Supabase
@@ -52,11 +51,13 @@ final distributorProductsProvider =
     return cached.map((data) => ProductModel.fromMap(Map<String, dynamic>.from(data))).toList();
   }
 
-  // 2. Invoke Edge Function with the distributorId
-  final response = await supabase.functions.invoke(
-    'get-distributor-products',
-    body: {'distributorId': distributorId},
-  );
+  // 2. Invoke Edge Function with NetworkGuard
+  final response = await NetworkGuard.execute(() async {
+    return await supabase.functions.invoke(
+      'get-distributor-products',
+      body: {'distributorId': distributorId},
+    );
+  });
 
   if (response.data == null) {
     throw 'Failed to fetch products for distributor $distributorId';

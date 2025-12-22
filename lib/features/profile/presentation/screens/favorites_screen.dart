@@ -23,6 +23,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/widgets/unified_search_bar.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/product_dialogs.dart';
@@ -100,11 +101,13 @@ class FavoritesScreen extends HookConsumerWidget {
         Future<void> loadUserRole() async {
           if (product.distributorUuid == null || !isLoadingRole) return;
           try {
-            final response = await Supabase.instance.client
-                .from('users')
-                .select('role, display_name')
-                .eq('id', product.distributorUuid!)
-                .maybeSingle();
+            final response = await NetworkGuard.execute(() async {
+              return await Supabase.instance.client
+                  .from('users')
+                  .select('role, display_name')
+                  .eq('id', product.distributorUuid!)
+                  .maybeSingle();
+            });
             if (context.mounted) {
               setState(() {
                 role = response?['role']?.toString();

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 
 /// Error Logger Service
 /// Logs errors to Supabase (FREE!)
@@ -46,7 +47,9 @@ class ErrorLogger {
       };
 
       // Log to Supabase (async, don't wait)
-      _supabase.from('error_logs').insert(errorData).then(
+      NetworkGuard.execute(() async {
+        await _supabase.from('error_logs').insert(errorData);
+      }).then(
         (_) => debugPrint('✅ Error logged to Supabase'),
         onError: (e) => debugPrint('❌ Failed to log error: $e'),
       );

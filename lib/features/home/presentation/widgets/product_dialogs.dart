@@ -12,6 +12,7 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:collection/collection.dart';
@@ -63,11 +64,13 @@ class _ProductDialogState extends State<_ProductDialog> {
       final supabase = Supabase.instance.client;
       
       if (widget.product.distributorUuid != null && widget.product.distributorUuid!.isNotEmpty) {
-        final response = await supabase
-            .from('users')
-            .select('whatsapp_number, role')
-            .eq('id', widget.product.distributorUuid!)
-            .maybeSingle();
+        final response = await NetworkGuard.execute(() async {
+          return await supabase
+              .from('users')
+              .select('whatsapp_number, role')
+              .eq('id', widget.product.distributorUuid!)
+              .maybeSingle();
+        });
 
         if (response != null) {
           setState(() {
@@ -84,11 +87,13 @@ class _ProductDialogState extends State<_ProductDialog> {
         return;
       }
       
-      final response = await supabase
-          .from('users')
-          .select('whatsapp_number, role')
-          .eq('display_name', widget.product.distributorId!)
-          .maybeSingle();
+      final response = await NetworkGuard.execute(() async {
+        return await supabase
+            .from('users')
+            .select('whatsapp_number, role')
+            .eq('display_name', widget.product.distributorId!)
+            .maybeSingle();
+      });
 
       if (response != null) {
         setState(() {
@@ -659,11 +664,13 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
       final supabase = Supabase.instance.client;
 
       if (widget.offer.distributorUuid != null && widget.offer.distributorUuid!.isNotEmpty) {
-        final response = await supabase
-            .from('users')
-            .select('whatsapp_number, role')
-            .eq('id', widget.offer.distributorUuid!)
-            .maybeSingle();
+        final response = await NetworkGuard.execute(() async {
+          return await supabase
+              .from('users')
+              .select('whatsapp_number, role')
+              .eq('id', widget.offer.distributorUuid!)
+              .maybeSingle();
+        });
 
         if (response != null) {
           setState(() {
@@ -680,11 +687,13 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
         return;
       }
       
-      final response = await supabase
-          .from('users')
-          .select('whatsapp_number, role')
-          .eq('display_name', widget.offer.distributorId!)
-          .maybeSingle();
+      final response = await NetworkGuard.execute(() async {
+        return await supabase
+            .from('users')
+            .select('whatsapp_number, role')
+            .eq('display_name', widget.offer.distributorId!)
+            .maybeSingle();
+      });
 
       if (response != null) {
         setState(() {
@@ -1304,21 +1313,27 @@ Future<void> showSurgicalToolDialog(
   );
 }
 
-void _incrementProductViews(String productId, {String? distributorId, bool isSurgicalTool = false}) {
+void _incrementProductViews(String productId, {String? distributorId, bool isSurgicalTool = false}) async {
   try {
     if (isSurgicalTool) {
-      Supabase.instance.client.rpc('increment_surgical_tool_views', params: {
-        'p_tool_id': productId,
+      await NetworkGuard.execute(() async {
+        await Supabase.instance.client.rpc('increment_surgical_tool_views', params: {
+          'p_tool_id': productId,
+        });
       });
     } else if (productId.startsWith('ocr_') && distributorId != null) {
       final ocrProductId = productId.substring(4);
-      Supabase.instance.client.rpc('increment_ocr_product_views', params: {
-        'p_distributor_id': distributorId,
-        'p_ocr_product_id': ocrProductId,
+      await NetworkGuard.execute(() async {
+        await Supabase.instance.client.rpc('increment_ocr_product_views', params: {
+          'p_distributor_id': distributorId,
+          'p_ocr_product_id': ocrProductId,
+        });
       });
     } else {
-      Supabase.instance.client.rpc('increment_product_views', params: {
-        'p_product_id': productId,
+      await NetworkGuard.execute(() async {
+        await Supabase.instance.client.rpc('increment_product_views', params: {
+          'p_product_id': productId,
+        });
       });
     }
   } catch (e) {
@@ -1352,11 +1367,13 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
       final supabase = Supabase.instance.client;
 
       if (widget.tool.distributorUuid != null && widget.tool.distributorUuid!.isNotEmpty) {
-        final response = await supabase
-            .from('users')
-            .select('whatsapp_number, role')
-            .eq('id', widget.tool.distributorUuid!)
-            .maybeSingle();
+        final response = await NetworkGuard.execute(() async {
+          return await supabase
+              .from('users')
+              .select('whatsapp_number, role')
+              .eq('id', widget.tool.distributorUuid!)
+              .maybeSingle();
+        });
 
         if (response != null) {
           setState(() {
@@ -1373,11 +1390,13 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
         return;
       }
       
-      final response = await supabase
-          .from('users')
-          .select('whatsapp_number, role')
-          .eq('display_name', widget.tool.distributorId!)
-          .maybeSingle();
+      final response = await NetworkGuard.execute(() async {
+        return await supabase
+            .from('users')
+            .select('whatsapp_number, role')
+            .eq('display_name', widget.tool.distributorId!)
+            .maybeSingle();
+      });
 
       if (response != null) {
         setState(() {
@@ -1801,11 +1820,13 @@ class _OfferDialogState extends State<_OfferDialog> {
       final supabase = Supabase.instance.client;
       
       if (widget.offer.distributorUuid != null && widget.offer.distributorUuid!.isNotEmpty) {
-        final response = await supabase
-            .from('users')
-            .select('whatsapp_number, role')
-            .eq('id', widget.offer.distributorUuid!)
-            .maybeSingle();
+        final response = await NetworkGuard.execute(() async {
+          return await supabase
+              .from('users')
+              .select('whatsapp_number, role')
+              .eq('id', widget.offer.distributorUuid!)
+              .maybeSingle();
+        });
 
         if (response != null) {
           setState(() {
@@ -1822,11 +1843,13 @@ class _OfferDialogState extends State<_OfferDialog> {
         return;
       }
       
-      final response = await supabase
-          .from('users')
-          .select('whatsapp_number, role')
-          .eq('display_name', widget.offer.distributorId!)
-          .maybeSingle();
+      final response = await NetworkGuard.execute(() async {
+        return await supabase
+            .from('users')
+            .select('whatsapp_number, role')
+            .eq('display_name', widget.offer.distributorId!)
+            .maybeSingle();
+      });
 
       if (response != null) {
         setState(() {

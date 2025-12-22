@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
@@ -29,34 +30,36 @@ class NotificationPreferencesRepository {
   }
 
   Future<Map<String, bool>> _fetchPreferences(String userId) async {
-    try {
-      final response = await _supabase
-          .from('notification_preferences')
-          .select()
-          .eq('user_id', userId)
-          .maybeSingle();
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase
+            .from('notification_preferences')
+            .select()
+            .eq('user_id', userId)
+            .maybeSingle();
 
-      final Map<String, bool> result = response == null
-          ? _getDefaultPreferences()
-          : {
-              'price_action': (response['price_action'] ?? true) as bool,
-              'expire_soon': (response['expire_soon'] ?? true) as bool,
-              'offers': (response['offers'] ?? true) as bool,
-              'surgical_tools': (response['surgical_tools'] ?? true) as bool,
-              'books': (response['books'] ?? true) as bool,
-              'courses': (response['courses'] ?? true) as bool,
-              'job_offers': (response['job_offers'] ?? true) as bool,
-              'vet_supplies': (response['vet_supplies'] ?? true) as bool,
-            };
+        final Map<String, bool> result = response == null
+            ? _getDefaultPreferences()
+            : {
+                'price_action': (response['price_action'] ?? true) as bool,
+                'expire_soon': (response['expire_soon'] ?? true) as bool,
+                'offers': (response['offers'] ?? true) as bool,
+                'surgical_tools': (response['surgical_tools'] ?? true) as bool,
+                'books': (response['books'] ?? true) as bool,
+                'courses': (response['courses'] ?? true) as bool,
+                'job_offers': (response['job_offers'] ?? true) as bool,
+                'vet_supplies': (response['vet_supplies'] ?? true) as bool,
+              };
 
-      // Cache the result
-      _cache.set('notification_preferences_$userId', result, duration: CacheDurations.medium);
+        // Cache the result
+        _cache.set('notification_preferences_$userId', result, duration: CacheDurations.medium);
 
-      return result;
-    } catch (e) {
-      print('Error fetching notification preferences: $e');
-      rethrow;
-    }
+        return result;
+      } catch (e) {
+        print('Error fetching notification preferences: $e');
+        rethrow;
+      }
+    });
   }
 
   Map<String, bool> _getDefaultPreferences() {
@@ -74,43 +77,45 @@ class NotificationPreferencesRepository {
 
   /// Update a specific notification preference
   Future<void> updatePreference(String type, bool enabled) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('User not authenticated');
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) throw Exception('User not authenticated');
 
-      // Check if preferences exist
-      final existing = await _supabase
-          .from('notification_preferences')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (existing == null) {
-        // Create new preferences
-        await _supabase.from('notification_preferences').insert({
-          'user_id': userId,
-          'price_action': type == 'price_action' ? enabled : true,
-          'expire_soon': type == 'expire_soon' ? enabled : true,
-          'offers': type == 'offers' ? enabled : true,
-          'surgical_tools': type == 'surgical_tools' ? enabled : true,
-          'books': type == 'books' ? enabled : true,
-          'courses': type == 'courses' ? enabled : true,
-          'job_offers': type == 'job_offers' ? enabled : true,
-          'vet_supplies': type == 'vet_supplies' ? enabled : true,
-        });
-      } else {
-        // Update existing preferences
-        await _supabase
+        // Check if preferences exist
+        final existing = await _supabase
             .from('notification_preferences')
-            .update({type: enabled}).eq('user_id', userId);
-      }
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
 
-      // Invalidate cache after update
-      invalidateCache();
-    } catch (e) {
-      print('Error updating notification preference: $e');
-      rethrow;
-    }
+        if (existing == null) {
+          // Create new preferences
+          await _supabase.from('notification_preferences').insert({
+            'user_id': userId,
+            'price_action': type == 'price_action' ? enabled : true,
+            'expire_soon': type == 'expire_soon' ? enabled : true,
+            'offers': type == 'offers' ? enabled : true,
+            'surgical_tools': type == 'surgical_tools' ? enabled : true,
+            'books': type == 'books' ? enabled : true,
+            'courses': type == 'courses' ? enabled : true,
+            'job_offers': type == 'job_offers' ? enabled : true,
+            'vet_supplies': type == 'vet_supplies' ? enabled : true,
+          });
+        } else {
+          // Update existing preferences
+          await _supabase
+              .from('notification_preferences')
+              .update({type: enabled}).eq('user_id', userId);
+        }
+
+        // Invalidate cache after update
+        invalidateCache();
+      } catch (e) {
+        print('Error updating notification preference: $e');
+        rethrow;
+      }
+    });
   }
 
   /// Get subscribed distributors with details (مع الكاش)
@@ -134,77 +139,79 @@ class NotificationPreferencesRepository {
   }
 
   Future<List<DistributorModel>> _fetchSubscribedDistributors() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return [];
+    return await NetworkGuard.execute(() async {
+      try {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId == null) return [];
 
-      // Get distributor IDs from Hive
-      final distributorIds = await SubscriptionCacheService.getSubscriptions();
-      final uniqueDistributorIds = distributorIds.toSet().toList();
+        // Get distributor IDs from Hive
+        final distributorIds = await SubscriptionCacheService.getSubscriptions();
+        final uniqueDistributorIds = distributorIds.toSet().toList();
 
-      print('📋 Loading ${uniqueDistributorIds.length} subscribed distributors');
+        print('📋 Loading ${uniqueDistributorIds.length} subscribed distributors');
 
-      if (uniqueDistributorIds.isEmpty) return [];
+        if (uniqueDistributorIds.isEmpty) return [];
 
-      // Fetch all distributors in one query
-      final usersResponse = await _supabase
-          .from('users')
-          .select()
-          .inFilter('id', uniqueDistributorIds);
+        // Fetch all distributors in one query
+        final usersResponse = await _supabase
+            .from('users')
+            .select()
+            .inFilter('id', uniqueDistributorIds);
 
-      final distributors = <DistributorModel>[];
+        final distributors = <DistributorModel>[];
 
-      for (final userRow in (usersResponse as List)) {
-        try {
-          final id = userRow['id'] as String;
-          final displayName = userRow['display_name'] as String? ?? 'موزع';
-          final email = userRow['email'] as String?;
-          final photoUrl = userRow['photo_url'] as String?;
-          final whatsappNumber = userRow['whatsapp_number'] as String?;
-          final companyName = userRow['company_name'] as String?;
-          final distributorType = userRow['distributor_type'] as String? ??
-              (companyName != null ? 'company' : 'individual');
+        for (final userRow in (usersResponse as List)) {
+          try {
+            final id = userRow['id'] as String;
+            final displayName = userRow['display_name'] as String? ?? 'موزع';
+            final email = userRow['email'] as String?;
+            final photoUrl = userRow['photo_url'] as String?;
+            final whatsappNumber = userRow['whatsapp_number'] as String?;
+            final companyName = userRow['company_name'] as String?;
+            final distributorType = userRow['distributor_type'] as String? ??
+                (companyName != null ? 'company' : 'individual');
 
-          List<String> governorates = [];
-          if (userRow['governorates'] is List) {
-            governorates = (userRow['governorates'] as List).cast<String>();
+            List<String> governorates = [];
+            if (userRow['governorates'] is List) {
+              governorates = (userRow['governorates'] as List).cast<String>();
+            }
+
+            List<String> centers = [];
+            if (userRow['centers'] is List) {
+              centers = (userRow['centers'] as List).cast<String>();
+            }
+
+            final distributor = DistributorModel(
+              id: id,
+              displayName: displayName,
+              email: email,
+              photoURL: photoUrl,
+              governorates: governorates,
+              centers: centers,
+              productCount: 0,
+              distributorType: distributorType,
+              whatsappNumber: whatsappNumber,
+              companyName: companyName,
+            );
+
+            distributors.add(distributor);
+          } catch (e) {
+            print('❌ Error parsing user row: $e');
+            continue;
           }
-
-          List<String> centers = [];
-          if (userRow['centers'] is List) {
-            centers = (userRow['centers'] as List).cast<String>();
-          }
-
-          final distributor = DistributorModel(
-            id: id,
-            displayName: displayName,
-            email: email,
-            photoURL: photoUrl,
-            governorates: governorates,
-            centers: centers,
-            productCount: 0,
-            distributorType: distributorType,
-            whatsappNumber: whatsappNumber,
-            companyName: companyName,
-          );
-
-          distributors.add(distributor);
-        } catch (e) {
-          print('❌ Error parsing user row: $e');
-          continue;
         }
+
+        // Cache the result (as JSON list)
+        final jsonList = distributors.map((d) => _distributorToJson(d)).toList();
+        _cache.set('subscribed_distributors_$userId', jsonList, 
+                   duration: CacheDurations.short);
+
+        return distributors;
+      } catch (e) {
+        print('❌ Error fetching subscribed distributors: $e');
+        return [];
       }
-
-      // Cache the result (as JSON list)
-      final jsonList = distributors.map((d) => _distributorToJson(d)).toList();
-      _cache.set('subscribed_distributors_$userId', jsonList, 
-                 duration: CacheDurations.short);
-
-      return distributors;
-    } catch (e) {
-      print('❌ Error fetching subscribed distributors: $e');
-      return [];
-    }
+    });
   }
 
   /// Invalidate all notification caches
