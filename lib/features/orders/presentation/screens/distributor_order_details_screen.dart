@@ -85,15 +85,36 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
               size: 18, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          distributorName,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (distributor?.photoURL != null && distributor!.photoURL!.isNotEmpty)
+              Container(
+                margin: const EdgeInsetsDirectional.only(end: 8),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant,
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: CachedNetworkImageProvider(distributor.photoURL!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            Flexible(
+              child: Text(
+                distributorName,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,

@@ -43,17 +43,8 @@ class JobOffersNotifier extends StateNotifier<AsyncValue<List<JobOffer>>> {
     state.whenData((jobs) {
       final updatedJobs = jobs.map((job) {
         if (job.id == jobId) {
-          return JobOffer(
-            id: job.id,
-            userId: job.userId,
-            title: job.title,
-            description: job.description,
-            phone: job.phone,
-            status: job.status,
-            viewsCount: job.viewsCount + 1, // زيادة المشاهدات
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-            userName: job.userName,
+          return job.copyWith(
+            viewsCount: job.viewsCount + 1,
           );
         }
         return job;
@@ -116,17 +107,8 @@ class MyJobOffersNotifier extends StateNotifier<AsyncValue<List<JobOffer>>> {
     state.whenData((jobs) {
       final updatedJobs = jobs.map((job) {
         if (job.id == jobId) {
-          return JobOffer(
-            id: job.id,
-            userId: job.userId,
-            title: job.title,
-            description: job.description,
-            phone: job.phone,
-            status: job.status,
-            viewsCount: job.viewsCount + 1, // زيادة المشاهدات
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-            userName: job.userName,
+          return job.copyWith(
+            viewsCount: job.viewsCount + 1,
           );
         }
         return job;

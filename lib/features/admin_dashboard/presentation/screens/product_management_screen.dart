@@ -1515,6 +1515,7 @@ class _JobsDataSource extends DataTableSource {
     final titleController = TextEditingController(text: job.title);
     final phoneController = TextEditingController(text: job.phone);
     final descController = TextEditingController(text: job.description);
+    final addressController = TextEditingController(text: job.workplaceAddress);
     String selectedStatus = job.status;
 
     showDialog(
@@ -1531,6 +1532,8 @@ class _JobsDataSource extends DataTableSource {
                   TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title'), maxLines: 2),
                   const SizedBox(height: 8),
                   TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                  const SizedBox(height: 8),
+                  TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Workplace Address')),
                   const SizedBox(height: 8),
                   TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 4),
                   const SizedBox(height: 8),
@@ -1560,8 +1563,9 @@ class _JobsDataSource extends DataTableSource {
                 final title = titleController.text.trim();
                 final phone = phoneController.text.trim();
                 final desc = descController.text.trim();
+                final address = addressController.text.trim();
                 
-                if (title.isEmpty || phone.isEmpty || desc.isEmpty) {
+                if (title.isEmpty || phone.isEmpty || desc.isEmpty || address.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
                   return;
                 }
@@ -1573,6 +1577,7 @@ class _JobsDataSource extends DataTableSource {
                     title: title,
                     phone: phone,
                     description: desc,
+                    workplaceAddress: address,
                     status: selectedStatus,
                   );
                   

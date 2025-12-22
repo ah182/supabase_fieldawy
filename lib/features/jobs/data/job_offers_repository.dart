@@ -1,6 +1,7 @@
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -142,20 +143,26 @@ class JobOffersRepository {
     required String title,
     required String description,
     required String phone,
+    required String workplaceAddress,
   }) async {
+    debugPrint('📡 Repository: Calling create_job_offer RPC...');
+    debugPrint('📊 Params: { title: $title, phone: $phone, workplaceAddress: $workplaceAddress }');
     return await NetworkGuard.execute(() async {
       try {
         final response = await _supabase.rpc('create_job_offer', params: {
           'p_title': title,
           'p_description': description,
           'p_phone': phone,
+          'p_workplace_address': workplaceAddress,
         });
+        debugPrint('✅ Repository: RPC Success, ID: $response');
         
         // حذف الكاش بعد الإضافة
         _invalidateJobOffersCache();
         
         return response as String;
       } catch (e) {
+        debugPrint('❌ Repository ERROR in createJobOffer: $e');
         throw Exception('Failed to create job offer: $e');
       }
     });
@@ -166,6 +173,7 @@ class JobOffersRepository {
     required String title,
     required String description,
     required String phone,
+    required String workplaceAddress,
   }) async {
     return await NetworkGuard.execute(() async {
       try {
@@ -174,6 +182,7 @@ class JobOffersRepository {
           'p_title': title,
           'p_description': description,
           'p_phone': phone,
+          'p_workplace_address': workplaceAddress,
         });
         
         // حذف الكاش بعد التعديل
@@ -283,6 +292,7 @@ class JobOffersRepository {
     required String title,
     required String phone,
     required String description,
+    required String workplaceAddress,
     required String status,
   }) async {
     return await NetworkGuard.execute(() async {
@@ -291,6 +301,7 @@ class JobOffersRepository {
           'title': title,
           'phone': phone,
           'description': description,
+          'workplace_address': workplaceAddress,
           'status': status,
         }).eq('id', jobId);
 

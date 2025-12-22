@@ -23,6 +23,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   
   int _wordCount = 0;
   bool _isSubmitting = false;
@@ -38,6 +39,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
     if (_isEditing) {
       _titleController.text = widget.jobToEdit!.title;
       _descriptionController.text = widget.jobToEdit!.description;
+      _addressController.text = widget.jobToEdit!.workplaceAddress;
       final phone = widget.jobToEdit!.phone;
       // Extract the national number from the full phone (remove country code)
       if (phone.startsWith('+20')) {
@@ -57,6 +59,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -77,25 +80,36 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
 
     setState(() => _isSubmitting = true);
 
+    debugPrint('🚀 Submitting Job Offer...');
+    debugPrint('📝 Title: ${_titleController.text.trim()}');
+    debugPrint('📍 Address: ${_addressController.text.trim()}');
+    debugPrint('📞 Phone: $_completePhoneNumber');
+    debugPrint('🆔 Is Editing: $_isEditing');
+
     try {
       final repository = ref.read(jobOffersRepositoryProvider);
       
       if (_isEditing) {
+        debugPrint('🔄 Updating existing job: ${widget.jobToEdit!.id}');
         await repository.updateJobOffer(
           jobId: widget.jobToEdit!.id,
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           phone: _completePhoneNumber,
+          workplaceAddress: _addressController.text.trim(),
         );
       } else {
+        debugPrint('🆕 Creating new job offer...');
         await repository.createJobOffer(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           phone: _completePhoneNumber,
+          workplaceAddress: _addressController.text.trim(),
         );
       }
 
       if (mounted) {
+        debugPrint('✅ Job offer submitted successfully!');
         setState(() => _isSubmitting = false);
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +121,9 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
         
         Navigator.of(context).pop(true);
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('❌ ERROR submitting job offer: $e');
+      debugPrint('📍 STACKTRACE: $stack');
       if (mounted) {
         setState(() => _isSubmitting = false);
         
@@ -227,6 +243,26 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               },
             ),
             const SizedBox(height: 20),
+
+            TextFormField(
+              controller: _addressController,
+              decoration: InputDecoration(
+                labelText: 'job_offers_feature.workplace_address'.tr(),
+                hintText: 'job_offers_feature.workplace_address_hint'.tr(),
+                prefixIcon: const Icon(Icons.location_on_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'job_offers_feature.address_required'.tr();
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
             
             IntlPhoneField(
               controller: _phoneController,
@@ -240,7 +276,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
               ),
               initialCountryCode: 'EG',
               languageCode: context.locale.languageCode,
-              disableLengthCheck: false,
+              disableLengthCheck: true, // Disable automatic length validation
               onChanged: (phone) {
                 setState(() {
                   _completePhoneNumber = phone.completeNumber;
@@ -250,7 +286,7 @@ class _AddJobOfferScreenState extends ConsumerState<AddJobOfferScreen> {
                 if (phone == null || phone.number.isEmpty) {
                   return 'job_offers_feature.phone_required'.tr();
                 }
-                return null;
+                return null; // No length restriction
               },
               invalidNumberMessage: 'job_offers_feature.phone_invalid'.tr(),
               dropdownIconPosition: IconPosition.trailing,

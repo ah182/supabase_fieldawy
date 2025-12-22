@@ -87,10 +87,14 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
     for (final job in allJobs) {
       final title = job.title.toLowerCase();
       final description = job.description.toLowerCase();
+      final address = job.workplaceAddress.toLowerCase();
       final queryLower = query.toLowerCase();
 
       if (title.startsWith(queryLower) && title.length > query.length) {
         bestMatch = job.title;
+        break;
+      } else if (address.startsWith(queryLower) && address.length > query.length) {
+        bestMatch = job.workplaceAddress;
         break;
       } else if (description.contains(queryLower)) {
         final words = description.split(' ');
@@ -220,11 +224,12 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
           body: Column(
             children: [
               // Search bar
-              Transform.translate(
-                offset: const Offset(0, -10),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
+               Transform.translate(
+              offset: const Offset(0, -10),
+               child: Container(
+                 margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
@@ -333,6 +338,7 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
                   ),
                 ),
               ),
+              
 
               // Tabs
               Container(
@@ -428,6 +434,7 @@ class _AvailableJobsTab extends ConsumerWidget {
                 final query = searchQuery.toLowerCase();
                 return job.title.toLowerCase().contains(query) ||
                     job.description.toLowerCase().contains(query) ||
+                    job.workplaceAddress.toLowerCase().contains(query) ||
                     (job.userName != null &&
                         job.userName!.toLowerCase().contains(query));
               }).toList();
@@ -717,6 +724,27 @@ class _JobOfferCard extends ConsumerWidget {
                           Row(
                             children: [
                               Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  job.workplaceAddress,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
                                 Icons.access_time_rounded,
                                 size: 14,
                                 color: theme.colorScheme.onSurfaceVariant,
@@ -825,7 +853,7 @@ class _JobOfferCard extends ConsumerWidget {
     } else if (difference.inDays == 1) {
       return 'yesterday'.tr();
     } else if (difference.inDays < 7) {
-      return '${'daysAgo'.tr()} ${difference.inDays}';
+      return 'daysAgo'.tr(namedArgs: {'count': difference.inDays.toString()});
     } else {
       return DateFormat('dd/MM/yyyy').format(date);
     }
@@ -873,22 +901,15 @@ class _JobDetailsDialog extends ConsumerWidget {
                   children: [
                     GestureDetector(
                       onTap: () => _showUserDetails(context, ref, job.userId),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.transparent,
-                          backgroundImage: job.userPhotoUrl != null 
-                              ? CachedNetworkImageProvider(job.userPhotoUrl!) 
-                              : null,
-                          child: job.userPhotoUrl == null 
-                              ? const Icon(Icons.work_rounded, color: Colors.white, size: 28) 
-                              : null,
-                        ),
+                      child: CircleAvatar(
+                        radius: 28, // Slightly larger since container is removed
+                        backgroundColor: theme.colorScheme.surfaceVariant,
+                        backgroundImage: job.userPhotoUrl != null 
+                            ? CachedNetworkImageProvider(job.userPhotoUrl!) 
+                            : null,
+                        child: job.userPhotoUrl == null 
+                            ? Icon(Icons.work_rounded, color: theme.colorScheme.primary, size: 28) 
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -935,6 +956,12 @@ class _JobDetailsDialog extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _InfoSection(
+                      title: 'job_offers_feature.workplace_address'.tr(),
+                      content: job.workplaceAddress,
+                      icon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    _InfoSection(
                       title: 'job_offers_feature.job_description'.tr(),
                       content: job.description,
                       icon: Icons.description_outlined,
@@ -976,14 +1003,18 @@ class _JobDetailsDialog extends ConsumerWidget {
                                   backgroundImage: job.userPhotoUrl != null ? CachedNetworkImageProvider(job.userPhotoUrl!) : null,
                                   child: job.userPhotoUrl == null ? Icon(Icons.person, size: 16) : null,
                                ),
-                               SizedBox(width: 12),
-                               Text(
-                                  job.userName!,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    height: 1.5,
-                                    color: theme.colorScheme.onSurface,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                               const SizedBox(width: 12),
+                               Expanded(
+                                 child: Text(
+                                    job.userName!,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      height: 1.5,
+                                      color: theme.colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                 ),
                                ),
                             ],
                           ),

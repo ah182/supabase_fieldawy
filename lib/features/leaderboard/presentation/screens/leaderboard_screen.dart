@@ -1891,7 +1891,8 @@ class _RewardsInfoSheet extends StatelessWidget {
                   color: Colors.blue,
                   rewards: [
                     'leaderboard_feature.prizes.cash_100'.tr(),
-                    'leaderboard_feature.prizes.book_course'.tr(),
+                    'leaderboard_feature.prizes.books_1'.tr(),
+                    'leaderboard_feature.prizes.courses_1'.tr(),
                   ],
                 ),
               ],

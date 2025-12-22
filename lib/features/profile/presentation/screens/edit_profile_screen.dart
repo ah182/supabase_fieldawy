@@ -220,164 +220,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       const SizedBox(height: 16),
                     ],
 
-                    Card(
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .primaryColor
-                                .withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.map_outlined,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                        title: Text(
-                          'profile_feature.edit.coverage_areas'.tr(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: (_governorates.isEmpty && _centers.isEmpty)
-                              ? Row(
-                                  children: [
-                                    Icon(Icons.info_outline,
-                                        size: 14,
-                                        color: Colors.grey[400]),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'profile_feature.edit.tap_to_select'.tr(),
-                                      style: TextStyle(
-                                          color: Colors.grey[400],
-                                          fontSize: 13),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ...centersByGovernorate.entries.map((entry) {
-                                      final govName = entry.key;
-                                      final govCenters = entry.value;
-                                      
-                                      return Container(
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[50],
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.grey[200]!),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Governorate Name
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.location_city,
-                                                  size: 14,
-                                                  color: Theme.of(context)
-                                                      .primaryColor,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  govName,
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Theme.of(context)
-                                                        .primaryColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            if (govCenters.isNotEmpty) ...[
-                                              const SizedBox(height: 8),
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 6,
-                                                children: govCenters
-                                                    .map((c) => Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 4),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors.white,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(6),
-                                                            border: Border.all(
-                                                                color: Colors
-                                                                    .grey[300]!),
-                                                          ),
-                                                          child: Text(
-                                                            c,
-                                                            style: TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors
-                                                                  .grey[700],
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                            ),
-                                                          ),
-                                                        ))
-                                                    .toList(),
-                                              ),
-                                            ] else
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 4.0, left: 20),
-                                                child: Text(
-                                                  'profile_feature.edit.no_centers_selected'.tr(),
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontStyle: FontStyle.italic,
-                                                    color: Colors.grey[400],
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                        ),
-                        trailing: const Icon(Icons.edit_outlined, size: 20),
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => GovernorateSelectionScreen(
-                                role: UserRoleHelper.fromString(
-                                    widget.userModel.role),
-                                initialGovernorates: _governorates,
-                                initialCenters: _centers,
-                                onContinue: (governorates, centers) {
-                                  setState(() {
-                                    _governorates = governorates;
-                                    _centers = centers;
-                                  });
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                    _buildCoverageSection(context, centersByGovernorate),
                   ],
                 ),
               ),
@@ -412,10 +255,207 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           },
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            elevation: 2,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: Text('profile_feature.edit.save'.tr()),
+          child: Text('profile_feature.edit.save'.tr(), 
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoverageSection(BuildContext context, Map<String, List<String>> centersByGovernorate) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    // ignore: unused_local_variable
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.map_outlined,
+                        color: colorScheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'profile_feature.edit.coverage_areas'.tr(),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => GovernorateSelectionScreen(
+                          role: UserRoleHelper.fromString(widget.userModel.role),
+                          initialGovernorates: _governorates,
+                          initialCenters: _centers,
+                          onContinue: (governorates, centers) {
+                            setState(() {
+                              _governorates = governorates;
+                              _centers = centers;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                  label: Text('profile_feature.edit.edit'.tr()),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: (_governorates.isEmpty)
+                ? _buildEmptyState(context)
+                : Column(
+                    children: centersByGovernorate.entries.map((entry) {
+                      return _buildGovernorateItem(context, entry.key, entry.value);
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5), style: BorderStyle.solid),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.location_off_outlined, size: 40, color: Colors.grey[400]),
+          const SizedBox(height: 8),
+          Text(
+            'profile_feature.edit.tap_to_select'.tr(),
+            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGovernorateItem(BuildContext context, String govName, List<String> centers) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surfaceVariant.withOpacity(0.2) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          leading: Icon(Icons.location_city, size: 18, color: colorScheme.primary),
+          title: Text(
+            govName,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${centers.length}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
+            ),
+          ),
+          children: [
+            if (centers.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'profile_feature.edit.all_governorate'.tr(),
+                  style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: centers.map((center) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

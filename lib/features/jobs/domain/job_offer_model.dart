@@ -6,6 +6,7 @@ class JobOffer {
   final String title;
   final String description;
   final String phone;
+  final String workplaceAddress;
   final String status;
   final int viewsCount;
   final DateTime createdAt;
@@ -19,6 +20,7 @@ class JobOffer {
     required this.title,
     required this.description,
     required this.phone,
+    required this.workplaceAddress,
     required this.status,
     required this.viewsCount,
     required this.createdAt,
@@ -34,6 +36,7 @@ class JobOffer {
       title: json['title'] as String,
       description: json['description'] as String,
       phone: json['phone'] as String,
+      workplaceAddress: json['workplace_address'] as String? ?? 'العنوان غير محدد',
       status: json['status'] as String? ?? 'active',
       viewsCount: json['views_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -50,6 +53,7 @@ class JobOffer {
       'title': title,
       'description': description,
       'phone': phone,
+      'workplace_address': workplaceAddress,
       'status': status,
       'views_count': viewsCount,
       'created_at': createdAt.toIso8601String(),
@@ -65,6 +69,7 @@ class JobOffer {
     String? title,
     String? description,
     String? phone,
+    String? workplaceAddress,
     String? status,
     int? viewsCount,
     DateTime? createdAt,
@@ -78,6 +83,7 @@ class JobOffer {
       title: title ?? this.title,
       description: description ?? this.description,
       phone: phone ?? this.phone,
+      workplaceAddress: workplaceAddress ?? this.workplaceAddress,
       status: status ?? this.status,
       viewsCount: viewsCount ?? this.viewsCount,
       createdAt: createdAt ?? this.createdAt,

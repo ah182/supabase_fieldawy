@@ -29,6 +29,39 @@ class DocumentUploadScreen extends ConsumerStatefulWidget {
 }
 
 class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showRoleInfoDialog();
+    });
+  }
+
+  void _showRoleInfoDialog() {
+    String message;
+    if (widget.role == UserRole.doctor) {
+      message =
+          'يرجى العلم أننا نطلب صورة كارنيه النقابة أو شهادة التخرج من كلية الطب البيطري أو كارنيه الجامعة لكلية طب بيطري، حيث أنه غير مسموح لغير الأطباء بالدخول للتطبيق.';
+    } else {
+      message =
+          'يرجى العلم أننا نطلب صورة البطاقة الشخصية للتأكد من أنك موزع أدوية وأنك لن تسيء استعمال التطبيق. يجب أن تكون موزعاً أو صاحب خدمات بيطرية، ولا يسمح لغير ذلك بالدخول للتطبيق.';
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تنبيه هام'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLoadingDialog() {
     showDialog(
       context: context,
