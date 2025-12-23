@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 // ignore: unused_import
@@ -154,25 +155,31 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
 
   @override
   Widget build(BuildContext context) {
+    final userDataAsync = ref.watch(userDataProvider);
+    final user = userDataAsync.asData?.value;
+    final isDoctor = user?.role == 'doctor';
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _hideKeyboard(),
       child: Scaffold(
         appBar: AppBar(
           title: Text('vet_supplies_feature.title'.tr()),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.inventory_2_outlined),
-                text: 'vet_supplies_feature.tabs.all_supplies'.tr(),
+          bottom: isDoctor 
+            ? null 
+            : TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    text: 'vet_supplies_feature.tabs.all_supplies'.tr(),
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.store_outlined),
+                    text: 'vet_supplies_feature.tabs.my_supplies'.tr(),
+                  ),
+                ],
               ),
-              Tab(
-                icon: const Icon(Icons.store_outlined),
-                text: 'vet_supplies_feature.tabs.my_supplies'.tr(),
-              ),
-            ],
-          ),
         ),
         body: Column(
           children: [
@@ -280,37 +287,45 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
             ),
             // محتوى التابات
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _AllSuppliesTab(
+              child: isDoctor 
+                ? _AllSuppliesTab(
                     searchQuery: _searchQuery,
                     searchId: _currentSearchId,
                     onItemTap: _handleItemTap,
+                  )
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _AllSuppliesTab(
+                        searchQuery: _searchQuery,
+                        searchId: _currentSearchId,
+                        onItemTap: _handleItemTap,
+                      ),
+                      _MySuppliesTab(searchQuery: _searchQuery),
+                    ],
                   ),
-                  _MySuppliesTab(searchQuery: _searchQuery),
-                ],
-              ),
             ),
           ],
         ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const AddVetSupplyScreen(),
-            ),
-          );
-          
-          if (result == true && mounted) {
-            ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
-            ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: Text('vet_supplies_feature.actions.add_supply'.tr()),
-        elevation: 4,
-      ),
+      floatingActionButton: isDoctor 
+        ? null 
+        : FloatingActionButton.extended(
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AddVetSupplyScreen(),
+                ),
+              );
+              
+              if (result == true && mounted) {
+                ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
+                ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: Text('vet_supplies_feature.actions.add_supply'.tr()),
+            elevation: 4,
+          ),
       ),
     );
   }
@@ -677,6 +692,7 @@ class _AllSuppliesTab extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
+                        // عرض المحافظات
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -697,6 +713,29 @@ class _AllSuppliesTab extends ConsumerWidget {
                             ),
                           )).toList(),
                         ),
+                        // عرض المراكز
+                        if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: distributor.centers!.map((center) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                       ],
 
@@ -997,6 +1036,10 @@ class _MySuppliesTab extends ConsumerWidget {
   void _showSupplyDetailsDialog(BuildContext context, WidgetRef ref, VetSupply supply) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    
+    // جلب بيانات الموزعين للبحث عن صاحب المستلزم
+    final distributorsAsync = ref.read(distributorsProvider);
+    final distributor = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == supply.userId);
 
     showDialog(
       context: context,
@@ -1006,7 +1049,7 @@ class _MySuppliesTab extends ConsumerWidget {
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9,
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
           decoration: BoxDecoration(
             color: theme.cardColor,
@@ -1054,20 +1097,19 @@ class _MySuppliesTab extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      if (supply.userName != null)
-                        Row(
-                          children: [
-                            Icon(Icons.person_outline,
-                                size: 18, color: theme.textTheme.bodySmall?.color),
-                            const SizedBox(width: 8),
-                            Text(
-                              supply.userName!,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
+                      Row(
+                        children: [
+                          Icon(Icons.store_outlined, size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       const Divider(),
                       const SizedBox(height: 16),
@@ -1076,16 +1118,25 @@ class _MySuppliesTab extends ConsumerWidget {
                         style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                       ),
                       const SizedBox(height: 24),
-                      Row(
+                      // Info Grid: Price, Views, and Package
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
                           _buildStatChip(
                             context: context,
                             icon: Icons.price_change,
                             label: 'vet_supplies_feature.fields.price'.tr(),
-                            value: '${supply.price.toStringAsFixed(0)} ${"EGP".tr()}',
+                            value: '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
                             color: Colors.green,
                           ),
-                          const SizedBox(width: 12),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.inventory_2_outlined,
+                            label: 'vet_supplies_feature.fields.package_label'.tr().replaceAll(' *', ''),
+                            value: supply.package,
+                            color: Colors.blue,
+                          ),
                           _buildStatChip(
                             context: context,
                             icon: Icons.visibility,
@@ -1095,7 +1146,73 @@ class _MySuppliesTab extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
+
+                      // Coverage Areas Section
+                      if (distributor != null && distributor.governorates != null && distributor.governorates!.isNotEmpty) ...[
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.map_outlined, color: colorScheme.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'distributors_feature.coverage_areas'.tr(),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // عرض المحافظات
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: distributor.governorates!.map((gov) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              gov,
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )).toList(),
+                        ),
+                        // عرض المراكز
+                        if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: distributor.centers!.map((center) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                      ],
+
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         height: 48,

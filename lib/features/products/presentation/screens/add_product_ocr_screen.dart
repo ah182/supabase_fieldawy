@@ -82,7 +82,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     'drops',
   ];
   String? _selectedPackageType;
-  String _selectedStatus = 'جديد';
+  final List<String> _statusKeys = ['جديد', 'مستعمل', 'كسر زيرو'];
+  late String _selectedStatus;
 
   @override
   void initState() {
@@ -98,6 +99,9 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     if (widget.productToEdit != null) {
       _initializeForEdit();
     }
+
+    // Initialize _selectedStatus with the key
+    _selectedStatus = _statusKeys[0];
 
     // Show instructions dialog when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1313,10 +1317,15 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                             borderSide: BorderSide(color: accentColor, width: 2),
                           ),
                         ),
-                        items: ['ocr.status_new'.tr(), 'ocr.status_used'.tr(), 'ocr.status_like_new'.tr()].map((String status) {
+                        items: _statusKeys.map((String key) {
+                          String label = key;
+                          if (key == 'جديد') label = 'ocr.status_new'.tr();
+                          else if (key == 'مستعمل') label = 'ocr.status_used'.tr();
+                          else if (key == 'كسر زيرو') label = 'ocr.status_like_new'.tr();
+                          
                           return DropdownMenuItem<String>(
-                            value: status,
-                            child: Text(status),
+                            value: key,
+                            child: Text(label),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {

@@ -1172,6 +1172,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
+                        // عرض المحافظات
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -1192,6 +1193,29 @@ class DistributorProductsScreen extends HookConsumerWidget {
                             ),
                           )).toList(),
                         ),
+                        // عرض المراكز
+                        if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: distributor.centers!.map((center) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                       ],
 

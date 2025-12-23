@@ -301,6 +301,7 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
         scrolledUnderElevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'add_surgical_tool_fab',
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add_rounded, size: 24),
         label: Text(

@@ -146,60 +146,24 @@ class NotificationPreferencesRepository {
 
         // Get distributor IDs from Hive
         final distributorIds = await SubscriptionCacheService.getSubscriptions();
-        final uniqueDistributorIds = distributorIds.toSet().toList();
+        final uniqueDistributorIds = distributorIds.toSet();
 
-        print('📋 Loading ${uniqueDistributorIds.length} subscribed distributors');
+        print('📋 Loading details for ${uniqueDistributorIds.length} subscribed distributors');
 
         if (uniqueDistributorIds.isEmpty) return [];
 
-        // Fetch all distributors in one query
-        final usersResponse = await _supabase
-            .from('users')
-            .select()
-            .inFilter('id', uniqueDistributorIds);
+        // Fetch all distributors from edge function (to get product counts and other details)
+        final response = await _supabase.functions.invoke('get-distributors');
+        
+        if (response.data == null) return [];
 
-        final distributors = <DistributorModel>[];
-
-        for (final userRow in (usersResponse as List)) {
-          try {
-            final id = userRow['id'] as String;
-            final displayName = userRow['display_name'] as String? ?? 'موزع';
-            final email = userRow['email'] as String?;
-            final photoUrl = userRow['photo_url'] as String?;
-            final whatsappNumber = userRow['whatsapp_number'] as String?;
-            final companyName = userRow['company_name'] as String?;
-            final distributorType = userRow['distributor_type'] as String? ??
-                (companyName != null ? 'company' : 'individual');
-
-            List<String> governorates = [];
-            if (userRow['governorates'] is List) {
-              governorates = (userRow['governorates'] as List).cast<String>();
-            }
-
-            List<String> centers = [];
-            if (userRow['centers'] is List) {
-              centers = (userRow['centers'] as List).cast<String>();
-            }
-
-            final distributor = DistributorModel(
-              id: id,
-              displayName: displayName,
-              email: email,
-              photoURL: photoUrl,
-              governorates: governorates,
-              centers: centers,
-              productCount: 0,
-              distributorType: distributorType,
-              whatsappNumber: whatsappNumber,
-              companyName: companyName,
-            );
-
-            distributors.add(distributor);
-          } catch (e) {
-            print('❌ Error parsing user row: $e');
-            continue;
-          }
-        }
+        final List<dynamic> allDistributorsData = response.data;
+        
+        // Filter only subscribed distributors and parse them
+        final distributors = allDistributorsData
+            .where((d) => uniqueDistributorIds.contains(d['id'].toString()))
+            .map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d)))
+            .toList();
 
         // Cache the result (as JSON list)
         final jsonList = distributors.map((d) => _distributorToJson(d)).toList();
@@ -228,36 +192,23 @@ class NotificationPreferencesRepository {
   Map<String, dynamic> _distributorToJson(DistributorModel distributor) {
     return {
       'id': distributor.id,
-      'displayName': distributor.displayName,
+      'display_name': distributor.displayName,
       'email': distributor.email,
-      'photoURL': distributor.photoURL,
+      'photo_url': distributor.photoURL,
       'governorates': distributor.governorates,
       'centers': distributor.centers,
       'productCount': distributor.productCount,
-      'distributorType': distributor.distributorType,
-      'whatsappNumber': distributor.whatsappNumber,
-      'companyName': distributor.companyName,
+      'distributor_type': distributor.distributorType,
+      'whatsapp_number': distributor.whatsappNumber,
+      'company_name': distributor.companyName,
+      'subscribers_count': distributor.subscribersCount,
+      'distribution_method': distributor.distributionMethod,
     };
   }
 
   /// Convert JSON to DistributorModel
   DistributorModel _distributorFromJson(Map<String, dynamic> json) {
-    return DistributorModel(
-      id: json['id'] as String,
-      displayName: json['displayName'] as String? ?? 'موزع',
-      email: json['email'] as String?,
-      photoURL: json['photoURL'] as String?,
-      governorates: json['governorates'] != null
-          ? List<String>.from(json['governorates'] as List)
-          : [],
-      centers: json['centers'] != null
-          ? List<String>.from(json['centers'] as List)
-          : [],
-      productCount: json['productCount'] as int? ?? 0,
-      distributorType: json['distributorType'] as String? ?? 'individual',
-      whatsappNumber: json['whatsappNumber'] as String?,
-      companyName: json['companyName'] as String?,
-    );
+    return DistributorModel.fromMap(json);
   }
 }
 
