@@ -88,6 +88,30 @@ class VetSuppliesRepository {
     });
   }
 
+  // Get vet supplies for a specific distributor
+  Future<List<VetSupply>> getVetSuppliesByDistributorId(String distributorId) async {
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _supabase.rpc('get_my_vet_supplies', params: {
+          'p_user_id': distributorId,
+        });
+
+        if (response == null) {
+          return [];
+        }
+
+        final List<dynamic> data = response as List<dynamic>;
+        
+        // Cache as JSON (optional, maybe use a different key)
+        _cache.set('distributor_vet_supplies_$distributorId', data, duration: CacheDurations.medium);
+        
+        return data.map((json) => VetSupply.fromJson(Map<String, dynamic>.from(json))).toList();
+      } catch (e) {
+        throw Exception('Failed to fetch distributor vet supplies: $e');
+      }
+    });
+  }
+
   // Create a new vet supply
   Future<String> createVetSupply({
     required String name,
@@ -95,6 +119,7 @@ class VetSuppliesRepository {
     required double price,
     required String imageUrl,
     required String phone,
+    required String package,
   }) async {
     return await NetworkGuard.execute(() async {
       try {
@@ -104,6 +129,7 @@ class VetSuppliesRepository {
           'p_price': price,
           'p_image_url': imageUrl,
           'p_phone': phone,
+          'p_package': package,
         });
 
         // حذف الكاش بعد الإضافة
@@ -124,6 +150,7 @@ class VetSuppliesRepository {
     required double price,
     required String imageUrl,
     required String phone,
+    required String package,
   }) async {
     return await NetworkGuard.execute(() async {
       try {
@@ -134,6 +161,7 @@ class VetSuppliesRepository {
           'p_price': price,
           'p_image_url': imageUrl,
           'p_phone': phone,
+          'p_package': package,
         });
 
         // حذف الكاش بعد التعديل
@@ -202,6 +230,7 @@ class VetSuppliesRepository {
               price,
               image_url,
               phone,
+              package,
               status,
               views_count,
               created_at,
@@ -261,6 +290,7 @@ class VetSuppliesRepository {
     required String description,
     required double price,
     required String phone,
+    required String package,
     required String status,
   }) async {
     return await NetworkGuard.execute(() async {
@@ -272,6 +302,7 @@ class VetSuppliesRepository {
               'description': description,
               'price': price,
               'phone': phone,
+              'package': package,
               'status': status,
             })
             .eq('id', id);

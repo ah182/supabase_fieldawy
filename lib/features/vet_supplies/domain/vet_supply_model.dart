@@ -7,6 +7,7 @@ class VetSupply {
   final double price;
   final String imageUrl;
   final String phone;
+  final String package;
   final String status;
   final int viewsCount;
   final DateTime createdAt;
@@ -21,6 +22,7 @@ class VetSupply {
     required this.price,
     required this.imageUrl,
     required this.phone,
+    required this.package,
     required this.status,
     required this.viewsCount,
     required this.createdAt,
@@ -37,6 +39,7 @@ class VetSupply {
       price: (json['price'] as num).toDouble(),
       imageUrl: json['image_url'] as String,
       phone: json['phone'] as String,
+      package: json['package'] as String? ?? 'Unit',
       status: json['status'] as String? ?? 'active',
       viewsCount: json['views_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -54,6 +57,7 @@ class VetSupply {
       'price': price,
       'image_url': imageUrl,
       'phone': phone,
+      'package': package,
       'status': status,
       'views_count': viewsCount,
       'created_at': createdAt.toIso8601String(),
@@ -70,6 +74,7 @@ class VetSupply {
     double? price,
     String? imageUrl,
     String? phone,
+    String? package,
     String? status,
     int? viewsCount,
     DateTime? createdAt,
@@ -84,6 +89,7 @@ class VetSupply {
       price: price ?? this.price,
       imageUrl: imageUrl ?? this.imageUrl,
       phone: phone ?? this.phone,
+      package: package ?? this.package,
       status: status ?? this.status,
       viewsCount: viewsCount ?? this.viewsCount,
       createdAt: createdAt ?? this.createdAt,

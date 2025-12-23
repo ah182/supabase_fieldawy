@@ -327,7 +327,9 @@
             "description": "الوصف",
             "active_principle": "المادة الفعالة: ",
             "undefined": "غير محدد",
-            "vet_eye_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye"
+            "vet_eye_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye",
+            "add_to_cart": "إضافة للسلة",
+            "remove_from_cart": "حذف من السلة"
         }
     },
     "select_governorates_and_centers": "اختر المحافظات والمراكز التي تغطيها",
@@ -747,6 +749,8 @@
             "description_too_short": "يجب أن يكون الوصف 10 أحرف على الأقل",
             "phone_label": "رقم الهاتف *",
             "phone_required": "الرجاء إدخال رقم الهاتف",
+            "package_label": "العبوة *",
+            "package_required": "الرجاء إدخال حجم أو نوع العبوة",
             "views": "مشاهدات",
             "crop_image_title": "قص صورة المستلزم"
         }

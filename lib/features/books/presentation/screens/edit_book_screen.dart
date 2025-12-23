@@ -473,7 +473,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               ),
               initialCountryCode: 'EG',
               languageCode: context.locale.languageCode,
-              disableLengthCheck: false,
+              disableLengthCheck: true,
               initialValue: _completePhoneNumber.replaceFirst('+', ''),
               onChanged: (phone) {
                 setState(() {

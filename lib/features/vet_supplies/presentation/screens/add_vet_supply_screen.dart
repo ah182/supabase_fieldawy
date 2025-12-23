@@ -35,6 +35,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
+  final _packageController = TextEditingController();
   final _phoneController = TextEditingController();
   String _completePhoneNumber = '';
 
@@ -43,6 +44,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _packageController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -218,6 +220,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
         price: price,
         imageUrl: imageUrl,
         phone: _completePhoneNumber,
+        package: _packageController.text,
       );
 
       if (mounted) {
@@ -368,6 +371,23 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Package Field
+            TextFormField(
+              controller: _packageController,
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.package_label'.tr(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.inventory),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'vet_supplies_feature.fields.package_required'.tr();
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
             // Description Field
             TextFormField(
               controller: _descriptionController,
@@ -398,6 +418,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
                 border: const OutlineInputBorder(),
               ),
               initialCountryCode: 'EG',
+              disableLengthCheck: true,
               onChanged: (phone) {
                 _completePhoneNumber = phone.completeNumber;
               },

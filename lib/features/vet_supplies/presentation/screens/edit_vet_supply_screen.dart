@@ -40,6 +40,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _priceController;
+  late TextEditingController _packageController;
   late TextEditingController _phoneController;
   String _completePhoneNumber = '';
   String _currentImageUrl = '';
@@ -50,6 +51,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
     _nameController = TextEditingController(text: widget.supply.name);
     _descriptionController = TextEditingController(text: widget.supply.description);
     _priceController = TextEditingController(text: widget.supply.price.toString());
+    _packageController = TextEditingController(text: widget.supply.package);
     
     // Extract phone number without country code for display
     final phone = widget.supply.phone;
@@ -65,6 +67,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _packageController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -238,6 +241,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
         price: price,
         imageUrl: imageUrl,
         phone: _completePhoneNumber,
+        package: _packageController.text,
       );
 
       if (mounted) {
@@ -410,6 +414,23 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Package Field
+            TextFormField(
+              controller: _packageController,
+              decoration: InputDecoration(
+                labelText: 'vet_supplies_feature.fields.package_label'.tr(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.inventory),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'vet_supplies_feature.fields.package_required'.tr();
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
             // Description Field
             TextFormField(
               controller: _descriptionController,
@@ -440,6 +461,7 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
                 border: const OutlineInputBorder(),
               ),
               initialCountryCode: 'EG',
+              disableLengthCheck: true,
               onChanged: (phone) {
                 _completePhoneNumber = phone.completeNumber;
               },

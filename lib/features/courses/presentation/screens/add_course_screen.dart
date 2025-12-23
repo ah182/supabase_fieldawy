@@ -397,7 +397,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               ),
               initialCountryCode: 'EG',
               languageCode: context.locale.languageCode,
-              disableLengthCheck: false,
+              disableLengthCheck: true,
               onChanged: (phone) {
                 setState(() {
                   _completePhoneNumber = phone.completeNumber;

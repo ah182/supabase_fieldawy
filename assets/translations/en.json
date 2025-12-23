@@ -328,7 +328,9 @@
         "description": "Description",
         "active_principle": "Active Principle: ",
         "undefined": "Undefined",
-        "vet_eye_note": "For more medical information about the product, please visit the Vet Eye application."
+        "vet_eye_note": "For more medical information about the product, please visit the Vet Eye application.",
+        "add_to_cart": "Add to Cart",
+        "remove_from_cart": "Remove from Cart"
       }
     },
   "orders": {
@@ -1192,6 +1194,8 @@
               "description_too_short": "Description must be at least 10 characters",
               "phone_label": "Phone Number *",
               "phone_required": "Please enter phone number",
+              "package_label": "Package *",
+              "package_required": "Please enter package size or type",
               "views": "Views",
               "crop_image_title": "Crop Supply Image"
           }

@@ -447,7 +447,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               ),
               initialCountryCode: 'EG',
               languageCode: context.locale.languageCode,
-              disableLengthCheck: false,
+              disableLengthCheck: true,
               onChanged: (phone) {
                 setState(() {
                   _completePhoneNumber = phone.completeNumber;

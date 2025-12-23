@@ -31,7 +31,10 @@ import "package:fieldawy_store/main.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:fieldawy_store/features/authentication/domain/user_model.dart";
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
-import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة الاستيراد
+import 'package:fieldawy_store/core/utils/network_guard.dart';
+import "package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart";
+import "package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart";
+import 'package:visibility_detector/visibility_detector.dart';
 
 
 /* -------------------------------------------------------------------------- */
@@ -91,6 +94,12 @@ final distributorProductsProvider =
   cache.set(cacheKey, data, duration: const Duration(minutes: 30));
 
   return products;
+});
+
+final distributorVetSuppliesProvider =
+    FutureProvider.family<List<VetSupply>, String>((ref, distributorId) async {
+  final repository = ref.watch(vetSuppliesRepositoryProvider);
+  return repository.getVetSuppliesByDistributorId(distributorId);
 });
 
 /* -------------------------------------------------------------------------- */
@@ -1013,10 +1022,321 @@ class DistributorProductsScreen extends HookConsumerWidget {
     );
   }
 
+  // Helper to convert VetSupply to ProductModel for Cart compatibility
+  ProductModel _convertSupplyToProduct(VetSupply supply, String distributorName) {
+    return ProductModel(
+      id: 'supply_${supply.id}', // Prefix to distinguish from regular products
+      name: supply.name,
+      description: supply.description,
+      activePrinciple: null, // Supplies don't have active principle
+      company: null,
+      action: null,
+      package: supply.package, // Use supply package
+      availablePackages: [supply.package],
+      imageUrl: supply.imageUrl,
+      price: supply.price,
+      distributorId: distributorName,
+      distributorUuid: supply.userId, // Map userId to distributorUuid
+      createdAt: supply.createdAt,
+      selectedPackage: supply.package,
+      isFavorite: false, 
+      views: supply.viewsCount,
+    );
+  }
+
+  void _showVetSupplyDetailsDialog(BuildContext context, WidgetRef ref, VetSupply supply, DistributorModel? distributor) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      child: CachedNetworkImage(
+                        imageUrl: supply.imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.5),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        supply.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.store_outlined, size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            _distributorName,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        supply.description,
+                        style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                      ),
+                      const SizedBox(height: 24),
+                      // Info Grid: Price, Views, and Package
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.price_change,
+                            label: 'vet_supplies_feature.fields.price'.tr(),
+                            value: '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
+                            color: Colors.green,
+                          ),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.inventory_2_outlined,
+                            label: 'vet_supplies_feature.fields.package_label'.tr().replaceAll(' *', ''),
+                            value: supply.package,
+                            color: Colors.blue,
+                          ),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.visibility,
+                            label: 'vet_supplies_feature.fields.views'.tr(),
+                            value: NumberFormatter.formatCompact(supply.viewsCount),
+                            color: colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Coverage Areas Section
+                      if (distributor != null && distributor.governorates != null && distributor.governorates!.isNotEmpty) ...[
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.map_outlined, color: colorScheme.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'distributors_feature.coverage_areas'.tr(),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: distributor.governorates!.map((gov) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              gov,
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )).toList(),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      Column(
+                        children: [
+                          // Contact Seller (WhatsApp)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _openSupplyWhatsApp(context, supply.phone);
+                              },
+                              icon: const Icon(FontAwesomeIcons.whatsapp, color: Colors.white),
+                              label: Text(
+                                'vet_supplies_feature.actions.contact_seller'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Add to Cart
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: Consumer(
+                              builder: (context, ref, child) {
+                                final order = ref.watch(orderProvider);
+                                final productModel = _convertSupplyToProduct(supply, _distributorName);
+                                final orderItemInCart = order.firstWhereOrNull((item) =>
+                                    item.product.id == productModel.id);
+                                final isProductInCart = orderItemInCart != null;
+
+                                return ElevatedButton.icon(
+                                  onPressed: () {
+                                    if (isProductInCart) {
+                                      ref.read(orderProvider.notifier).removeProduct(orderItemInCart);
+                                    } else {
+                                      ref.read(orderProvider.notifier).addProduct(productModel);
+                                    }
+                                    Navigator.pop(context); 
+                                  },
+                                  icon: Icon(
+                                    isProductInCart ? Icons.check : Icons.add_shopping_cart,
+                                    color: Colors.white
+                                  ),
+                                  label: Text(
+                                    isProductInCart 
+                                        ? 'distributors_feature.products_screen.remove_from_cart'.tr() 
+                                        : 'distributors_feature.products_screen.add_to_cart'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isProductInCart ? Colors.green : colorScheme.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSupplyWhatsApp(BuildContext context, String phone) async {
+    final url = Uri.parse('https://wa.me/20${phone.replaceAll(RegExp(r'[^\d]'), '')}');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('couldNotOpenWhatsApp'.tr())),
+        );
+      }
+    }
+  }
+
+  Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 100),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(label, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
     @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync =
         ref.watch(distributorProductsProvider(_distributorId));
+    final suppliesAsync = 
+        ref.watch(distributorVetSuppliesProvider(_distributorId));
     final distributorsAsync = ref.watch(distributorsProvider);
 
     // تشغيل عملية التطهير فور تحميل قائمة الموزعين لضمان تصحيح البيانات القديمة في السلة
@@ -1090,334 +1410,486 @@ class DistributorProductsScreen extends HookConsumerWidget {
       return false;
     }).toList();
 
-    return GestureDetector(
-      onTap: () {
-        if (!productsAsync.isLoading) {
-          searchFocusNode.unfocus();
-        }
-      },
-      child: Scaffold(
-        floatingActionButton: distributorOrderItems.isNotEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    FloatingActionButton.extended(
-                      heroTag: 'reset_order',
-                      onPressed: () => _showResetOrderDialog(context, ref, dbName: databaseDistributorName),
-                      label: Text('distributors_feature.products_screen.reset_order'.tr()),
-                      icon: const Icon(Icons.refresh_rounded),
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    FloatingActionButton.extended(
-                      heroTag: 'view_order',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DistributorOrderDetailsScreen(
-                              distributorName: _distributorName,
-                              products: distributorOrderItems,
-                            ),
-                          ),
-                        );
-                      },
-                      label: Text('distributors_feature.products_screen.view_order'.tr()),
-                      icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ],
-                ),
-              )
-            : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        appBar: AppBar(
-          title: Text('distributors_feature.products_screen.title'.tr(namedArgs: {'name': _distributorName})),
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.info_outline_rounded),
-              tooltip: 'distributors_feature.products_screen.details_tooltip'.tr(),
-              onPressed: () => _showDistributorDetails(context, ref),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight + 15.0),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8.0),
-                      child: TextField(
-                        controller: searchController,
-                        focusNode: searchFocusNode,
-                        onChanged: (value) {
-                          searchQuery.value = value;
-                          if (value.isNotEmpty) {
-                            productsAsync.whenData((products) {
-                              final filtered = products.where((product) {
-                                final productName = product.name.toLowerCase();
-                                return productName.startsWith(value.toLowerCase());
-                              }).toList();
-                              
-                              if (filtered.isNotEmpty) {
-                                final suggestion = filtered.first;
-                                ghostText.value = suggestion.name;
-                                fullSuggestion.value = suggestion.name;
-                              } else {
-                                ghostText.value = '';
-                                fullSuggestion.value = '';
-                              }
-                            });
-                          } else {
-                            ghostText.value = '';
-                            fullSuggestion.value = '';
-                          }
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'ابحث عن دواء، مادة فعالة...',
-                          hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(0.5),
-                              ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 25,
-                          ),
-                          suffixIcon: searchQuery.value.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: () {
-                                    searchController.clear();
-                                    searchQuery.value = '';
-                                    debouncedSearchQuery.value = '';
-                                    ghostText.value = '';
-                                    fullSuggestion.value = '';
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                    ),
-                    if (ghostText.value.isNotEmpty)
-                      Positioned(
-                        top: 19,
-                        right: 55,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (fullSuggestion.value.isNotEmpty) {
-                              searchController.text = fullSuggestion.value;
-                              searchQuery.value = fullSuggestion.value;
-                              debouncedSearchQuery.value = fullSuggestion.value;
-                              ghostText.value = '';
-                              fullSuggestion.value = '';
-                              searchFocusNode.unfocus();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .secondary
-                                      .withOpacity(0.1)
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              ghostText.value,
-                              style: TextStyle(
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.secondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-        body: RefreshIndicator(
-          onRefresh: () =>
-              ref.refresh(distributorProductsProvider(_distributorId).future),
-          child: productsAsync.when(
-            data: (products) {
-              if (products.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
+    return DefaultTabController(
+      length: 2,
+      child: GestureDetector(
+        onTap: () {
+          // Only unfocus if not loading
+          if (!productsAsync.isLoading && !suppliesAsync.isLoading) {
+            searchFocusNode.unfocus();
+          }
+        },
+        child: Scaffold(
+          floatingActionButton: distributorOrderItems.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 80,
-                        color:
-                            Theme.of(context).colorScheme.primary.withAlpha(128),
+                      FloatingActionButton.extended(
+                        heroTag: 'reset_order',
+                        onPressed: () => _showResetOrderDialog(context, ref, dbName: databaseDistributorName),
+                        label: Text('distributors_feature.products_screen.reset_order'.tr()),
+                        icon: const Icon(Icons.refresh_rounded),
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'distributors_feature.products_screen.no_products'.tr(),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withAlpha(179),
+                      FloatingActionButton.extended(
+                        heroTag: 'view_order',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DistributorOrderDetailsScreen(
+                                distributorName: _distributorName,
+                                products: distributorOrderItems,
+                              ),
                             ),
+                          );
+                        },
+                        label: Text('distributors_feature.products_screen.view_order'.tr()),
+                        icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ],
                   ),
-                );
-              }
-
-              List<ProductModel> filteredProducts;
-              if (debouncedSearchQuery.value.isEmpty) {
-                filteredProducts = products;
-              } else {
-                filteredProducts = products.where((product) {
-                  final query = debouncedSearchQuery.value.toLowerCase().trim();
-                  final productName = product.name.toLowerCase();
-                  final distributorName =
-                      (product.distributorId ?? '').toLowerCase();
-                  final activePrinciple =
-                      (product.activePrinciple ?? '').toLowerCase();
-                  final packageSize =
-                      (product.selectedPackage ?? '').toLowerCase();
-                  final company = (product.company ?? '').toLowerCase();
-                  final description = (product.description ?? '').toLowerCase();
-                  final action = (product.action ?? '').toLowerCase();
-
-                  bool highPriorityMatch = productName.contains(query) ||
-                      activePrinciple.contains(query) ||
-                      distributorName.contains(query);
-                  bool mediumPriorityMatch = company.contains(query) ||
-                      packageSize.contains(query) ||
-                      description.contains(query);
-                  bool lowPriorityMatch = action.contains(query);
-
-                  return highPriorityMatch ||
-                      mediumPriorityMatch ||
-                      lowPriorityMatch;
-                }).toList();
-
-                filteredProducts.sort((a, b) {
-                  final query = debouncedSearchQuery.value.toLowerCase().trim();
-                  int scoreA = _calculateSearchScore(a, query);
-                  int scoreB = _calculateSearchScore(b, query);
-                  return scoreB.compareTo(scoreA);
-                });
-              }
-
-              return Column(
+                )
+              : null,
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          appBar: AppBar(
+            title: Text('distributors_feature.products_screen.title'.tr(namedArgs: {'name': _distributorName})),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.info_outline_rounded),
+                tooltip: 'distributors_feature.products_screen.details_tooltip'.tr(),
+                onPressed: () => _showDistributorDetails(context, ref),
+              ),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight + 60.0 + 48.0),
+              child: Column(
                 children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 8, top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min, // Let the row be as small as its children
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
+                  Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: TextField(
+                          controller: searchController,
+                          focusNode: searchFocusNode,
+                          onChanged: (value) {
+                            searchQuery.value = value;
+                            if (value.isNotEmpty) {
+                              productsAsync.whenData((products) {
+                                final filtered = products.where((product) {
+                                  final productName = product.name.toLowerCase();
+                                  return productName.startsWith(value.toLowerCase());
+                                }).toList();
+                                
+                                if (filtered.isNotEmpty) {
+                                  final suggestion = filtered.first;
+                                  ghostText.value = suggestion.name;
+                                  fullSuggestion.value = suggestion.name;
+                                } else {
+                                  ghostText.value = '';
+                                  fullSuggestion.value = '';
+                                }
+                              });
+                            } else {
+                              ghostText.value = '';
+                              fullSuggestion.value = '';
+                            }
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'ابحث عن دواء، مادة فعالة...',
+                            hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.5),
+                                ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 25,
+                            ),
+                            suffixIcon: searchQuery.value.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 20),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      searchQuery.value = '';
+                                      debouncedSearchQuery.value = '';
+                                      ghostText.value = '';
+                                      fullSuggestion.value = '';
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'distributors_feature.products_screen.products_count'.tr(namedArgs: {'count': filteredProducts.length.toString()}),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      if (ghostText.value.isNotEmpty)
+                        Positioned(
+                          top: 19,
+                          right: 55,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (fullSuggestion.value.isNotEmpty) {
+                                searchController.text = fullSuggestion.value;
+                                searchController.selection = TextSelection.fromPosition(TextPosition(offset: fullSuggestion.value.length));
+                                searchQuery.value = fullSuggestion.value;
+                                debouncedSearchQuery.value = fullSuggestion.value;
+                                ghostText.value = '';
+                                fullSuggestion.value = '';
+                                searchFocusNode.unfocus();
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .secondary
+                                        .withOpacity(0.1)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                ghostText.value,
+                                style: TextStyle(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.secondary,
                                   fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                    ],
                   ),
-                  Expanded(
-                    child:
-                        filteredProducts.isEmpty && debouncedSearchQuery.value.isNotEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.search_off_outlined,
-                                      size: 60,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withAlpha(128),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'distributors_feature.products_screen.no_search_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
+                  TabBar(
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                    indicatorColor: Theme.of(context).colorScheme.primary,
+                    tabs: const [
+                      Tab(text: 'الادوية'),
+                      Tab(text: 'المستلزمات'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          body: TabBarView(
+            children: [
+              // 1. Medicines Tab
+              RefreshIndicator(
+                onRefresh: () =>
+                    ref.refresh(distributorProductsProvider(_distributorId).future),
+                child: productsAsync.when(
+                  data: (products) {
+                    if (products.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 80,
+                              color:
+                                  Theme.of(context).colorScheme.primary.withAlpha(128),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'distributors_feature.products_screen.no_products'.tr(),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withAlpha(179),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    List<ProductModel> filteredProducts;
+                    if (debouncedSearchQuery.value.isEmpty) {
+                      filteredProducts = products;
+                    } else {
+                      filteredProducts = products.where((product) {
+                        final query = debouncedSearchQuery.value.toLowerCase().trim();
+                        final productName = product.name.toLowerCase();
+                        final distributorName =
+                            (product.distributorId ?? '').toLowerCase();
+                        final activePrinciple =
+                            (product.activePrinciple ?? '').toLowerCase();
+                        final packageSize =
+                            (product.selectedPackage ?? '').toLowerCase();
+                        final company = (product.company ?? '').toLowerCase();
+                        final description = (product.description ?? '').toLowerCase();
+                        final action = (product.action ?? '').toLowerCase();
+
+                        bool highPriorityMatch = productName.contains(query) ||
+                            activePrinciple.contains(query) ||
+                            distributorName.contains(query);
+                        bool mediumPriorityMatch = company.contains(query) ||
+                            packageSize.contains(query) ||
+                            description.contains(query);
+                        bool lowPriorityMatch = action.contains(query);
+
+                        return highPriorityMatch ||
+                            mediumPriorityMatch ||
+                            lowPriorityMatch;
+                      }).toList();
+
+                      filteredProducts.sort((a, b) {
+                        final query = debouncedSearchQuery.value.toLowerCase().trim();
+                        int scoreA = _calculateSearchScore(a, query);
+                        int scoreB = _calculateSearchScore(b, query);
+                        return scoreB.compareTo(scoreA);
+                      });
+                    }
+
+                    return Column(
+                      children: [
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8, top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 18,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'distributors_feature.products_screen.products_count'.tr(namedArgs: {'count': filteredProducts.length.toString()}),
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child:
+                              filteredProducts.isEmpty && debouncedSearchQuery.value.isNotEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.search_off_outlined,
+                                            size: 60,
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .onSurface
-                                                .withAlpha(179),
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'distributors_feature.products_screen.search_tips'.tr(),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
+                                                .primary
                                                 .withAlpha(128),
                                           ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OutlinedButton.icon(
-                                      onPressed: () {
-                                        searchController.clear();
-                                        searchQuery.value = '';
-                                        debouncedSearchQuery.value = '';
-                                        ghostText.value = '';
-                                        fullSuggestion.value = '';
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'distributors_feature.products_screen.no_search_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withAlpha(179),
+                                                ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'distributors_feature.products_screen.search_tips'.tr(),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withAlpha(128),
+                                                ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          OutlinedButton.icon(
+                                            onPressed: () {
+                                              searchController.clear();
+                                              searchQuery.value = '';
+                                              debouncedSearchQuery.value = '';
+                                              ghostText.value = '';
+                                              fullSuggestion.value = '';
+                                            },
+                                            icon: const Icon(Icons.clear, size: 18),
+                                            label: Text('distributors_feature.products_screen.clear_search'.tr()),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : GridView.builder(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12.0, vertical: 1.0),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 8.0,
+                                        mainAxisSpacing: 8.0,
+                                        childAspectRatio: 0.75,
+                                      ),
+                                      itemCount: filteredProducts.length,
+                                      itemBuilder: (context, index) {
+                                        final product = filteredProducts[index];
+
+                                        return _buildProductCard(context, ref, product,
+                                            debouncedSearchQuery.value, _distributorName);
                                       },
-                                      icon: const Icon(Icons.clear, size: 18),
-                                      label: Text('distributors_feature.products_screen.clear_search'.tr()),
                                     ),
-                                  ],
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => ListView.builder(
+                    itemCount: 6,
+                    padding: const EdgeInsets.all(16.0),
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: ProductCardShimmer(),
+                      );
+                    },
+                  ),
+                  error: (error, stack) => Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 60,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Text('distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            ref.invalidate(distributorProductsProvider(_distributorId));
+                          },
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: Text('distributors_feature.retry'.tr()),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 2. Supplies Tab
+              RefreshIndicator(
+                onRefresh: () =>
+                    ref.refresh(distributorVetSuppliesProvider(_distributorId).future),
+                child: suppliesAsync.when(
+                  data: (supplies) {
+                    if (supplies.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.medical_services_outlined,
+                              size: 80,
+                              color: Theme.of(context).colorScheme.primary.withAlpha(128),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'لا توجد مستلزمات حالياً',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withAlpha(179),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    List<VetSupply> filteredSupplies;
+                    if (debouncedSearchQuery.value.isEmpty) {
+                      filteredSupplies = supplies;
+                    } else {
+                      filteredSupplies = supplies.where((supply) {
+                        final query = debouncedSearchQuery.value.toLowerCase().trim();
+                        return supply.name.toLowerCase().contains(query) ||
+                               supply.description.toLowerCase().contains(query);
+                      }).toList();
+                    }
+
+                    return Column(
+                      children: [
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8, top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.medical_services_outlined,
+                                  size: 18,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'عدد المستلزمات: ${filteredSupplies.length}',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: filteredSupplies.isEmpty && debouncedSearchQuery.value.isNotEmpty
+                            ? Center(
+                                child: Text('لا توجد نتائج بحث: ${debouncedSearchQuery.value}'),
                               )
                             : GridView.builder(
                                 padding: const EdgeInsets.symmetric(
@@ -1425,56 +1897,44 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                 gridDelegate:
                                     const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
-                                  crossAxisSpacing: 8.0,
-                                  mainAxisSpacing: 8.0,
-                                  childAspectRatio: 0.75,
+                                  crossAxisSpacing: 12.0,
+                                  mainAxisSpacing: 12.0,
+                                  childAspectRatio: 0.62,
                                 ),
-                                itemCount: filteredProducts.length,
+                                itemCount: filteredSupplies.length,
                                 itemBuilder: (context, index) {
-                                  final product = filteredProducts[index];
-
-                                  return _buildProductCard(context, ref, product,
-                                      debouncedSearchQuery.value, _distributorName);
+                                  final supply = filteredSupplies[index];
+                                  // Get current distributor from data for coverage areas
+                                  final currentDist = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == _distributorId) ?? distributor;
+                                  
+                                  return _VetSupplyCard(
+                                    supply: supply,
+                                    distributorName: _distributorName,
+                                    distributorId: _distributorId,
+                                    onTap: () => _showVetSupplyDetailsDialog(context, ref, supply, currentDist),
+                                  );
                                 },
                               ),
-                  ),
-                ],
-              );
-            },
-            loading: () => ListView.builder(
-              itemCount: 6,
-              padding: const EdgeInsets.all(16.0),
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: ProductCardShimmer(),
-                );
-              },
-            ),
-            error: (error, stack) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 60,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text('distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      ref.invalidate(distributorProductsProvider(_distributorId));
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => ListView.builder(
+                    itemCount: 6,
+                    padding: const EdgeInsets.all(16.0),
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: ProductCardShimmer(),
+                      );
                     },
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text('distributors_feature.retry'.tr()),
                   ),
-                ],
+                  error: (error, stack) => Center(
+                    child: Text('Error: $error'),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1751,6 +2211,191 @@ class DistributorProductsScreen extends HookConsumerWidget {
                           ),
                         ),
                       ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VetSupplyCard extends ConsumerWidget {
+  final VetSupply supply;
+  final String distributorName;
+  final String distributorId;
+  final VoidCallback? onTap;
+
+  const _VetSupplyCard({
+    required this.supply,
+    required this.distributorName,
+    required this.distributorId,
+    this.onTap,
+  });
+
+  ProductModel _convertSupplyToProduct(VetSupply supply, String distributorName) {
+    return ProductModel(
+      id: 'supply_${supply.id}',
+      name: supply.name,
+      description: supply.description,
+      activePrinciple: null,
+      company: null,
+      action: null,
+      package: supply.package,
+      availablePackages: [supply.package],
+      imageUrl: supply.imageUrl,
+      price: supply.price,
+      distributorId: distributorName,
+      distributorUuid: supply.userId,
+      createdAt: supply.createdAt,
+      selectedPackage: supply.package,
+      isFavorite: false, 
+      views: supply.viewsCount,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final order = ref.watch(orderProvider);
+    final productModel = _convertSupplyToProduct(supply, distributorName);
+    
+    final orderItemInCart = order.firstWhereOrNull((item) =>
+        item.product.id == productModel.id);
+    final isProductInCart = orderItemInCart != null;
+    
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Stack(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: supply.imageUrl,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: isProductInCart
+                            ? Colors.green.withAlpha(230)
+                            : Theme.of(context).colorScheme.primary.withAlpha(230),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(30),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(isProductInCart ? Icons.check : Icons.add, color: Colors.white),
+                        iconSize: 18,
+                        onPressed: () {
+                          if (isProductInCart) {
+                            ref.read(orderProvider.notifier).removeProduct(orderItemInCart);
+                          } else {
+                            ref.read(orderProvider.notifier).addProduct(productModel);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      supply.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (distributorName.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.store_outlined, size: 12, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              distributorName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.visibility_outlined,
+                                size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              NumberFormatter.formatCompact(supply.viewsCount),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

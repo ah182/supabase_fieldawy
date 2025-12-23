@@ -1877,6 +1877,7 @@ class _VetSuppliesDataSource extends DataTableSource {
     final descController = TextEditingController(text: supply.description);
     final priceController = TextEditingController(text: supply.price.toString());
     final phoneController = TextEditingController(text: supply.phone);
+    final packageController = TextEditingController(text: supply.package);
     String selectedStatus = supply.status;
 
     showDialog(
@@ -1905,6 +1906,11 @@ class _VetSuppliesDataSource extends DataTableSource {
                     controller: priceController,
                     decoration: const InputDecoration(labelText: 'Price (EGP)'),
                     keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: packageController,
+                    decoration: const InputDecoration(labelText: 'Package'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -1943,8 +1949,9 @@ class _VetSuppliesDataSource extends DataTableSource {
                 final desc = descController.text.trim();
                 final priceText = priceController.text.trim();
                 final phone = phoneController.text.trim();
+                final package = packageController.text.trim();
 
-                if (name.isEmpty || desc.isEmpty || priceText.isEmpty || phone.isEmpty) {
+                if (name.isEmpty || desc.isEmpty || priceText.isEmpty || phone.isEmpty || package.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please fill all fields')),
                   );
@@ -1967,6 +1974,7 @@ class _VetSuppliesDataSource extends DataTableSource {
                     description: desc,
                     price: price,
                     phone: phone,
+                    package: package,
                     status: selectedStatus,
                   );
                   
