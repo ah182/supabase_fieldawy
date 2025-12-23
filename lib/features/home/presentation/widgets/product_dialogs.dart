@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/surgical_tools/presentation/screens/surgical_tool_details_screen.dart';
+import 'package:fieldawy_store/features/surgical_tools/presentation/screens/distributor_surgical_tools_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1559,7 +1560,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                                   const SizedBox(width: 8),
                                 ],
                                 GestureDetector(
-                                  onTap: () async {
+                                  onTap: () {
                                     if (_role == 'doctor') {
                                       showDialog(
                                         context: context,
@@ -1577,23 +1578,14 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                                       return;
                                     }
                                     
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (context) => const Center(child: CircularProgressIndicator()),
-                                    );
-                                    await Future.delayed(const Duration(milliseconds: 400));
-                                    if (!context.mounted) return;
-                                    Navigator.of(context).pop();
-                                    Navigator.of(context).pop();
-                                    
-                                    Navigator.of(context).pushAndRemoveUntil(
+                                    Navigator.push(
+                                      context,
                                       MaterialPageRoute(
-                                        builder: (context) => DrawerWrapper(
-                                          distributorId: currentDistributorName,
+                                        builder: (context) => DistributorSurgicalToolsScreen(
+                                          distributorId: widget.tool.distributorUuid!,
+                                          distributorName: currentDistributorName,
                                         ),
                                       ),
-                                      (route) => false,
                                     );
                                   },
                                   child: Container(
@@ -1610,15 +1602,24 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
                                         ),
                                       ],
                                     ),
-                                    child: Text(
-                                      currentDistributorName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.auto_stories_rounded, size: 16, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            currentDistributorName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),

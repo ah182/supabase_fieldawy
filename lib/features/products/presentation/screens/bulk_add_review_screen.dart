@@ -578,22 +578,18 @@ class _ReviewItemCardState extends State<_ReviewItemCard> {
   String? _selectedPackageType;
 
   final List<String> _packageTypes = [
-    'tab',
-    'caps',
-    'syrup',
-    'susp',
-    'vial',
-    'amp',
     'bottle',
+    'vial',
+    'tab',
+    'amp',
     'sachet',
+    'strip',
     'cream',
     'gel',
-    'oint',
     'spray',
     'drops',
-    'supp',
-    'eff',
-    'piece',
+    'syringe',
+    'powder',
   ];
 
   @override

@@ -80,6 +80,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     'gel',
     'spray',
     'drops',
+    'syringe',
+    'powder',
   ];
   String? _selectedPackageType;
   final List<String> _statusKeys = ['جديد', 'مستعمل', 'كسر زيرو'];
