@@ -885,7 +885,7 @@
         "unexpected_referral_error": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً."
     },
     "books_feature": {
-        "title": "كتبي",
+        "title": "الكتب",
         "no_books": "لا توجد كتب بعد",
         "add_first_book": "اضغط على زر + في الأسفل لإضافة أول كتاب لك",
         "error_connection": "حدث خطأ في الاتصال",
@@ -939,7 +939,7 @@
         "add_success": "تم إضافة الكتاب بنجاح"
     },
     "courses_feature": {
-        "title": "كورساتي",
+        "title": "الكورسات",
         "add_course_tooltip": "إضافة كورس",
         "no_courses": "لا توجد كورسات بعد",
         "add_first_course": "اضغط على زر + لإضافة أول كورس لك",

@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
 import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
@@ -10,10 +12,14 @@ import 'package:fieldawy_store/widgets/product_card.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
+import 'package:fieldawy_store/features/books/presentation/screens/user_books_screen.dart';
+import 'package:fieldawy_store/features/courses/presentation/screens/user_courses_screen.dart';
+
+import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'product_dialogs.dart';
 
 // ===================================================================
@@ -117,6 +123,11 @@ class CoursesTab extends ConsumerWidget {
   static void _showCourseDialog(BuildContext context, WidgetRef ref, dynamic course) {
     final theme = Theme.of(context);
     
+    // جلب بيانات المالك للكتالوج
+    final distributorsAsync = ref.read(distributorsProvider);
+    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == course.userId);
+    final ownerName = owner?.displayName ?? course.userName ?? 'مستخدم';
+
     // حساب المشاهدة فور فتح الديالوج
     ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
     
@@ -172,6 +183,47 @@ class CoursesTab extends ConsumerWidget {
                         course.title,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // زر الكتالوج
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserCoursesScreen(
+                              userId: course.userId,
+                              userName: ownerName,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_stories_rounded, size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                ownerName,
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -429,6 +481,11 @@ class BooksTab extends ConsumerWidget {
   static void _showBookDialog(BuildContext context, WidgetRef ref, dynamic book) {
     final theme = Theme.of(context);
     
+    // جلب بيانات المالك للكتالوج
+    final distributorsAsync = ref.read(distributorsProvider);
+    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == book.userId);
+    final ownerName = owner?.displayName ?? book.userName ?? 'مستخدم';
+
     // حساب المشاهدة فور فتح الديالوج
     ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
     
@@ -484,6 +541,47 @@ class BooksTab extends ConsumerWidget {
                         book.name,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // زر الكتالوج
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserBooksScreen(
+                              userId: book.userId,
+                              userName: ownerName,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_stories_rounded, size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                ownerName,
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),

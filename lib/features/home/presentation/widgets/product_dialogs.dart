@@ -1,5 +1,7 @@
 // ignore_for_file: unused_import
 
+import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
+import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:fieldawy_store/widgets/user_details_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,8 @@ import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/surgical_tools/presentation/screens/surgical_tool_details_screen.dart';
 import 'package:fieldawy_store/features/surgical_tools/presentation/screens/distributor_surgical_tools_screen.dart';
+import 'package:fieldawy_store/features/books/presentation/screens/user_books_screen.dart';
+import 'package:fieldawy_store/features/courses/presentation/screens/user_courses_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,8 +20,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
+import 'package:fieldawy_store/features/books/domain/book_model.dart';
+import 'package:fieldawy_store/features/courses/domain/course_model.dart';
+import 'package:fieldawy_store/features/books/application/books_provider.dart';
+import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
+
 import 'package:collection/collection.dart';
 import 'dart:ui' as ui;
+// ignore: unnecessary_import
 import 'package:intl/intl.dart';
 
 /// Dialog لعرض تفاصيل منتج عادي
@@ -2043,6 +2053,434 @@ class _OfferDialogState extends State<_OfferDialog> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               BOOKS DIALOG                                 */
+/* -------------------------------------------------------------------------- */
+
+Future<void> showBookDialog(BuildContext context, Book book) {
+  return showDialog(
+    context: context,
+    builder: (context) => _BookDialog(book: book),
+  );
+}
+
+class _BookDialog extends ConsumerStatefulWidget {
+  final Book book;
+  const _BookDialog({required this.book});
+
+  @override
+  ConsumerState<_BookDialog> createState() => _BookDialogState();
+}
+
+class _BookDialogState extends ConsumerState<_BookDialog> {
+  String? _fetchedName;
+  bool _isLoadingName = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwnerName();
+  }
+
+  Future<void> _loadOwnerName() async {
+    if (widget.book.userName != null && widget.book.userName != 'مستخدم') {
+      return;
+    }
+
+    setState(() => _isLoadingName = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', widget.book.userId)
+          .maybeSingle();
+
+      if (response != null && response['display_name'] != null) {
+        setState(() {
+          _fetchedName = response['display_name'].toString();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading owner name: $e');
+    } finally {
+      setState(() => _isLoadingName = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    final distributorsAsync = ref.watch(distributorsProvider);
+    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == widget.book.userId);
+    final ownerName = owner?.displayName ?? _fetchedName ?? widget.book.userName ?? 'مستخدم';
+
+    // Increment views
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(allBooksNotifierProvider.notifier).incrementViews(widget.book.id);
+    });
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.85,
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: CachedNetworkImage(
+                      imageUrl: widget.book.imageUrl,
+                      height: 250,
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: IconButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.5), foregroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.book.name, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => UserBooksScreen(userId: widget.book.userId, userName: ownerName)));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.primary.withOpacity(0.2))),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_stories_rounded, size: 16, color: colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: _isLoadingName 
+                                ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Text(ownerName, style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.person_outline, size: 18, color: theme.textTheme.bodySmall?.color),
+                        const SizedBox(width: 8),
+                        Text(widget.book.author, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(widget.book.description, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        _buildStatChip(context, Icons.price_change, 'books_feature.price'.tr(), '${NumberFormatter.formatCompact(widget.book.price)} ${'products.currency'.tr()}', Colors.green),
+                        const SizedBox(width: 12),
+                        _buildStatChip(context, Icons.visibility, 'books_feature.views'.tr(), NumberFormatter.formatCompact(widget.book.views), colorScheme.primary),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => BookDetailsScreen(book: widget.book),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.info_outline_rounded),
+                            label: Text('books_feature.book_details'.tr()),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              final url = Uri.parse('https://wa.me/${widget.book.phone}');
+                              launchUrl(url, mode: LaunchMode.externalApplication);
+                            },
+                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                            label: Text('books_feature.contact'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(BuildContext context, IconData icon, String label, String value, Color color) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              COURSES DIALOG                                */
+/* -------------------------------------------------------------------------- */
+
+Future<void> showCourseDialog(BuildContext context, Course course) {
+  return showDialog(
+    context: context,
+    builder: (context) => _CourseDialog(course: course),
+  );
+}
+
+class _CourseDialog extends ConsumerStatefulWidget {
+  final Course course;
+  const _CourseDialog({required this.course});
+
+  @override
+  ConsumerState<_CourseDialog> createState() => _CourseDialogState();
+}
+
+class _CourseDialogState extends ConsumerState<_CourseDialog> {
+  String? _fetchedName;
+  bool _isLoadingName = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwnerName();
+  }
+
+  Future<void> _loadOwnerName() async {
+    if (widget.course.userName != null && widget.course.userName != 'مستخدم') {
+      return;
+    }
+
+    setState(() => _isLoadingName = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', widget.course.userId)
+          .maybeSingle();
+
+      if (response != null && response['display_name'] != null) {
+        setState(() {
+          _fetchedName = response['display_name'].toString();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading owner name: $e');
+    } finally {
+      setState(() => _isLoadingName = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    final distributorsAsync = ref.watch(distributorsProvider);
+    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == widget.course.userId);
+    final ownerName = owner?.displayName ?? _fetchedName ?? widget.course.userName ?? 'مستخدم';
+
+    // Increment views
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(allCoursesNotifierProvider.notifier).incrementViews(widget.course.id);
+    });
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.85,
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: CachedNetworkImage(
+                      imageUrl: widget.course.imageUrl,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: IconButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.5), foregroundColor: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.course.title, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => UserCoursesScreen(userId: widget.course.userId, userName: ownerName)));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.primary.withOpacity(0.2))),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_stories_rounded, size: 16, color: colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: _isLoadingName 
+                                ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Text(ownerName, style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(widget.course.description, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        _buildStatChip(context, Icons.price_change, 'courses_feature.price'.tr(), '${NumberFormatter.formatCompact(widget.course.price)} ${'products.currency'.tr()}', Colors.green),
+                        const SizedBox(width: 12),
+                        _buildStatChip(context, Icons.visibility, 'courses_feature.views'.tr(), NumberFormatter.formatCompact(widget.course.views), colorScheme.primary),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => CourseDetailsScreen(course: widget.course),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.info_outline_rounded),
+                            label: Text('courses_feature.course_details'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              final url = Uri.parse('https://wa.me/${widget.course.phone}');
+                              launchUrl(url, mode: LaunchMode.externalApplication);
+                            },
+                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                            label: Text('courses_feature.contact'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(BuildContext context, IconData icon, String label, String value, Color color) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 2),
+            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ),

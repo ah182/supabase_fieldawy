@@ -78,6 +78,50 @@ class BooksRepository {
     });
   }
 
+  Future<List<Book>> getUserBooks(String userId) async {
+    return await _cache.staleWhileRevalidate<List<Book>>(
+      key: 'user_books_$userId',
+      duration: CacheDurations.medium,
+      staleTime: const Duration(minutes: 10),
+      fetchFromNetwork: () => _fetchUserBooks(userId),
+      fromCache: (data) {
+        final List<dynamic> jsonList = data as List<dynamic>;
+        return jsonList.map((json) => Book.fromJson(Map<String, dynamic>.from(json))).toList();
+      },
+    );
+  }
+
+  Future<List<Book>> _fetchUserBooks(String userId) async {
+    return await NetworkGuard.execute(() async {
+      try {
+        print('🔍 Fetching books from table for userId: $userId');
+        final response = await _supabase
+            .from('vet_books')
+            .select('*, users(display_name)')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
+        
+        final List<dynamic> data = response as List<dynamic>;
+        print('✅ Success: Found ${data.length} books');
+        
+        final books = data.map((json) {
+          final bookMap = Map<String, dynamic>.from(json);
+          // استخراج اسم المستخدم من العلاقة
+          if (json['users'] != null) {
+            bookMap['user_name'] = json['users']['display_name'];
+          }
+          return Book.fromJson(bookMap);
+        }).toList();
+
+        _cache.set('user_books_$userId', data, duration: CacheDurations.medium);
+        return books;
+      } catch (e) {
+        print('❌ Table Query Error (vet_books): $e');
+        throw Exception('Failed to load user books: $e');
+      }
+    });
+  }
+
   /// Create a new book
   Future<String> createBook({
     required String name,

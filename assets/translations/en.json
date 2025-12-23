@@ -436,7 +436,7 @@
             },      "alert_title": "Alert",
       "success_title": "Success",
       "error_title": "Error",    "books_feature": {
-        "title": "My Books",
+        "title": "Books",
         "no_books": "No books yet",
         "add_first_book": "Press the + button below to add your first book",
         "error_connection": "Connection error",
@@ -490,7 +490,7 @@
         "add_success": "Book added successfully"
     },
     "courses_feature": {
-        "title": "My Courses",
+        "title": "Courses",
         "add_course_tooltip": "Add Course",
         "no_courses": "No courses yet",
         "add_first_course": "Press the + button to add your first course",
