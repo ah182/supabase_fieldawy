@@ -1,11 +1,14 @@
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/tools_catalog_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/edit_surgical_tool_screen.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+// ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -162,7 +165,32 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
     }
   }
 
-  void _showAddDialog(BuildContext context) {
+  void _showAddDialog(BuildContext context, int currentToolsCount, String? userRole) {
+    // التحقق من القيد للأطباء (حد أقصى 3 أدوات)
+    if (userRole == 'doctor' && currentToolsCount >= 3) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.blue),
+              const SizedBox(width: 10),
+              Text('تنبيه'),
+            ],
+          ),
+          content: const Text('كطبيب، يمكنك إضافة ٣ أدوات جراحية بحد أقصى في حسابك اذا كنت تريد اضافة المزيد انشئ حساب موزع.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('حسناً'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -253,7 +281,10 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authServiceProvider).currentUser?.id;
+    final userDataAsync = ref.watch(userDataProvider);
+    final user = userDataAsync.asData?.value;
+    final userId = user?.id;
+    final userRole = user?.role;
     final theme = Theme.of(context);
     
     if (userId == null) {
@@ -267,172 +298,177 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primaryContainer,
-                  ],
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: ref.read(productRepositoryProvider).getMySurgicalTools(userId),
+      builder: (context, snapshot) {
+        final tools = snapshot.data ?? [];
+        final toolsCount = tools.length;
+
+        return Scaffold(
+          backgroundColor: theme.colorScheme.surface,
+          extendBodyBehindAppBar: false,
+          appBar: AppBar(
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.primaryContainer,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.medical_services_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.medical_services_rounded,
-                color: Colors.white,
-                size: 20,
+                const SizedBox(width: 12),
+                Text('surgical_tools_feature.my_tools_title'.tr()),
+              ],
+            ),
+            centerTitle: true,
+            backgroundColor: theme.colorScheme.surface,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: 'add_surgical_tool_fab',
+            onPressed: () => _showAddDialog(context, toolsCount, userRole),
+            icon: const Icon(Icons.add_rounded, size: 24),
+            label: Text(
+              'surgical_tools_feature.actions.add_tool_short'.tr(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
             ),
-            const SizedBox(width: 12),
-            Text('surgical_tools_feature.my_tools_title'.tr()),
-          ],
-        ),
-        centerTitle: true,
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'add_surgical_tool_fab',
-        onPressed: () => _showAddDialog(context),
-        icon: const Icon(Icons.add_rounded, size: 24),
-        label: Text(
-          'surgical_tools_feature.actions.add_tool_short'.tr(),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+            elevation: 4,
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
           ),
-        ),
-        elevation: 4,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshTools,
-        child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: ref.read(productRepositoryProvider).getMySurgicalTools(userId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting ||
-                _isLoading) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: theme.colorScheme.primary,
+          body: RefreshIndicator(
+            onRefresh: _refreshTools,
+            child: Builder(
+              builder: (context) {
+                if (snapshot.connectionState == ConnectionState.waiting ||
+                    _isLoading) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'surgical_tools_feature.messages.loading_tools'.tr(),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'surgical_tools_feature.messages.loading_tools'.tr(),
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return _ErrorState(
+                    error: snapshot.error.toString(),
+                    onRetry: _refreshTools,
+                  );
+                }
+
+                if (tools.isEmpty) {
+                  return _EmptyState(onAddPressed: () => _showAddDialog(context, 0, userRole));
+                }
+
+                return CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                        child: _StatsCard(toolsCount: toolsCount),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final tool = tools[index];
+                            final surgicalTool =
+                                tool['surgical_tools'] as Map<String, dynamic>?;
+
+                            final id = tool['id'] ?? '';
+                            final toolName =
+                                surgicalTool?['tool_name'] ?? 'Unknown';
+                            final company = surgicalTool?['company'];
+                            final imageUrl = surgicalTool?['image_url'];
+                            final description = tool['description'] ?? '';
+                            final price =
+                                (tool['price'] as num?)?.toDouble() ?? 0.0;
+                            final status = tool['status'] ?? 'جديد';
+
+                            // Translate status for display
+                            String displayStatus = status;
+                            if (status == 'جديد') displayStatus = 'surgical_tools_feature.status.new'.tr();
+                            else if (status == 'مستعمل') displayStatus = 'surgical_tools_feature.status.used'.tr();
+                            else if (status == 'كسر زيرو') displayStatus = 'surgical_tools_feature.status.like_new'.tr();
+
+                            return _ModernToolCard(
+                              id: id,
+                              toolName: toolName,
+                              company: company,
+                              imageUrl: imageUrl,
+                              description: description,
+                              price: price,
+                              status: status,
+                              displayStatus: displayStatus,
+                              index: index,
+                              onDelete: () => _deleteTool(context, id, toolName),
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditSurgicalToolScreen(
+                                      id: id,
+                                      toolName: toolName,
+                                      company: company,
+                                      imageUrl: imageUrl,
+                                      initialDescription: description,
+                                      initialPrice: price,
+                                      initialStatus: status,
+                                    ),
+                                  ),
+                                );
+                                // إذا تم التحديث بنجاح، نعيد تحميل القائمة
+                                if (result == true) {
+                                  setState(() {});
+                                }
+                              },
+                            );
+                          },
+                          childCount: toolsCount,
+                        ),
                       ),
                     ),
                   ],
-                ),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return _ErrorState(
-                error: snapshot.error.toString(),
-                onRetry: _refreshTools,
-              );
-            }
-
-            final tools = snapshot.data ?? [];
-
-            if (tools.isEmpty) {
-              return _EmptyState(onAddPressed: () => _showAddDialog(context));
-            }
-
-            return CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                    child: _StatsCard(toolsCount: tools.length),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final tool = tools[index];
-                        final surgicalTool =
-                            tool['surgical_tools'] as Map<String, dynamic>?;
-
-                        final id = tool['id'] ?? '';
-                        final toolName =
-                            surgicalTool?['tool_name'] ?? 'Unknown';
-                        final company = surgicalTool?['company'];
-                        final imageUrl = surgicalTool?['image_url'];
-                        final description = tool['description'] ?? '';
-                        final price =
-                            (tool['price'] as num?)?.toDouble() ?? 0.0;
-                        final status = tool['status'] ?? 'جديد';
-
-                        // Translate status for display
-                        String displayStatus = status;
-                        if (status == 'جديد') displayStatus = 'surgical_tools_feature.status.new'.tr();
-                        else if (status == 'مستعمل') displayStatus = 'surgical_tools_feature.status.used'.tr();
-                        else if (status == 'كسر زيرو') displayStatus = 'surgical_tools_feature.status.like_new'.tr();
-
-                        return _ModernToolCard(
-                          id: id,
-                          toolName: toolName,
-                          company: company,
-                          imageUrl: imageUrl,
-                          description: description,
-                          price: price,
-                          status: status,
-                          displayStatus: displayStatus,
-                          index: index,
-                          onDelete: () => _deleteTool(context, id, toolName),
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EditSurgicalToolScreen(
-                                  id: id,
-                                  toolName: toolName,
-                                  company: company,
-                                  imageUrl: imageUrl,
-                                  initialDescription: description,
-                                  initialPrice: price,
-                                  initialStatus: status,
-                                ),
-                              ),
-                            );
-                            // إذا تم التحديث بنجاح، نعيد تحميل القائمة
-                            if (result == true) {
-                              setState(() {});
-                            }
-                          },
-                        );
-                      },
-                      childCount: tools.length,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

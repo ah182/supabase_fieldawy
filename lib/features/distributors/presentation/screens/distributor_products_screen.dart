@@ -1493,17 +1493,15 @@ class DistributorProductsScreen extends HookConsumerWidget {
                 onPressed: () => _showDistributorDetails(context, ref),
               ),
             ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight + 60.0 + 48.0),
-              child: Column(
-                children: [
-                  Stack(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
-                        child: TextField(
-                          controller: searchController,
+                      bottom: PreferredSize(
+                        preferredSize: const Size.fromHeight(110.0), // تقليل الارتفاع الإجمالي
+                        child: Column(
+                          children: [
+                            Stack(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 8.0), // تقليل الحافة العلوية لـ 0
+                                  child: TextField(                          controller: searchController,
                           focusNode: searchFocusNode,
                           onChanged: (value) {
                             searchQuery.value = value;
