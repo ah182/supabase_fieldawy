@@ -50,6 +50,7 @@ class ClinicWithDoctorInfo extends Equatable {
   final double longitude;
   final String? address;
   final String? clinicPhoneNumber;
+  final String? clinicCode; // جديد
   final DateTime createdAt;
   final DateTime updatedAt;
   final String userId;
@@ -64,6 +65,7 @@ class ClinicWithDoctorInfo extends Equatable {
     required this.longitude,
     this.address,
     this.clinicPhoneNumber,
+    this.clinicCode,
     required this.createdAt,
     required this.updatedAt,
     required this.userId,
@@ -80,6 +82,7 @@ class ClinicWithDoctorInfo extends Equatable {
       longitude: (map['longitude'] as num).toDouble(),
       address: map['address'] as String?,
       clinicPhoneNumber: map['clinic_phone_number'] as String?,
+      clinicCode: map['clinic_code'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       userId: map['user_id'] as String,
@@ -92,6 +95,6 @@ class ClinicWithDoctorInfo extends Equatable {
   @override
   List<Object?> get props => [
         clinicId, clinicName, latitude, longitude, address, clinicPhoneNumber,
-        createdAt, updatedAt, userId, doctorName, doctorWhatsappNumber, doctorPhotoUrl,
+        clinicCode, createdAt, updatedAt, userId, doctorName, doctorWhatsappNumber, doctorPhotoUrl,
       ];
 }

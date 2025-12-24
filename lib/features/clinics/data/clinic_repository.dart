@@ -106,13 +106,18 @@ class ClinicRepository {
   }) async {
     return await NetworkGuard.execute(() async {
       try {
-        await _client.rpc('upsert_clinic', params: {
+        // توليد كود جديد إذا كانت العيادة جديدة (أو الحفاظ على القديم)
+        // سنعتمد على دالة RPC محسنة تتعامل مع الكود
+        final String clinicCode = 'CL-${userId.substring(0, 4).toUpperCase()}';
+
+        await _client.rpc('upsert_clinic_v2', params: {
           'p_user_id': userId,
           'p_clinic_name': clinicName,
           'p_latitude': latitude,
           'p_longitude': longitude,
           'p_address': address,
           'p_phone_number': phoneNumber,
+          'p_clinic_code': clinicCode,
         });
         
         // حذف الكاش بعد التحديث

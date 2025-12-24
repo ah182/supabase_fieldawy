@@ -8,6 +8,7 @@ import 'package:fieldawy_store/features/profile/presentation/screens/favorites_s
 import 'package:fieldawy_store/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
 import 'package:fieldawy_store/features/notifications/notification_preferences_screen.dart';
+import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -17,12 +18,14 @@ import 'package:fieldawy_store/features/authentication/presentation/screens/logi
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart'; // Required for temporary path
 import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -196,35 +199,103 @@ class ProfileScreen extends ConsumerWidget {
                           const SizedBox(height: 8),
                           // ignore: unnecessary_null_comparison
                           if (userModel.role != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _getRoleIcon(userModel.role),
-                                    size: 16,
-                                    color: colorScheme.onSecondaryContainer,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      _getRoleDisplayName(userModel.role),
-                                      style: textTheme.bodySmall?.copyWith(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _getRoleIcon(userModel.role),
+                                        size: 16,
                                         color: colorScheme.onSecondaryContainer,
-                                        fontWeight: FontWeight.w600,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          _getRoleDisplayName(userModel.role),
+                                          style: textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSecondaryContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (userModel.role == 'doctor' && userModel.clinicCode != null) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Clipboard.setData(ClipboardData(text: userModel.clinicCode!));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('تم نسخ كود العيادة'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.qr_code_2_rounded, size: 14, color: Colors.black54),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            userModel.clinicCode!,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.copy_rounded, size: 12, color: Colors.blue),
+                                        ],
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  // أيقونة مشاركة الموقع
+                                  if (userModel.lastLatitude != null && userModel.lastLongitude != null)
+                                    GestureDetector(
+                                      onTap: () {
+                                        final String googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${userModel.lastLatitude},${userModel.lastLongitude}';
+                                        final String message = 'موقع عيادة: ${userModel.displayName}\nالرابط: $googleMapsUrl';
+                                        Share.share(message);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.blue.shade200),
+                                        ),
+                                        child: const Icon(
+                                          Icons.share_location_rounded,
+                                          size: 18,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ),
                                 ],
-                              ),
+                              ],
                             ),
                           const SizedBox(height: 8),
                           Wrap(

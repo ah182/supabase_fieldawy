@@ -1338,6 +1338,7 @@
                                 "retry": "Retry",                    "my_location": "Update My Location",
                     "location_success": "Location updated successfully",
                     "location_error": "Could not get accurate location. Try in open area.",
+                    "add_request_title": "Register New Clinic",
                     "location_dialog": {
                         "title": "Enable Location Service",
                         "message": "Please enable location service (GPS) to view the map correctly.",

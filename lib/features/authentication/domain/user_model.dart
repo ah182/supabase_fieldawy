@@ -70,6 +70,9 @@ class UserModel {
   @HiveField(20)
   final String? rejectionReason;
 
+  @HiveField(21)
+  final String? clinicCode;
+
   UserModel({
     required this.id,
     this.displayName,
@@ -92,6 +95,7 @@ class UserModel {
     this.distributionMethod,
     this.subscribersCount,
     this.rejectionReason,
+    this.clinicCode,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -119,6 +123,7 @@ class UserModel {
       distributionMethod: map['distribution_method'],
       subscribersCount: map['subscribers_count'] ?? 0,
       rejectionReason: map['rejection_reason'],
+      clinicCode: map['clinic_code'],
     );
   }
 
@@ -145,6 +150,7 @@ class UserModel {
       'distribution_method': distributionMethod,
       'subscribers_count': subscribersCount ?? 0,
       'rejection_reason': rejectionReason,
+      'clinic_code': clinicCode,
     };
   }
 
@@ -170,6 +176,7 @@ class UserModel {
     String? distributionMethod,
     int? subscribersCount,
     String? rejectionReason,
+    String? clinicCode,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -193,6 +200,7 @@ class UserModel {
       distributionMethod: distributionMethod ?? this.distributionMethod,
       subscribersCount: subscribersCount ?? this.subscribersCount,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      clinicCode: clinicCode ?? this.clinicCode,
     );
   }
 }

@@ -164,10 +164,23 @@ class UserRepository {
       try {
         if (id.isEmpty) return null;
 
-        final data = await _client.from('users').select().eq('id', id).maybeSingle();
+        // جلب بيانات المستخدم مع الكود من جدول العيادات المرتبط
+        final response = await _client
+            .from('users')
+            .select('*, clinics(clinic_code)')
+            .eq('id', id)
+            .maybeSingle();
 
-        if (data == null) {
+        if (response == null) {
           return null;
+        }
+
+        // تحضير البيانات مع الكود
+        final Map<String, dynamic> data = Map<String, dynamic>.from(response);
+        if (response['clinics'] != null && response['clinics'] is List && (response['clinics'] as List).isNotEmpty) {
+          data['clinic_code'] = response['clinics'][0]['clinic_code'];
+        } else if (response['clinics'] != null && response['clinics'] is Map) {
+          data['clinic_code'] = response['clinics']['clinic_code'];
         }
 
         var user = UserModel.fromMap(data);
