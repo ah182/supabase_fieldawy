@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -32,7 +34,10 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
   
   List<ClinicWithDoctorInfo> _allClinics = [];
   List<ClinicWithDoctorInfo> _filteredClinics = [];
-  List<Marker> _clinicMarkers = []; // Renamed from _markers
+  List<ClinicWithDoctorInfo> _clinicSuggestions = []; // جديد: اقتراحات العيادات
+  List<Marker> _clinicMarkers = []; 
+  List<Map<String, dynamic>> _placeSuggestions = [];
+  bool _isSearchingPlaces = false;
   Position? _currentUserPosition;
   Timer? _debounce;
   
@@ -44,6 +49,62 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
   bool _isLoading = true;
   bool _isUpdatingLocation = false;
   bool _isFabDisabled = true;
+
+  Future<void> _searchPlaces(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _placeSuggestions = [];
+        _isSearchingPlaces = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearchingPlaces = true);
+
+    try {
+      // كشف لغة الكتابة (إذا كانت تبدأ بحروف إنجليزية)
+      final isEnglish = RegExp(r'^[a-zA-Z]').hasMatch(query);
+      
+      final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=10&addressdetails=1&namedetails=1&countrycodes=eg');
+      
+      final response = await http.get(url, headers: {
+        'User-Agent': 'FieldawyStoreApp/1.0',
+        'Accept-Language': isEnglish ? 'en,ar' : 'ar,en', // تغيير الأولوية حسب لغة الكتابة
+      });
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _placeSuggestions = data.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error searching places: $e');
+    } finally {
+      setState(() => _isSearchingPlaces = false);
+    }
+  }
+
+  void _moveToLocation(double lat, double lon, {String? name, ClinicWithDoctorInfo? clinic}) {
+    _mapController.move(LatLng(lat, lon), 15); // زووم أقرب للعيادات
+    setState(() {
+      _placeSuggestions = [];
+      _clinicSuggestions = [];
+      _ghostText = '';
+      _fullSuggestion = '';
+      if (clinic != null) {
+        _filteredClinics = [clinic];
+        _loadClinicMarkers(_filteredClinics);
+      }
+    });
+    FocusScope.of(context).unfocus();
+    
+    // إذا كانت عيادة، اظهر التفاصيل فوراً
+    if (clinic != null) {
+      _showClinicDetails(clinic);
+    }
+  }
 
   @override
   void initState() {
@@ -121,14 +182,24 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
       setState(() {
         if (query.isEmpty) {
           _filteredClinics = _allClinics;
+          _clinicSuggestions = [];
+          _placeSuggestions = [];
         } else {
+          // فلترة العيادات للخريطة
           _filteredClinics = _allClinics.where((clinic) {
             return (clinic.clinicName.toLowerCase().contains(queryLower) ||
                     clinic.doctorName.toLowerCase().contains(queryLower) ||
-                    (clinic.address?.toLowerCase() ?? '').contains(queryLower) ||
-                    (clinic.clinicPhoneNumber?.toLowerCase() ?? '').contains(queryLower) ||
-                    (clinic.doctorWhatsappNumber?.toLowerCase() ?? '').contains(queryLower));
+                    (clinic.address?.toLowerCase() ?? '').contains(queryLower));
           }).toList();
+          
+          // مقترحات العيادات للقائمة المنبثقة
+          if (query.length >= 2) {
+            _clinicSuggestions = _filteredClinics.take(3).toList(); // أول 3 عيادات مطابقة
+            _searchPlaces(query);
+          } else {
+            _clinicSuggestions = [];
+            _placeSuggestions = [];
+          }
         }
         _loadClinicMarkers(_filteredClinics);
       });
@@ -261,71 +332,131 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
         },
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Stack(
-                children: [
-                  TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'clinics_feature.search_hint'.tr(), 
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    filled: true,
-                    fillColor: Theme.of(context).scaffoldBackgroundColor,
-                    contentPadding: EdgeInsets.zero,
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear), 
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _ghostText = '';
-                                _fullSuggestion = '';
-                              });
-                            }
-                          )
-                        : null,
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'clinics_feature.search_hint'.tr(), 
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      filled: true,
+                      fillColor: Theme.of(context).scaffoldBackgroundColor,
+                      contentPadding: EdgeInsets.zero,
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear), 
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _ghostText = '';
+                                  _fullSuggestion = '';
+                                  _placeSuggestions = [];
+                                });
+                              }
+                            )
+                          : null,
+                    ),
                   ),
-                ),
-                if (_ghostText.isNotEmpty)
-                  Positioned(
-                    top: 11,
-                    right: 55,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (_fullSuggestion.isNotEmpty) {
-                          _searchController.text = _fullSuggestion;
-                          setState(() {
-                            _ghostText = '';
-                            _fullSuggestion = '';
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
-                              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _ghostText,
-                          style: TextStyle(
+                  if (_ghostText.isNotEmpty)
+                    Positioned(
+                      top: 11,
+                      right: 55,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (_fullSuggestion.isNotEmpty) {
+                            _searchController.text = _fullSuggestion;
+                            setState(() {
+                              _ghostText = '';
+                              _fullSuggestion = '';
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.secondary,
-                            fontWeight: FontWeight.bold,
+                                ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                                : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _ghostText,
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
+                ],
+              ),
+              // القائمة المنبثقة لمقترحات العيادات والأماكن
+              if (_clinicSuggestions.isNotEmpty || _placeSuggestions.isNotEmpty || _isSearchingPlaces)
+                Card(
+                  elevation: 8,
+                  margin: const EdgeInsets.only(top: 4),
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSearchingPlaces)
+                        const LinearProgressIndicator(),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 140), // ارتفاع يكفي لاقتراحين تقريباً
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          children: [
+                            // عرض مقترحات العيادات
+                            ..._clinicSuggestions.map((clinic) => ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.red.shade50,
+                                radius: 16,
+                                child: const Icon(Icons.local_hospital, color: Colors.red, size: 18),
+                              ),
+                              title: Text(clinic.clinicName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              subtitle: Text(clinic.doctorName, style: const TextStyle(fontSize: 11)),
+                              trailing: const Icon(Icons.arrow_outward_rounded, size: 14),
+                              onTap: () => _moveToLocation(clinic.latitude, clinic.longitude, clinic: clinic),
+                            )),
+                            if (_clinicSuggestions.isNotEmpty && _placeSuggestions.isNotEmpty)
+                              const Divider(height: 1),
+                            // عرض مقترحات الأماكن (محدودة بما يكمل 5 إجمالي)
+                            ..._placeSuggestions.take(5 - _clinicSuggestions.length).map((suggestion) {
+                              final displayName = suggestion['display_name'];
+                              final lat = double.parse(suggestion['lat']);
+                              final lon = double.parse(suggestion['lon']);
+                              
+                              return ListTile(
+                                leading: const Icon(Icons.location_on_outlined, color: Colors.blue, size: 20),
+                                title: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                onTap: () => _moveToLocation(lat, lon, name: displayName),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
+        ),
           Expanded(
             child: clinicsAsync.when(
               data: (clinics) {
@@ -334,9 +465,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                   _filteredClinics = clinics;
                   _loadClinicMarkers(_filteredClinics);
                 }
-                if (_filteredClinics.isEmpty && _searchController.text.isNotEmpty) {
-                  return Center(child: Text('clinics_feature.no_results'.tr()));
-                }
+                
                 if (_allClinics.isEmpty && !_isLoading) {
                   return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.location_off, size: 64, color: Colors.grey), SizedBox(height: 16), Text('clinics_feature.no_clinics'.tr(), style: TextStyle(fontSize: 18, color: Colors.grey))]));
                 }
