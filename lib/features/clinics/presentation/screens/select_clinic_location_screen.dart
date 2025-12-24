@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/clinics/data/clinic_repository.dart';
 import 'package:fieldawy_store/core/services/location_service.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 
 class SelectClinicLocationScreen extends ConsumerStatefulWidget {
   final LatLng initialPosition;
@@ -57,13 +58,21 @@ class _SelectClinicLocationScreenState
           );
 
       if (success && mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('clinics_feature.select_location.success'.tr()),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
+        final String clinicCode = 'CL-${widget.userId.substring(0, 4).toUpperCase()}';
+        
+        AwesomeDialog(
+          context: context,
+          dialogType: DialogType.success,
+          animType: AnimType.bottomSlide,
+          headerAnimationLoop: false,
+          title: 'تم تسجيل الموقع بنجاح! 🎉',
+          desc: 'تم توليد كود خاص لعيادتك: ($clinicCode)\n\nيمكنك الآن إعطاء هذا الكود لأي شخص للبحث عنك في الخريطة والوصول إليك فوراً. ستجد الكود دائماً في ملفك الشخصي.',
+          btnOkText: 'رائع',
+          btnOkColor: Theme.of(context).primaryColor,
+          btnOkOnPress: () {
+            Navigator.of(context).pop();
+          },
+        ).show();
       } else {
         throw Exception('Failed to update location');
       }
@@ -136,7 +145,13 @@ class _SelectClinicLocationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('clinics_feature.select_location.title'.tr()),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'clinics_feature.select_location.title'.tr(),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(

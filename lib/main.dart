@@ -606,7 +606,13 @@ Future<void> main() async {
     );
 
     // ✅ الحصول على FCM Token وحفظه في Supabase (سيتم بعد تسجيل الدخول)
-    String? fcmToken = await FirebaseMessaging.instance.getToken();
+    String? fcmToken;
+    try {
+      fcmToken = await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      print('❌ خطأ في جلب FCM Token (Firebase Service might be unavailable): $e');
+    }
+    
   print('═══════════════════════════════════════════════════════════');
   print('🔑 FCM TOKEN للاختبار:');
   print('═══════════════════════════════════════════════════════════');

@@ -119,7 +119,13 @@ class _LocationPermissionDialogState
         children: [
           Icon(Icons.location_on, color: colorScheme.primary, size: 28),
           const SizedBox(width: 10),
-          Text('clinics_feature.permission_dialog.title'.tr()),
+          Expanded(
+            child: Text(
+              'clinics_feature.permission_dialog.title'.tr(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
       content: Column(

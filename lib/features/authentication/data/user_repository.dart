@@ -6,19 +6,17 @@ import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGua
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../domain/user_model.dart'; // تأكد أن هذا الملف معدل أيضاً
+import '../domain/user_model.dart'; 
+import 'dart:async';
 
 class UserRepository {
   final SupabaseClient _client;
   final CachingService _cache;
 
-  // استلام SupabaseClient و CachingService عبر الـ constructor
   UserRepository({required SupabaseClient client, required CachingService cache})
       : _client = client,
         _cache = cache;
 
-  // دالة لحفظ مستخدم جديد أو تحديث بياناته إذا كان موجوداً
-  // تستخدم 'upsert' لتجنب الأخطاء وللكفاءة
   Future<bool> saveNewUser(User user) async {
     return await NetworkGuard.execute(() async {
       try {
@@ -32,32 +30,26 @@ class UserRepository {
           'is_profile_complete': false,
         };
 
-        // Attempt to insert the user.
         await _client.from('users').insert(userMap);
-        // Invalidate distributors cache if a new distributor/company is added
         if (userMap['role'] == 'distributor' || userMap['role'] == 'company') {
           _cache.invalidate('distributors');
         }
-        return true; // User was inserted
+        return true; 
       } on PostgrestException catch (e) {
-        // If it's a duplicate key error (code 23505), it means the user already exists.
         if (e.code == '23505') {
           print('User with ID ${user.id} already exists in DB. Skipping insert.');
-          return false; // User already existed
+          return false; 
         } else {
-          // Re-throw other PostgrestExceptions
           print('Error saving new user to Supabase: $e');
           rethrow;
         }
       } catch (e) {
-        // Catch any other unexpected errors
         print('Error saving new user to Supabase: $e');
         rethrow;
       }
     });
   }
 
-  // دالة لإكمال ملف المستخدم بعد التسجيل
   Future<void> completeUserProfile({
     required String id,
     required String role,
@@ -77,18 +69,16 @@ class UserRepository {
           'whatsapp_number': whatsappNumber,
           'governorates': governorates,
           'centers': centers,
-          'is_profile_complete': true, // الأهم: تغيير حالة اكتمال الملف
+          'is_profile_complete': true,
         };
 
         if (distributionMethod != null) {
           updateData['distribution_method'] = distributionMethod;
         }
 
-        await _client.from('users').update(updateData).eq('id', id); // شرط التحديث: حيث id = القيمة المعطاة
-        _cache.invalidate('distributors'); // This is for distributors, not user.
-
-        // Invalidate the user cache after updating the profile
-        _cache.invalidate('user_$id'); // Add this line
+        await _client.from('users').update(updateData).eq('id', id);
+        _cache.invalidate('distributors');
+        _cache.invalidate('user_$id');
 
       } catch (e) {
         print('Error completing user profile in Supabase: $e');
@@ -132,7 +122,6 @@ class UserRepository {
     });
   }
 
-  // Update user profile image
   Future<void> updateProfileImage(String userId, String photoUrl) async {
     await NetworkGuard.execute(() async {
       try {
@@ -148,7 +137,6 @@ class UserRepository {
     });
   }
 
-  // دالة لجلب بيانات المستخدم مرة واحدة
   Future<UserModel?> getUser(String id, {bool forceRefresh = false}) async {
     final cacheKey = 'user_$id';
     UserModel? cachedUser;
@@ -164,28 +152,27 @@ class UserRepository {
       try {
         if (id.isEmpty) return null;
 
-        // جلب بيانات المستخدم مع الكود من جدول العيادات المرتبط
         final response = await _client
             .from('users')
-            .select('*, clinics(clinic_code)')
+            .select('*, clinics(clinic_code, latitude, longitude)')
             .eq('id', id)
             .maybeSingle();
 
-        if (response == null) {
-          return null;
-        }
+        if (response == null) return null;
 
-        // تحضير البيانات مع الكود
         final Map<String, dynamic> data = Map<String, dynamic>.from(response);
-        if (response['clinics'] != null && response['clinics'] is List && (response['clinics'] as List).isNotEmpty) {
-          data['clinic_code'] = response['clinics'][0]['clinic_code'];
-        } else if (response['clinics'] != null && response['clinics'] is Map) {
-          data['clinic_code'] = response['clinics']['clinic_code'];
+        if (response['clinics'] != null) {
+          final List clinics = response['clinics'] is List ? response['clinics'] : [response['clinics']];
+          if (clinics.isNotEmpty) {
+            final clinicData = clinics[0];
+            data['clinic_code'] = clinicData['clinic_code'];
+            data['last_latitude'] = data['last_latitude'] ?? clinicData['latitude'];
+            data['last_longitude'] = data['last_longitude'] ?? clinicData['longitude'];
+          }
         }
 
         var user = UserModel.fromMap(data);
 
-        // If referral code is missing (for old users), generate one now.
         if (user.referralCode == null || user.referralCode!.isEmpty) {
           final newCode = await _client.rpc('generate_and_get_code', params: {'user_id_param': user.id}) as String?;
           if (newCode != null) {
@@ -196,16 +183,13 @@ class UserRepository {
         _cache.set(cacheKey, user);
         return user;
       } catch (e) {
-        print('Error fetching user data once: $e');
-        if (cachedUser != null) {
-          return cachedUser;
-        }
+        print('Error fetching user data: $e');
+        if (cachedUser != null) return cachedUser;
         rethrow;
       }
     });
   }
 
-  // دالة لإعادة بدء عملية التسجيل للمستخدم المرفوض
   Future<void> reInitiateOnboarding(String id) async {
     await NetworkGuard.execute(() async {
       try {
@@ -220,6 +204,7 @@ class UserRepository {
       }
     });
   }
+
   Future<int> getTotalUsersCount() async {
     return await NetworkGuard.execute(() async {
       try {
@@ -232,11 +217,6 @@ class UserRepository {
     });
   }
 
-  // ===================================================================
-  // Admin Functions for User Management
-  // ===================================================================
-
-  // Get count by role
   Future<int> getUsersCountByRole(String role) async {
     return await NetworkGuard.execute(() async {
       try {
@@ -252,12 +232,10 @@ class UserRepository {
     });
   }
 
-  // Get all users with specific role
   Future<List<UserModel>> getUsersByRole(String role) async {
-    // استخدام Cache-First للمستخدمين حسب الدور
     return await _cache.cacheFirst<List<UserModel>>(
       key: 'users_by_role_$role',
-      duration: CacheDurations.medium, // 30 دقيقة
+      duration: CacheDurations.medium,
       fetchFromNetwork: () => _fetchUsersByRole(role),
       fromCache: (data) {
         final List<dynamic> jsonList = data as List<dynamic>;
@@ -274,12 +252,8 @@ class UserRepository {
             .select()
             .eq('role', role)
             .order('created_at', ascending: false);
-        
         final List<dynamic> data = response as List;
-        
-        // Cache as JSON List
         _cache.set('users_by_role_$role', data, duration: CacheDurations.medium);
-        
         return data.map((json) => UserModel.fromMap(json)).toList();
       } catch (e) {
         print('Error fetching users by role: $e');
@@ -288,15 +262,11 @@ class UserRepository {
     });
   }
 
-  // Get all users
   Future<List<UserModel>> getAllUsers({bool bypassCache = false}) async {
-    if (bypassCache) {
-      return _fetchAllUsers();
-    }
-    // استخدام Cache-First للمستخدمين (تتغير ببطء)
+    if (bypassCache) return _fetchAllUsers();
     return await _cache.cacheFirst<List<UserModel>>(
       key: 'all_users',
-      duration: CacheDurations.medium, // 30 دقيقة
+      duration: CacheDurations.medium,
       fetchFromNetwork: _fetchAllUsers,
       fromCache: (data) {
         final List<dynamic> jsonList = data as List<dynamic>;
@@ -312,12 +282,8 @@ class UserRepository {
             .from('users')
             .select()
             .order('created_at', ascending: false);
-        
         final List<dynamic> data = response as List;
-        
-        // Cache as JSON List
         _cache.set('all_users', data, duration: CacheDurations.medium);
-        
         return data.map((json) => UserModel.fromMap(json)).toList();
       } catch (e) {
         print('Error fetching all users: $e');
@@ -326,30 +292,16 @@ class UserRepository {
     });
   }
 
-  // Delete user (admin only)
   Future<bool> deleteUser(String userId) async {
     return await NetworkGuard.execute(() async {
       try {
-        print('🗑️ Attempting to delete user completely (Auth + DB)...');
-        // Call the RPC function to delete from auth.users
         await _client.rpc('delete_user_completely', params: {'user_id': userId});
-        
-        // حذف الكاش بعد الحذف
         _invalidateUsersCache(userId);
-        
-        print('✅ User deleted successfully via RPC');
         return true;
       } catch (e) {
-        print('⚠️ RPC delete failed (Function might not exist yet): $e');
-        print('🔄 Falling back to public.users delete...');
-        
         try {
           await _client.from('users').delete().eq('id', userId);
-          
-          // حذف الكاش بعد الحذف
           _invalidateUsersCache(userId);
-          
-          print('✅ User deleted from public.users (Fallback)');
           return true;
         } catch (e2) {
           print('❌ Error deleting user: $e2');
@@ -359,17 +311,11 @@ class UserRepository {
     });
   }
 
-  // Update user role (admin only)
   Future<bool> updateUserRole(String userId, String newRole) async {
     return await NetworkGuard.execute(() async {
       try {
-        await _client.from('users').update({
-          'role': newRole,
-        }).eq('id', userId);
-        
-        // حذف الكاش بعد التحديث
+        await _client.from('users').update({'role': newRole}).eq('id', userId);
         _invalidateUsersCache(userId);
-        
         return true;
       } catch (e) {
         print('Error updating user role: $e');
@@ -378,7 +324,6 @@ class UserRepository {
     });
   }
 
-  // Update user location
   Future<bool> updateUserLocation({
     required String userId,
     required double latitude,
@@ -386,27 +331,13 @@ class UserRepository {
   }) async {
     return await NetworkGuard.execute(() async {
       try {
-        print('📍 Updating location for user $userId: ($latitude, $longitude)');
-        
-        // Call the Supabase function
         await _client.rpc('update_user_location', params: {
           'p_user_id': userId,
           'p_latitude': latitude,
           'p_longitude': longitude,
         });
-        
-        // Invalidate cache
         _cache.invalidate('user_$userId');
-        
-        print('✅ Location updated successfully');
         return true;
-      } on PostgrestException catch (e) {
-        if (e.message.contains('wait 30 seconds')) {
-          print('⏰ Rate limit: Please wait before updating again');
-        } else {
-          print('❌ Error updating user location: ${e.message}');
-        }
-        return false;
       } catch (e) {
         print('❌ Error updating user location: $e');
         return false;
@@ -414,116 +345,61 @@ class UserRepository {
     });
   }
 
-  // Update user status (admin only)
   Future<bool> updateUserStatus(String userId, String newStatus, {String? rejectionReason}) async {
     return await NetworkGuard.execute(() async {
       try {
-        print('📝 Attempting to update user $userId to status: $newStatus');
-        print('🔑 Current auth user: ${_client.auth.currentUser?.id}');
+        final Map<String, dynamic> updateData = {'account_status': newStatus};
+        if (rejectionReason != null) updateData['rejection_reason'] = rejectionReason;
+        else if (newStatus != 'rejected') updateData['rejection_reason'] = null;
         
-        final Map<String, dynamic> updateData = {
-          'account_status': newStatus,
-        };
-
-        if (rejectionReason != null) {
-          updateData['rejection_reason'] = rejectionReason;
-        } else if (newStatus != 'rejected') {
-          // Clear rejection reason if status is not rejected
-          updateData['rejection_reason'] = null;
-        }
-        
-        // Try without RLS first (direct update)
-        final response = await _client
-            .from('users')
-            .update(updateData)
-            .eq('id', userId)
-            .select();
-        
-        print('📦 Response from Supabase: $response');
-        print('📊 Response type: ${response.runtimeType}');
-       
-        
-        // Invalidate all relevant caches
-        _cache.invalidate('user_$userId');
-        _cache.invalidate('distributors');
-        _cache.invalidate('doctors');
-        _cache.invalidate('all_users');
-        
-        final success = response is List && response.isNotEmpty;
-        print(success ? '✅ Status updated successfully' : '❌ Update failed - empty response');
-        
-        if (!success) {
-          print('🔍 Debug: Checking if RLS is blocking the update...');
-          // Try to fetch the user to see if we can read
-          final readTest = await _client.from('users').select().eq('id', userId).single();
-          // ignore: unnecessary_null_comparison
-          print('🔍 Can read user: ${readTest != null}');
-        }
-        
-        return success;
-      } catch (e, stackTrace) {
-        print('❌❌ Error updating user status: $e');
-        print('📚 Error type: ${e.runtimeType}');
-        print('Stack trace: $stackTrace');
+        final response = await _client.from('users').update(updateData).eq('id', userId).select();
+        _invalidateUsersCache(userId);
+        return response is List && response.isNotEmpty;
+      } catch (e) {
+        print('❌ Error updating user status: $e');
         return false;
       }
     });
   }
 
-  // Check if a user has been invited
   Future<bool> wasInvited(String userId) async {
     return await NetworkGuard.execute(() async {
       try {
-        final response = await _client
-            .from('referrals')
-            .select('id')
-            .eq('invited_id', userId)
-            .limit(1);
-        
+        final response = await _client.from('referrals').select('id').eq('invited_id', userId).limit(1);
         return response.isNotEmpty;
       } catch (e) {
         print('Error checking if user was invited: $e');
-        // In case of error, assume they were invited to avoid showing the screen repeatedly.
         return true;
       }
     });
   }
 
-  /// زيادة عدد المشتركين لمستخدم معين
   Future<void> incrementSubscribers(String userId) async {
     await NetworkGuard.execute(() async {
       try {
         await _client.rpc('increment_subscribers', params: {'user_id': userId});
-        // لا نقوم بحذف الكاش هنا لتجنب تحميل القائمة بالكامل، 
-        // التحديث المحلي في الواجهة كافٍ للسرعة
       } catch (e) {
-        print('Error incrementing subscribers: $e');
-        // في حال فشل الـ RPC (لم يتم إنشاؤه بعد)، نحاول التحديث اليدوي كبديل مؤقت
         await _manualUpdateSubscribers(userId, 1);
       }
     });
   }
 
-  /// إنقاص عدد المشتركين لمستخدم معين
   Future<void> decrementSubscribers(String userId) async {
     await NetworkGuard.execute(() async {
       try {
         await _client.rpc('decrement_subscribers', params: {'user_id': userId});
       } catch (e) {
-        print('Error decrementing subscribers: $e');
-         await _manualUpdateSubscribers(userId, -1);
+        await _manualUpdateSubscribers(userId, -1);
       }
     });
   }
 
-  // دالة بديلة يدوية (غير ذرية) في حال عدم وجود RPC
   Future<void> _manualUpdateSubscribers(String userId, int change) async {
     await NetworkGuard.execute(() async {
       try {
         final user = await _client.from('users').select('subscribers_count').eq('id', userId).single();
         final currentCount = (user['subscribers_count'] as int?) ?? 0;
         final newCount = (currentCount + change) < 0 ? 0 : (currentCount + change);
-        
         await _client.from('users').update({'subscribers_count': newCount}).eq('id', userId);
       } catch (e) {
         print('Error manually updating subscribers: $e');
@@ -531,24 +407,16 @@ class UserRepository {
     });
   }
 
-  /// حذف كاش المستخدمين
   void _invalidateUsersCache(String? userId) {
-    // حذف كاش المستخدم المحدد
-    if (userId != null) {
-      _cache.invalidate('user_$userId');
-    }
-    
-    // حذف كاش القوائم
+    if (userId != null) _cache.invalidate('user_$userId');
     _cache.invalidate('all_users');
     _cache.invalidateWithPrefix('users_by_role_');
     _cache.invalidate('distributors');
     _cache.invalidate('doctors');
-    
     print('🧹 Users cache invalidated');
   }
-} // Added this closing brace for UserRepository class
+}
 
-// Provider المحدث ليعمل مع Supabase
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   final supabaseClient = Supabase.instance.client;
   final cachingService = ref.watch(cachingServiceProvider);
@@ -559,7 +427,6 @@ final totalUsersProvider = FutureProvider<int>((ref) {
   return ref.watch(userRepositoryProvider).getTotalUsersCount();
 });
 
-// Admin Providers
 final doctorsCountProvider = FutureProvider<int>((ref) {
   return ref.watch(userRepositoryProvider).getUsersCountByRole('doctor');
 });
@@ -586,11 +453,6 @@ final allUsersListProvider = FutureProvider<List<UserModel>>((ref) {
 final wasInvitedProvider = FutureProvider.autoDispose<bool>((ref) async {
   final authState = ref.watch(authStateChangesProvider);
   final userId = authState.asData?.value?.id;
-
-  if (userId == null) {
-    return true;
-  }
-
-  final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.wasInvited(userId);
+  if (userId == null) return true;
+  return ref.watch(userRepositoryProvider).wasInvited(userId);
 });

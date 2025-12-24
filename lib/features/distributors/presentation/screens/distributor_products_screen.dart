@@ -112,6 +112,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
     this.distributor,
     this.distributorId,
     this.distributorName,
+    this.initialTabIndex = 0, // إضافة اختيار التاب الافتراضي
   }) {
     if (distributor == null &&
         (distributorId == null || distributorName == null)) {
@@ -123,7 +124,8 @@ class DistributorProductsScreen extends HookConsumerWidget {
   final DistributorModel? distributor;
   final String? distributorId;
   final String? distributorName;
-  
+  final int initialTabIndex; // جديد
+
   String get _distributorId {
     final id = distributor?.id ?? distributorId;
     if (id == null) {
@@ -1436,6 +1438,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: initialTabIndex, // استخدام التاب الممرر
       child: GestureDetector(
         onTap: () {
           // Only unfocus if not loading

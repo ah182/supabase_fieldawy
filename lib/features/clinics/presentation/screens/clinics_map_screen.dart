@@ -395,14 +395,19 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                               leading: CircleAvatar(
                                 backgroundColor: isCodeMatch ? Colors.amber.shade50 : Colors.red.shade50,
                                 radius: 16,
-                                child: Icon(
-                                  isCodeMatch ? Icons.vpn_key_rounded : Icons.local_hospital, 
-                                  color: isCodeMatch ? Colors.amber.shade800 : Colors.red, 
-                                  size: 18
-                                ),
+                                backgroundImage: (clinic.doctorPhotoUrl != null && clinic.doctorPhotoUrl!.isNotEmpty)
+                                    ? CachedNetworkImageProvider(clinic.doctorPhotoUrl!)
+                                    : null,
+                                child: (clinic.doctorPhotoUrl == null || clinic.doctorPhotoUrl!.isEmpty)
+                                    ? Icon(
+                                        isCodeMatch ? Icons.vpn_key_rounded : Icons.local_hospital, 
+                                        color: isCodeMatch ? Colors.amber.shade800 : Colors.red, 
+                                        size: 18
+                                      )
+                                    : null,
                               ),
                               title: Text(clinic.clinicName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              subtitle: Text(isCodeMatch ? 'كود مطابقة: ${clinic.clinicCode}' : clinic.doctorName, style: const TextStyle(fontSize: 11)),
+                              subtitle: Text(isCodeMatch ? 'مطابق للكود : ${clinic.clinicCode}' : clinic.doctorName, style: const TextStyle(fontSize: 11)),
                               trailing: const Icon(Icons.arrow_outward_rounded, size: 14),
                               onTap: () => _moveToLocation(clinic.latitude, clinic.longitude, clinic: clinic),
                             );
@@ -509,7 +514,7 @@ class _ClinicDetailsSheet extends ConsumerWidget {
         const SizedBox(height: 8), const Divider(),
         _buildInfoRow(context, Icons.person_outline, 'clinics_feature.details.doctor'.tr(), clinic.doctorName),
         _buildInfoRow(context, Icons.location_on_outlined, 'clinics_feature.details.address'.tr(), cleanedAddress),
-        _buildInfoRow(context, Icons.phone_outlined, 'clinics_feature.details.phone'.tr(), clinic.clinicPhoneNumber, showIfEmpty: true),
+        _buildInfoRow(context, Icons.phone_outlined, 'clinics_feature.details.phone'.tr(), clinic.clinicPhoneNumber ?? clinic.doctorWhatsappNumber, showIfEmpty: true),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Row(children: [Icon(FontAwesomeIcons.whatsapp, color: Theme.of(context).primaryColor, size: 22), const SizedBox(width: 16), const Expanded(child: Text('WhatsApp', style: TextStyle(fontSize: 16))), IconButton(icon: const Icon(Icons.send, color: Colors.green), onPressed: () async { final phone = clinic.doctorWhatsappNumber?.replaceAll(RegExp(r'[^0-9]'), ''); if (phone != null) await launchUrl(Uri.parse('https://wa.me/${phone.startsWith('20') ? phone : '20$phone'}'), mode: LaunchMode.externalApplication); })]),

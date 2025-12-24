@@ -26,6 +26,7 @@ import 'package:fieldawy_store/features/authentication/data/user_repository.dart
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -234,40 +235,54 @@ class ProfileScreen extends ConsumerWidget {
                                 ),
                                 if (userModel.role == 'doctor' && userModel.clinicCode != null) ...[
                                   const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Clipboard.setData(ClipboardData(text: userModel.clinicCode!));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('تم نسخ كود العيادة'),
-                                          duration: Duration(seconds: 1),
+                                  Tooltip(
+                                    message: 'شارك هذا الكود للبحث عن عيادتك في الخريطة',
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Clipboard.setData(ClipboardData(text: userModel.clinicCode!));
+                                        
+                                        // عرض ديالوج جذاب جداً
+                                        AwesomeDialog(
+                                          context: context,
+                                          dialogType: DialogType.success,
+                                          animType: AnimType.scale,
+                                          headerAnimationLoop: true,
+                                          title: 'تم نسخ الكود بنجاح! 🚀',
+                                          desc: 'يمكنك الآن إعطاء هذا الكود للموزعين أو الاطباء للبحث عن عيادتك والوصول إليها فوراً من خلال "خريطة العيادات" في التطبيق.',
+                                          btnOkText: 'فهمت',
+                                          btnOkColor: colorScheme.primary,
+                                          btnOkOnPress: () {},
+                                          buttonsTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                          titleTextStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                          descTextStyle: const TextStyle(fontSize: 14, height: 1.5),
+                                        ).show();
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.grey.shade300),
                                         ),
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade300),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.qr_code_2_rounded, size: 14, color: Colors.black54),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            userModel.clinicCode!,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.qr_code_2_rounded, size: 14, color: Colors.black54),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              userModel.clinicCode!,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(Icons.copy_rounded, size: 12, color: Colors.blue),
-                                        ],
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.copy_rounded, size: 12, color: Colors.blue),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),

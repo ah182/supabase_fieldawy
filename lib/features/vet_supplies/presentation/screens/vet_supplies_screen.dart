@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
@@ -628,11 +629,44 @@ class _AllSuppliesTab extends ConsumerWidget {
                         children: [
                           Icon(Icons.store_outlined, size: 18, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
+                          GestureDetector(
+                            onTap: () async {
+                              if (distributor == null) return;
+                              
+                              // إظهار مؤشر تحميل بسيط
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator()),
+                              );
+                              
+                              await Future.delayed(const Duration(milliseconds: 300));
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop(); // إغلاق التحميل
+                              Navigator.of(context).pop(); // إغلاق الديالوج الحالي
+                              
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => DistributorProductsScreen(
+                                    distributor: distributor,
+                                    initialTabIndex: 1, // فتح تاب المستلزمات (Index 1)
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.touch_app_rounded, size: 14, color: theme.colorScheme.primary.withOpacity(0.7)),
+                              ],
                             ),
                           ),
                         ],
@@ -1101,11 +1135,44 @@ class _MySuppliesTab extends ConsumerWidget {
                         children: [
                           Icon(Icons.store_outlined, size: 18, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          Text(
-                            distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
+                          GestureDetector(
+                            onTap: () async {
+                              if (distributor == null) return;
+                              
+                              // إظهار مؤشر تحميل بسيط
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator()),
+                              );
+                              
+                              await Future.delayed(const Duration(milliseconds: 300));
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop(); // إغلاق التحميل
+                              Navigator.of(context).pop(); // إغلاق الديالوج الحالي
+                              
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => DistributorProductsScreen(
+                                    distributor: distributor,
+                                    initialTabIndex: 1, // فتح تاب المستلزمات (Index 1)
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.touch_app_rounded, size: 14, color: theme.colorScheme.primary.withOpacity(0.7)),
+                              ],
                             ),
                           ),
                         ],

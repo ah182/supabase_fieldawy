@@ -26,7 +26,7 @@ WHERE clinic_code IS NULL;
 -- 4. حذف الـ View لتجنب خطأ تعارض الأعمدة أو العلاقات
 DROP VIEW IF EXISTS public.clinics_with_doctor_info;
 
--- 5. إعادة إنشاء الـ View (مع كود العيادة الجديد)
+-- 5. إعادة إنشاء الـ View (مع كود العيادة الجديد وأرقام الهاتف)
 CREATE OR REPLACE VIEW public.clinics_with_doctor_info AS
 SELECT 
     c.id AS clinic_id,
@@ -34,7 +34,7 @@ SELECT
     c.latitude,
     c.longitude,
     c.address,
-    c.phone_number AS clinic_phone_number,
+    COALESCE(c.phone_number, u.whatsapp_number) AS clinic_phone_number, -- استخدام واتساب الطبيب كبديل إذا كان هاتف العيادة فارغاً
     c.clinic_code,
     c.created_at,
     c.updated_at,

@@ -60,7 +60,7 @@ class _RetryNetworkImage extends ImageProvider<_RetryNetworkImage> {
     try {
       final uri = Uri.parse(key.url);
       final response = await retryOptions.retry(
-        () => http.get(uri).timeout(const Duration(seconds: 5)),
+        () => http.get(uri).timeout(const Duration(seconds: 15)),
         retryIf: (e) => e is SocketException || e is TimeoutException,
       );
 
