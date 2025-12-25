@@ -66,6 +66,14 @@
           }
         },
         {
+          "client_id": "665551059689-pu15qtu7iv8hga9as5cibt1uterep0ru.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fieldawy.store",
+            "certificate_hash": "4946a06c82ac9c10f7611246d91d3534202979b6"
+          }
+        },
+        {
           "client_id": "665551059689-h6md8lhpskrquaje7ffhlth0vpqd1ph0.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -112,26 +112,23 @@ class _FortuneWheelUIState extends ConsumerState<FortuneWheelUI>
     if (rank == 1) {
       return [
         '1000 EGP',
-        'Book 1',
-        'Course 1',
+        'Book',
+        'Course',
         'Golden Box',
-        'Book 2',
-        'Course 2',
-        'Book 3',
+        
       ];
     } else if (rank == 2) {
       return [
         '500 EGP',
-        'Book 1',
-        'Course 1',
+        'Book',
+        'Course',
         'Silver Box',
-        'Book 2',
-        'Course 2',
+        
       ];
     } else if (rank == 3) {
-      return ['250 EGP', 'Book 1', 'Course 1', 'Bronze Box'];
+      return ['250 EGP', 'Book', 'Course', 'Bronze Box'];
     } else if (rank == 4 || rank == 5) {
-      return ['100 EGP', '1 Book', '1 Course'];
+      return ['100 EGP', 'Book', 'Course'];
     } else {
       return ['No prizes for this rank'];
     }

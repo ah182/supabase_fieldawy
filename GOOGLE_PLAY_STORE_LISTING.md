@@ -56,7 +56,7 @@ Fieldawy is the first comprehensive platform designed specifically to serve the 
 فيلداوي: متجر بيطري شامل
 
 ### **Short Description (Max 80 characters)**
-التطبيق الأول للأطباء البيطريين. تسوق مستلزمات، كتب، كورسات، ووظائف في مكان واحد.
+التطبيق الأول للأطباء البيطريين.ادوية و مستلزمات، كتب، كورسات، ووظائف في مكان واحد.
 
 ### **Long Description (Max 4000 characters)**
 **أهلاً بك في فيلداوي (Fieldawy) – التطبيق الشامل لكل ما يخص الطب البيطري!**

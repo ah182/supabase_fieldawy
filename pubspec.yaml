@@ -115,6 +115,7 @@ flutter:
     - assets/fonts/
     - assets/translations/
     - .env
+    - shorebird.yaml
 assets:
     - assets/fonts/Cairo-Regular.ttf
     - assets/fonts/Cairo-Bold.ttf
