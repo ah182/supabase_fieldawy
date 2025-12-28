@@ -439,7 +439,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               controller: _phoneController,
               decoration: InputDecoration(
                 labelText: 'phoneNumber'.tr(),
-                hintText: 'phoneNumberHint'.tr(),
+                hintText: 'books_feature.phone_hint'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

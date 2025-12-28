@@ -487,7 +487,8 @@
         "price_hint": "Example: 250",
         "save_book_button": "Save Book",
         "cover_required": "Please add book cover",
-        "add_success": "Book added successfully"
+        "add_success": "Book added successfully",
+        "phone_hint": "01xxxxxxxxx"
     },
     "courses_feature": {
         "title": "Courses",
@@ -548,7 +549,8 @@
         "price_hint": "Example: 500",
         "adding": "Adding...",
         "add_course_button": "Add Course",
-        "poster_required": "Please add course poster"
+        "poster_required": "Please add course poster",
+        "phone_hint": "01xxxxxxxxx"
     },
     "job_offers_feature": {
         "title": "Job Offers",
@@ -711,7 +713,9 @@
         "label_expiration_date": "Expiration Date",
         "status_new": "New",
         "status_used": "Used",
-        "status_like_new": "Like New"
+        "status_like_new": "Like New",
+        "image_notice_title": "Image Processing",
+        "image_notice_body": "The original image is being displayed for review. Background removal and image enhancement will be applied automatically once the product is saved and displayed in the app."
     },
     "catalog": {
         "ocr_warning_title": "Important Notice",

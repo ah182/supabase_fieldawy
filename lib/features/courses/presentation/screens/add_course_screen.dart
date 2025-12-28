@@ -389,7 +389,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
               controller: _phoneController,
               decoration: InputDecoration(
                 labelText: 'phoneNumber'.tr(),
-                hintText: 'phoneNumberHint'.tr(),
+                hintText: 'courses_feature.phone_hint'.tr(),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

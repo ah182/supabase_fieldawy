@@ -65,6 +65,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
+            excludes += "**/librive_text.so"
         }
     }
 }
@@ -76,4 +77,12 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation("androidx.multidex:multidex:2.0.1")
+    // Option A (Bundled) - Recommended for Flutter plugins
+    implementation("androidx.camera:camera-core:1.4.2")
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("androidx.camera:camera-core:1.4.2")
+    }
 }

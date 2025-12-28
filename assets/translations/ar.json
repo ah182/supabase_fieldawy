@@ -219,7 +219,7 @@
         "product_dialog": {
             "unknown_distributor": "موزع غير معروف",
             "active_principle": "المادة الفعالة",
-            "medical_info_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye",
+            "medical_info_note": "لمزيد من المعلومات الطبية حول المنتج يرجى زيارة تطبيق Vet Eye",
             "whatsapp_interest": "مرحباً، أنا مهتم بـ {name}"
         }
     },
@@ -936,7 +936,8 @@
         "price_hint": "مثال: 250",
         "save_book_button": "حفظ الكتاب",
         "cover_required": "يرجى إضافة صورة الكتاب",
-        "add_success": "تم إضافة الكتاب بنجاح"
+        "add_success": "تم إضافة الكتاب بنجاح",
+        "phone_hint": "01xxxxxxxxx"
     },
     "courses_feature": {
         "title": "الكورسات",
@@ -997,7 +998,8 @@
         "price_hint": "مثال: 500",
         "adding": "جارٍ الإضافة...",
         "add_course_button": "إضافة الكورس",
-        "poster_required": "يرجى إضافة صورة بوستر الكورس"
+        "poster_required": "يرجى إضافة صورة بوستر الكورس",
+        "phone_hint": "01xxxxxxxxx"
     },
     "job_offers_feature": {
         "title": "عروض التوظيف",
@@ -1161,7 +1163,9 @@
         "label_expiration_date": "تاريخ الصلاحية",
         "status_new": "جديد",
         "status_used": "مستعمل",
-        "status_like_new": "كسر زيرو"
+        "status_like_new": "كسر زيرو",
+        "image_notice_title": "معالجة الصورة",
+        "image_notice_body": "يتم الآن عرض الصورة الأصلية للمراجعة. ستتم إزالة الخلفية وتحسين جودة الصورة تلقائياً فور حفظ المنتج وظهوره في التطبيق."
     },
     "catalog": {
         "ocr_warning_title": "تنبيه هام",

@@ -9,19 +9,23 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/offer_detail_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img; // إضافة مكتبة الصور
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+// ignore: unused_import
 import 'package:http/http.dart' as http;
 import 'package:fieldawy_store/services/cloudinary_service.dart';
+// ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 
@@ -275,15 +279,15 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
   Future<File> _compressImage(File file) async {
     final tempDir = await getTemporaryDirectory();
-    final tempJpegPath = p.join(
-        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
+    final tempPngPath = p.join(
+        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.png');
     final compressedFile = await FlutterImageCompress.compressAndGetFile(
       file.path,
-      tempJpegPath,
-      quality: 80,
+      tempPngPath,
+      quality: 90,
       minWidth: 800,
       minHeight: 800,
-      format: CompressFormat.jpeg,
+      format: CompressFormat.png,
     );
     return compressedFile != null ? File(compressedFile.path) : file;
   }
@@ -307,25 +311,6 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     return croppedFile != null ? File(croppedFile.path) : null;
   }
 
-  Future<Uint8List?> _removeBackground(File imageFile) async {
-    try {
-      final url =
-          Uri.parse("https://ah3181997-my-rembg-space.hf.space/api/remove");
-      final request = http.MultipartRequest('POST', url);
-      request.files
-          .add(await http.MultipartFile.fromPath('file', imageFile.path));
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        return await response.stream.toBytes();
-      } else {
-        throw Exception('Failed to remove background: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to remove background: $e');
-    }
-  }
-
   Future<void> _pickAndProcessImage(ImageSource source) async {
     final pickedFile = await _picker.pickImage(source: source);
     if (pickedFile == null) return;
@@ -340,37 +325,36 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     try {
       _originalImage = File(pickedFile.path);
 
-      // 1. Compress
-      final compressedImage = await _compressImage(_originalImage!);
-
-      // 2. Crop
-      final croppedImage = await _cropImage(compressedImage);
+      // 1. القص (Crop)
+      final croppedImage = await _cropImage(_originalImage!);
       if (croppedImage == null) {
         setState(() => _isProcessing = false);
-        return; // User cancelled cropping
+        return;
       }
 
-      // 3. Remove Background & Process OCR in parallel
+      // 2. التحسين المحلي (Local Enhancement) - تباين ووضوح
+      final enhancedImageFile = await _enhanceImageLocal(croppedImage);
+
+      // 3. الضغط (Compress)
+      final compressedImageFile = await _compressImage(enhancedImageFile);
+
+      // 4. الـ OCR bytes للعرض
       final results = await Future.wait([
-        _removeBackground(croppedImage),
-        _processOCR(croppedImage),
+        compressedImageFile.readAsBytes(),
+        _processOCR(compressedImageFile),
       ]);
 
-      final bgRemovedBytes = results[0] as Uint8List?;
-      if (bgRemovedBytes == null) {
-        throw Exception("Background removal failed.");
-      }
-
-      // Save the processed image to a temporary file for later upload
-      final tempDir = await getTemporaryDirectory();
-      final tempPath = p.join(tempDir.path, 'processed_product.png');
-      final tempFile = File(tempPath);
-      await tempFile.writeAsBytes(bgRemovedBytes);
+      final compressedBytes = results[0] as Uint8List;
 
       setState(() {
-        _processedImageBytes = bgRemovedBytes;
-        _processedImageFile = tempFile;
+        _processedImageBytes = compressedBytes;
+        _processedImageFile = compressedImageFile;
       });
+
+      // 📢 عرض تنبيه للمستخدم بخصوص إزالة الخلفية
+      if (mounted) {
+        _showBackgroundRemovalNotice();
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -392,183 +376,195 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     }
   }
 
+  /// 🛠️ تحسين الصورة محلياً (زيادة التباين والوضوح)
+  Future<File> _enhanceImageLocal(File file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      
+      // نقوم بالمعالجة في Isolate منفصل لضمان سلاسة التطبيق
+      final Uint8List? processedBytes = await compute(_applyLocalFilters, bytes);
+      
+      if (processedBytes == null) return file;
+
+      final tempDir = await getTemporaryDirectory();
+      final path = p.join(tempDir.path, 'enhanced_${DateTime.now().millisecondsSinceEpoch}.png');
+      final enhancedFile = File(path);
+      await enhancedFile.writeAsBytes(processedBytes);
+      
+      return enhancedFile;
+    } catch (e) {
+      print('⚠️ Error enhancing image locally: $e');
+      return file;
+    }
+  }
+
+  /// الفلاتر الفعلية (Contrast & Sharpen)
+  static Uint8List? _applyLocalFilters(Uint8List bytes) {
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return null;
+
+    // 1. زيادة التباين (Contrast) - يجعل النص أوضح
+    image = img.contrast(image, contrast: 120); // 100 هي القيمة العادية
+
+    // 2. زيادة الحِدّة (Sharpen) - يوضح حواف الحروف
+    image = img.convolution(image, filter: [0, -1, 0, -1, 5, -1, 0, -1, 0]);
+
+    // تحويل إلى PNG للحفاظ على الشفافية والجودة
+    return Uint8List.fromList(img.encodePng(image));
+  }
+
   Future<void> _processOCR(File image) async {
     final inputImage = InputImage.fromFilePath(image.path);
     final recognizedText = await _textRecognizer.processImage(inputImage);
-    _parseRecognizedTextAI(recognizedText);
+    
+    // 1. Spatial Sorting: Sort blocks by Y-axis to ensure reading order (Top -> Bottom)
+    // هذا يضمن قراءة اسم المنتج أولاً لأنه عادة في الأعلى
+    List<TextBlock> sortedBlocks = List.from(recognizedText.blocks);
+    sortedBlocks.sort((a, b) {
+      // السماح بهامش خطأ بسيط (10 بكسل) لاعتبار النصوص في نفس السطر
+      int diffY = a.boundingBox.top.compareTo(b.boundingBox.top);
+      if ((a.boundingBox.top - b.boundingBox.top).abs() < 10) {
+        return a.boundingBox.left.compareTo(b.boundingBox.left);
+      }
+      return diffY;
+    });
+
+    _parseRecognizedTextSmart(sortedBlocks);
   }
 
-  /// 🤖 AI-Powered Text Parsing
-  /// استخراج ذكي للبيانات من النص مع تصحيح الأخطاء
-  void _parseRecognizedTextAI(RecognizedText recognizedText) {
-    final lines = recognizedText.blocks.expand((b) => b.lines).toList();
-    if (lines.isEmpty) return;
-
-    // تجميع كل النصوص
-    final allText = lines.map((l) => l.text.trim()).where((t) => t.isNotEmpty).toList();
-    
-    print('🔍 OCR Extracted Lines:');
-    for (var i = 0; i < allText.length; i++) {
-      print('  Line $i: "${allText[i]}"');
-    }
-
-    // ✅ 1. استخراج اسم المنتج (أول سطر كبير عادة)
-    _nameController.text = _extractProductName(allText);
-
-    // ✅ 2. استخراج اسم الشركة (آخر سطر أو سطر يحتوي على كلمات مفتاحية)
-    _companyController.text = _extractCompanyName(allText);
-
-    // ✅ 3. استخراج المادة الفعالة (سطر يحتوي على اسم كيميائي)
-    _activePrincipleController.text = _extractActivePrinciple(allText);
-
-    // ✅ 4. استخراج معلومات التعبئة (ml, mg, tab, vial, etc)
-    final packageInfo = _extractPackageInfo(allText);
-    _packageController.text = packageInfo['description'] ?? '';
-    _selectedPackageType = packageInfo['type'];
-
-    // ✅ 5. استخراج السعر
-    final price = _extractPrice(allText);
-    if (price != null) _priceController.text = price;
-
-    print('✅ AI Parsing Results:');
-    print('  Name: ${_nameController.text}');
-    print('  Company: ${_companyController.text}');
-    print('  Active: ${_activePrincipleController.text}');
-    print('  Package: ${_packageController.text}');
-    print('  Type: $_selectedPackageType');
-    print('  Price: ${_priceController.text}');
-  }
-
-  /// استخراج اسم المنتج (أول سطر كبير أو أول سطر غير رقمي)
-  String _extractProductName(List<String> lines) {
-    if (lines.isEmpty) return '';
-    
-    // نبحث عن أول سطر يحتوي على حروف (مش أرقام فقط)
-    for (var line in lines) {
-      final cleaned = line.trim();
-      // تجاهل الأسطر القصيرة جداً أو الأرقام فقط
-      if (cleaned.length < 2 || RegExp(r'^\d+$').hasMatch(cleaned)) continue;
-      
-      // تنظيف من الرموز غير المرغوبة
-      final name = _cleanText(cleaned);
-      if (name.length >= 2) return name;
-    }
-    
-    return lines.first.trim();
-  }
-
-  /// استخراج اسم الشركة (عادة آخر سطر أو سطر يحتوي على كلمات مثل pharma, lab, co)
-  String _extractCompanyName(List<String> lines) {
-    if (lines.length < 2) return '';
-
-    // الكلمات المفتاحية للشركات
-    final companyKeywords = [
-      'pharma', 'pharmaceutical', 'lab', 'laboratories', 
-      'co', 'company', 'ltd', 'inc', 'egypt', 'international',
-      'health', 'medical', 'care', 'industries'
-    ];
-
-    // نبحث من الآخر للأول
-    for (var i = lines.length - 1; i >= 0; i--) {
-      final line = lines[i].toLowerCase();
-      
-      // لو السطر يحتوي على كلمة مفتاحية
-      if (companyKeywords.any((keyword) => line.contains(keyword))) {
-        return _cleanText(lines[i]);
+  /// 🧠 Smart Veterinary Parsing Engine
+  /// محرك ذكي لتحليل نصوص الأدوية البيطرية
+  void _parseRecognizedTextSmart(List<TextBlock> sortedBlocks) {
+    // تجميع النصوص في قائمة واحدة نظيفة
+    List<String> allLines = [];
+    for (var block in sortedBlocks) {
+      for (var line in block.lines) {
+        String clean = _cleanText(line.text);
+        if (clean.length > 2) { // تجاهل الضوضاء القصيرة
+          allLines.add(clean);
+        }
       }
     }
 
-    // لو مفيش، نرجع آخر سطر
-    return _cleanText(lines.last);
-  }
+    if (allLines.isEmpty) return;
 
-  /// استخراج المادة الفعالة (سطر يحتوي على اسم كيميائي معقد)
-  String _extractActivePrinciple(List<String> lines) {
-    // نبحث عن سطر يحتوي على حروف معقدة (اسم دواء)
-    // عادة يحتوي على حروف كبيرة صغيرة متداخلة
+    print('🔍 Sorted & Cleaned Lines: $allLines');
+
+    // تعريف المتغيرات المستهدفة
+    String extractedName = "";
+    String extractedCompany = "";
+    String extractedActive = "";
+    String extractedPackage = "";
+    String extractedPrice = "";
+
+    // قوائم الكلمات المفتاحية (قاعدة بيانات مصغرة)
+    final vetKeywords = ['injectable', 'solution', 'suspension', 'tablet', 'bolus', 'cattle', 'sheep', 'swine', 'horse', 'dog', 'cat', 'veterinary', 'use only', 'dose', 'mg/ml', 'ml', 'l'];
+    final knownCompanies = ['zoetis', 'msd', 'elanco', 'boehringer', 'bayer', 'merck', 'pfizer', 'virbac', 'ceva', 'vetoquinol', 'adwia', 'pharma', 'company', 'co.', 'ltd', 'inc'];
+    final chemicals = ['tulathromycin', 'oxytetracycline', 'ivermectin', 'amoxicillin', 'penicillin', 'tylosin', 'enrofloxacin', 'flunixin', 'dexamethasone', 'calcium', 'magnesium'];
+
+    // 1. استخراج الحجم (Package Size)
+    // نبحث عن أرقام يتبعها وحدات قياس (ml, L, gm, kg)
+    final packageRegex = RegExp(r'(\d+(?:\.\d+)?\s*(?:mL|L|ml|l|gm|g|kg|vials?|doses?))', caseSensitive: false);
     
-    for (var line in lines) {
-      final cleaned = line.trim();
-      
-      // تجاهل الأسطر القصيرة أو الأرقام
-      if (cleaned.length < 3) continue;
-      
-      // لو السطر يحتوي على حروف كبيرة وصغيرة ومعقد
-      if (_looksLikeChemicalName(cleaned)) {
-        return _cleanText(cleaned);
+    for (var line in allLines) {
+      if (extractedPackage.isEmpty) {
+        final match = packageRegex.firstMatch(line);
+        if (match != null) {
+          // نتأكد أنه ليس تركيز (مثل 100 mg/mL) بل حجم عبوة (Net Contents: 100 mL)
+          if (!line.toLowerCase().contains('/')) {
+             extractedPackage = match.group(0)!;
+          } else if (line.toLowerCase().contains('net') || line.toLowerCase().contains('content')) {
+             extractedPackage = match.group(0)!;
+          }
+        }
       }
     }
 
-    // لو مفيش، نحاول نجيب السطر الثاني أو الثالث
-    if (lines.length > 2) return _cleanText(lines[1]);
-    return '';
-  }
+    // 2. استخراج الشركة (Manufacturer)
+    // نبحث في أسفل القائمة أولاً (عادة الشركة في الأسفل)
+    for (var i = allLines.length - 1; i >= 0; i--) {
+      String lineLower = allLines[i].toLowerCase();
+      if (knownCompanies.any((c) => lineLower.contains(c))) {
+        extractedCompany = allLines[i];
+        allLines.removeAt(i); // حذف السطر حتى لا يختلط مع الاسم
+        break; // نكتفي بأول شركة نجدها من الأسفل
+      }
+    }
 
-  /// فحص لو النص يشبه اسم كيميائي
-  bool _looksLikeChemicalName(String text) {
-    // الأسماء الكيميائية عادة:
-    // 1. تحتوي على حروف كبيرة وصغيرة
-    // 2. طويلة نسبياً (أكثر من 5 حروف)
-    // 3. قد تحتوي على أرقام لكن مش أرقام فقط
-    
-    if (text.length < 4) return false;
-    
-    final hasUpper = RegExp(r'[A-Z]').hasMatch(text);
-    final hasLower = RegExp(r'[a-z]').hasMatch(text);
-    final notOnlyNumbers = !RegExp(r'^\d+$').hasMatch(text);
-    
-    return hasUpper && hasLower && notOnlyNumbers;
-  }
+    // 3. استخراج المادة الفعالة (Active Ingredient)
+    // نبحث عن كلمات كيميائية أو نصوص بين أقواس (...) تحتوي على تركيز
+    for (var i = 0; i < allLines.length; i++) {
+      String line = allLines[i];
+      String lineLower = line.toLowerCase();
+      
+      // البحث عن أسماء كيميائية معروفة
+      if (chemicals.any((c) => lineLower.contains(c))) {
+         extractedActive = line;
+         // لا نحذف السطر هنا، ربما يكون جزء من اسم المنتج
+         break;
+      }
+      
+      // البحث عن نمط (xxxxxx)
+      if (line.contains('(') && line.contains(')')) {
+         // غالباً المادة الفعالة تكتب تحت الاسم بين قوسين
+         extractedActive = line.replaceAll(RegExp(r'[()]'), '');
+         break;
+      }
+    }
 
-  /// استخراج معلومات التعبئة (ml, mg, tab, etc)
-  Map<String, String?> _extractPackageInfo(List<String> lines) {
-    final allText = lines.join(' ').toLowerCase();
-    
-    // أنواع التعبئة وكلماتها المفتاحية
-    final packagePatterns = {
-      'bottle': RegExp(r'(\d+\s*ml|bottle)', caseSensitive: false),
-      'vial': RegExp(r'(\d+\s*vial|vial)', caseSensitive: false),
-      'tab': RegExp(r'(\d+\s*tab|tablet|tabs)', caseSensitive: false),
-      'amp': RegExp(r'(\d+\s*amp|ampoule|ampule)', caseSensitive: false),
-      'sachet': RegExp(r'(\d+\s*sachet|sach)', caseSensitive: false),
-      'strip': RegExp(r'(\d+\s*strip)', caseSensitive: false),
-      'cream': RegExp(r'(cream|ointment)', caseSensitive: false),
-      'gel': RegExp(r'(gel)', caseSensitive: false),
-      'spray': RegExp(r'(spray)', caseSensitive: false),
-      'drops': RegExp(r'(drops|drop)', caseSensitive: false),
-    };
-
-    String? packageType;
-    String description = '';
-
-    // نبحث عن كل نوع
-    for (var entry in packagePatterns.entries) {
-      final match = entry.value.firstMatch(allText);
-      if (match != null) {
-        packageType = entry.key;
-        description = match.group(0) ?? '';
-        
-        // تم إلغاء البحث عن السطر الكامل لضمان استخراج الحجم فقط
+    // 4. استخراج اسم المنتج (Product Name)
+    // الافتراض: هو أول سطر "مميز" وعريض ليس وصفاً عاماً
+    for (var line in allLines) {
+      String lineLower = line.toLowerCase();
+      
+      // تجاهل الأسطر التي تحتوي كلمات وصفية بحتة إذا جاءت في البداية
+      bool isGenericDesc = vetKeywords.any((k) => lineLower == k) || 
+                           lineLower.startsWith('net content') ||
+                           packageRegex.hasMatch(line); // تجاهل السطر لو كان عبارة عن حجم فقط
+                           
+      if (!isGenericDesc && extractedName.isEmpty) {
+        extractedName = line;
         break;
       }
     }
 
-    // لو مفيش نوع محدد، نبحث عن أي رقم + وحدة
-    if (packageType == null) {
-      final unitMatch = RegExp(
-        r'(\d+\s*(?:ml|mg|g|kg|l|tab|caps|cap|piece|pcs))',
-        caseSensitive: false,
-      ).firstMatch(allText);
-      
-      if (unitMatch != null) {
-        description = unitMatch.group(0) ?? '';
-      }
-    }
+    // 5. استخراج السعر (إن وجد)
+    final price = _extractPrice(allLines);
+    if (price != null) extractedPrice = price;
 
-    return {
-      'type': packageType,
-      'description': description,
-    };
+
+    // تعيين القيم للحقول
+    setState(() {
+      _nameController.text = extractedName;
+      _companyController.text = extractedCompany;
+      _activePrincipleController.text = extractedActive;
+      
+      // محاولة ضبط نوع العبوة
+      if (extractedPackage.isNotEmpty) {
+        _packageController.text = extractedPackage;
+        // استنتاج النوع من النص
+        if (extractedPackage.toLowerCase().contains('ml') || extractedPackage.toLowerCase().contains('l')) {
+           if (extractedName.toLowerCase().contains('spray')) _selectedPackageType = 'spray';
+           else if (extractedName.toLowerCase().contains('drop')) _selectedPackageType = 'drops';
+           else _selectedPackageType = 'bottle'; // Default liquid
+        } else if (extractedPackage.toLowerCase().contains('tab')) {
+           _selectedPackageType = 'tab';
+        }
+      }
+      
+      if (extractedPrice.isNotEmpty) _priceController.text = extractedPrice;
+    });
+
+    // Debugging Output (Simulation of JSON response)
+    print('''
+    ✅ JSON Result:
+    {
+      "product_name": "$extractedName",
+      "active_ingredient": "$extractedActive",
+      "package_size": "$extractedPackage",
+      "manufacturer": "$extractedCompany"
+    }
+    ''');
   }
 
   /// استخراج السعر (رقم مع رموز عملة أو كلمات مثل price, egp)
@@ -624,8 +620,11 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // ✅ التحقق من تاريخ الصلاحية في الحالات الإلزامية
-      if ((widget.showExpirationDate || widget.isFromOfferScreen) && _expirationDateController.text.isEmpty) {
+      // ✅ التحقق من تاريخ الصلاحية في الحالات الإلزامية (فقط عند الإضافة الجديدة)
+      // عند التعديل (productToEdit != null)، تاريخ الصلاحية غير مطلوب أو مخفي
+      if (widget.productToEdit == null && 
+          (widget.showExpirationDate || widget.isFromOfferScreen) && 
+          _expirationDateController.text.isEmpty) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -647,10 +646,24 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       // رفع صورة جديدة فقط إذا قام المستخدم بالتقاط/اختيار صورة
       if (_processedImageFile != null) {
         final cloudinaryService = ref.read(cloudinaryServiceProvider);
-        finalUrl = await cloudinaryService.uploadImage(
+        final rawUrl = await cloudinaryService.uploadImage(
           imageFile: _processedImageFile!,
           folder: 'ocr',
         );
+        
+        // 🪄 Smart Background Removal (Optimized for Quota):
+        // استخدام إزالة الخلفية فقط مع التحسين التلقائي للصيغة والجودة f_auto,q_auto
+        // لضمان أقل استهلاك ممكن للكوتا
+        if (rawUrl != null) {
+           if (rawUrl.contains('/upload/')) {
+             finalUrl = rawUrl.replaceFirst(
+               '/upload/', 
+               '/upload/f_auto,q_auto,e_background_removal/',
+             );
+           } else {
+             finalUrl = rawUrl;
+           }
+        }
       }
       
       if (finalUrl == null) throw Exception('Image is required');
@@ -900,6 +913,36 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     } finally {
       setState(() => _isSaving = false);
     }
+  }
+
+  /// 📢 تنبيه المستخدم بخصوص إزالة الخلفية والتحسين التلقائي
+  void _showBackgroundRemovalNotice() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.auto_awesome, color: Colors.amber),
+            const SizedBox(width: 10),
+            Text(
+              'ocr.image_notice_title'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'ocr.image_notice_body'.tr(),
+          style: const TextStyle(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('ocr.got_it'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

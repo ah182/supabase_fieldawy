@@ -291,12 +291,12 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   _buildDetailListTile(
                     theme,
                     Icons.local_shipping_rounded,
-                    'distributionMethod'.tr(),
+                    'distributors_feature.distribution_method'.tr(),
                     distributor.distributionMethod == 'direct_distribution'
-                        ? 'directDistribution'.tr()
+                        ? 'distributors_feature.direct'.tr()
                         : distributor.distributionMethod == 'order_delivery'
-                            ? 'orderDelivery'.tr()
-                            : 'both'.tr(),
+                            ? 'distributors_feature.delivery'.tr()
+                            : 'distributors_feature.both'.tr(),
                   ),
                 if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
                   Padding(
@@ -317,7 +317,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              'Coverage Areas'.tr(),
+                              'distributors_feature.coverage_areas'.tr(),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),

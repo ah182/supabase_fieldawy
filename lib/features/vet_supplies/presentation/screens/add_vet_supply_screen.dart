@@ -13,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+// ignore: unused_import
 import 'package:http/http.dart' as http;
 
 class AddVetSupplyScreen extends ConsumerStatefulWidget {
@@ -137,20 +138,9 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
   }
 
   Future<Uint8List?> _removeBackground(File imageFile) async {
-    try {
-      final url = Uri.parse('https://ah3181997-my-rembg-space.hf.space/api/remove');
-      final request = http.MultipartRequest('POST', url);
-      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        return await response.stream.toBytes();
-      } else {
-        throw Exception('Failed to remove background: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to remove background: $e');
-    }
+    // 💡 Fallback: Return original image bytes to avoid broken API
+    print('ℹ️ Background removal skipped for stability. Using cropped image.');
+    return await imageFile.readAsBytes();
   }
 
   void _showImageSourceDialog() {
@@ -201,13 +191,19 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
     try {
       // Upload image to Cloudinary
       final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final imageUrl = await cloudinaryService.uploadImage(
+      final rawUrl = await cloudinaryService.uploadImage(
         imageFile: _processedImageFile!,
         folder: 'vet_supplies',
       );
 
-      if (imageUrl == null) {
+      if (rawUrl == null) {
         throw Exception('vet_supplies_feature.messages.upload_error'.tr());
+      }
+
+      // 🪄 Smart Background Removal Injection (Optimized)
+      String finalUrl = rawUrl;
+      if (rawUrl.contains('/upload/')) {
+         finalUrl = rawUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto,e_background_removal/');
       }
 
       // Create supply
@@ -218,7 +214,7 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
         name: _nameController.text,
         description: _descriptionController.text,
         price: price,
-        imageUrl: imageUrl,
+        imageUrl: finalUrl,
         phone: _completePhoneNumber,
         package: _packageController.text,
       );
