@@ -24,7 +24,9 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 // ignore: unused_import
 import 'package:http/http.dart' as http;
+// ignore: unused_import
 import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
@@ -645,25 +647,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
       // رفع صورة جديدة فقط إذا قام المستخدم بالتقاط/اختيار صورة
       if (_processedImageFile != null) {
-        final cloudinaryService = ref.read(cloudinaryServiceProvider);
-        final rawUrl = await cloudinaryService.uploadImage(
+        // استخدام الخدمة الذكية (SmartImageService) لتوفير الكوتا
+        // 1. رفع للحساب الأول للإزالة الخلفية
+        // 2. نقل للحساب الثاني للتخزين
+        final smartImageService = ref.read(smartImageServiceProvider);
+        finalUrl = await smartImageService.processAndSaveImage(
           imageFile: _processedImageFile!,
           folder: 'ocr',
         );
-        
-        // 🪄 Smart Background Removal (Optimized for Quota):
-        // استخدام إزالة الخلفية فقط مع التحسين التلقائي للصيغة والجودة f_auto,q_auto
-        // لضمان أقل استهلاك ممكن للكوتا
-        if (rawUrl != null) {
-           if (rawUrl.contains('/upload/')) {
-             finalUrl = rawUrl.replaceFirst(
-               '/upload/', 
-               '/upload/f_auto,q_auto,e_background_removal/',
-             );
-           } else {
-             finalUrl = rawUrl;
-           }
-        }
       }
       
       if (finalUrl == null) throw Exception('Image is required');

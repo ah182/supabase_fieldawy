@@ -4,7 +4,9 @@ import 'package:easy_localization/easy_localization.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,21 +191,16 @@ class _AddVetSupplyScreenState extends ConsumerState<AddVetSupplyScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Upload image to Cloudinary
-      final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final rawUrl = await cloudinaryService.uploadImage(
+      // Upload image using Smart Service (Optimized for Quota)
+      // Account A -> Remove BG -> Account B -> Save
+      final smartImageService = ref.read(smartImageServiceProvider);
+      final finalUrl = await smartImageService.processAndSaveImage(
         imageFile: _processedImageFile!,
         folder: 'vet_supplies',
       );
 
-      if (rawUrl == null) {
+      if (finalUrl == null) {
         throw Exception('vet_supplies_feature.messages.upload_error'.tr());
-      }
-
-      // 🪄 Smart Background Removal Injection (Optimized)
-      String finalUrl = rawUrl;
-      if (rawUrl.contains('/upload/')) {
-         finalUrl = rawUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto,e_background_removal/');
       }
 
       // Create supply

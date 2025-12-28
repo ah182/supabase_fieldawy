@@ -6,7 +6,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
 import 'package:fieldawy_store/features/vet_supplies/data/vet_supplies_repository.dart';
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -207,22 +209,17 @@ class _EditVetSupplyScreenState extends ConsumerState<EditVetSupplyScreen> {
 
       // Upload new image if changed
       if (_imageChanged && _processedImageFile != null) {
-        final cloudinaryService = ref.read(cloudinaryServiceProvider);
-        final rawUrl = await cloudinaryService.uploadImage(
+        // Use Smart Service for optimized quota usage
+        final smartImageService = ref.read(smartImageServiceProvider);
+        final processedUrl = await smartImageService.processAndSaveImage(
           imageFile: _processedImageFile!,
           folder: 'vet_supplies',
         );
         
-        if (rawUrl == null) {
+        if (processedUrl == null) {
           throw Exception('vet_supplies_feature.messages.upload_error'.tr());
         }
-        
-        // 🪄 Smart Background Removal Injection (Optimized)
-        if (rawUrl.contains('/upload/')) {
-           imageUrl = rawUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto,e_background_removal/');
-        } else {
-           imageUrl = rawUrl;
-        }
+        imageUrl = processedUrl;
       }
 
       // Update supply
