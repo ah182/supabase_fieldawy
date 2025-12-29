@@ -48,6 +48,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
   String _fullSuggestion = '';
 
   LatLng _initialPosition = LatLng(30.0444, 31.2357);
+  // ignore: unused_field
   bool _isLoading = true;
   bool _isUpdatingLocation = false;
   bool _isFabDisabled = true;
@@ -439,7 +440,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
                       }
                     });
                   }
-                  if (_allClinics.isEmpty && !_isLoading) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.location_off, size: 64, color: Colors.grey), const SizedBox(height: 16), Text('clinics_feature.no_clinics'.tr(), style: const TextStyle(fontSize: 18, color: Colors.grey))]));
+                  
                   return FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(initialCenter: _initialPosition, initialZoom: 12, minZoom: 3, maxZoom: 20, onTap: (_, __) => FocusScope.of(context).unfocus(), onLongPress: (tapPos, point) => _handleMapLongPress(point)),
