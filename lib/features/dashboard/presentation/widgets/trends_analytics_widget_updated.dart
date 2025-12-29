@@ -1067,6 +1067,23 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
         } catch (e) {
           print('❌ Error fetching trending from surgical_tools: $e');
         }
+        
+        // البحث في vet_supplies
+        try {
+          final vetResponse = await Supabase.instance.client
+              .from('vet_supplies')
+              .select('image_url, name')
+              .eq('id', productId)
+              .limit(1);
+          
+          if (vetResponse.isNotEmpty && vetResponse.first['image_url'] != null) {
+            imageUrl = vetResponse.first['image_url']?.toString();
+            print('✅ Found trending vet supply: ${vetResponse.first['name']}, Image: $imageUrl');
+            return imageUrl;
+          }
+        } catch (e) {
+          print('❌ Error fetching trending from vet_supplies: $e');
+        }
       }
       
       // البحث بالاسم إذا لم نجد بالـ ID
@@ -1103,6 +1120,23 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
           }
         } catch (e) {
           print('❌ Error searching trending surgical by name: $e');
+        }
+        
+        // البحث في vet_supplies بالاسم
+        try {
+          final vetNameResponse = await Supabase.instance.client
+              .from('vet_supplies')
+              .select('image_url, name')
+              .ilike('name', '%$productName%')
+              .limit(1);
+          
+          if (vetNameResponse.isNotEmpty && vetNameResponse.first['image_url'] != null) {
+            imageUrl = vetNameResponse.first['image_url']?.toString();
+            print('✅ Found trending vet supply by name: ${vetNameResponse.first['name']}, Image: $imageUrl');
+            return imageUrl;
+          }
+        } catch (e) {
+          print('❌ Error searching trending vet supply by name: $e');
         }
         
         // البحث في ocr_products بالاسم
@@ -1210,6 +1244,23 @@ class TrendsAnalyticsWidgetUpdated extends ConsumerWidget {
         print('❌ Error searching surgical tools: $e');
       }
       
+      // البحث في vet_supplies
+      try {
+        final vetResponse = await Supabase.instance.client
+            .from('vet_supplies')
+            .select('image_url, name')
+            .ilike('name', '%$keyword%')
+            .limit(1);
+        
+        if (vetResponse.isNotEmpty && vetResponse.first['image_url'] != null) {
+          imageUrl = vetResponse.first['image_url']?.toString();
+          print('✅ Found vet supply by keyword: ${vetResponse.first['name']}, Image: $imageUrl');
+          return imageUrl;
+        }
+      } catch (e) {
+        print('❌ Error searching vet supplies: $e');
+      }
+    
       // البحث في ocr_products
       try {
         final ocrResponse = await Supabase.instance.client

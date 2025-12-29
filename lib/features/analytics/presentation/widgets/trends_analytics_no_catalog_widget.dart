@@ -75,16 +75,26 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
             const SizedBox(height: 16),
             
             trendsAnalyticsAsync.when(
-              data: (analytics) => Column(
-                children: [
-                  // Global trending products (WITHOUT Add to Catalog button)
-                  _buildTrendingProducts(context, analytics['trending'] ?? []),
-                  const SizedBox(height: 20),
+              data: (analytics) {
+                final trending = (analytics['trending'] as List<dynamic>?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList() ?? [];
 
-                  // REAL Search trends
-                  _buildRealSearchTrends(context, analytics['searches'] ?? []),
-                ],
-              ),
+                final searches = (analytics['searches'] as List<dynamic>?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList() ?? [];
+
+                return Column(
+                  children: [
+                    // Global trending products (WITHOUT Add to Catalog button)
+                    _buildTrendingProducts(context, trending),
+                    const SizedBox(height: 20),
+
+                    // REAL Search trends
+                    _buildRealSearchTrends(context, searches),
+                  ],
+                );
+              },
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.all(40),
@@ -952,6 +962,22 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
         } catch (e) {
           print('❌ Error fetching trending from surgical_tools: $e');
         }
+
+        // البحث في vet_supplies
+        try {
+          final vetResponse = await Supabase.instance.client
+              .from('vet_supplies')
+              .select('image_url, name')
+              .eq('id', productId)
+              .limit(1);
+          
+          if (vetResponse.isNotEmpty && vetResponse.first['image_url'] != null) {
+            imageUrl = vetResponse.first['image_url']?.toString();
+            return imageUrl;
+          }
+        } catch (e) {
+          print('❌ Error fetching trending from vet_supplies: $e');
+        }
       }
       
       if (productName.isNotEmpty) {
@@ -983,6 +1009,22 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
           }
         } catch (e) {
           print('❌ Error searching trending surgical by name: $e');
+        }
+
+        // البحث في vet_supplies بالاسم
+        try {
+          final vetNameResponse = await Supabase.instance.client
+              .from('vet_supplies')
+              .select('image_url, name')
+              .ilike('name', '%$productName%')
+              .limit(1);
+          
+          if (vetNameResponse.isNotEmpty && vetNameResponse.first['image_url'] != null) {
+            imageUrl = vetNameResponse.first['image_url']?.toString();
+            return imageUrl;
+          }
+        } catch (e) {
+          print('❌ Error searching trending vet supply by name: $e');
         }
         
         try {
@@ -1068,17 +1110,32 @@ class TrendsAnalyticsNoCatalogWidget extends ConsumerWidget {
             .ilike('tool_name', '%$keyword%')
             .limit(1);
         
-        if (surgicalResponse.isNotEmpty && surgicalResponse.first['image_url'] != null) {
-          imageUrl = surgicalResponse.first['image_url']?.toString();
-          return imageUrl;
-        }
-      } catch (e) {
-        print('❌ Error searching surgical tools: $e');
-      }
-      
-      try {
-        final ocrResponse = await Supabase.instance.client
-            .from('ocr_products')
+                  if (surgicalResponse.isNotEmpty && surgicalResponse.first['image_url'] != null) {
+                    imageUrl = surgicalResponse.first['image_url']?.toString();
+                    return imageUrl;
+                  }
+                } catch (e) {
+                  print('❌ Error searching surgical tools: $e');
+                }
+        
+                // البحث في vet_supplies
+                try {
+                  final vetResponse = await Supabase.instance.client
+                      .from('vet_supplies')
+                      .select('image_url, name')
+                      .ilike('name', '%$keyword%')
+                      .limit(1);
+                  
+                  if (vetResponse.isNotEmpty && vetResponse.first['image_url'] != null) {
+                    imageUrl = vetResponse.first['image_url']?.toString();
+                    return imageUrl;
+                  }
+                } catch (e) {
+                  print('❌ Error searching vet supplies: $e');
+                }
+              
+                try {
+                  final ocrResponse = await Supabase.instance.client            .from('ocr_products')
             .select('image_url, product_name')
             .ilike('product_name', '%$keyword%')
             .limit(1);
