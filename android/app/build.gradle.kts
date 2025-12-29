@@ -17,6 +17,14 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+val flutterMinSdkVersion = localProperties.getProperty("flutter.minSdkVersion")?.toInt() ?: 23
+
 android {
     namespace = "com.fieldawy.store"
     compileSdk = 36
@@ -43,7 +51,7 @@ android {
 
     defaultConfig {
         applicationId = "com.fieldawy.store"
-        minSdk = 23
+        minSdk = flutterMinSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
