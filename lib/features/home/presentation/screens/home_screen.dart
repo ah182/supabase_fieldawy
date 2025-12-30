@@ -37,6 +37,7 @@ import 'package:fieldawy_store/features/products/application/surgical_tools_home
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
+import 'package:fieldawy_store/features/products/presentation/widgets/smart_alternatives_section.dart';
 
 
 
@@ -957,6 +958,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 ),
                               ),
                             ),
+                          
+                          // === Smart Alternatives Section ===
+                          SmartAlternativesSection(
+                            product: product,
+                            onProductTap: (altProduct) {
+                              Navigator.of(context).pop(); // Close current dialog
+                              // Small delay to allow dialog to close smoothly
+                              Future.delayed(const Duration(milliseconds: 100), () {
+                                if (mounted) {
+                                  _showProductDetailDialog(context, ref, altProduct);
+                                }
+                              });
+                            },
+                          ),
                           const SizedBox(height: 30),
                           Center(
                             child: Container(
