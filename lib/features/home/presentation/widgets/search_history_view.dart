@@ -1,0 +1,120 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+
+class SearchHistoryView extends ConsumerWidget {
+  final Function(String) onTermSelected;
+  final VoidCallback? onClose;
+  final String tabId; // معرف التاب المطلوب
+
+  const SearchHistoryView({
+    super.key,
+    required this.onTermSelected,
+    this.onClose,
+    required this.tabId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the whole map, but extract specific list
+    final historyMap = ref.watch(searchHistoryProvider);
+    final history = historyMap[tabId] ?? [];
+    
+    final theme = Theme.of(context);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
+    if (history.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    isAr ? 'عمليات البحث الأخيرة' : 'Recent Searches',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  if (onClose != null) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: onClose,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (history.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    ref.read(searchHistoryProvider.notifier).clearHistory(tabId);
+                  },
+                  child: Text(
+                    isAr ? 'مسح الكل' : 'Clear All',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        
+        // Horizontal Scroll for quick access
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: history.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final term = history[index];
+              return ActionChip(
+                label: Text(term),
+                onPressed: () => onTermSelected(term),
+                backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                labelStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+                avatar: Icon(
+                  Icons.history,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+              );
+            },
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}

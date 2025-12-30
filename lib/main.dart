@@ -45,6 +45,8 @@ import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGua
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 
 // ✅ Firebase imports
 import 'package:firebase_core/firebase_core.dart';
@@ -910,10 +912,16 @@ Future<void> main() async {
   await SubscriptionCacheService.init();
   print('✅ Subscription cache initialized');
 
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+
   // Wrap with ProviderScope for Riverpod
   runApp(
-    const ProviderScope(
-      child: ConnectivityHandler(),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const ConnectivityHandler(),
     ),
   );
 }

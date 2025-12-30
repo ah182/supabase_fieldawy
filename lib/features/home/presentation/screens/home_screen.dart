@@ -38,6 +38,8 @@ import 'package:fieldawy_store/features/products/application/offers_home_provide
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
 import 'package:fieldawy_store/features/products/presentation/widgets/smart_alternatives_section.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 
 
 
@@ -78,6 +80,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   
   String _ghostText = '';
   String _fullSuggestion = '';
+
+  String _getCurrentTabId() {
+    switch (_tabController.index) {
+      case 0: return 'home';
+      case 1: return 'price_action';
+      case 2: return 'expire_soon';
+      case 3: return 'surgical';
+      case 4: return 'offers';
+      case 5: return 'courses';
+      case 6: return 'books';
+      default: return 'home';
+    }
+  }
 
   List<_TabInfo> _getTabs() {
     return [
@@ -142,7 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _searchController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce!.cancel();
-      _debounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
+      _debounce = Timer(const Duration(milliseconds: 1000), () { // تقليل التأخير  ثانية
         if (mounted) {
           setState(() {
             _debouncedSearchQuery = _searchController.text;
@@ -348,8 +363,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       switch (currentTabIndex) {
         case 0: // Home Tab
           return allProductsForSearch;
-        case 1: // Price Action Tab - استخدام جميع المنتجات حالياً
-          return allProductsForSearch;
+        case 1: // Price Action Tab
+          return _getPriceActionProducts();
         case 2: // Expire Soon Tab
           return _getExpireSoonProducts();
         case 3: // Surgical & Diagnostic Tab
@@ -460,6 +475,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final offersAsync = ref.read(offersHomeProvider);
       return offersAsync.when(
         data: (items) => items.map((item) => item.product).toList(),
+        loading: () => <ProductModel>[],
+        error: (_, __) => <ProductModel>[],
+      );
+    } catch (e) {
+      return <ProductModel>[];
+    }
+  }
+
+  // دالة للحصول على منتجات تحديث الأسعار
+  List<ProductModel> _getPriceActionProducts() {
+    try {
+      final priceUpdatesAsync = ref.read(priceUpdatesProvider);
+      return priceUpdatesAsync.when(
+        data: (products) => products,
         loading: () => <ProductModel>[],
         error: (_, __) => <ProductModel>[],
       );
@@ -1366,7 +1395,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(120),
+                  preferredSize: Size.fromHeight(
+                    (_focusNode.hasFocus && _searchQuery.isEmpty && (ref.watch(searchHistoryProvider)[_getCurrentTabId()]?.isNotEmpty ?? false)) 
+                      ? 210 // ارتفاع إضافي للسجل
+                      : 120, // الارتفاع الطبيعي
+                  ),
                   child: Column(
                     children: [
                       Stack(
@@ -1385,6 +1418,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               focusNode: _focusNode,
                               textInputAction: TextInputAction.search,
                               onSubmitted: (value) {
+                                // حفظ في السجل (مخصص للتاب الحالي)
+                                if (value.trim().isNotEmpty) {
+                                  ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _getCurrentTabId());
+                                }
                                 // عند الضغط على زر البحث في لوحة المفاتيح، إخفاء الكيبورد
                                 _focusNode.unfocus();
                               },
@@ -1505,9 +1542,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       _searchController.text = _fullSuggestion;
                                       setState(() {
                                         _searchQuery = _fullSuggestion;
+                                        _debouncedSearchQuery = _fullSuggestion; // تحديث فوري للنتائج
                                         _ghostText = '';
                                         _fullSuggestion = '';
                                       });
+                                      // حفظ في السجل (مخصص للتاب الحالي)
+                                      ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _getCurrentTabId());
+                                      
                                       HapticFeedback.selectionClick();
                                       // إبقاء التركيز لتمكين المستخدم من المتابعة في الكتابة
                                       _focusNode.requestFocus();
@@ -1569,6 +1610,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                         ],
                       ),
+                      
+                      // Search History (Visible when focused and query is empty)
+                      if (_focusNode.hasFocus && _searchQuery.isEmpty)
+                        SearchHistoryView(
+                          tabId: _getCurrentTabId(),
+                          onClose: () => _focusNode.unfocus(), // إغلاق السجل
+                          onTermSelected: (term) {
+                            _searchController.text = term;
+                            setState(() {
+                              _searchQuery = term;
+                              _debouncedSearchQuery = term; // تحديث فوري للنتائج
+                            });
+                            // Trigger search logic and update history order (bring to front)
+                            ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _getCurrentTabId());
+                            _focusNode.unfocus();
+                          },
+                        ),
+
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         padding: const EdgeInsets.all(2),
