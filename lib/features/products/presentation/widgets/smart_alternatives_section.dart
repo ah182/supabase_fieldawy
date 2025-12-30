@@ -102,22 +102,33 @@ class _SmartAlternativesSectionState extends State<SmartAlternativesSection> {
                               ),
                         ),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${alternatives.length}', 
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? const Color.fromARGB(255, 240, 240, 241)
+                            : Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          if (Theme.of(context).brightness == Brightness.light)
+                            BoxShadow(
+                              color: const Color.fromARGB(255, 251, 250, 250).withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${alternatives.length}', 
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? Theme.of(context).colorScheme.primary
+                              : const Color.fromARGB(255, 249, 248, 248),
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(width: 8),
+                      ),
+                    ),                        const SizedBox(width: 8),
                         AnimatedRotation(
                           turns: _isExpanded ? 0.5 : 0.0,
                           duration: const Duration(milliseconds: 200),
@@ -199,136 +210,144 @@ class _SmartAlternativesSectionState extends State<SmartAlternativesSection> {
                             );
                           }
 
-                          // === Product Card ===
-                          final alt = alternatives[index];
-                          final savings = (widget.product.price != null && alt.price != null && widget.product.price! > alt.price!)
-                              ? widget.product.price! - alt.price!
-                              : 0.0;
-
-                          return GestureDetector(
-                            onTap: () => widget.onProductTap(alt),
-                            child: Container(
-                              width: 110,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: savings > 0 
-                                      ? Colors.green.withOpacity(0.5) 
-                                      : Theme.of(context).dividerColor,
-                                  width: savings > 0 ? 1.5 : 1,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Stack(
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                                          child: Container(
-                                            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.all(4),
-                                            child: CachedNetworkImage(
-                                              imageUrl: alt.imageUrl,
-                                              fit: BoxFit.contain,
-                                              placeholder: (context, url) => const Center(
-                                                child: SizedBox(
-                                                  width: 15, height: 15, 
-                                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                                ),
-                                              ),
-                                              errorWidget: (context, url, error) => Icon(
-                                                Icons.broken_image_outlined,
-                                                size: 20,
-                                                color: Colors.grey[400],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        if (savings > 0)
-                                          Positioned(
-                                            top: 4,
-                                            right: 4,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                '${isAr ? 'وفر' : 'Save'} ${NumberFormatter.formatCompact(savings)} $currencyText',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            alt.name,
-                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              height: 1.1,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (alt.selectedPackage != null && alt.selectedPackage!.isNotEmpty)
-                                            Directionality(
-                                              textDirection: ui.TextDirection.ltr,
-                                              child: Text(
-                                                alt.selectedPackage!,
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          Text(
-                                            '${NumberFormatter.formatCompact(alt.price ?? 0)} $currencyText',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: savings > 0 
-                                                  ? Colors.green.shade700 
-                                                  : Theme.of(context).colorScheme.primary,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                                                // === Product Card ===
+                                                final alt = alternatives[index];
+                                                final double originalPrice = widget.product.price ?? 0.0;
+                                                final double altPrice = alt.price ?? 0.0;
+                                                
+                                                Color borderColor = Theme.of(context).dividerColor;
+                                                double borderWidth = 1.0;
+                                                final savings = originalPrice > altPrice ? originalPrice - altPrice : 0.0;
+                          
+                                                if (altPrice < originalPrice && originalPrice > 0) {
+                                                  borderColor = Colors.green.withOpacity(0.5);
+                                                  borderWidth = 1.5;
+                                                } else if (altPrice > originalPrice && originalPrice > 0) {
+                                                  borderColor = Colors.red.withOpacity(0.3);
+                                                  borderWidth = 1.0;
+                                                }
+                          
+                                                return GestureDetector(
+                                                  onTap: () => widget.onProductTap(alt),
+                                                  child: Container(
+                                                    width: 110,
+                                                    decoration: BoxDecoration(
+                                                      color: Theme.of(context).cardColor,
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      border: Border.all(
+                                                        color: borderColor,
+                                                        width: borderWidth,
+                                                      ),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black.withOpacity(0.05),
+                                                          blurRadius: 4,
+                                                          offset: const Offset(0, 2),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Expanded(
+                                                          flex: 3,
+                                                          child: Stack(
+                                                            children: [
+                                                              ClipRRect(
+                                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                                                                child: Container(
+                                                                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                                                                  width: double.infinity,
+                                                                  padding: const EdgeInsets.all(4),
+                                                                  child: CachedNetworkImage(
+                                                                    imageUrl: alt.imageUrl,
+                                                                    fit: BoxFit.contain,
+                                                                    placeholder: (context, url) => const Center(
+                                                                      child: SizedBox(
+                                                                        width: 15, height: 15, 
+                                                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                                                      ),
+                                                                    ),
+                                                                    errorWidget: (context, url, error) => Icon(
+                                                                      Icons.broken_image_outlined,
+                                                                      size: 20,
+                                                                      color: Colors.grey[400],
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              if (savings > 0)
+                                                                Positioned(
+                                                                  top: 4,
+                                                                  right: 4,
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                                    decoration: BoxDecoration(
+                                                                      color: Colors.green,
+                                                                      borderRadius: BorderRadius.circular(4),
+                                                                    ),
+                                                                    child: Text(
+                                                                      '${isAr ? 'وفر' : 'Save'} ${NumberFormatter.formatCompact(savings)} $currencyText',
+                                                                      style: const TextStyle(
+                                                                        color: Colors.white,
+                                                                        fontSize: 9,
+                                                                        fontWeight: FontWeight.bold,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        Expanded(
+                                                          flex: 2,
+                                                          child: Padding(
+                                                            padding: const EdgeInsets.all(8.0),
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                              children: [
+                                                                Text(
+                                                                  alt.name,
+                                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                                    fontWeight: FontWeight.bold,
+                                                                    height: 1.1,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+                                                                if (alt.selectedPackage != null && alt.selectedPackage!.isNotEmpty)
+                                                                  Directionality(
+                                                                    textDirection: ui.TextDirection.ltr,
+                                                                    child: Text(
+                                                                      alt.selectedPackage!,
+                                                                      style: TextStyle(
+                                                                        fontSize: 10,
+                                                                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                                                        fontWeight: FontWeight.w500,
+                                                                      ),
+                                                                      maxLines: 1,
+                                                                      overflow: TextOverflow.ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                Text(
+                                                                  '${NumberFormatter.formatCompact(alt.price ?? 0)} $currencyText',
+                                                                  style: TextStyle(
+                                                                    fontSize: 11,
+                                                                    color: savings > 0 
+                                                                        ? Colors.green.shade700 
+                                                                        : (altPrice > originalPrice ? Colors.red.shade700 : Theme.of(context).colorScheme.primary),
+                                                                    fontWeight: FontWeight.w800,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );                        },
                       ),
                     ),
                   ),
