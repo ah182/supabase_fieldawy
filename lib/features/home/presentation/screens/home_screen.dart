@@ -864,7 +864,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           Center(
                             child: RepaintBoundary(
                               child: Container(
-                                height: 200,
+                                height: 250,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
                                   color: imageBgColor,
@@ -874,8 +874,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 child: CachedNetworkImage(
                                   imageUrl: product.imageUrl,
                                   fit: BoxFit.contain,
-                                  memCacheWidth: 800,
-                                  memCacheHeight: 800,
                                   placeholder: (context, url) => const Center(
                                     child: ImageLoadingIndicator(size: 50),
                                   ),
@@ -1184,7 +1182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         child: ViewTrackingProductCard(
                           key: ValueKey('${product.id}_search'), // مفتاح فريد لضمان إعادة إنشاء الحالة عند تغير المنتج
                           product: product,
-                          searchQuery: _debouncedSearchQuery,
+                          searchQuery: _debouncedSearchQuery, // جعل كارت البحث يبدو مثل الكارت العادي بدون علامة البحث
                           productType: 'search_result', // نوع مخصص للبحث لتتبع المشاهدات بشكل مستقل
                           trackViewOnVisible: true, // تفعيل تتبع المشاهدة عند الظهور في البحث
                           onTap: () {

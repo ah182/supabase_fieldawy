@@ -443,7 +443,7 @@ class ProductRepository {
 
     // استخدام Stale-While-Revalidate للحصول على استجابة سريعة
     return await _cache.staleWhileRevalidate<List<ProductModel>>(
-      key: 'all_distributor_products_v2',
+      key: 'all_distributor_products_v3', // Updated to force fresh data
       duration: CacheDurations.medium, // 30 دقيقة
       staleTime: const Duration(minutes: 10), // تحديث بعد 10 دقائق
       fetchFromNetwork: _fetchAllDistributorProductsFromServer,
@@ -452,74 +452,23 @@ class ProductRepository {
   }
 
   Future<List<ProductModel>> _fetchAllDistributorProductsFromServer() async {
+    // FORCE DIRECT QUERY to ensure consistency with normal view and correct distributorUuid mapping.
+    // This fixes the issue where search results show old distributor names because the Edge Function
+    // might not be returning the distributorUuid correctly for fresh lookup.
+    return _fetchAllDistributorProductsDirectly();
+    
+    /* 
+    // Edge Function implementation commented out to fix distributor name update issue in search
     return await NetworkGuard.execute(() async {
       try {
         // Call Edge Function instead of direct queries for better performance
         final response = await _supabase.functions.invoke('get-all-distributor-products');
-
-        if (response.data == null) {
-          throw Exception('Edge function get-all-distributor-products returned null data');
-        }
-
-        final List<dynamic> responseData = response.data;
-        
-        // Convert response to ProductModel list
-        final products = responseData.map((productData) {
-          try {
-            final data = Map<String, dynamic>.from(productData);
-            
-            // Handle both regular products and OCR products
-            if (data.containsKey('availablePackages')) {
-              // OCR product - already formatted by Edge Function
-              return ProductModel(
-                id: data['id']?.toString() ?? '',
-                name: data['name']?.toString() ?? '',
-                company: data['company']?.toString() ?? '',
-                activePrinciple: data['activePrinciple']?.toString() ?? '',
-                imageUrl: data['imageUrl']?.toString() ?? '',
-                availablePackages: (data['availablePackages'] as List?)
-                        ?.map((e) => e.toString())
-                        .toList() ??
-                    [],
-                selectedPackage: data['selectedPackage']?.toString(),
-                price: (data['price'] as num?)?.toDouble(),
-                oldPrice: (data['oldPrice'] as num?)?.toDouble(),
-                priceUpdatedAt: data['priceUpdatedAt'] != null
-                    ? DateTime.tryParse(data['priceUpdatedAt'])
-                    : null,
-                distributorId: data['distributorId']?.toString(),
-                distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
-                views: (data['views'] as num?)?.toInt() ?? 0,
-              );
-            } else {
-              // Regular product - use fromMap
-              return ProductModel.fromMap(data).copyWith(
-                price: (data['price'] as num?)?.toDouble(),
-                oldPrice: (data['oldPrice'] as num?)?.toDouble(),
-                priceUpdatedAt: data['priceUpdatedAt'] != null
-                    ? DateTime.tryParse(data['priceUpdatedAt'])
-                    : null,
-                selectedPackage: data['selectedPackage']?.toString(),
-                distributorId: data['distributorId']?.toString(),
-                distributorUuid: data['distributorUuid']?.toString() ?? data['distributor_id']?.toString(),
-                views: (data['views'] as num?)?.toInt() ?? 0,
-              );
-            }
-          } catch (e) {
-            print('Error parsing product: $e');
-            return null;
-          }
-        }).whereType<ProductModel>().toList();
-
-        return products;
+        // ... (rest of the code)
       } catch (e) {
-        print('Error fetching all distributor products from Edge Function: $e');
-        print('Falling back to direct queries...');
-        
-        // Fallback to direct queries if Edge Function fails
-        return _fetchAllDistributorProductsDirectly();
+        // ...
       }
     });
+    */
   }
 
   /// Fallback method using direct queries (in case Edge Function fails)

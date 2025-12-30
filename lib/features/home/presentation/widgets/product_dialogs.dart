@@ -413,7 +413,7 @@ class _ProductDialogState extends State<_ProductDialog> {
                       Center(
                         child: RepaintBoundary(
                           child: Container(
-                            height: 200,
+                            height: 250,
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: imageBgColor,
@@ -423,8 +423,6 @@ class _ProductDialogState extends State<_ProductDialog> {
                             child: CachedNetworkImage(
                               imageUrl: widget.product.imageUrl,
                               fit: BoxFit.contain,
-                              memCacheWidth: 800,
-                              memCacheHeight: 800,
                               placeholder: (context, url) => const Center(
                                 child: ImageLoadingIndicator(size: 50),
                               ),
@@ -1054,7 +1052,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                       Center(
                         child: RepaintBoundary(
                           child: Container(
-                            height: 200,
+                            height: 250,
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: imageBgColor,
@@ -1064,8 +1062,6 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
                             child: CachedNetworkImage(
                               imageUrl: widget.offer.imageUrl,
                               fit: BoxFit.contain,
-                              memCacheWidth: 800,
-                              memCacheHeight: 800,
                               placeholder: (context, url) => const Center(
                                 child: ImageLoadingIndicator(size: 50),
                               ),
