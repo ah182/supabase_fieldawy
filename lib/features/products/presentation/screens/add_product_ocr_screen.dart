@@ -80,7 +80,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   // AI Service Instance
   final _aiService = AiAnalysisService();
   // TODO: Move this key to secure storage or remote config
-  final String _openRouterApiKey = "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";
+  final String _openRouterApiKey = "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"; 
 
   final List<String> _packageTypes = [
     'bottle',

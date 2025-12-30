@@ -1,5 +1,5 @@
 import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
-import 'package:fieldawy_store/features/ocr_test/screens/ocr_test_screen.dart';
+
 // ignore: unused_import
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/widgets/admin_scaffold.dart';
@@ -127,14 +127,7 @@ class MenuScreen extends ConsumerWidget {
 
   List<Widget> _getDistributorMenuItems(BuildContext context) {
     return [
-      _buildMenuItem(
-          icon: Icons.document_scanner_outlined,
-          title: 'OCR Scanner (Test)',
-          onTap: () {
-            ZoomDrawer.of(context)!.close();
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const OcrTestScreen()));
-          }),
+    
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
           title: 'home.menu.clinics_map'.tr(),
@@ -213,14 +206,7 @@ class MenuScreen extends ConsumerWidget {
 
   List<Widget> _getDoctorMenuItems(BuildContext context) {
     return [
-      _buildMenuItem(
-          icon: Icons.document_scanner_outlined,
-          title: 'OCR Scanner (Test)',
-          onTap: () {
-            ZoomDrawer.of(context)!.close();
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const OcrTestScreen()));
-          }),
+      
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
           title: 'home.menu.clinics_map'.tr(),
