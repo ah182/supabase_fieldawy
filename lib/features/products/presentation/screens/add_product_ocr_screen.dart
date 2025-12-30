@@ -30,6 +30,8 @@ import 'package:fieldawy_store/services/smart_image_service.dart';
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
+import 'package:fieldawy_store/features/ocr_test/services/ai_analysis_service.dart';
+
 
 class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
@@ -74,6 +76,11 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   final _descriptionController = TextEditingController();
 
   final _packageFocusNode = FocusNode(); // جديد
+
+  // AI Service Instance
+  final _aiService = AiAnalysisService();
+  // TODO: Move this key to secure storage or remote config
+  final String _openRouterApiKey = "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";
 
   final List<String> _packageTypes = [
     'bottle',
@@ -419,17 +426,95 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     final inputImage = InputImage.fromFilePath(image.path);
     final recognizedText = await _textRecognizer.processImage(inputImage);
     
-    // 1. Spatial Sorting: Sort blocks by Y-axis to ensure reading order (Top -> Bottom)
-    // هذا يضمن قراءة اسم المنتج أولاً لأنه عادة في الأعلى
+    // 1. Spatial Sorting: Sort blocks by Y-axis
     List<TextBlock> sortedBlocks = List.from(recognizedText.blocks);
     sortedBlocks.sort((a, b) {
-      // السماح بهامش خطأ بسيط (10 بكسل) لاعتبار النصوص في نفس السطر
       int diffY = a.boundingBox.top.compareTo(b.boundingBox.top);
       if ((a.boundingBox.top - b.boundingBox.top).abs() < 10) {
         return a.boundingBox.left.compareTo(b.boundingBox.left);
       }
       return diffY;
     });
+
+    final rawText = recognizedText.text;
+
+    // 🚀 PHASE 1: Try AI Analysis First
+    if (rawText.trim().isNotEmpty) {
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                const SizedBox(width: 10),
+                const Text('Analyzing with AI...'),
+              ],
+            ),
+            backgroundColor: Colors.blueAccent,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      try {
+        print("🤖 [OCR Screen] Attempting AI Analysis...");
+        final aiResult = await _aiService.analyzeText(rawText, _openRouterApiKey);
+        
+        print("✅ [OCR Screen] AI Success: ${aiResult.toJson()}");
+        
+        // Populate Fields from AI
+        setState(() {
+          if (aiResult.name != null) _nameController.text = aiResult.name!;
+          if (aiResult.company != null) _companyController.text = aiResult.company!;
+          if (aiResult.activeIngredient != null) _activePrincipleController.text = aiResult.activeIngredient!;
+          if (aiResult.packageSize != null) {
+             _packageController.text = aiResult.packageSize!;
+             
+             // Smart Package Type Selection based on AI result
+             final pkg = aiResult.packageSize!.toLowerCase();
+             final name = aiResult.name?.toLowerCase() ?? '';
+             
+             if (pkg.contains('ml') || pkg.contains('l')) {
+               if (name.contains('spray')) _selectedPackageType = 'spray';
+               else if (name.contains('drop')) _selectedPackageType = 'drops';
+               else if (name.contains('susp')) _selectedPackageType = 'bottle'; // suspension
+               else _selectedPackageType = 'bottle';
+             } else if (pkg.contains('tab') || pkg.contains('cap')) {
+               _selectedPackageType = 'tab';
+             } else if (pkg.contains('gm') || pkg.contains('g')) {
+                if (name.contains('cream')) _selectedPackageType = 'cream';
+                else if (name.contains('gel')) _selectedPackageType = 'gel';
+                else _selectedPackageType = 'powder';
+             }
+          }
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI Analysis Successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        return; // ✅ Exit if AI succeeds
+
+      } catch (e) {
+        print("⚠️ [OCR Screen] AI Failed: $e");
+        print("🔄 [OCR Screen] Falling back to Standard Regex Engine...");
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI unavailable, using standard scan.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        // Fallthrough to standard logic below
+      }
+    }
 
     _parseRecognizedTextSmart(sortedBlocks);
   }
