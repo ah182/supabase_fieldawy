@@ -24,6 +24,8 @@ import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_p
 import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 
@@ -93,7 +95,20 @@ class MenuScreen extends ConsumerWidget {
 
                   return ListView(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    children: menuItems,
+                    children: [
+                      ...menuItems,
+                      const Divider(color: Colors.white24, thickness: 1, height: 24),
+                      _buildMenuItem(
+                        icon: FontAwesomeIcons.whatsapp,
+                        title: (context.locale.languageCode == 'en') ? 'Contact Support' : 'تواصل مع الدعم',
+                        onTap: () async {
+                          final Uri whatsappUrl = Uri.parse("https://wa.me/201017016217?text=مرحبا، أحتاج مساعدة في تطبيق فيلداوي");
+                          if (await canLaunchUrl(whatsappUrl)) {
+                            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
+                    ],
                   );
                 },
                 loading: () => const SizedBox.shrink(),
