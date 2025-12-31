@@ -12,7 +12,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 class SearchHistoryNotifier extends StateNotifier<Map<String, List<String>>> {
   final SharedPreferences _prefs;
   static const _key = 'search_history_map';
-  static const _maxHistoryLength = 3; // أحدث 3 عمليات بحث لكل تاب
+  static const _maxHistoryLength = 5; // أحدث 5 عمليات بحث لكل تاب كما طلبت
 
   SearchHistoryNotifier(this._prefs) : super({}) {
     _loadHistory();

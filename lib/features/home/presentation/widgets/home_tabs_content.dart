@@ -8,6 +8,9 @@ import 'package:fieldawy_store/features/distributors/presentation/screens/distri
 import 'package:fieldawy_store/features/products/application/expire_drugs_provider.dart';
 import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
+import 'package:fieldawy_store/features/home/application/search_filters_provider.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
+import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:fieldawy_store/widgets/product_card.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
@@ -749,6 +752,16 @@ class ExpireSoonTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expireDrugsAsync = ref.watch(expireDrugsProvider);
+    final filters = ref.watch(searchFiltersProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     return expireDrugsAsync.when(
       loading: () => GridView.builder(
@@ -777,18 +790,70 @@ class ExpireSoonTab extends ConsumerWidget {
         ),
       ),
       data: (items) {
-        // تطبيق البحث
-        final filteredItems = searchQuery.isEmpty
-            ? items
-            : items.where((item) {
-                final query = searchQuery.toLowerCase();
-                final product = item.product;
-                return product.name.toLowerCase().contains(query) ||
-                    (product.activePrinciple ?? '')
-                        .toLowerCase()
-                        .contains(query) ||
-                    (product.company ?? '').toLowerCase().contains(query);
-              }).toList();
+        // 1. فلترة البحث والمحافظة
+        var filteredItems = items.where((item) {
+          final product = item.product;
+          
+          // فلترة البحث
+          bool matchesSearch = true;
+          if (searchQuery.isNotEmpty) {
+            final query = searchQuery.toLowerCase();
+            matchesSearch = product.name.toLowerCase().contains(query) ||
+                (product.activePrinciple ?? '').toLowerCase().contains(query) ||
+                (product.company ?? '').toLowerCase().contains(query);
+          }
+          
+          // فلترة المحافظة
+          bool matchesGov = true;
+          if (filters.selectedGovernorate != null) {
+            final distributor = distributorsMap[product.distributorUuid ?? product.distributorId];
+            if (distributor != null) {
+              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              matchesGov = govList.contains(filters.selectedGovernorate);
+            } else {
+              matchesGov = false;
+            }
+          }
+          
+          return matchesSearch && matchesGov;
+        }).toList();
+
+        // 2. الترتيب
+        filteredItems.sort((a, b) {
+          final prodA = a.product;
+          final prodB = b.product;
+
+          if (filters.isCheapest) {
+            final priceA = prodA.price ?? double.infinity;
+            final priceB = prodB.price ?? double.infinity;
+            if (priceA != priceB) return priceA.compareTo(priceB);
+          }
+
+          final currentUser = currentUserAsync.asData?.value;
+          if (currentUser != null && distributorsMap.isNotEmpty) {
+            final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
+            final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
+
+            if (distributorA != null && distributorB != null) {
+              final proximityA = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorA.governorates,
+                distributorCenters: distributorA.centers,
+              );
+
+              final proximityB = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorB.governorates,
+                distributorCenters: distributorB.centers,
+              );
+
+              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+            }
+          }
+          return 0;
+        });
 
         if (filteredItems.isEmpty) {
           return Center(
@@ -796,7 +861,7 @@ class ExpireSoonTab extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? Icons.inventory_outlined
                       : Icons.search_off_outlined,
                   size: 80,
@@ -804,7 +869,7 @@ class ExpireSoonTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? 'products.empty.no_expire_soon'.tr()
                       : 'products.no_results'.tr(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
@@ -914,6 +979,16 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final toolsAsync = ref.watch(surgicalToolsHomeProvider);
+    final filters = ref.watch(searchFiltersProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     return toolsAsync.when(
       loading: () => GridView.builder(
@@ -942,15 +1017,65 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
         ),
       ),
       data: (tools) {
-        // تطبيق البحث
-        final filteredTools = searchQuery.isEmpty
-            ? tools
-            : tools.where((tool) {
-                final query = searchQuery.toLowerCase();
-                return tool.name.toLowerCase().contains(query) ||
-                    (tool.company ?? '').toLowerCase().contains(query) ||
-                    (tool.description ?? '').toLowerCase().contains(query);
-              }).toList();
+        // 1. فلترة البحث والمحافظة
+        var filteredTools = tools.where((tool) {
+          // فلترة البحث
+          bool matchesSearch = true;
+          if (searchQuery.isNotEmpty) {
+            final query = searchQuery.toLowerCase();
+            matchesSearch = tool.name.toLowerCase().contains(query) ||
+                (tool.company ?? '').toLowerCase().contains(query) ||
+                (tool.description ?? '').toLowerCase().contains(query);
+          }
+          
+          // فلترة المحافظة
+          bool matchesGov = true;
+          if (filters.selectedGovernorate != null) {
+            final distributor = distributorsMap[tool.distributorUuid ?? tool.distributorId];
+            if (distributor != null) {
+              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              matchesGov = govList.contains(filters.selectedGovernorate);
+            } else {
+              matchesGov = false;
+            }
+          }
+          
+          return matchesSearch && matchesGov;
+        }).toList();
+
+        // 2. الترتيب
+        filteredTools.sort((a, b) {
+          if (filters.isCheapest) {
+            final priceA = a.price ?? double.infinity;
+            final priceB = b.price ?? double.infinity;
+            if (priceA != priceB) return priceA.compareTo(priceB);
+          }
+
+          final currentUser = currentUserAsync.asData?.value;
+          if (currentUser != null && distributorsMap.isNotEmpty) {
+            final distributorA = distributorsMap[a.distributorUuid ?? a.distributorId];
+            final distributorB = distributorsMap[b.distributorUuid ?? b.distributorId];
+
+            if (distributorA != null && distributorB != null) {
+              final proximityA = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorA.governorates,
+                distributorCenters: distributorA.centers,
+              );
+
+              final proximityB = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorB.governorates,
+                distributorCenters: distributorB.centers,
+              );
+
+              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+            }
+          }
+          return 0;
+        });
 
         if (filteredTools.isEmpty) {
           return Center(
@@ -958,7 +1083,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? Icons.medical_services_outlined
                       : Icons.search_off_outlined,
                   size: 80,
@@ -966,7 +1091,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? 'surgical_tools_feature.empty.no_tools'.tr()
                       : 'surgical_tools_feature.search.no_results'.tr(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
@@ -1092,6 +1217,16 @@ class OffersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offersAsync = ref.watch(offersHomeProvider);
+    final filters = ref.watch(searchFiltersProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     return offersAsync.when(
       loading: () => GridView.builder(
@@ -1120,18 +1255,70 @@ class OffersTab extends ConsumerWidget {
         ),
       ),
       data: (offerItems) {
-        // تطبيق البحث
-        final filteredOfferItems = searchQuery.isEmpty
-            ? offerItems
-            : offerItems.where((item) {
-                final query = searchQuery.toLowerCase();
-                final offer = item.product;
-                return offer.name.toLowerCase().contains(query) ||
-                    (offer.activePrinciple ?? '')
-                        .toLowerCase()
-                        .contains(query) ||
-                    (offer.company ?? '').toLowerCase().contains(query);
-              }).toList();
+        // 1. فلترة البحث والمحافظة
+        var filteredOfferItems = offerItems.where((item) {
+          final offer = item.product;
+          
+          // فلترة البحث
+          bool matchesSearch = true;
+          if (searchQuery.isNotEmpty) {
+            final query = searchQuery.toLowerCase();
+            matchesSearch = offer.name.toLowerCase().contains(query) ||
+                (offer.activePrinciple ?? '').toLowerCase().contains(query) ||
+                (offer.company ?? '').toLowerCase().contains(query);
+          }
+          
+          // فلترة المحافظة
+          bool matchesGov = true;
+          if (filters.selectedGovernorate != null) {
+            final distributor = distributorsMap[offer.distributorUuid ?? offer.distributorId];
+            if (distributor != null) {
+              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              matchesGov = govList.contains(filters.selectedGovernorate);
+            } else {
+              matchesGov = false;
+            }
+          }
+          
+          return matchesSearch && matchesGov;
+        }).toList();
+
+        // 2. الترتيب
+        filteredOfferItems.sort((a, b) {
+          final prodA = a.product;
+          final prodB = b.product;
+
+          if (filters.isCheapest) {
+            final priceA = prodA.price ?? double.infinity;
+            final priceB = prodB.price ?? double.infinity;
+            if (priceA != priceB) return priceA.compareTo(priceB);
+          }
+
+          final currentUser = currentUserAsync.asData?.value;
+          if (currentUser != null && distributorsMap.isNotEmpty) {
+            final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
+            final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
+
+            if (distributorA != null && distributorB != null) {
+              final proximityA = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorA.governorates,
+                distributorCenters: distributorA.centers,
+              );
+
+              final proximityB = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorB.governorates,
+                distributorCenters: distributorB.centers,
+              );
+
+              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+            }
+          }
+          return 0;
+        });
 
         if (filteredOfferItems.isEmpty) {
           return Center(
@@ -1139,7 +1326,7 @@ class OffersTab extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? Icons.local_offer_outlined
                       : Icons.search_off_outlined,
                   size: 80,
@@ -1147,7 +1334,7 @@ class OffersTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
                       ? 'offers.tabs.no_offers'.tr()
                       : 'offers.tabs.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),

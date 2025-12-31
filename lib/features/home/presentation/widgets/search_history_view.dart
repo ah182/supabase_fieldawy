@@ -81,35 +81,50 @@ class SearchHistoryView extends ConsumerWidget {
           ),
         ),
         
-        // Horizontal Scroll for quick access
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: history.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final term = history[index];
-              return ActionChip(
-                label: Text(term),
-                onPressed: () => onTermSelected(term),
-                backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                labelStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 13,
-                ),
-                avatar: Icon(
-                  Icons.history,
-                  size: 16,
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+        const SizedBox(height: 16), // مسافة أكبر بين العنوان والكلمات
+        
+        // Grid-like Wrap for search terms (3 per row)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Wrap(
+            spacing: 6, // المسافة الأفقية
+            runSpacing: 10, // زيادة المسافة الرأسية قليلاً كما طلبت
+            children: history.map((term) {
+              return GestureDetector(
+                onTap: () => onTermSelected(term),
+                child: Container(
+                  width: (MediaQuery.of(context).size.width - 80) / 3,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.history,
+                        size: 12,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      const SizedBox(width: 4), // مسافة صغيرة جداً كما طلبت
+                      Expanded(
+                        child: Text(
+                          term,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
-            },
+            }).toList(),
           ),
         ),
         

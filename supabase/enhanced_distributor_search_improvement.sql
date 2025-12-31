@@ -146,33 +146,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- 5. البحث في جدول offers (العروض)
-    -- Search in offers
-    SELECT 
-        o.product_name, 
-        88,
-        'offers',
-        COUNT(DISTINCT o.user_id)::INTEGER
-    INTO v_improved_name, v_score, v_source_table, v_distributor_count
-    FROM offers o
-    WHERE LOWER(o.product_name) LIKE '%' || v_clean_term || '%'
-    GROUP BY o.product_name
-    ORDER BY
-        COUNT(DISTINCT o.user_id) DESC,
-        CASE
-            WHEN LOWER(o.product_name) = v_clean_term THEN 1
-            WHEN LOWER(o.product_name) LIKE v_clean_term || '%' THEN 2
-            WHEN LOWER(o.product_name) LIKE '%' || v_clean_term || '%' THEN 3
-            ELSE 4
-        END,
-        LENGTH(o.product_name) ASC
-    LIMIT 1;
-
-    IF v_score > 0 THEN
-        RETURN QUERY SELECT v_improved_name, v_score, v_source_table, v_distributor_count;
-        RETURN;
-    END IF;
-
     -- إذا لم نجد شيء، نرجع الاسم الأصلي
     RETURN QUERY SELECT p_search_term, 0, 'none'::TEXT, 0;
 END;

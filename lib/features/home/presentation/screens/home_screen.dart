@@ -1,5 +1,6 @@
 // ignore_for_file: unused_import
 
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:collection/collection.dart';
 import 'package:fieldawy_store/features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
@@ -40,6 +41,8 @@ import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper
 import 'package:fieldawy_store/features/products/presentation/widgets/smart_alternatives_section.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
+import 'package:fieldawy_store/features/home/application/search_filters_provider.dart';
 
 
 
@@ -74,7 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _debouncedSearchQuery = '';
   bool _hasNavigatedToDistributor = false;
   String? _currentSearchId; // ID البحث الحالي لتتبع النقرات
-
+  
   Timer? _debounce;
   Timer? _countdownTimer;
   
@@ -94,6 +97,125 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  // دالة لعرض سجل البحث في ديالوج جذاب (في الأعلى)
+  void _showSearchHistoryDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final tabId = _getCurrentTabId();
+    
+    final history = ref.read(searchHistoryProvider)[tabId] ?? [];
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+      );
+      return;
+    }
+
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5), // موضع متوازن
+      body: SearchHistoryView(
+        tabId: tabId,
+        onClose: () => Navigator.pop(context),
+        onTermSelected: (term) {
+          _searchController.text = term;
+          setState(() {
+            _searchQuery = term;
+            _debouncedSearchQuery = term;
+          });
+          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, tabId);
+          Navigator.pop(context);
+          _focusNode.unfocus();
+        },
+      ),
+    ).show();
+  }
+
+  // دالة لعرض الفلاتر السريعة في ديالوج جذاب (في الأعلى)
+  void _showSearchFiltersDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5), // موضع متوازن
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isAr ? 'الفلاتر السريعة' : 'Quick Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // زر مسح الكل للفلاتر (مباشر بدون Consumer إضافي للسرعة)
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final filters = ref.watch(searchFiltersProvider);
+                        final hasActiveFilters = filters.isCheapest || filters.isNearest || filters.selectedGovernorate != null;
+                        
+                        if (!hasActiveFilters) return const SizedBox.shrink();
+                        
+                        return InkWell(
+                          onTap: () {
+                            ref.read(searchFiltersProvider.notifier).resetFilters();
+                            // لا نحتاج لغلق وفتح الديالوج، التحديث سيتم تلقائياً
+                          },
+                          child: Text(
+                            isAr ? 'مسح الكل' : 'Clear All',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            const QuickFiltersBar(),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ).show();
+  }
+
   List<_TabInfo> _getTabs() {
     return [
       _TabInfo(Icons.apps_rounded, 'home.tabs.home'.tr()),
@@ -104,6 +226,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _TabInfo(Icons.school_rounded, 'home.tabs.courses'.tr()),
       _TabInfo(Icons.menu_book_rounded, 'home.tabs.books'.tr()),
     ];
+  }
+
+  // دالة مساعدة لبناء أزرار البحث الجذابة (أيقونات داخل بادج متدرج عند التفعيل - مصغرة جداً)
+  Widget _buildSearchActionButton({
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required VoidCallback onTap,
+    List<Color>? gradientColors,
+    bool isEnabled = true, // خاصية جديدة
+  }) {
+    return GestureDetector(
+      onTap: isEnabled ? () {
+        HapticFeedback.lightImpact();
+        onTap();
+      } : onTap, // نسمح بالضغط لعرض رسالة التنبيه في حالة الـ disabled
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: (isActive && isEnabled && gradientColors != null)
+              ? LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isEnabled 
+              ? (isActive ? (gradientColors == null ? color : null) : color.withOpacity(0.05))
+              : Colors.grey.withOpacity(0.1), // لون باهت عند التعطيل
+          boxShadow: (isActive && isEnabled) ? [
+            BoxShadow(
+              color: (gradientColors?.last ?? color).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            )
+          ] : [],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isEnabled 
+              ? (isActive ? Colors.white : color.withOpacity(0.5))
+              : Colors.grey.withOpacity(0.4), // أيقونة باهتة
+        ),
+      ),
+    );
   }
 
   @override
@@ -1054,6 +1224,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ignore: unused_local_variable
+    final isAr = Localizations.localeOf(context).languageCode == 'ar'; // تعريف المتغير هنا
     final paginatedState = ref.watch(paginatedProductsProvider);
     final products = paginatedState.products;
     final allDistributorProductsAsync =
@@ -1085,9 +1257,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
 
     final filteredProducts = () {
-      if (query.isEmpty) return productsToFilter;
-
-      final list = productsToFilter.where((product) {
+      final filters = ref.watch(searchFiltersProvider); // مراقبة حالة الفلاتر
+      
+      List<ProductModel> list = query.isEmpty ? productsToFilter : productsToFilter.where((product) {
         final productName = product.name.toLowerCase();
         final distributorName = (product.distributorId ?? '').toLowerCase();
         final activePrinciple = (product.activePrinciple ?? '').toLowerCase();
@@ -1105,42 +1277,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             action.contains(query);
       }).toList();
 
-      // ترتيب أولي حسب نتيجة البحث
-      list.sort((a, b) {
-        final scoreA = _calculateSearchScore(a, query);
-        final scoreB = _calculateSearchScore(b, query);
-        return scoreB.compareTo(scoreA);
-      });
+      // إنشاء نسخة قابلة للتعديل من القائمة لإصلاح خطأ Cannot modify an unmodifiable list
+      list = List<ProductModel>.from(list);
 
-      // ترتيب ثانوي حسب القرب الجغرافي
-      final currentUser = currentUserAsync.asData?.value;
-      if (currentUser != null && distributorsMap.isNotEmpty) {
-        list.sort((a, b) {
-          final distributorA = distributorsMap[a.distributorId];
-          final distributorB = distributorsMap[b.distributorId];
-
-          if (distributorA == null && distributorB == null) return 0;
-          if (distributorA == null) return 1;
-          if (distributorB == null) return -1;
-
-          final proximityA = LocationProximity.calculateProximityScore(
-            userGovernorates: currentUser.governorates,
-            userCenters: currentUser.centers,
-            distributorGovernorates: distributorA.governorates,
-            distributorCenters: distributorA.centers,
-          );
-
-          final proximityB = LocationProximity.calculateProximityScore(
-            userGovernorates: currentUser.governorates,
-            userCenters: currentUser.centers,
-            distributorGovernorates: distributorB.governorates,
-            distributorCenters: distributorB.centers,
-          );
-
-          // ترتيب تنازلي - الأقرب أولاً
-          return proximityB.compareTo(proximityA);
-        });
+      // 1. فلترة المحافظة (إذا تم اختيار محافظة)
+      if (filters.selectedGovernorate != null) {
+        list = list.where((product) {
+          final distributor = distributorsMap[product.distributorUuid ?? product.distributorId];
+          if (distributor == null) return false;
+          final List<String> govList = List<String>.from(distributor.governorates ?? []);
+          return govList.contains(filters.selectedGovernorate);
+        }).toList();
       }
+
+      // 2. الترتيب (Sorting)
+      list.sort((a, b) {
+        // أ) الترتيب حسب السعر (لو فلتر الأرخص مفعل)
+        if (filters.isCheapest) {
+          final priceA = a.price ?? double.infinity;
+          final priceB = b.price ?? double.infinity;
+          if (priceA != priceB) return priceA.compareTo(priceB);
+        }
+
+        // ب) الترتيب حسب القرب الجغرافي (لو فلتر الأقرب مفعل أو كترتيب ثانوي)
+        final currentUser = currentUserAsync.asData?.value;
+        if (currentUser != null && distributorsMap.isNotEmpty) {
+          final distributorA = distributorsMap[a.distributorUuid ?? a.distributorId];
+          final distributorB = distributorsMap[b.distributorUuid ?? b.distributorId];
+
+          if (distributorA != null && distributorB != null) {
+            final proximityA = LocationProximity.calculateProximityScore(
+              userGovernorates: currentUser.governorates,
+              userCenters: currentUser.centers,
+              distributorGovernorates: distributorA.governorates,
+              distributorCenters: distributorA.centers,
+            );
+
+            final proximityB = LocationProximity.calculateProximityScore(
+              userGovernorates: currentUser.governorates,
+              userCenters: currentUser.centers,
+              distributorGovernorates: distributorB.governorates,
+              distributorCenters: distributorB.centers,
+            );
+
+            if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+          }
+        }
+
+        // ج) الترتيب حسب قوة البحث (Search Score) كخيار أخير
+        if (query.isNotEmpty) {
+          final scoreA = _calculateSearchScore(a, query);
+          final scoreB = _calculateSearchScore(b, query);
+          return scoreB.compareTo(scoreA);
+        }
+
+        return 0;
+      });
 
       return list;
     }();
@@ -1395,238 +1587,202 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(
-                    (_focusNode.hasFocus && _searchQuery.isEmpty && (ref.watch(searchHistoryProvider)[_getCurrentTabId()]?.isNotEmpty ?? false)) 
-                      ? 210 // ارتفاع إضافي للسجل
-                      : 120, // الارتفاع الطبيعي
-                  ),
+                  preferredSize: const Size.fromHeight(130), // ارتفاع ثابت وبسيط
                   child: Column(
                     children: [
-                      Stack(
-                        children: [
-                          // حماية منطقة شريط البحث من إخفاء الكيبورد
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              // منع إخفاء الكيبورد عند اللمس على شريط البحث
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 8.0),
-                              child: TextField(
-                              controller: _searchController,
-                              focusNode: _focusNode,
-                              textInputAction: TextInputAction.search,
-                              onSubmitted: (value) {
-                                // حفظ في السجل (مخصص للتاب الحالي)
-                                if (value.trim().isNotEmpty) {
-                                  ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _getCurrentTabId());
-                                }
-                                // عند الضغط على زر البحث في لوحة المفاتيح، إخفاء الكيبورد
-                                _focusNode.unfocus();
-                              },
-                              onTap: () {
-                                // تحسين تجربة التفاعل عند النقر على مربع البحث
-                                if (!_focusNode.hasFocus) {
-                                  HapticFeedback.selectionClick();
-                                }
-                              },
-                              onChanged: (value) {
-                                setState(() {
-                                  _searchQuery = value;
-                                  if (value.isNotEmpty) {
-                                    // الحصول على قائمة المنتجات حسب التاب الحالي
-                                    List<ProductModel> currentTabProducts = _getCurrentTabProducts();
-                                    
-                                    final filtered = currentTabProducts.where((product) {
-                                      final productName = product.name.toLowerCase();
-                                      return productName
-                                          .startsWith(value.toLowerCase());
-                                    }).toList();
-                                            
-                                    if (filtered.isNotEmpty) {
-                                      final suggestion = filtered.first;
-                                      _ghostText = suggestion.name;
-                                      _fullSuggestion = suggestion.name;
-                                    } else {
-                                      _ghostText = '';
-                                      _fullSuggestion = '';
-                                    }
-                                  } else {
-                                    _ghostText = '';
-                                    _fullSuggestion = '';
-                                  }
-                                });
-                              },
-                              decoration: InputDecoration(
-                                hintText: 'home.search.hint'.tr(),
-                                hintStyle:
-                                    Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withOpacity(0.5),
-                                        ),
-                                prefixIcon: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    Icons.search,
-                                    color: _focusNode.hasFocus 
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                    size: 25,
-                                  ),
-                                ),
-                                suffixIcon: _searchQuery.isNotEmpty
-                                    ? IconButton(
-                                        icon: Icon(
-                                          Icons.clear, 
-                                          size: 20,
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                        ),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          setState(() {
-                                            _searchQuery = '';
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                        child: Row(
+                          children: [
+                            // شريط البحث
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    focusNode: _focusNode,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      if (value.trim().isNotEmpty) {
+                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _getCurrentTabId());
+                                      }
+                                      _focusNode.unfocus();
+                                    },
+                                    onTap: () {
+                                      if (!_focusNode.hasFocus) {
+                                        HapticFeedback.selectionClick();
+                                      }
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                        if (value.isNotEmpty) {
+                                          List<ProductModel> currentTabProducts = _getCurrentTabProducts();
+                                          final filtered = currentTabProducts.where((product) {
+                                            final productName = product.name.toLowerCase();
+                                            return productName.startsWith(value.toLowerCase());
+                                          }).toList();
+                                          if (filtered.isNotEmpty) {
+                                            final suggestion = filtered.first;
+                                            _ghostText = suggestion.name;
+                                            _fullSuggestion = suggestion.name;
+                                          } else {
                                             _ghostText = '';
                                             _fullSuggestion = '';
-                                          });
-                                          HapticFeedback.lightImpact();
-                                        },
-                                        tooltip: 'home.search.clear'.tr(),
-                                      )
-                                    : null,
-                                // تحسين الحدود والشكل
-                                filled: true,
-                                fillColor: Theme.of(context).brightness == Brightness.dark
-                                    ? Theme.of(context).colorScheme.surface.withOpacity(0.8)
-                                    : Theme.of(context).colorScheme.surface,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    width: 2,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                          ),
-                          ),
-                          // النص الشبحي المحسن مع تأثيرات بصرية
-                          if (_ghostText.isNotEmpty && _focusNode.hasFocus)
-                            Positioned(
-                              top: 17,
-                              right: 55,
-                              child: AnimatedOpacity(
-                                opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    if (_fullSuggestion.isNotEmpty) {
-                                      _searchController.text = _fullSuggestion;
-                                      setState(() {
-                                        _searchQuery = _fullSuggestion;
-                                        _debouncedSearchQuery = _fullSuggestion; // تحديث فوري للنتائج
-                                        _ghostText = '';
-                                        _fullSuggestion = '';
+                                          }
+                                        } else {
+                                          _ghostText = '';
+                                          _fullSuggestion = '';
+                                        }
                                       });
-                                      // حفظ في السجل (مخصص للتاب الحالي)
-                                      ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _getCurrentTabId());
-                                      
-                                      HapticFeedback.selectionClick();
-                                      // إبقاء التركيز لتمكين المستخدم من المتابعة في الكتابة
-                                      _focusNode.requestFocus();
-                                    }
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 150),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).brightness == Brightness.dark
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                              .withOpacity(0.15)
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .primary
-                                              .withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: 'home.search.hint'.tr(),
+                                      hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                          ),
+                                      prefixIcon: Icon(
+                                        Icons.search,
+                                        color: _focusNode.hasFocus 
+                                            ? Theme.of(context).colorScheme.primary
+                                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                        size: 22,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, size: 18, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _ghostText = '';
+                                                  _fullSuggestion = '';
+                                                });
+                                                HapticFeedback.lightImpact();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Theme.of(context).colorScheme.surface.withOpacity(0.8)
+                                          : Theme.of(context).colorScheme.surface,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.auto_awesome,
-                                          size: 14,
-                                          color: Theme.of(context).brightness == Brightness.dark
-                                              ? Theme.of(context).colorScheme.primary
-                                              : Theme.of(context).colorScheme.secondary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            _ghostText,
-                                            style: TextStyle(
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : Theme.of(context).colorScheme.secondary,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13,
+                                  ),
+                                  // الجوست تيكست
+                                  if (_ghostText.isNotEmpty && _focusNode.hasFocus)
+                                    Positioned(
+                                      top: 12,
+                                      right: 37,
+                                     
+                                      child: AnimatedOpacity(
+                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_fullSuggestion.isNotEmpty) {
+                                              _searchController.text = _fullSuggestion;
+                                              setState(() {
+                                                _searchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _ghostText = '';
+                                                _fullSuggestion = '';
+                                              });
+                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _getCurrentTabId());
+                                              HapticFeedback.selectionClick();
+                                              _focusNode.requestFocus();
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    _ghostText,
+                                                    style: TextStyle(
+                                                      color: Theme.of(context).colorScheme.primary,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
-                      
-                      // Search History (Visible when focused and query is empty)
-                      if (_focusNode.hasFocus && _searchQuery.isEmpty)
-                        SearchHistoryView(
-                          tabId: _getCurrentTabId(),
-                          onClose: () => _focusNode.unfocus(), // إغلاق السجل
-                          onTermSelected: (term) {
-                            _searchController.text = term;
-                            setState(() {
-                              _searchQuery = term;
-                              _debouncedSearchQuery = term; // تحديث فوري للنتائج
-                            });
-                            // Trigger search logic and update history order (bring to front)
-                            ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _getCurrentTabId());
-                            _focusNode.unfocus();
-                          },
+                            
+                            // أزرار الأكشن (ديالوج السجل والفلتر)
+                            const SizedBox(width: 8),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final filters = ref.watch(searchFiltersProvider);
+                                final history = ref.watch(searchHistoryProvider)[_getCurrentTabId()] ?? [];
+                                final isFilterActive = filters.isCheapest || filters.isNearest || filters.selectedGovernorate != null;
+                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildSearchActionButton(
+                                      icon: Icons.history_rounded,
+                                      color: Colors.indigo,
+                                      isActive: isHistoryActive,
+                                      gradientColors: [Colors.indigo, Colors.blueAccent],
+                                      onTap: () => _showSearchHistoryDialog(context),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _buildSearchActionButton(
+                                      icon: Icons.tune_rounded,
+                                      color: Colors.teal,
+                                      isActive: isFilterActive,
+                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
+                                      isEnabled: !(_tabController.index == 5 || _tabController.index == 6),
+                                      // تعطيل الفلتر في تاب الكورسات (5) والكتب (6)
+                                      onTap: (_tabController.index == 5 || _tabController.index == 6) 
+                                          ? () {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(isAr ? 'الفلترة غير متاحة في هذا القسم' : 'Filters not available in this section'),
+                                                  duration: const Duration(seconds: 1),
+                                                ),
+                                              );
+                                            }
+                                          : () => _showSearchFiltersDialog(context),
+                                    ),
+                                  ],
+                                );
+                              }
+                            ),
+                          ],
                         ),
+                      ),
 
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1737,6 +1893,17 @@ class PriceUpdateTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final priceUpdatesAsync = ref.watch(priceUpdatesProvider);
+    final filters = ref.watch(searchFiltersProvider); // مراقبة الفلاتر
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    // إنشاء Map للموزعين
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     return priceUpdatesAsync.when(
       loading: () => GridView.builder(
@@ -1754,7 +1921,8 @@ class PriceUpdateTab extends ConsumerWidget {
         child: Text('Error: ${err.toString()}'),
       ),
       data: (products) {
-        final filteredProducts = searchQuery.isEmpty
+        // 1. فلترة البحث
+        var list = searchQuery.isEmpty
             ? products
             : products.where((product) {
                 final query = searchQuery.toLowerCase();
@@ -1765,7 +1933,52 @@ class PriceUpdateTab extends ConsumerWidget {
                     (product.company ?? '').toLowerCase().contains(query);
               }).toList();
 
-        if (filteredProducts.isEmpty) {
+        // 2. فلترة المحافظة
+        if (filters.selectedGovernorate != null) {
+          list = list.where((product) {
+            final distributor = distributorsMap[product.distributorUuid ?? product.distributorId];
+            if (distributor == null) return false;
+            final List<String> govList = List<String>.from(distributor.governorates ?? []);
+            return govList.contains(filters.selectedGovernorate);
+          }).toList();
+        }
+
+        // 3. الترتيب
+        list = List<ProductModel>.from(list); // نسخة قابلة للتعديل
+        list.sort((a, b) {
+          if (filters.isCheapest) {
+            final priceA = a.price ?? double.infinity;
+            final priceB = b.price ?? double.infinity;
+            if (priceA != priceB) return priceA.compareTo(priceB);
+          }
+
+          final currentUser = currentUserAsync.asData?.value;
+          if (currentUser != null && distributorsMap.isNotEmpty) {
+            final distributorA = distributorsMap[a.distributorUuid ?? a.distributorId];
+            final distributorB = distributorsMap[b.distributorUuid ?? b.distributorId];
+
+            if (distributorA != null && distributorB != null) {
+              final proximityA = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorA.governorates,
+                distributorCenters: distributorA.centers,
+              );
+
+              final proximityB = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorB.governorates,
+                distributorCenters: distributorB.centers,
+              );
+
+              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+            }
+          }
+          return 0;
+        });
+
+        if (list.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1801,9 +2014,9 @@ class PriceUpdateTab extends ConsumerWidget {
               mainAxisSpacing: 8.0,
               childAspectRatio: 0.6,
             ),
-            itemCount: filteredProducts.length,
+            itemCount: list.length,
             itemBuilder: (context, index) {
-              final product = filteredProducts[index];
+              final product = list[index];
               return ViewTrackingProductCard(
                 product: product,
                 searchQuery: searchQuery,
@@ -1811,9 +2024,6 @@ class PriceUpdateTab extends ConsumerWidget {
                 showPriceChange: true,
                 trackViewOnVisible: true,
                 onTap: () {
-                  // This is a bit of a workaround to access the dialog function
-                  // A better approach would be to extract the dialog to its own widget/function
-                  // that can be called from anywhere.
                   (context as Element)
                       .findAncestorStateOfType<_HomeScreenState>()
                       ?._showProductDetailDialog(context, ref, product);
