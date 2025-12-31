@@ -1389,15 +1389,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           );
         }
 
-        if (filteredProducts.isEmpty && query.isNotEmpty) {
+        // إضافة عرض رسالة "لا توجد نتائج" عند الفلترة
+        if (filteredProducts.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.search_off_outlined,
-                    size: 60, color: Colors.grey),
+                Icon(Icons.search_off_rounded,
+                    size: 80, color: Colors.grey.withOpacity(0.5)),
                 const SizedBox(height: 16),
-                Text('home.search.no_results'.tr(namedArgs: {'query': _debouncedSearchQuery})),
+                Text(
+                  'home.search.no_results'.tr(namedArgs: {'query': query.isNotEmpty ? query : 'الفلاتر المختارة'}),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                if (ref.watch(searchFiltersProvider).isCheapest || 
+                    ref.watch(searchFiltersProvider).isNearest || 
+                    ref.watch(searchFiltersProvider).selectedGovernorate != null)
+                  TextButton(
+                    onPressed: () => ref.read(searchFiltersProvider.notifier).resetFilters(),
+                    child: Text(isAr ? 'إعادة تعيين الفلاتر' : 'Reset Filters'),
+                  ),
               ],
             ),
           );
