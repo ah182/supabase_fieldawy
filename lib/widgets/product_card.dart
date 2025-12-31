@@ -409,15 +409,14 @@ class ProductCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // === اسم المنتج ===
-                    Text(
-                      product.name,
+                    // === اسم المنتج مع تمييز البحث ===
+                    SearchHighlightedText(
+                      text: product.name,
+                      query: searchQuery,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             height: 1.0,
                           ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
 
                     const SizedBox(height: 2),
@@ -664,3 +663,74 @@ class _PriceChangeBadge extends StatelessWidget {
     );
   }
 }
+
+// ===================================================================
+// Search Highlighting Widget
+// ===================================================================
+
+class SearchHighlightedText extends StatelessWidget {
+  final String text;
+  final String query;
+  final TextStyle? style;
+  final Color? highlightColor;
+
+  const SearchHighlightedText({
+    super.key,
+    required this.text,
+    required this.query,
+    this.style,
+    this.highlightColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.isEmpty || !text.toLowerCase().contains(query.toLowerCase())) {
+      return Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+
+    final theme = Theme.of(context);
+    final String lowercaseText = text.toLowerCase();
+    final String lowercaseQuery = query.toLowerCase();
+    
+    final List<TextSpan> spans = [];
+    int start = 0;
+    int indexOfMatch;
+
+    while ((indexOfMatch = lowercaseText.indexOf(lowercaseQuery, start)) != -1) {
+      // النص قبل التطابق
+      if (indexOfMatch > start) {
+        spans.add(TextSpan(text: text.substring(start, indexOfMatch)));
+      }
+
+      // النص المطابق (ملون)
+      spans.add(TextSpan(
+        text: text.substring(indexOfMatch, indexOfMatch + query.length),
+        style: TextStyle(
+          color: highlightColor ?? theme.colorScheme.primary,
+          fontWeight: FontWeight.w900,
+          backgroundColor: (highlightColor ?? theme.colorScheme.primary).withOpacity(0.1),
+        ),
+      ));
+
+      start = indexOfMatch + query.length;
+    }
+
+    // النص المتبقي بعد آخر تطابق
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: style ?? theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.onSurface,
+        ),
+        children: spans,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+

@@ -235,13 +235,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     required bool isActive,
     required VoidCallback onTap,
     List<Color>? gradientColors,
-    bool isEnabled = true, // خاصية جديدة
+    bool isEnabled = true,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: isEnabled ? () {
         HapticFeedback.lightImpact();
         onTap();
-      } : onTap, // نسمح بالضغط لعرض رسالة التنبيه في حالة الـ disabled
+      } : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.all(6),
@@ -255,8 +257,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 )
               : null,
           color: isEnabled 
-              ? (isActive ? (gradientColors == null ? color : null) : color.withOpacity(0.05))
-              : Colors.grey.withOpacity(0.1), // لون باهت عند التعطيل
+              ? (isActive 
+                  ? (gradientColors == null ? color : null) 
+                  : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)))
+              : Colors.grey.withOpacity(0.1),
           boxShadow: (isActive && isEnabled) ? [
             BoxShadow(
               color: (gradientColors?.last ?? color).withOpacity(0.3),
@@ -269,8 +273,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           icon,
           size: 18,
           color: isEnabled 
-              ? (isActive ? Colors.white : color.withOpacity(0.5))
-              : Colors.grey.withOpacity(0.4), // أيقونة باهتة
+              ? (isActive 
+                  ? Colors.white 
+                  : (isDark ? Colors.white70 : color.withOpacity(0.6))) // توضيح الأيقونة أكثر في الدارك
+              : Colors.grey.withOpacity(0.4),
         ),
       ),
     );

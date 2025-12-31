@@ -17,13 +17,12 @@ class QuickFiltersBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(searchFiltersProvider);
-    
+   
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // الصف الأول: الأرخص والأقرب
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -45,7 +44,6 @@ class QuickFiltersBar extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 8),
-        // الصف الثاني: المحافظة
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -54,7 +52,7 @@ class QuickFiltersBar extends ConsumerWidget {
               label: filters.selectedGovernorate ?? (isAr ? 'المحافظة' : 'Governorate'),
               isSelected: filters.selectedGovernorate != null,
               icon: Icons.location_city_rounded,
-              isWide: true, // لجعله يأخذ مساحة أكبر قليلاً
+              isWide: true,
               onTap: () => _showGovernoratePicker(context, ref),
               onClear: filters.selectedGovernorate != null 
                   ? () => ref.read(searchFiltersProvider.notifier).setGovernorate(null) 
@@ -103,9 +101,7 @@ class QuickFiltersBar extends ConsumerWidget {
             if (onClear != null) ...[
               const SizedBox(width: 6),
               GestureDetector(
-                onTap: () {
-                  onClear();
-                },
+                onTap: onClear,
                 child: const Icon(Icons.close, size: 12, color: Colors.white70),
               ),
             ],
@@ -118,29 +114,134 @@ class QuickFiltersBar extends ConsumerWidget {
   void _showGovernoratePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _GovernoratePickerSheet(
+        onSelected: (gov) => ref.read(searchFiltersProvider.notifier).setGovernorate(gov),
+        selectedGovernorate: ref.read(searchFiltersProvider).selectedGovernorate,
       ),
-      builder: (context) {
+    );
+  }
+}
+
+// === واجهة اختيار المحافظة الاحترافية ===
+class _GovernoratePickerSheet extends StatefulWidget {
+  final Function(String?) onSelected;
+  final String? selectedGovernorate;
+
+  const _GovernoratePickerSheet({
+    required this.onSelected,
+    this.selectedGovernorate,
+  });
+
+  @override
+  State<_GovernoratePickerSheet> createState() => _GovernoratePickerSheetState();
+}
+
+class _GovernoratePickerSheetState extends State<_GovernoratePickerSheet> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    final filteredGovernorates = QuickFiltersBar.governorates
+        .where((gov) => gov.contains(_searchQuery))
+        .toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      maxChildSize: 0.9,
+      minChildSize: 0.5,
+      builder: (context, scrollController) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          height: MediaQuery.of(context).size.height * 0.6,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
             children: [
-              Text(
-                'اختر المحافظة',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              // Drag Handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isAr ? 'اختيار المحافظة' : 'Select Governorate',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                  decoration: InputDecoration(
+                    hintText: isAr ? 'ابحث عن محافظة...' : 'Search governorate...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+              ),
+              
+              // List
               Expanded(
                 child: ListView.builder(
-                  itemCount: governorates.length,
+                  controller: scrollController,
+                  itemCount: filteredGovernorates.length,
                   itemBuilder: (context, index) {
-                    final gov = governorates[index];
+                    final gov = filteredGovernorates[index];
+                    final isSelected = gov == widget.selectedGovernorate;
+                    
                     return ListTile(
-                      title: Text(gov),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                      title: Text(
+                        gov,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      trailing: isSelected 
+                          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+                          : null,
                       onTap: () {
-                        ref.read(searchFiltersProvider.notifier).setGovernorate(gov);
+                        widget.onSelected(gov);
                         Navigator.pop(context);
                       },
                     );
