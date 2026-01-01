@@ -46,6 +46,7 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
   static const int _storyDurationSeconds = 10;
   List<String> _likedStoriesIds = []; // قائمة محلية للإعجابات
   bool _needsRefresh = false; // علم لتحديد ما إذا كنا نحتاج لتحديث القائمة عند الخروج
+  double _tagYOffset = 0.0; // إزاحة التاج الرأسية
 
   @override
   void initState() {
@@ -78,6 +79,7 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
           _localLikesCount = story.likesCount;
            // نتحقق من القائمة المحلية المحملة
           _isLiked = _likedStoriesIds.contains(story.id);
+          _tagYOffset = 0.0; // إعادة ضبط موقع التاج للستوري الجديدة
         });
       }
 
@@ -654,13 +656,28 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
         // 3.8 تاغ المنتج
         if (isCurrentPage && story.productLinkId != null)
            Positioned(
-             bottom: 105, 
+             bottom: (105 - _tagYOffset).clamp(80.0, MediaQuery.of(context).size.height - 150), 
              left: 0,
              right: 0,
              child: ProductTagOverlay(
                productLinkId: story.productLinkId!,
                onDialogOpened: () => setState(() => _timer?.cancel()),
                onDialogClosed: () => setState(() => _startStoryTimer()),
+               onVerticalDragStart: (_) {
+                 setState(() {
+                   _timer?.cancel();
+                 });
+               },
+               onVerticalDragUpdate: (details) {
+                 setState(() {
+                   _tagYOffset += details.delta.dy; 
+                 });
+               },
+               onVerticalDragEnd: (_) {
+                 setState(() {
+                   _startStoryTimer();
+                 });
+               },
              ),
            ),
       ],

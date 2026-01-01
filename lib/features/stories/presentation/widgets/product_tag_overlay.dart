@@ -6,12 +6,18 @@ class ProductTagOverlay extends StatefulWidget {
   final String productLinkId;
   final VoidCallback? onDialogOpened;
   final VoidCallback? onDialogClosed;
+  final GestureDragStartCallback? onVerticalDragStart;
+  final GestureDragUpdateCallback? onVerticalDragUpdate;
+  final GestureDragEndCallback? onVerticalDragEnd;
 
   const ProductTagOverlay({
     super.key,
     required this.productLinkId,
     this.onDialogOpened,
     this.onDialogClosed,
+    this.onVerticalDragStart,
+    this.onVerticalDragUpdate,
+    this.onVerticalDragEnd,
   });
 
   @override
@@ -48,11 +54,72 @@ class ProductTagOverlayState extends State<ProductTagOverlay> {
     widget.onDialogClosed?.call();
   }
 
+  Widget _buildLoadingPlaceholder() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: const Color.fromARGB(255, 155, 155, 155),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 14,
+                  width: 120,
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 159, 157, 157),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 12,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 167, 166, 166),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 162, 161, 161),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
       future: _productFuture,
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingPlaceholder();
+        }
+        
         if (!snapshot.hasData || snapshot.data == null) {
           return const SizedBox.shrink();
         }
@@ -107,6 +174,9 @@ class ProductTagOverlayState extends State<ProductTagOverlay> {
 
         return GestureDetector(
           onTap: showDetails,
+          onVerticalDragStart: widget.onVerticalDragStart,
+          onVerticalDragUpdate: widget.onVerticalDragUpdate,
+          onVerticalDragEnd: widget.onVerticalDragEnd,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
             padding: const EdgeInsets.all(12),
