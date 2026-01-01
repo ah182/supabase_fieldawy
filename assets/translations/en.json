@@ -330,7 +330,9 @@
         "undefined": "Undefined",
         "vet_eye_note": "For more medical information about the product, please visit the Vet Eye application.",
         "add_to_cart": "Add to Cart",
-        "remove_from_cart": "Remove from Cart"
+        "remove_from_cart": "Remove from Cart",
+        "added_to_cart": "Product added to cart successfully",
+        "removed_from_cart": "Product removed from cart"
       }
     },
   "orders": {

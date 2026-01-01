@@ -1,7 +1,12 @@
 // ignore_for_file: unused_import
 
+import 'package:collection/collection.dart';
+import 'dart:ui' as ui;
+// ignore: unnecessary_import
+import 'package:intl/intl.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:fieldawy_store/widgets/user_details_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,10 +30,320 @@ import 'package:fieldawy_store/features/courses/domain/course_model.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 
-import 'package:collection/collection.dart';
-import 'dart:ui' as ui;
-// ignore: unnecessary_import
-import 'package:intl/intl.dart';
+import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart'; // Add import
+
+// ... existing code ...
+
+/// Dialog لعرض تفاصيل المستلزم البيطري
+Future<void> showVetSupplyDialog(
+  BuildContext context,
+  VetSupply supply,
+) {
+  return showDialog(
+    context: context,
+    builder: (context) => _VetSupplyDialog(supply: supply),
+  );
+}
+
+class _VetSupplyDialog extends ConsumerWidget {
+  final VetSupply supply;
+
+  const _VetSupplyDialog({required this.supply});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    final distributorsAsync = ref.read(distributorsProvider);
+    final distributor = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == supply.userId);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: CachedNetworkImage(
+                      imageUrl: supply.imageUrl,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black.withOpacity(0.5),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      supply.name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.store_outlined, size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            if (distributor == null) return;
+                            
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => const Center(child: CircularProgressIndicator()),
+                            );
+                            
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            if (!context.mounted) return;
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                            
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => DistributorProductsScreen(
+                                  distributor: distributor,
+                                  initialTabIndex: 1,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                distributor?.displayName ?? supply.userName ?? 'distributors_feature.unknown_distributor'.tr(),
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(Icons.touch_app_rounded, size: 14, color: theme.colorScheme.primary.withOpacity(0.7)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(
+                      supply.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                    ),
+                    const SizedBox(height: 24),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.price_change,
+                          label: 'vet_supplies_feature.fields.price'.tr(),
+                          value: '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
+                          color: Colors.green,
+                        ),
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.inventory_2_outlined,
+                          label: 'vet_supplies_feature.fields.package_label'.tr().replaceAll(' *', ''),
+                          value: supply.package,
+                          color: Colors.blue,
+                        ),
+                        _buildStatChip(
+                          context: context,
+                          icon: Icons.visibility,
+                          label: 'vet_supplies_feature.fields.views'.tr(),
+                          value: NumberFormatter.formatCompact(supply.viewsCount),
+                          color: colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    if (distributor != null && distributor.governorates != null && distributor.governorates!.isNotEmpty) ...[
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Icon(Icons.map_outlined, color: colorScheme.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'distributors_feature.coverage_areas'.tr(),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: distributor.governorates!.map((gov) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            gov,
+                            style: TextStyle(
+                              color: colorScheme.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )).toList(),
+                      ),
+                      if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: distributor.centers!.map((center) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 10,
+                                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                              ),
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                    ],
+
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // Note: Accessing provider from here might require importing the provider file
+                          // For now we skip view increment call here to keep imports clean or rely on parent
+                          Navigator.pop(context);
+                          _openWhatsApp(context, supply.phone);
+                        },
+                        icon: const Icon(Icons.phone_in_talk_outlined,
+                            color: Colors.white),
+                        label: Text(
+                          'vet_supplies_feature.actions.contact_seller'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 100),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(label, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
+    final url = Uri.parse('https://wa.me/$phone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('vet_supplies_feature.messages.whatsapp_error'.tr())),
+        );
+      }
+    }
+  }
+}
+
 
 /// Dialog لعرض تفاصيل منتج عادي
 Future<void> showProductDialog(
@@ -1382,6 +1697,8 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
               .maybeSingle();
         });
 
+        if (!mounted) return;
+
         if (response != null) {
           setState(() {
             if (response['whatsapp_number'] != null) {
@@ -1405,6 +1722,8 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
             .maybeSingle();
       });
 
+      if (!mounted) return;
+
       if (response != null) {
         setState(() {
           if (response['whatsapp_number'] != null) {
@@ -1416,7 +1735,7 @@ class _SurgicalToolDialogState extends State<_SurgicalToolDialog> {
     } catch (e) {
       debugPrint('Error loading phone: $e');
     } finally {
-      setState(() => _isLoadingPhone = false);
+      if (mounted) setState(() => _isLoadingPhone = false);
     }
   }
 

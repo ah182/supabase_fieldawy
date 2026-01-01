@@ -5,6 +5,7 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 import 'package:fieldawy_store/features/products/presentation/screens/expire_drugs_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/limited_offer_screen.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/surgical_tools_screen.dart';
+import 'package:fieldawy_store/features/stories/presentation/screens/add_story_screen.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -109,9 +110,14 @@ class AddProductScreen extends ConsumerWidget {
             icon: Icons.local_fire_department_rounded,
             title: 'products.add_options.ads'.tr(),
             subtitle: 'products.add_options.ads_desc'.tr(),
-            badge: 'products.add_options.soon'.tr(),
+            isLocked: isRestricted,
             onTap: () {
-              // TODO: Navigate to the correct screen
+              if (isRestricted) {
+                showRestrictionMessage();
+              } else {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => const AddStoryScreen()));
+              }
             },
           ),
         ],
@@ -126,7 +132,6 @@ class _OptionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.badge,
     this.isLocked = false,
   });
 
@@ -134,7 +139,6 @@ class _OptionCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final String? badge;
   final bool isLocked;
 
   @override
@@ -157,67 +161,32 @@ class _OptionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12.0),
         ),
         color: isLocked ? lockedBgColor : null,
-        child: Stack(
-          children: [
-            ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-              leading: Icon(
-                icon, 
-                size: 40, 
-                color: isLocked ? lockedIconColor : theme.colorScheme.primary
-              ),
-              title: Text(
-                title, 
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isLocked ? lockedTextColor : null,
-                )
-              ),
-              subtitle: Text(
-                subtitle,
-                style: TextStyle(
-                  color: isLocked ? lockedTextColor.withOpacity(0.7) : null,
-                ),
-              ),
-              trailing: Icon(
-                isLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded,
-                color: isLocked ? lockedIconColor : null,
-              ),
-              onTap: onTap,
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+          leading: Icon(
+            icon, 
+            size: 40, 
+            color: isLocked ? lockedIconColor : theme.colorScheme.primary
+          ),
+          title: Text(
+            title, 
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isLocked ? lockedTextColor : null,
+            )
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              color: isLocked ? lockedTextColor.withOpacity(0.7) : null,
             ),
-            if (badge != null)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFF6B6B).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    badge!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+          ),
+          trailing: Icon(
+            isLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded,
+            color: isLocked ? lockedIconColor : null,
+          ),
+          onTap: onTap,
         ),
       ),
     );

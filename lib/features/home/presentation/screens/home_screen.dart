@@ -14,6 +14,8 @@ import 'package:fieldawy_store/features/products/application/favorites_provider.
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/profile/presentation/screens/profile_screen.dart';
+import 'package:fieldawy_store/features/stories/application/stories_provider.dart';
+import 'package:fieldawy_store/features/stories/application/story_filters_provider.dart';
 import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/product_card.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
@@ -43,6 +45,7 @@ import 'package:fieldawy_store/features/home/presentation/widgets/search_history
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
 import 'package:fieldawy_store/features/home/application/search_filters_provider.dart';
+import 'package:fieldawy_store/features/stories/presentation/widgets/stories_bar.dart';
 
 
 
@@ -95,6 +98,118 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       case 6: return 'books';
       default: return 'home';
     }
+  }
+
+  // دالة لعرض الستوريهات في ديالوج جذاب
+  void _showStoriesDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    bool showStoryFilters = false; // حالة محلية للتحكم في ظهور الفلتر داخل الديالوج
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      body: StatefulBuilder( // استخدام StatefulBuilder للتحكم في حالة الفلتر داخل الديالوج
+        builder: (context, setDialogState) {
+          return Consumer(
+            builder: (context, ref, child) {
+              final storiesAsync = ref.watch(storiesProvider);
+              final storyFilters = ref.watch(storyFiltersProvider); // مراقبة فلتر الستوري
+              final isFilterActive = storyFilters.isNearest || storyFilters.selectedGovernorate != null;
+
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isAr ? 'استوري الموزعين' : 'Distributor Stories',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // بادج العدد
+                              storiesAsync.maybeWhen(
+                                data: (groups) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${groups.length}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                orElse: () => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // أيقونة الفلتر
+                            IconButton(
+                              icon: Icon(
+                                Icons.tune_rounded,
+                                size: 20,
+                                color: isFilterActive ? Theme.of(context).colorScheme.primary : Colors.grey,
+                              ),
+                              onPressed: () {
+                                setDialogState(() {
+                                  showStoryFilters = !showStoryFilters;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    
+                    // الفلاتر المخصصة للستوري
+                    if (showStoryFilters) ...[
+                      const SizedBox(height: 8),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: QuickFiltersBar(showCheapest: false, useStoryFilters: true),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    const SizedBox(height: 16),
+                    const SizedBox(
+                      height: 100,
+                      child: StoriesBar(limitItems: true),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(isAr ? 'إغلاق' : 'Close'),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              );
+            },
+          );
+        }
+      ),
+    ).show();
   }
 
   // دالة لعرض سجل البحث في ديالوج جذاب (في الأعلى)
@@ -907,12 +1022,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                         showDialog(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title: const Text('تنبيه'),
-                                            content: const Text('هذا المنتج تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
+                                            title: Text('تنبيه'),
+                                            content: Text('هذا المنتج تمت إضافته بواسطة طبيب، والأطباء ليس لديهم كتالوج منتجات خاص بهم.'),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(context),
-                                                child: const Text('حسناً'),
+                                                child: Text('حسناً'),
                                               ),
                                             ],
                                           ),
@@ -1486,7 +1601,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                title: Text('home_label'.tr()),
+                centerTitle: false, // لضمان بقاء العنوان جهة اليسار بجانب الأيقونة
+                titleSpacing: 0, // إزالة المسافة الافتراضية
+                title: Text(
+                  'home_label'.tr(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 pinned: true,
                 floating: false,
                 snap: false,
@@ -1501,8 +1621,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   },
                 ),
                 actions: [
+                  // --- أيقونة الستوري ---
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final storiesAsync = ref.watch(storiesProvider);
+                      return storiesAsync.maybeWhen(
+                        data: (groups) {
+                          if (groups.isEmpty) return const SizedBox.shrink();
+                          return IconButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            constraints: const BoxConstraints(),
+                            icon: Stack(
+                              children: [
+                                Icon(Icons.emergency_recording_rounded, 
+                                  color: Theme.of(context).colorScheme.primary, 
+                                  size: 22 // زيادة 2 بكسل
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(1.5),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 7, minHeight: 7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onPressed: () => _showStoriesDialog(context),
+                          );
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      );
+                    }
+                  ),
+                  // --- أيقونة الليدربورد ---
                   IconButton(
-                    icon: const Icon(Icons.emoji_events),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    constraints: const BoxConstraints(),
+                    icon: Icon(Icons.emoji_events, size: 22), // تم إزالة const من هنا
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -1511,6 +1671,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       );
                     },
                   ),
+                  // --- صورة الملف الشخصي ---
                   Consumer(
                     builder: (context, ref, child) {
                       final userDataAsync = ref.watch(userDataProvider);
@@ -1518,85 +1679,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         data: (user) {
                           if (user?.photoUrl != null &&
                               user!.photoUrl!.isNotEmpty) {
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 18.0)
-                                      .add(const EdgeInsets.only(top: 4.0)),
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ProfileScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      width: 2,
-                                    ),
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const ProfileScreen(),
                                   ),
-                                  child: CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor:
-                                        Theme.of(context).colorScheme.surface,
-                                    child: ClipOval(
-                                      child: CachedNetworkImage(
-                                        imageUrl: user.photoUrl!,
-                                        width: 29,
-                                        height: 29,
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) =>
-                                            Container(
-                                          width: 29,
-                                          height: 29,
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                                .withOpacity(0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 16,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          ),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                          width: 32,
-                                          height: 32,
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                                .withOpacity(0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 16,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          ),
-                                        ),
-                                      ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12, left: 4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 14, // زيادة 1 بكسل (الإجمالي 2 بكسل في القطر)
+                                  backgroundColor: Theme.of(context).colorScheme.surface,
+                                  child: ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl: user.photoUrl!,
+                                      width: 28, // زيادة 2 بكسل
+                                      height: 28, // زيادة 2 بكسل
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.primary),
+                                      errorWidget: (context, url, error) => Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.primary),
                                     ),
                                   ),
                                 ),
                               ),
                             );
-                          } else {
-                            return const SizedBox.shrink();
                           }
+                          return const SizedBox.shrink();
                         },
                         loading: () => const SizedBox.shrink(),
                         error: (error, stack) => const SizedBox.shrink(),

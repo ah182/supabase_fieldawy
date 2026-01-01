@@ -329,7 +329,9 @@
             "undefined": "غير محدد",
             "vet_eye_note": "لمزيد من المعلومات الطبية حول المنتج يرجي زيارة تطبيق Vet Eye",
             "add_to_cart": "إضافة للسلة",
-            "remove_from_cart": "حذف من السلة"
+            "remove_from_cart": "حذف من السلة",
+            "added_to_cart": "تمت الإضافة للسلة بنجاح",
+            "removed_from_cart": "تم الحذف من السلة"
         }
     },
     "select_governorates_and_centers": "اختر المحافظات والمراكز التي تغطيها",

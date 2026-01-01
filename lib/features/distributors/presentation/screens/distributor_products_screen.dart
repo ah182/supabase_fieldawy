@@ -112,7 +112,8 @@ class DistributorProductsScreen extends HookConsumerWidget {
     this.distributor,
     this.distributorId,
     this.distributorName,
-    this.initialTabIndex = 0, // إضافة اختيار التاب الافتراضي
+    this.initialTabIndex = 0,
+    this.initialSearchQuery,
   }) {
     if (distributor == null &&
         (distributorId == null || distributorName == null)) {
@@ -124,7 +125,8 @@ class DistributorProductsScreen extends HookConsumerWidget {
   final DistributorModel? distributor;
   final String? distributorId;
   final String? distributorName;
-  final int initialTabIndex; // جديد
+  final int initialTabIndex;
+  final String? initialSearchQuery;
 
   String get _distributorId {
     final id = distributor?.id ?? distributorId;
@@ -1372,9 +1374,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
       });
     });
 
-    final searchQuery = useState<String>('');
-    final debouncedSearchQuery = useState<String>('');
-    final searchController = useTextEditingController();
+    final searchQuery = useState<String>(initialSearchQuery ?? '');
+    final debouncedSearchQuery = useState<String>(initialSearchQuery ?? '');
+    final searchController = useTextEditingController(text: initialSearchQuery ?? '');
     final searchFocusNode = useFocusNode();
     final ghostText = useState<String>('');
     final fullSuggestion = useState<String>('');
