@@ -28,6 +28,14 @@ class ProductTagOverlayState extends State<ProductTagOverlay> {
     _fetchProductDetails();
   }
 
+  @override
+  void didUpdateWidget(ProductTagOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.productLinkId != oldWidget.productLinkId) {
+      _fetchProductDetails();
+    }
+  }
+
   void _fetchProductDetails() {
     _productFuture = StoryProductHelper.fetchProductDetails(widget.productLinkId);
   }
@@ -97,74 +105,77 @@ class ProductTagOverlayState extends State<ProductTagOverlay> {
             break;
         }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.grey[200],
-                  border: Border.all(color: Colors.grey[300]!),
+        return GestureDetector(
+          onTap: showDetails,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.contain,
-                          errorWidget: (context, url, error) => const Icon(Icons.image, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.image, color: Colors.grey),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      priceText ?? 'Ask for price',
-                      style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.w700, fontSize: 13),
-                    ),
-                  ],
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.grey[200],
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.contain,
+                            errorWidget: (context, url, error) => const Icon(Icons.image, color: Colors.grey),
+                          ),
+                        )
+                      : const Icon(Icons.image, color: Colors.grey),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.1),
-                  shape: BoxShape.circle,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        priceText ?? 'Ask for price',
+                        style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Icon(
-                  type == 'book' || type == 'course' ? Icons.arrow_forward_ios_rounded : Icons.shopping_bag_outlined,
-                  color: Colors.indigo,
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    type == 'book' || type == 'course' ? Icons.arrow_forward_ios_rounded : Icons.shopping_bag_outlined,
+                    color: Colors.indigo,
+                    size: 20,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

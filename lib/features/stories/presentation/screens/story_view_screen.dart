@@ -46,7 +46,6 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
   static const int _storyDurationSeconds = 10;
   List<String> _likedStoriesIds = []; // قائمة محلية للإعجابات
   bool _needsRefresh = false; // علم لتحديد ما إذا كنا نحتاج لتحديث القائمة عند الخروج
-  double _tagYOffset = 0.0; // إزاحة التاج الرأسية
 
   @override
   void initState() {
@@ -79,7 +78,6 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
           _localLikesCount = story.likesCount;
            // نتحقق من القائمة المحلية المحملة
           _isLiked = _likedStoriesIds.contains(story.id);
-          _tagYOffset = 0.0; // إعادة ضبط موقع التاج للستوري الجديدة
         });
       }
 
@@ -374,11 +372,6 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isOwner = currentUserId != null && currentUserId == story.distributorId;
 
-    // مفتاح فريد للوصول لحالة التاج
-    final tagKey = story.productLinkId != null 
-        ? GlobalObjectKey<ProductTagOverlayState>(story.productLinkId!)
-        : null;
-
     return Stack(
       children: [
         // 1. الصورة الخلفية مع مراقب التحميل
@@ -590,40 +583,6 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
             ),
           ),
 
-        // 3.8 تاغ المنتج
-        if (isCurrentPage && story.productLinkId != null && tagKey != null)
-           Positioned(
-             bottom: (105 - _tagYOffset).clamp(80.0, MediaQuery.of(context).size.height - 150), 
-             left: 0,
-             right: 0,
-             child: GestureDetector(
-               onVerticalDragStart: (_) {
-                 setState(() {
-                   _timer?.cancel();
-                 });
-               },
-               onVerticalDragUpdate: (details) {
-                 setState(() {
-                   _tagYOffset += details.delta.dy; 
-                 });
-               },
-               onVerticalDragEnd: (_) {
-                 setState(() {
-                   _startStoryTimer();
-                 });
-               },
-               onTap: () {
-                 tagKey.currentState?.showDetails();
-               },
-               child: ProductTagOverlay(
-                 key: tagKey,
-                 productLinkId: story.productLinkId!,
-                 onDialogOpened: () => setState(() => _timer?.cancel()),
-                 onDialogClosed: () => setState(() => _startStoryTimer()),
-               ),
-             ),
-           ),
-
         // 4. الوصف والأكشن
         Positioned(
           bottom: 0,
@@ -691,6 +650,19 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
             ),
           ),
         ),
+
+        // 3.8 تاغ المنتج
+        if (isCurrentPage && story.productLinkId != null)
+           Positioned(
+             bottom: 105, 
+             left: 0,
+             right: 0,
+             child: ProductTagOverlay(
+               productLinkId: story.productLinkId!,
+               onDialogOpened: () => setState(() => _timer?.cancel()),
+               onDialogClosed: () => setState(() => _startStoryTimer()),
+             ),
+           ),
       ],
     );
   }
