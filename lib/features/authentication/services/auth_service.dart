@@ -71,6 +71,66 @@ class SupabaseAuthService {
     });
   }
 
+  Future<bool> signInAnonymously() async {
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _auth.signInAnonymously();
+        final user = response.user;
+        
+        if (user == null) {
+          throw 'Sign-in failed: No user returned from Supabase';
+        }
+
+        // حفظ المستخدم الجديد في قاعدة البيانات
+        final isNewUser = await _userRepository.saveNewUser(user);
+        return isNewUser;
+      } catch (e) {
+        print('Error signing in anonymously: $e');
+        rethrow;
+      }
+    });
+  }
+
+  Future<void> linkIdentity({required String email, required String password}) async {
+    return await NetworkGuard.execute(() async {
+      try {
+        final UserResponse res = await _auth.updateUser(
+          UserAttributes(
+            email: email,
+            password: password,
+          ),
+        );
+        
+        if (res.user != null) {
+          // Sync with public.users table
+          await _userRepository.linkUserIdentity(
+            id: res.user!.id,
+            email: email,
+            password: password,
+          );
+        }
+      } catch (e) {
+        print('Error linking identity: $e');
+        rethrow;
+      }
+    });
+  }
+
+  Future<AuthResponse> signInWithEmailAndPassword({required String email, required String password}) async {
+    return await NetworkGuard.execute(() async {
+      try {
+        final response = await _auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+        return response;
+      } catch (e) {
+        print('Error signing in with email/password: $e');
+        rethrow;
+      }
+    });
+  }
+
   Future<void> signOut() async {
     await NetworkGuard.execute(() async {
       try {

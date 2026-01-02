@@ -1,12 +1,18 @@
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../data/user_repository.dart';
 import '../../services/auth_service.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:fieldawy_store/features/authentication/data/storage_service.dart';
 
 class ProfileCompletionScreen extends ConsumerStatefulWidget {
   final String documentUrl;
@@ -48,7 +54,11 @@ class _ProfileCompletionScreenState
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+
   String? _selectedDistributionMethod;
+  File? _imageFile;
 
   @override
   void initState() {
@@ -62,7 +72,22 @@ class _ProfileCompletionScreenState
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
   }
 
   Future<void> _submitProfile() async {
@@ -86,15 +111,51 @@ class _ProfileCompletionScreenState
     }
 
     try {
+      // 1. Link Anonymous Account to Phone/Password (using phone as fake email)
+      final phone = _phoneController.text.trim();
+      final password = _passwordController.text.trim();
+      final fakeEmail = "$phone@fieldawy.com"; // Construct fake email
+
+      await ref.read(authServiceProvider).linkIdentity(
+        email: fakeEmail, 
+        password: password
+      );
+
+      String? photoUrl;
+
+      // Upload Profile Image if selected
+      if (_imageFile != null) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final targetPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          
+          final compressedFile = await FlutterImageCompress.compressAndGetFile(
+            _imageFile!.path,
+            targetPath,
+            quality: 70,
+            minWidth: 1024,
+            minHeight: 1024,
+          );
+
+          final fileToUpload = compressedFile != null ? File(compressedFile.path) : _imageFile!;
+          
+          photoUrl = await ref.read(storageServiceProvider).uploadDocument(fileToUpload, 'profile_images');
+        } catch (e) {
+          debugPrint('Error uploading profile image: $e');
+          // Proceed without image if upload fails
+        }
+      }
+
       await ref.read(userRepositoryProvider).completeUserProfile(
             id: user.id,
             role: widget.selectedRole,
             documentUrl: widget.documentUrl,
             displayName: _nameController.text.trim(),
-            whatsappNumber: _phoneController.text.trim(),
+            whatsappNumber: phone,
             governorates: widget.governorates,
             centers: widget.centers,
             distributionMethod: _selectedDistributionMethod,
+            photoUrl: photoUrl,
           );
 
       ref.invalidate(userDataProvider);
@@ -163,8 +224,69 @@ class _ProfileCompletionScreenState
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 75
+              const SizedBox(height: 30),
+
+              // --- Profile Image Picker ---
+              Center(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.2),
+                          width: 2,
+                        ),
+                        image: _imageFile != null
+                            ? DecorationImage(
+                                image: FileImage(_imageFile!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: _imageFile == null
+                          ? Icon(
+                              Icons.person_outline_rounded,
+                              size: 60,
+                              color: Colors.grey.shade400,
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 40),
 
               /// حقل الاسم
               _buildInputField(
@@ -189,6 +311,21 @@ class _ProfileCompletionScreenState
                 validator: (value) {
                   if (value == null || value.trim().length < 10) {
                     return 'auth.profile.enter_valid_phone'.tr();
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              /// حقل كلمة المرور (جديد)
+              _buildInputField(
+                controller: _passwordController,
+                label: 'password'.tr(),
+                icon: Icons.lock_outline,
+                isPassword: true,
+                validator: (value) {
+                  if (value == null || value.length < 6) {
+                    return 'password_too_short'.tr(); // Needs translation key
                   }
                   return null;
                 },
@@ -313,16 +450,31 @@ class _ProfileCompletionScreenState
     required IconData icon,
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
+    bool isPassword = false,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      obscureText: isPassword && !_isPasswordVisible,
       style: const TextStyle(color: Colors.black87),
       decoration: InputDecoration(
         label: Text(label,
             style: TextStyle(color: const Color.fromARGB(255, 34, 40, 85))),
         prefixIcon: Icon(icon, color: Colors.blueAccent),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.grey,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              )
+            : null,
         filled: true,
         fillColor: Colors.grey[50],
         contentPadding:

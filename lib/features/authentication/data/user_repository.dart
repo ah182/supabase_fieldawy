@@ -59,6 +59,7 @@ class UserRepository {
     required List<String> governorates,
     required List<String> centers,
     String? distributionMethod,
+    String? photoUrl,
   }) async {
     await NetworkGuard.execute(() async {
       try {
@@ -74,6 +75,10 @@ class UserRepository {
 
         if (distributionMethod != null) {
           updateData['distribution_method'] = distributionMethod;
+        }
+
+        if (photoUrl != null) {
+          updateData['photo_url'] = photoUrl;
         }
 
         await _client.from('users').update(updateData).eq('id', id);
@@ -133,6 +138,27 @@ class UserRepository {
       } catch (e) {
         print('Error updating profile image in Supabase: $e');
         rethrow;
+      }
+    });
+  }
+
+  Future<void> linkUserIdentity({
+    required String id,
+    required String email,
+    required String password,
+  }) async {
+    // This updates the Auth user (not just the public.users table)
+    // Note: This operation is usually done via client auth update
+    // But we might need to update the public.users table email field too
+    await NetworkGuard.execute(() async {
+      try {
+        await _client.from('users').update({
+          'email': email,
+        }).eq('id', id);
+        _cache.invalidate('user_$id');
+      } catch (e) {
+        print('Error linking user identity in DB: $e');
+        // We don't rethrow here because the critical part is the Auth update which happens in AuthService
       }
     });
   }

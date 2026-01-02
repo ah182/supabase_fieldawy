@@ -1,9 +1,13 @@
+// ignore_for_file: unused_import
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../../widgets/shimmer_loader.dart';
 import '../../services/auth_service.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,9 +19,16 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
   bool _isLoading = false;
+  bool _showLoginForm = false; // Toggle for Login Form
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
@@ -49,7 +60,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _signInAnonymously() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await ref.read(authServiceProvider).signInAnonymously();
+      // AuthGate will handle navigation after auth state changes.
+    } catch (e) {
+      if (mounted) _showError('unexpected_error'.tr());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithCredentials() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final phone = _phoneController.text.trim();
+      final password = _passwordController.text.trim();
+      final fakeEmail = "$phone@fieldawy.com";
+
+      await ref.read(authServiceProvider).signInWithEmailAndPassword(
+        email: fakeEmail, 
+        password: password
+      );
+      
+    } catch (e) {
+      if (mounted) _showError('login_failed'.tr()); 
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _signInWithGoogle() async {
@@ -59,11 +110,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
-      // AuthGate will handle navigation after auth state changes.
+      // AuthGate will handle navigation
     } catch (e) {
       if (mounted) _showError('unexpected_error'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _contactSupportForPassword() async {
+    final phone = _phoneController.text.trim();
+    final message = "أهلاً إدارة فيلدوي، لقد نسيت كلمة المرور الخاصة بحسابي.\nرقم الهاتف: $phone";
+    final url = Uri.parse("https://wa.me/201016610554?text=${Uri.encodeComponent(message)}");
+    
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) _showError('cannotOpenWhatsApp'.tr());
     }
   }
 
@@ -73,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
       content: AwesomeSnackbarContent(
-        title: 'error_title'.tr(), // Common key, keep or standardize
+        title: 'error_title'.tr(), 
         message: message,
         contentType: ContentType.failure,
       ),
@@ -83,21 +146,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    // --- لا يوجد أي تغييرات هنا في واجهة المستخدم ---
     final size = MediaQuery.of(context).size;
     final textTheme = Theme.of(context).textTheme;
-    // ignore: unused_local_variable
-    final colorScheme = Theme.of(context).colorScheme;
 
     bool isSmallScreen = size.width < 600;
+    // ignore: unused_local_variable
     bool isTablet = size.width >= 600 && size.width < 1024;
     bool isDesktop = size.width >= 1024;
 
     double logoHeight = isSmallScreen
-        ? size.height * 0.5
-        : isTablet
-            ? size.height * 0.6
-            : size.height * 0.6;
+        ? size.height * 0.4 // Reduced to make space
+        : size.height * 0.5;
 
     double horizontalPadding = isSmallScreen ? 20.0 : size.width * 0.1;
 
@@ -119,6 +178,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(height: size.height * 0.02),
+                    
+                    // Logo Section
+                    if (!_showLoginForm)
                     FadeTransition(
                       opacity: _fadeAnimation,
                       child: SlideTransition(
@@ -139,7 +201,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         ),
                       ),
                     ),
-                    SizedBox(height: size.height * 0.07),
+                    
+                    if (_showLoginForm) SizedBox(height: size.height * 0.05),
+
+                    SizedBox(height: size.height * 0.05),
+
+                    // Main Action Area
                     FadeTransition(
                       opacity: _fadeAnimation,
                       child: SlideTransition(
@@ -153,69 +220,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         )),
                         child: _isLoading
                             ? _buildLoadingWidget()
-                            : _buildGoogleSignInButton(isSmallScreen),
+                            : _showLoginForm 
+                                ? _buildLoginForm() 
+                                : _buildStartButton(isSmallScreen),
                       ),
                     ),
-                    SizedBox(height: size.height * 0.05),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent, // خلفية شفافة بالكامل
-                        borderRadius: BorderRadius.circular(30), // حواف دائرية بالكامل
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.15), // حدود خفيفة
-                          width: 1,
+                    
+                    SizedBox(height: size.height * 0.03),
+
+                    // Toggle Button (Start New vs Login)
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _showLoginForm = !_showLoginForm;
+                        });
+                      },
+                      child: Text(
+                        _showLoginForm 
+                            ? "letsStart".tr() 
+                            : "have_account_login".tr(), // Needs key
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.white,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // دائرة خلف الأيقونة لإبرازها
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.verified_rounded, // أيقونة التوثيق/الجودة
-                              size: 22,
-                              color: Color(0xFF89CFF0), // لون بيبي بلو
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // النص
-                          Flexible(
-                            child: Text(
-                              'secureLogin'.tr(),
-                              textAlign: TextAlign.center, // توسيط النص
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13, // تصغير حجم الخط
-                                height: 1.3, // مسافة مناسبة بين السطرين
-                                letterSpacing: 0.5, // تباعد خفيف بين الحروف
-                                shadows: [
-                                  const Shadow(
-                                    offset: Offset(0, 1),
-                                    blurRadius: 2.0,
-                                    color: Color.fromARGB(150, 0, 0, 0),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
+
+                    if (!_showLoginForm) ...[
+                       SizedBox(height: size.height * 0.02),
+                      _buildSecureBadge(textTheme),
+                    ],
+
                     SizedBox(height: size.height * 0.02),
                   ],
                 ),
@@ -223,6 +261,195 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          Text(
+            "login".tr(), // Key needed
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Phone Input
+          TextFormField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: Colors.black87),
+            validator: (val) => (val == null || val.length < 10) ? 'pleaseEnterValidPhone'.tr() : null,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              hintText: 'auth.profile.whatsapp_label'.tr(),
+              prefixIcon: const Icon(Icons.phone, color: Color(0xFF087788)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Password Input
+          TextFormField(
+            controller: _passwordController,
+            obscureText: !_isPasswordVisible,
+            style: const TextStyle(color: Colors.black87),
+            validator: (val) => (val == null || val.length < 6) ? 'password_too_short'.tr() : null,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              hintText: 'password'.tr(),
+              prefixIcon: const Icon(Icons.lock, color: Color(0xFF087788)),
+              suffixIcon: IconButton(
+                icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // --- Forgot Password Link ---
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              onPressed: _contactSupportForPassword,
+              child: Text(
+                "forgot_password_link".tr(), // Needs key
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Login Button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _signInWithCredentials,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF42A5F5),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                "login".tr(), 
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          
+          // --- Google Sign In Divider ---
+          Row(
+            children: [
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text("OR", style: TextStyle(color: Colors.white.withOpacity(0.8))),
+              ),
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // --- Google Sign In Button (Legacy) ---
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: _signInWithGoogle,
+              icon: Image.asset(
+                'assets/google_icon.png',
+                width: 24,
+                height: 24,
+              ),
+              label: Text(
+                'signInWithGoogle'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecureBadge(TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.transparent, 
+        borderRadius: BorderRadius.circular(30), 
+        border: Border.all(
+          color: Colors.white.withOpacity(0.15), 
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.verified_rounded, 
+              size: 22,
+              color: Color(0xFF89CFF0), 
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              'secureLogin'.tr(),
+              textAlign: TextAlign.center, 
+              style: textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13, 
+                height: 1.3, 
+                letterSpacing: 0.5, 
+                shadows: [
+                  const Shadow(
+                    offset: Offset(0, 1),
+                    blurRadius: 2.0,
+                    color: Color.fromARGB(150, 0, 0, 0),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -287,42 +514,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildGoogleSignInButton(bool isSmallScreen) {
+  Widget _buildStartButton(bool isSmallScreen) {
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
         maxWidth: isSmallScreen ? double.infinity : 400,
       ),
-      height: 50,
+      height: 55,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ElevatedButton.icon(
-        onPressed: _signInWithGoogle,
-        icon: Image.asset(
-          'assets/google_icon.png',
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
+        onPressed: _signInAnonymously,
+        icon: const Icon(
+          Icons.rocket_launch_rounded,
+          color: Colors.white,
+          size: 24,
         ),
         label: Text(
-          'signInWithGoogle'.tr(),
+          "letsStart".tr(), 
           style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 2,
-          shadowColor: Colors.black26,
+          backgroundColor: const Color(0xFF42A5F5), // Blue accent color
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: Colors.blueAccent.withOpacity(0.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: Colors.grey.shade300,
-              width: 1,
-            ),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
