@@ -10,20 +10,871 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
 
-class LeaderboardScreen extends HookConsumerWidget {
+// Added Imports
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
+import 'package:fieldawy_store/features/leaderboard/application/leaderboard_filters_provider.dart';
+import 'package:fieldawy_store/core/utils/location_proximity.dart';
+
+class LeaderboardScreen extends ConsumerStatefulWidget {
   const LeaderboardScreen({super.key});
 
+  @override
+  ConsumerState<LeaderboardScreen> createState() => _LeaderboardScreenState();
+}
+
+class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  String _debouncedSearchQuery = '';
+  String _ghostText = '';
+  String _fullSuggestion = '';
+  Timer? _debounce;
+  bool _hasShownRules = false;
+  
+  static const String _historyTabId = 'leaderboard';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocusNode.addListener(() {
+      setState(() {});
+      if (_searchFocusNode.hasFocus) {
+        HapticFeedback.selectionClick();
+      } else {
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _searchQuery = '';
+            _ghostText = '';
+            _fullSuggestion = '';
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _hideKeyboard() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+      HapticFeedback.lightImpact();
+      if (_searchController.text.isEmpty) {
+        setState(() {
+          _ghostText = '';
+          _fullSuggestion = '';
+        });
+      }
+    }
+  }
+
+  void _updateSuggestions(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _ghostText = '';
+        _fullSuggestion = '';
+      });
+      return;
+    }
+
+    final leaderboardData = ref.read(leaderboardProvider);
+    if (leaderboardData is AsyncData<List<UserModel>>) {
+      final users = leaderboardData.value;
+      final filtered = users.where((user) {
+        final displayName = (user.displayName ?? '').toLowerCase();
+        return displayName.startsWith(query.toLowerCase());
+      }).toList();
+      
+      if (filtered.isNotEmpty) {
+        final suggestion = filtered.first.displayName ?? '';
+        setState(() {
+          _ghostText = query + suggestion.substring(query.length);
+          _fullSuggestion = suggestion;
+        });
+      } else {
+        setState(() {
+          _ghostText = '';
+          _fullSuggestion = '';
+        });
+      }
+    }
+  }
+
+  // --- Helper Methods for Dialogs ---
+
+  void _showSearchHistoryDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final history = ref.read(searchHistoryProvider)[_historyTabId] ?? [];
+    
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+      );
+      return;
+    }
+
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: SearchHistoryView(
+        tabId: _historyTabId,
+        onClose: () => Navigator.pop(context),
+        onTermSelected: (term) {
+          _searchController.text = term;
+          setState(() {
+            _searchQuery = term;
+            _debouncedSearchQuery = term;
+          });
+          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _historyTabId);
+          Navigator.pop(context);
+          _searchFocusNode.unfocus();
+        },
+      ),
+    ).show();
+  }
+
+  void _showSearchFiltersDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isAr ? 'الفلاتر السريعة' : 'Quick Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final filters = ref.watch(leaderboardFiltersProvider);
+                        final hasActiveFilters = filters.selectedGovernorate != null; 
+                        
+                        if (!hasActiveFilters) return const SizedBox.shrink();
+                        
+                        return InkWell(
+                          onTap: () {
+                            ref.read(leaderboardFiltersProvider.notifier).resetFilters();
+                          },
+                          child: Text(
+                            isAr ? 'مسح الكل' : 'Clear All',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const QuickFiltersBar(showCheapest: false, useLeaderboardFilters: true),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ).show();
+  }
+
+  Widget _buildSearchActionButton({
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required VoidCallback onTap,
+    List<Color>? gradientColors,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: (isActive && gradientColors != null)
+              ? LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isActive 
+              ? (gradientColors == null ? color : null) 
+              : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: (gradientColors?.last ?? color).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            )
+          ] : [],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isActive 
+              ? Colors.white 
+              : (isDark ? Colors.white70 : color.withOpacity(0.6)),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final seasonAsync = ref.watch(currentSeasonProvider);
+    final leaderboardData = ref.watch(leaderboardProvider);
+    final userDataAsync = ref.watch(userDataProvider);
+    final wasInvitedAsync = ref.watch(wasInvitedProvider);
+    final theme = Theme.of(context);
+    final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
+    final filters = ref.watch(leaderboardFiltersProvider);
+
+    // Logic to show rules dialog once when referral code is available
+    final referralCode = userDataAsync.asData?.value?.referralCode;
+    if (referralCode != null && !_hasShownRules) {
+      _hasShownRules = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLeaderboardRulesDialog(context, referralCode);
+      });
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _hideKeyboard,
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                floating: false, // Make it static
+                pinned: true,
+                elevation: 0,
+                centerTitle: true,
+                backgroundColor: theme.colorScheme.surface,
+                leading: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFFFFF),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: _ArrowBackPainter(color: Colors.black),
+                      ),
+                    ),
+                  ),
+                ),
+                automaticallyImplyLeading: false,
+                title: Text(
+                  'leaderboard_feature.title'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                actions: [
+                  wasInvitedAsync.when(
+                    data: (wasInvited) => !wasInvited 
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.person_add_alt_1_rounded,
+                              color: theme.colorScheme.secondary,
+                              size: 22,
+                            ),
+                            tooltip: 'Enter Referral Code',
+                            onPressed: () => _showEnterReferralCodeDialog(context, ref),
+                          )
+                        : const SizedBox.shrink(),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      final referralCode = userDataAsync.asData?.value?.referralCode;
+                      _showLeaderboardRulesDialog(context, referralCode);
+                    },
+                    icon: Icon(
+                      Icons.info_outline_rounded,
+                      color: theme.colorScheme.secondary,
+                      size: 22,
+                    ),
+                  ),
+                ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(65),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Row(
+                          children: [
+                            // Search Bar
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      if (value.trim().isNotEmpty) {
+                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _historyTabId);
+                                      }
+                                      _searchFocusNode.unfocus();
+                                    },
+                                    onTap: () {
+                                      if (!_searchFocusNode.hasFocus) {
+                                        HapticFeedback.selectionClick();
+                                      }
+                                      if (_searchController.text.isNotEmpty) {
+                                        _updateSuggestions(_searchController.text);
+                                      }
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                      _debounce?.cancel();
+                                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                                        setState(() {
+                                          _debouncedSearchQuery = value;
+                                        });
+                                        _updateSuggestions(value);
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: 'leaderboard_feature.search_hint'.tr(),
+                                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: _searchFocusNode.hasFocus 
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        size: 22,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _debouncedSearchQuery = '';
+                                                  _ghostText = '';
+                                                  _fullSuggestion = '';
+                                                });
+                                                HapticFeedback.lightImpact();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: theme.brightness == Brightness.dark
+                                          ? theme.colorScheme.surface.withOpacity(0.8)
+                                          : theme.colorScheme.surface,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                  ),
+                                  // Ghost Text
+                                  if (_ghostText.isNotEmpty && _searchFocusNode.hasFocus)
+                                    Positioned(
+                                      top: 12,
+                                      right: 37,
+                                      child: AnimatedOpacity(
+                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_fullSuggestion.isNotEmpty) {
+                                              _searchController.text = _fullSuggestion;
+                                              setState(() {
+                                                _searchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _ghostText = '';
+                                                _fullSuggestion = '';
+                                              });
+                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _historyTabId);
+                                              HapticFeedback.selectionClick();
+                                              _searchFocusNode.requestFocus();
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.primary),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    _ghostText,
+                                                    style: TextStyle(
+                                                      color: theme.colorScheme.primary,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Action Buttons (History & Filter)
+                            const SizedBox(width: 8),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final history = ref.watch(searchHistoryProvider)[_historyTabId] ?? [];
+                                final isFilterActive = filters.selectedGovernorate != null || filters.isNearest;
+                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildSearchActionButton(
+                                      icon: Icons.history_rounded,
+                                      color: Colors.indigo,
+                                      isActive: isHistoryActive,
+                                      gradientColors: [Colors.indigo, Colors.blueAccent],
+                                      onTap: () => _showSearchHistoryDialog(context),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _buildSearchActionButton(
+                                      icon: Icons.tune_rounded,
+                                      color: Colors.teal,
+                                      isActive: isFilterActive,
+                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
+                                      onTap: () => _showSearchFiltersDialog(context),
+                                    ),
+                                  ],
+                                );
+                              }
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ];
+          },
+          body: leaderboardData.when(
+            skipLoadingOnRefresh: true,
+            data: (users) {
+              // 1. Filtering
+              var displayUsers = users.where((user) {
+                // Text Search
+                if (_debouncedSearchQuery.isNotEmpty) {
+                  final query = _debouncedSearchQuery.toLowerCase();
+                  final matchesName = (user.displayName ?? '').toLowerCase().contains(query) ||
+                                      (user.email ?? '').toLowerCase().contains(query);
+                  if (!matchesName) return false;
+                }
+                
+                // Governorate Filter
+                if (filters.selectedGovernorate != null) {
+                  final userGovs = user.governorates ?? [];
+                  if (!userGovs.contains(filters.selectedGovernorate)) return false;
+                }
+                
+                return true;
+              }).toList();
+
+              // 2. Sorting (Nearest)
+              if (filters.isNearest) {
+                final currentUser = userDataAsync.asData?.value;
+                if (currentUser != null) {
+                  displayUsers = LocationProximity.sortByProximity<UserModel>(
+                    items: displayUsers,
+                    getProximityScore: (user) {
+                      return LocationProximity.calculateProximityScore(
+                        userGovernorates: currentUser.governorates,
+                        userCenters: currentUser.centers,
+                        distributorGovernorates: user.governorates,
+                        distributorCenters: user.centers,
+                      );
+                    },
+                  );
+                }
+              }
+              
+              if (displayUsers.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off_outlined,
+                        size: 80,
+                        color: theme.colorScheme.onSurface.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'leaderboard_feature.no_results'.tr(namedArgs: {'query': _debouncedSearchQuery}),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                      if (filters.selectedGovernorate != null)
+                        TextButton(
+                          onPressed: () => ref.read(leaderboardFiltersProvider.notifier).resetFilters(),
+                          child: Text('إعادة تعيين الفلاتر'),
+                        ),
+                    ],
+                  ),
+                );
+              }
+              
+              return RefreshIndicator(
+                edgeOffset: 8,
+                displacement: 32,
+                color: theme.colorScheme.primary,
+                backgroundColor: theme.colorScheme.surface,
+                onRefresh: () async {
+                  ref.invalidate(leaderboardProvider);
+                  ref.invalidate(currentSeasonProvider);
+                  await ref.read(leaderboardProvider.future);
+                },
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: seasonAsync.when(
+                        data: (season) => season == null
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: _CountdownTimer(endDate: season.endDate),
+                              ),
+                        loading: () => const SizedBox(
+                          height: 72,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        error: (e, st) => const SizedBox.shrink(),
+                      ),
+                    ),
+                    // Current User Card
+                    SliverToBoxAdapter(
+                      child: () {
+                        final currentUserInList = displayUsers.where((u) => u.id == currentUserId).firstOrNull;
+                        if (currentUserInList == null) return const SizedBox.shrink();
+                        
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: _buildCurrentUserCard(context, currentUserInList),
+                        );
+                      }(),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index == 0 && displayUsers.length >= 3) {
+                              return _buildPodium(context, displayUsers.take(3).toList());
+                            }
+
+                            final actualIndex =
+                                displayUsers.length >= 3 ? index + 2 : index;
+                            if (actualIndex >= displayUsers.length) {
+                              return const SizedBox.shrink();
+                            }
+
+                            final user = displayUsers[actualIndex];
+                            final rank = user.rank ?? (actualIndex + 1);
+
+                            if (rank <= 3 && displayUsers.length < 3) {
+                              return _buildTopRankerCard(context, user, rank);
+                            } else if (rank == 4 || rank == 5) {
+                              return _buildSpecialRankerTile(context, user, rank);
+                            } else {
+                              return _buildRegularRankerTile(context, user, rank);
+                            }
+                          },
+                          childCount: displayUsers.length >= 3
+                              ? displayUsers.length - 3 + 1
+                              : displayUsers.length,
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 100),
+                    ),
+                  ],
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text('Error: $error')),
+          ),
+        ),
+        floatingActionButton: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          width: double.infinity,
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 52,
+                  margin: const EdgeInsetsDirectional.only(end: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFAB47BC),
+                        const Color(0xFF8E24AA),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color.fromARGB(255, 176, 39, 155).withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showRewardsBottomSheet(context),
+                      borderRadius: BorderRadius.circular(16),
+                      child:  Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.card_giftcard,
+                              color: Colors.white, size: 22),
+                          SizedBox(width: 10),
+                          Text(
+                            'leaderboard_feature.rewards'.tr(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final availabilityAsync = ref.watch(spinWheelAvailabilityProvider);
+                    return availabilityAsync.when(
+                      loading: () => const SizedBox(height: 52),
+                      error: (err, stack) => const SizedBox.shrink(), // Or show an error
+                      data: (details) {
+                        final bool isAvailable = details.availability == SpinWheelAvailability.available;
+                        return Opacity(
+                          opacity: isAvailable ? 1.0 : 0.6,
+                          child: Container(
+                            height: 52,
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFFFCA28),
+                                  const Color(0xFFFB8C00),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                if (isAvailable)
+                                  BoxShadow(
+                                    color: Colors.orange.withOpacity(0.4),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: isAvailable
+                                    ? () async {
+                                        await Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const FortuneWheelScreen(),
+                                          ),
+                                        );
+                                        ref.invalidate(spinWheelAvailabilityProvider);
+                                      }
+                                    : () async {
+                                        String title = 'leaderboard_feature.spin_wheel_status.unavailable'.tr();
+                                        String message = 'leaderboard_feature.spin_wheel_status.unavailable_msg'.tr();
+                                        switch (details.availability) {
+                                          case SpinWheelAvailability.notWinner:
+                                            title = 'leaderboard_feature.spin_wheel_status.not_qualified'.tr();
+                                            message = 'leaderboard_feature.spin_wheel_status.not_qualified_msg'.tr();
+                                            break;
+                                          case SpinWheelAvailability.windowClosed:
+                                            title = 'leaderboard_feature.spin_wheel_status.window_closed'.tr();
+                                            message = 'leaderboard_feature.spin_wheel_status.window_closed_msg'.tr();
+                                            break;
+                                          case SpinWheelAvailability.alreadyClaimed:
+                                            title = 'leaderboard_feature.spin_wheel_status.already_claimed'.tr();
+                                            message = 'leaderboard_feature.spin_wheel_status.already_claimed_msg'.tr() + 
+                                                      '\n\n' + 
+                                                      'leaderboard_feature.spin_wheel_status.claimed_details'.tr(namedArgs: {
+                                                        'prize': details.claimedPrize ?? '',
+                                                        'rank': (details.rank ?? '').toString()
+                                                      });
+                                            break;
+                                          default:
+                                            break;
+                                        }
+                                        await _showInfoDialog(
+                                          context,
+                                          title: title,
+                                          message: message,
+                                        );
+                                      },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      isAvailable
+                                          ? Icons.casino
+                                          : Icons.lock_outline,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'leaderboard_feature.spin_wheel'.tr(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
+    );
+  }
+
   Future<void> _showInfoDialog(
-    BuildContext context, {
+    BuildContext context,
+    {
     required String title,
     required String message,
-  }) async {
+  } ) async {
     final theme = Theme.of(context);
     await showDialog(
       context: context,
@@ -318,597 +1169,6 @@ class LeaderboardScreen extends HookConsumerWidget {
         minChildSize: 0.4,
         builder: (context, scrollController) =>
             _RewardsInfoSheet(scrollController: scrollController),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final seasonAsync = ref.watch(currentSeasonProvider);
-    final leaderboardData = ref.watch(leaderboardProvider);
-    final userDataAsync = ref.watch(userDataProvider);
-    final wasInvitedAsync = ref.watch(wasInvitedProvider);
-    final theme = Theme.of(context);
-    final currentUserId = ref.watch(authStateChangesProvider).asData?.value?.id;
-    
-    // Search functionality
-    final searchQuery = useState<String>('');
-    final debouncedSearchQuery = useState<String>('');
-    final searchController = useTextEditingController();
-    final searchFocusNode = useFocusNode();
-    final ghostText = useState<String>('');
-    final fullSuggestion = useState<String>('');
-    
-    // Auto-show rules dialog once
-    useEffect(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final referralCode = userDataAsync.value?.referralCode;
-        // Only show if we have the referral code (meaning data is loaded)
-        if (referralCode != null) {
-           // Small delay to ensure UI is ready
-           Future.delayed(const Duration(milliseconds: 500), () {
-             if (context.mounted) {
-                _showLeaderboardRulesDialog(context, referralCode);
-             }
-           });
-        }
-      });
-      return null;
-    }, [userDataAsync.value?.referralCode]); // Run when referral code becomes available
-
-    useEffect(() {
-      Timer? debounce;
-      void listener() {
-        if (debounce?.isActive ?? false) debounce!.cancel();
-        debounce = Timer(const Duration(milliseconds: 500), () {
-          debouncedSearchQuery.value = searchController.text;
-        });
-      }
-      
-      searchController.addListener(listener);
-      return () {
-        debounce?.cancel();
-        searchController.removeListener(listener);
-      };
-    }, [searchController]);
-
-    // ignore: unused_local_variable
-    int? currentUserRank;
-    if (leaderboardData is AsyncData<List<UserModel>>) {
-      try {
-        final currentUserInLeaderboard = leaderboardData.value.firstWhere(
-          (user) => user.id == currentUserId,
-        );
-        currentUserRank = currentUserInLeaderboard.rank;
-      } catch (e) {
-        currentUserRank = null;
-      }
-    }
-
-
-
-    // Filter users based on search
-    final filteredUsers = useMemoized(() {
-      if (leaderboardData is! AsyncData<List<UserModel>>) {
-        return <UserModel>[];
-      }
-      final users = leaderboardData.value;
-      if (debouncedSearchQuery.value.isEmpty) {
-        return users;
-      }
-      final query = debouncedSearchQuery.value.toLowerCase();
-      return users.where((user) {
-        return (user.displayName ?? '').toLowerCase().contains(query) ||
-               (user.email ?? '').toLowerCase().contains(query);
-      }).toList();
-    }, [leaderboardData, debouncedSearchQuery.value]);
-
-    // دالة مساعدة لإخفاء الكيبورد
-    void hideKeyboard() {
-      if (searchFocusNode.hasFocus) {
-        searchFocusNode.unfocus();
-        // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
-        if (searchController.text.isEmpty) {
-          ghostText.value = '';
-          fullSuggestion.value = '';
-        }
-      }
-    }
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => hideKeyboard(),
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(
-          title: Text(
-            'leaderboard_feature.title'.tr(),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: theme.colorScheme.onSurface,
-          actions: [
-            wasInvitedAsync.when(
-              data: (wasInvited) => !wasInvited 
-                  ? IconButton(
-                      icon: const Icon(Icons.person_add_alt_1_rounded),
-                      tooltip: 'Enter Referral Code',
-                      onPressed: () => _showEnterReferralCodeDialog(context, ref),
-                    )
-                  : const SizedBox.shrink(),
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-            IconButton(
-              onPressed: () {
-                final referralCode = userDataAsync.value?.referralCode;
-                _showLeaderboardRulesDialog(context, referralCode);
-              },
-              icon: const Icon(Icons.info_outline_rounded),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(70),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: TextField(
-                        controller: searchController,
-                        focusNode: searchFocusNode,
-                        onChanged: (value) {
-                          searchQuery.value = value;
-                          if (value.isNotEmpty && leaderboardData is AsyncData<List<UserModel>>) {
-                            // ignore: unnecessary_cast
-                            final users = (leaderboardData as AsyncData<List<UserModel>>).value;
-                            final filtered = users.where((user) {
-                              final displayName = (user.displayName ?? '').toLowerCase();
-                              return displayName.startsWith(value.toLowerCase());
-                            }).toList();
-                            
-                            if (filtered.isNotEmpty) {
-                              final suggestion = filtered.first;
-                              ghostText.value = suggestion.displayName ?? '';
-                              fullSuggestion.value = suggestion.displayName ?? '';
-                            } else {
-                              ghostText.value = '';
-                              fullSuggestion.value = '';
-                            }
-                          } else {
-                            ghostText.value = '';
-                            fullSuggestion.value = '';
-                          }
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'leaderboard_feature.search_hint'.tr(),
-                          hintStyle: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: theme.colorScheme.primary,
-                            size: 25,
-                          ),
-                          suffixIcon: searchQuery.value.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: () {
-                                    searchController.clear();
-                                    searchQuery.value = '';
-                                    debouncedSearchQuery.value = '';
-                                    ghostText.value = '';
-                                    fullSuggestion.value = '';
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                    ),
-                    if (ghostText.value.isNotEmpty)
-                      Positioned(
-                        top: 11,
-                        right: 71,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (fullSuggestion.value.isNotEmpty) {
-                              searchController.text = fullSuggestion.value;
-                              searchQuery.value = fullSuggestion.value;
-                              debouncedSearchQuery.value = fullSuggestion.value;
-                              ghostText.value = '';
-                              fullSuggestion.value = '';
-                              searchFocusNode.unfocus();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: theme.brightness == Brightness.dark
-                                  ? theme.colorScheme.secondary.withOpacity(0.1)
-                                  : theme.colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              ghostText.value,
-                              style: TextStyle(
-                                color: theme.brightness == Brightness.dark
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.secondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        body: Stack(
-          children: [
-            leaderboardData.when(
-              skipLoadingOnRefresh: true,
-              data: (users) {
-                final displayUsers = debouncedSearchQuery.value.isEmpty ? users : filteredUsers;
-                
-                if (displayUsers.isEmpty && debouncedSearchQuery.value.isNotEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_outlined,
-                          size: 80,
-                          color: theme.colorScheme.onSurface.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'leaderboard_feature.no_results'.tr(namedArgs: {'query': debouncedSearchQuery.value}),
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                if (users.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.emoji_events_outlined,
-                        size: 80,
-                        color: theme.colorScheme.onSurface.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'leaderboard_feature.empty'.tr(),
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return RefreshIndicator(
-                edgeOffset: 8,
-                displacement: 32,
-                color: theme.colorScheme.primary,
-                backgroundColor: theme.colorScheme.surface,
-                onRefresh: () async {
-                  ref.invalidate(leaderboardProvider);
-                  ref.invalidate(currentSeasonProvider);
-                  await ref.read(leaderboardProvider.future);
-                },
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: seasonAsync.when(
-                        data: (season) => season == null
-                            ? const SizedBox.shrink()
-                            : Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: _CountdownTimer(endDate: season.endDate),
-                              ),
-                        loading: () => const SizedBox(
-                          height: 72,
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                        error: (e, st) => const SizedBox.shrink(),
-                      ),
-                    ),
-                    // Current User Card
-                    SliverToBoxAdapter(
-                      child: () {
-                        final currentUserInList = displayUsers.where((u) => u.id == currentUserId).firstOrNull;
-                        if (currentUserInList == null) return const SizedBox.shrink();
-                        
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: _buildCurrentUserCard(context, currentUserInList),
-                        );
-                      }(),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            if (index == 0 && displayUsers.length >= 3) {
-                              return _buildPodium(context, displayUsers.take(3).toList());
-                            }
-
-                            final actualIndex =
-                                displayUsers.length >= 3 ? index + 2 : index;
-                            if (actualIndex >= displayUsers.length) {
-                              return const SizedBox.shrink();
-                            }
-
-                            final user = displayUsers[actualIndex];
-                            final rank = user.rank ?? (actualIndex + 1);
-
-                            if (rank <= 3 && displayUsers.length < 3) {
-                              return _buildTopRankerCard(context, user, rank);
-                            } else if (rank == 4 || rank == 5) {
-                              return _buildSpecialRankerTile(context, user, rank);
-                            } else {
-                              return _buildRegularRankerTile(context, user, rank);
-                            }
-                          },
-                          childCount: displayUsers.length >= 3
-                              ? displayUsers.length - 3 + 1
-                              : displayUsers.length,
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 100),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const SizedBox.shrink(), // Show nothing on load, handled by the Stack
-            error: (error, stack) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.error_outline,
-                        color: Colors.red,
-                        size: 48,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'leaderboard_feature.error_title'.tr(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      error.toString(),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () => ref.invalidate(leaderboardProvider),
-                      icon: const Icon(Icons.refresh),
-                      label: Text('leaderboard_feature.try_again'.tr()),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          if (leaderboardData.isLoading && !leaderboardData.hasValue)
-            Container(
-              color: theme.scaffoldBackgroundColor,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
-      floatingActionButton: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        width: double.infinity,
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 52,
-                margin: const EdgeInsetsDirectional.only(end: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFAB47BC),
-                      const Color(0xFF8E24AA),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color.fromARGB(255, 176, 39, 155).withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _showRewardsBottomSheet(context),
-                    borderRadius: BorderRadius.circular(16),
-                    child:  Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.card_giftcard,
-                            color: Colors.white, size: 22),
-                        SizedBox(width: 10),
-                        Text(
-                          'leaderboard_feature.rewards'.tr(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Consumer(
-                builder: (context, ref, child) {
-                  final availabilityAsync = ref.watch(spinWheelAvailabilityProvider);
-                  return availabilityAsync.when(
-                    loading: () => const SizedBox(height: 52),
-                    error: (err, stack) => const SizedBox.shrink(), // Or show an error
-                    data: (details) {
-                      final bool isAvailable = details.availability == SpinWheelAvailability.available;
-                      return Opacity(
-                        opacity: isAvailable ? 1.0 : 0.6,
-                        child: Container(
-                          height: 52,
-                          margin: const EdgeInsets.only(left: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFFFFCA28),
-                                const Color(0xFFFB8C00),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              if (isAvailable)
-                                BoxShadow(
-                                  color: Colors.orange.withOpacity(0.4),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: isAvailable
-                                  ? () async {
-                                      await Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => const FortuneWheelScreen(),
-                                        ),
-                                      );
-                                      ref.invalidate(spinWheelAvailabilityProvider);
-                                    }
-                                  : () async {
-                                      String title = 'leaderboard_feature.spin_wheel_status.unavailable'.tr();
-                                      String message = 'leaderboard_feature.spin_wheel_status.unavailable_msg'.tr();
-                                      switch (details.availability) {
-                                        case SpinWheelAvailability.notWinner:
-                                          title = 'leaderboard_feature.spin_wheel_status.not_qualified'.tr();
-                                          message = 'leaderboard_feature.spin_wheel_status.not_qualified_msg'.tr();
-                                          break;
-                                        case SpinWheelAvailability.windowClosed:
-                                          title = 'leaderboard_feature.spin_wheel_status.window_closed'.tr();
-                                          message = 'leaderboard_feature.spin_wheel_status.window_closed_msg'.tr();
-                                          break;
-                                        case SpinWheelAvailability.alreadyClaimed:
-                                          title = 'leaderboard_feature.spin_wheel_status.already_claimed'.tr();
-                                          message = 'leaderboard_feature.spin_wheel_status.already_claimed_msg'.tr() + 
-                                                    '\n\n' + 
-                                                    'leaderboard_feature.spin_wheel_status.claimed_details'.tr(namedArgs: {
-                                                      'prize': details.claimedPrize ?? '',
-                                                      'rank': (details.rank ?? '').toString()
-                                                    });
-                                          break;
-                                        default:
-                                          break;
-                                      }
-                                      await _showInfoDialog(
-                                        context,
-                                        title: title,
-                                        message: message,
-                                      );
-                                    },
-                              borderRadius: BorderRadius.circular(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isAvailable
-                                        ? Icons.casino
-                                        : Icons.lock_outline,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'leaderboard_feature.spin_wheel'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
@@ -1335,7 +1595,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
+                        '${user.points ?? 0} ${'leaderboard_feature.points'.tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -1455,7 +1715,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
+                        '${user.points ?? 0} ${'leaderboard_feature.points'.tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -1575,7 +1835,7 @@ class LeaderboardScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '${user.points ?? 0} ${"leaderboard_feature.points".tr()}',
+                        '${user.points ?? 0} ${'leaderboard_feature.points'.tr()}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
@@ -2004,4 +2264,35 @@ class _RewardTierCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ArrowBackPainter extends CustomPainter {
+  final Color color;
+  _ArrowBackPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    // Start from right (shaft)
+    path.moveTo(size.width * 0.8, size.height / 2);
+    // Draw to left
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw upper wing
+    path.moveTo(size.width * 0.45, size.height * 0.25);
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw lower wing
+    path.moveTo(size.width * 0.45, size.height * 0.75);
+    path.lineTo(size.width * 0.2, size.height / 2);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

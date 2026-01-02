@@ -1,472 +1,653 @@
-import 'package:fieldawy_store/core/caching/caching_service.dart';
-import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
-import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
-import 'package:fieldawy_store/widgets/main_scaffold.dart';
-import 'package:fieldawy_store/core/utils/location_proximity.dart';
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
+import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
+import 'package:fieldawy_store/core/utils/location_proximity.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart';
+import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
+import 'package:fieldawy_store/features/distributors/application/distributor_filters_provider.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
+import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
+import 'package:fieldawy_store/services/distributor_subscription_service.dart';
+import 'package:fieldawy_store/services/subscription_cache_service.dart';
+import 'package:fieldawy_store/widgets/main_scaffold.dart';
+import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
-
-// ignore: unnecessary_import
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:fieldawy_store/widgets/shimmer_loader.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
-import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
-import 'package:fieldawy_store/services/distributor_subscription_service.dart';
-import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
-import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
-import 'dart:async';
-import 'package:fieldawy_store/services/subscription_cache_service.dart';
-import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة الاستيراد
+import 'package:awesome_dialog/awesome_dialog.dart';
 
 final subscribedDistributorsIdsProvider = FutureProvider<Set<String>>((ref) async {
-  // Ensure cache is ready
   await SubscriptionCacheService.init();
-  // Note: We don't sync here to avoid race conditions and network overhead on every refresh.
-  // Syncing happens once on screen load via useEffect.
   final list = await DistributorSubscriptionService.getSubscribedDistributorIds();
   return list.toSet();
 });
 
-final distributorsProvider =
-    FutureProvider<List<DistributorModel>>((ref) async {
+final distributorsProvider = FutureProvider<List<DistributorModel>>((ref) async {
   final supabase = Supabase.instance.client;
   final cache = ref.watch(cachingServiceProvider);
   const cacheKey = 'distributors_edge';
 
-  // Stale-While-Revalidate Logic
-  // 1. Start the network fetch with NetworkGuard
   final networkFuture = NetworkGuard.execute(() async {
     return await supabase.functions.invoke('get-distributors');
   }).then((response) {
     if (response.data == null) {
-      print('Failed to fetch fresh distributors');
       return <DistributorModel>[]; 
     }
     final List<dynamic> data = response.data;
-    // Update the cache for the next visit
     cache.set(cacheKey, data, duration: const Duration(minutes: 30));
-    // Parse and return the fresh data
     final result = data.map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d))).toList();
     return result;
   }).catchError((error) {
-    // معالجة أخطاء الشبكة
-    print('خطأ في جلب الموزعين بعد المحاولات: $error');
     return <DistributorModel>[];
   });
 
-  // 2. Check the local cache for stale data.
   final cached = cache.get<List<dynamic>>(cacheKey);
   if (cached != null) {
-    // If we have stale data, return it immediately.
-    // The networkFuture will continue in the background and update the cache for the next visit.
     return cached.map((data) => DistributorModel.fromMap(Map<String, dynamic>.from(data))).toList();
   }
 
-  // 3. If there's no cached data, we have to wait for the network to complete.
   try {
     return await networkFuture;
   } catch (e) {
-    print('خطأ في تحميل الموزعين: $e');
-    // إعادة قائمة فارغة بدلاً من رمي استثناء
     return <DistributorModel>[];
   }
 });
 
-class DistributorsScreen extends HookConsumerWidget with SearchTrackingMixin {
+class DistributorsScreen extends ConsumerStatefulWidget {
   const DistributorsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final distributorsAsync = ref.watch(distributorsProvider);
-    final currentUserAsync = ref.watch(userDataProvider);
-    final searchQuery = useState<String>('');
-    final debouncedSearchQuery = useState<String>('');
-    final searchController = useTextEditingController();
-    final searchFocusNode = useFocusNode();
-    final ghostText = useState<String>('');
-    final fullSuggestion = useState<String>('');
-    final currentSearchId = useState<String?>(null);
-    
-    // دالة تتبع البحث في الموزعين
-    Future<void> trackDistributorsSearch(String searchTerm, List filteredResults) async {
-      if (searchTerm.trim().length < 3) { // تتبع البحث فقط إذا كان النص 3 حروف أو أكثر
-        currentSearchId.value = null;
-        return;
-      }
+  ConsumerState<DistributorsScreen> createState() => _DistributorsScreenState();
+}
 
-      try {
-        // التحقق من أن الـ widget لا يزال موجوداً
-        if (!context.mounted) return;
-        
-        print('🔍 Searching distributors: "$searchTerm" (Results: ${filteredResults.length})');
-        
-        // التحقق مرة أخرى بعد العملية غير المتزامنة
-        if (!context.mounted) return;
-        // تم إزالة تتبع البحث في الموزعين
-      } catch (e) {
-        print('❌ Error in distributor search: $e');
+class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with SearchTrackingMixin {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  String _debouncedSearchQuery = '';
+  String _ghostText = '';
+  String _fullSuggestion = '';
+  Timer? _debounce;
+  
+  static const String _historyTabId = 'distributors';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocusNode.addListener(() {
+      setState(() {});
+      if (_searchFocusNode.hasFocus) {
+        HapticFeedback.selectionClick();
+      } else {
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _searchQuery = '';
+            _ghostText = '';
+            _fullSuggestion = '';
+          });
+        }
       }
+    });
+
+    // Sync subscriptions on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncSubscriptions();
+    });
+  }
+
+  Future<void> _syncSubscriptions() async {
+    await SubscriptionCacheService.init();
+    await DistributorSubscriptionService.syncSubscriptions();
+    if (mounted) {
+      ref.invalidate(subscribedDistributorsIdsProvider);
     }
-    
-    useEffect(() {
-      Timer? debounce;
-      void listener() {
-        if (debounce?.isActive ?? false) debounce!.cancel();
-        debounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
-          debouncedSearchQuery.value = searchController.text;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _hideKeyboard() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+      HapticFeedback.lightImpact();
+      if (_searchController.text.isEmpty) {
+        setState(() {
+          _ghostText = '';
+          _fullSuggestion = '';
         });
       }
+    }
+  }
+
+  void _updateSuggestions(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _ghostText = '';
+        _fullSuggestion = '';
+      });
+      return;
+    }
+
+    ref.read(distributorsProvider).whenData((distributors) {
+      final filtered = distributors.where((distributor) {
+        final displayName = distributor.displayName.toLowerCase();
+        return displayName.startsWith(query.toLowerCase());
+      }).toList();
       
-      searchController.addListener(listener);
-      return () {
-        debounce?.cancel();
-        searchController.removeListener(listener);
-      };
-    }, [searchController]);
-
-    final filteredDistributors = useMemoized(
-      () {
-        final distributors = distributorsAsync.asData?.value;
-        final currentUser = currentUserAsync.asData?.value;
-        
-        if (distributors == null) {
-          return <DistributorModel>[];
-        }
-
-        // تصفية حسب البحث
-        List<DistributorModel> filtered;
-        if (debouncedSearchQuery.value.isEmpty) {
-          filtered = distributors;
-        } else {
-          filtered = distributors.where((distributor) {
-            final query = debouncedSearchQuery.value.toLowerCase();
-            return distributor.displayName.toLowerCase().contains(query) ||
-                (distributor.companyName?.toLowerCase().contains(query) ??
-                    false) ||
-                (distributor.email?.toLowerCase().contains(query) ?? false);
-          }).toList();
-        }
-
-        // ترتيب حسب القرب الجغرافي
-        if (currentUser != null) {
-          return LocationProximity.sortByProximity<DistributorModel>(
-            items: filtered,
-            getProximityScore: (distributor) {
-              return LocationProximity.calculateProximityScore(
-                userGovernorates: currentUser.governorates,
-                userCenters: currentUser.centers,
-                distributorGovernorates: distributor.governorates,
-                distributorCenters: distributor.centers,
-              );
-            },
-          );
-        }
-
-        return filtered;
-      },
-      [distributorsAsync, currentUserAsync, debouncedSearchQuery.value],
-    );
-
-    // تتبع البحث عند تغيير debouncedSearchQuery
-    useEffect(() {
-      if (debouncedSearchQuery.value.isNotEmpty) {
-        trackDistributorsSearch(debouncedSearchQuery.value, filteredDistributors);
+      if (filtered.isNotEmpty) {
+        final suggestion = filtered.first.displayName;
+        setState(() {
+          _ghostText = query + suggestion.substring(query.length);
+          _fullSuggestion = suggestion;
+        });
       } else {
-        currentSearchId.value = null;
+        setState(() {
+          _ghostText = '';
+          _fullSuggestion = '';
+        });
       }
-      return null;
-    }, [debouncedSearchQuery.value, filteredDistributors]);
+    });
+  }
 
-    // Sync subscriptions from server on load
-    useEffect(() {
-      Future<void> sync() async {
-        await SubscriptionCacheService.init();
-        await DistributorSubscriptionService.syncSubscriptions();
-        if (context.mounted) {
-          ref.invalidate(subscribedDistributorsIdsProvider);
-        }
-      }
-      sync();
-      return null;
-    }, []);
+  // --- Helper Methods for Dialogs ---
 
-    // تم إزالة تحسين أسماء المنتجات في الخلفية
-
+  void _showSearchHistoryDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final history = ref.read(searchHistoryProvider)[_historyTabId] ?? [];
     
-final sliverAppBar = SliverAppBar(
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      backgroundColor: theme.colorScheme.surface,
-      foregroundColor: theme.colorScheme.onSurface,
-      title: Padding(
-        padding: const EdgeInsets.only(top: 8.0), // تنزيل العنوان للأسفل
-        child: Text(
-          'distributors_feature.title'.tr(),
-          style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-              fontSize: 22),
-        ),
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+      );
+      return;
+    }
+
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: SearchHistoryView(
+        tabId: _historyTabId,
+        onClose: () => Navigator.pop(context),
+        onTermSelected: (term) {
+          _searchController.text = term;
+          setState(() {
+            _searchQuery = term;
+            _debouncedSearchQuery = term;
+          });
+          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _historyTabId);
+          Navigator.pop(context);
+          _searchFocusNode.unfocus();
+        },
       ),
-      pinned: true,
-      floating: false,
- 
-      bottom: PreferredSize(
-        preferredSize:
-            const Size.fromHeight(100), // زيادة الارتفاع للمسافات الأفضل
+    ).show();
+  }
+
+  void _showSearchFiltersDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // شريط البحث مع مسافات محسنة
-            Stack(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      16.0, 12.0, 16.0, 8.0), // مسافات أفضل
-                  child: TextField(
-                    controller: searchController,
-                    focusNode: searchFocusNode,
-                    onChanged: (value) {
-                      searchQuery.value = value;
-                      if (value.isNotEmpty) {
-                        distributorsAsync.whenData((distributors) {
-                          final filtered = distributors.where((distributor) {
-                            final displayName = distributor.displayName.toLowerCase();
-                            return displayName.startsWith(value.toLowerCase());
-                          }).toList();
-                          
-                          if (filtered.isNotEmpty) {
-                            final suggestion = filtered.first;
-                            ghostText.value = suggestion.displayName;
-                            fullSuggestion.value = suggestion.displayName;
-                          } else {
-                            ghostText.value = '';
-                            fullSuggestion.value = '';
-                          }
-                        });
-                      } else {
-                        ghostText.value = '';
-                        fullSuggestion.value = '';
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'distributors_feature.search_hint'.tr(),
-                      hintStyle: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: theme.colorScheme.primary,
-                        size: 25,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isAr ? 'الفلاتر السريعة' : 'Quick Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
-                      suffixIcon: searchQuery.value.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                searchController.clear();
-                                searchQuery.value = '';
-                                debouncedSearchQuery.value = '';
-                                ghostText.value = '';
-                                fullSuggestion.value = '';
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
                     ),
-                  ),
-                ),
-                if (ghostText.value.isNotEmpty)
-                  Positioned(
-                    top: 23,
-                    right: 71,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (fullSuggestion.value.isNotEmpty) {
-                          searchController.text = fullSuggestion.value;
-                          searchQuery.value = fullSuggestion.value;
-                          debouncedSearchQuery.value = fullSuggestion.value;
-                          ghostText.value = '';
-                          fullSuggestion.value = '';
-                          searchFocusNode.unfocus();
-                        }
-                      },
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.dark
-                              ? theme.colorScheme.secondary.withOpacity(0.1)
-                              : theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
                         ),
-                        child: Text(
-                          ghostText.value,
-                          style: TextStyle(
-                            color: theme.brightness == Brightness.dark
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.secondary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final filters = ref.watch(distributorFiltersProvider);
+                        final hasActiveFilters = filters.isNearest || filters.selectedGovernorate != null;
+                        
+                        if (!hasActiveFilters) return const SizedBox.shrink();
+                        
+                        return InkWell(
+                          onTap: () {
+                            ref.read(distributorFiltersProvider.notifier).resetFilters();
+                          },
+                          child: Text(
+                            isAr ? 'مسح الكل' : 'Clear All',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                ),
               ],
             ),
-            // العداد المحسن
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16.0),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.storefront_rounded,
-                    size: 18,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  distributorsAsync.when(
-                    data: (distributors) {
-                      final totalCount = distributors.length;
-                      final filteredCount = debouncedSearchQuery.value.isEmpty
-                          ? totalCount
-                          : filteredDistributors.length;
-
-                      return Text(
-                        debouncedSearchQuery.value.isEmpty
-                            ? 'distributors_feature.total_count'.tr(namedArgs: {'count': totalCount.toString()})
-                            : 'distributors_feature.showing_count'.tr(namedArgs: {
-                                'shown': filteredCount.toString(),
-                                'total': totalCount.toString()
-                              }),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    },
-                    loading: () => Text(
-                      'distributors_feature.counting'.tr(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    error: (_, __) => Text(
-                      'distributors_feature.count_error'.tr(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 16),
+            const QuickFiltersBar(showCheapest: false, useDistributorFilters: true),
             const SizedBox(height: 8),
           ],
         ),
       ),
-    );
+    ).show();
+  }
 
-    // دالة مساعدة لإخفاء الكيبورد
-    void hideKeyboard() {
-      if (searchFocusNode.hasFocus) {
-        searchFocusNode.unfocus();
-        // إعادة تعيين النص الشبحي إذا كان مربع البحث فارغاً
-        if (searchController.text.isEmpty) {
-          ghostText.value = '';
-          fullSuggestion.value = '';
-        }
-      }
-    }
+  Widget _buildSearchActionButton({
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required VoidCallback onTap,
+    List<Color>? gradientColors,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: (isActive && gradientColors != null)
+              ? LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isActive 
+              ? (gradientColors == null ? color : null) 
+              : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: (gradientColors?.last ?? color).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            )
+          ] : [],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isActive 
+              ? Colors.white 
+              : (isDark ? Colors.white70 : color.withOpacity(0.6)),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final distributorsAsync = ref.watch(distributorsProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final filters = ref.watch(distributorFiltersProvider);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        hideKeyboard();
-      },
+      onTap: _hideKeyboard,
       child: MainScaffold(
         selectedIndex: 0,
-        body: distributorsAsync.when(
-          data: (distributors) {
-            return RefreshIndicator(
-              onRefresh: () => ref.refresh(distributorsProvider.future),
-              child: CustomScrollView(
-                slivers: [
-                  sliverAppBar,
-                  if (distributors.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _buildEmptyState(context, theme),
-                    )
-                  else if (filteredDistributors.isEmpty &&
-                      debouncedSearchQuery.value.isNotEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _buildNoSearchResults(
-                          context, theme, debouncedSearchQuery.value),
-                    )
-                  else
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final distributor = filteredDistributors[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 6.0),
-                            child: _buildDistributorCard(
-                                context, theme, distributor, ref, currentSearchId.value, debouncedSearchQuery.value),
-                          );
-                        },
-                        childCount: filteredDistributors.length,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                expandedHeight: 0,
+                floating: true,
+                pinned: true,
+                elevation: 0,
+                centerTitle: true,
+                backgroundColor: theme.colorScheme.surface,
+                leading: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFFFFF),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: _ArrowBackPainter(color: Colors.black),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
-          loading: () => CustomScrollView(
-            slivers: [
-              sliverAppBar,
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => const Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 6.0),
-                    child: DistributorCardShimmer(),
                   ),
-                  childCount: 8,
+                ),
+                automaticallyImplyLeading: false, 
+                title: Text(
+                  'distributors_feature.title'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(100), // Adjusted height for search bar only
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                        child: Row(
+                          children: [
+                            // Search Bar
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      if (value.trim().isNotEmpty) {
+                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _historyTabId);
+                                      }
+                                      _searchFocusNode.unfocus();
+                                    },
+                                    onTap: () {
+                                      if (!_searchFocusNode.hasFocus) {
+                                        HapticFeedback.selectionClick();
+                                      }
+                                      if (_searchController.text.isNotEmpty) {
+                                        _updateSuggestions(_searchController.text);
+                                      }
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                      _debounce?.cancel();
+                                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                                        setState(() {
+                                          _debouncedSearchQuery = value;
+                                        });
+                                        _updateSuggestions(value);
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: 'distributors_feature.search_hint'.tr(),
+                                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: _searchFocusNode.hasFocus 
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        size: 22,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _debouncedSearchQuery = '';
+                                                  _ghostText = '';
+                                                  _fullSuggestion = '';
+                                                });
+                                                HapticFeedback.lightImpact();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: theme.brightness == Brightness.dark
+                                          ? theme.colorScheme.surface.withOpacity(0.8)
+                                          : theme.colorScheme.surface,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                  ),
+                                  // Ghost Text
+                                  if (_ghostText.isNotEmpty && _searchFocusNode.hasFocus)
+                                    Positioned(
+                                      top: 12,
+                                      right: 37,
+                                      child: AnimatedOpacity(
+                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_fullSuggestion.isNotEmpty) {
+                                              _searchController.text = _fullSuggestion;
+                                              setState(() {
+                                                _searchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _ghostText = '';
+                                                _fullSuggestion = '';
+                                              });
+                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _historyTabId);
+                                              HapticFeedback.selectionClick();
+                                              _searchFocusNode.requestFocus();
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.primary),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    _ghostText,
+                                                    style: TextStyle(
+                                                      color: theme.colorScheme.primary,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Action Buttons (History & Filter)
+                            const SizedBox(width: 8),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final history = ref.watch(searchHistoryProvider)[_historyTabId] ?? [];
+                                final isFilterActive = filters.isNearest || filters.selectedGovernorate != null;
+                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildSearchActionButton(
+                                      icon: Icons.history_rounded,
+                                      color: Colors.indigo,
+                                      isActive: isHistoryActive,
+                                      gradientColors: [Colors.indigo, Colors.blueAccent],
+                                      onTap: () => _showSearchHistoryDialog(context),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _buildSearchActionButton(
+                                      icon: Icons.tune_rounded,
+                                      color: Colors.teal,
+                                      isActive: isFilterActive,
+                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
+                                      onTap: () => _showSearchFiltersDialog(context),
+                                    ),
+                                  ],
+                                );
+                              }
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-          error: (error, stack) => CustomScrollView(
-            slivers: [
-              sliverAppBar,
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildErrorState(context, theme, error.toString(), ref),
-              ),
-            ],
+            ];
+          },
+          body: distributorsAsync.when(
+            data: (distributors) {
+              // 1. Filtering
+              var filteredDistributors = distributors.where((distributor) {
+                // Text Search
+                if (_debouncedSearchQuery.isNotEmpty) {
+                  final query = _debouncedSearchQuery.toLowerCase();
+                  final matchesName = distributor.displayName.toLowerCase().contains(query) ||
+                      (distributor.companyName?.toLowerCase().contains(query) ?? false) ||
+                      (distributor.email?.toLowerCase().contains(query) ?? false);
+                  if (!matchesName) return false;
+                }
+                
+                // Governorate Filter
+                if (filters.selectedGovernorate != null) {
+                  final matchesGov = (distributor.governorates ?? []).contains(filters.selectedGovernorate);
+                  if (!matchesGov) return false;
+                }
+                
+                return true;
+              }).toList();
+
+              // 2. Sorting (Nearest)
+              if (filters.isNearest) {
+                final currentUser = currentUserAsync.asData?.value;
+                if (currentUser != null) {
+                  filteredDistributors = LocationProximity.sortByProximity<DistributorModel>(
+                    items: filteredDistributors,
+                    getProximityScore: (distributor) {
+                      return LocationProximity.calculateProximityScore(
+                        userGovernorates: currentUser.governorates,
+                        userCenters: currentUser.centers,
+                        distributorGovernorates: distributor.governorates,
+                        distributorCenters: distributor.centers,
+                      );
+                    },
+                  );
+                }
+              }
+
+              if (filteredDistributors.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 64,
+                        color: theme.colorScheme.primary.withOpacity(0.6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'distributors_feature.no_search_results'.tr(),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (filters.selectedGovernorate != null || filters.isNearest)
+                        TextButton(
+                          onPressed: () => ref.read(distributorFiltersProvider.notifier).resetFilters(),
+                          child: Text('إعادة تعيين الفلاتر'),
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: () => ref.refresh(distributorsProvider.future),
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                  itemCount: filteredDistributors.length,
+                  itemBuilder: (context, index) {
+                    final distributor = filteredDistributors[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                      child: _buildDistributorCard(
+                          context, theme, distributor, ref, null, _debouncedSearchQuery),
+                    );
+                  },
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text('Error: $error')),
           ),
         ),
       ),
@@ -483,9 +664,6 @@ final sliverAppBar = SliverAppBar(
       theme: theme,
       currentUser: currentUser,
       onShowDetails: () {
-        // تتبع النقرة على الموزع إذا كان هناك بحث نشط
-        // تم إزالة تتبع النقر على الموزعين
-        print('👆 Distributor clicked: ${distributor.displayName}');
         _showDistributorDetails(context, theme, distributor);
       },
     );
@@ -847,158 +1025,10 @@ final sliverAppBar = SliverAppBar(
       );
     }
   }
-
-  // حالة الخطأ
-  Widget _buildErrorState(BuildContext context, ThemeData theme, String error, WidgetRef ref) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 64,
-              color: theme.colorScheme.error.withOpacity(0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'distributors_feature.error_connection'.tr(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'distributors_feature.error_message'.tr(),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () {
-                // إعادة تحميل البيانات
-                ref.invalidate(distributorsProvider);
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text('distributors_feature.retry'.tr()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // حالة عدم وجود موزعين
-  Widget _buildEmptyState(BuildContext context, ThemeData theme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_alt_rounded,
-              size: 64,
-              color: theme.colorScheme.primary.withOpacity(0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'distributors_feature.no_distributors'.tr(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // حالة عدم وجود نتائج بحث
-  Widget _buildNoSearchResults(
-      BuildContext context, ThemeData theme, String query) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 64,
-              color: theme.colorScheme.primary.withOpacity(0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'distributors_feature.no_search_results'.tr(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'distributors_feature.no_results_for'.tr(namedArgs: {'query': query}),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class DistributorCardShimmer extends StatelessWidget {
-  const DistributorCardShimmer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [                       
-          ShimmerLoader(width: 60, height: 60, borderRadius: 12),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShimmerLoader(width: 150, height: 15, borderRadius: 8),
-                const SizedBox(height: 8),
-                ShimmerLoader(width: 100, height: 12, borderRadius: 8),
-                const SizedBox(height: 8),
-                ShimmerLoader(width: 80, height: 12, borderRadius: 8),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // Widget منفصل للكارت مع state management محلي
-class _DistributorCard extends HookConsumerWidget {
+class _DistributorCard extends ConsumerWidget {
   final DistributorModel distributor;
   final ThemeData theme;
   final UserModel? currentUser;
@@ -1014,17 +1044,68 @@ class _DistributorCard extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isCompany = distributor.distributorType == 'company';
-    final isLoading = useState(false);
-    final subscribersCountLocal = useState(distributor.subscribersCount);
-    
-    // Watch the subscription state provider
     final subscribedIdsAsync = ref.watch(subscribedDistributorsIdsProvider);
     final isSubscribed = subscribedIdsAsync.asData?.value.contains(distributor.id) ?? false;
 
+    // Local state for optimistic UI updates (using a StatefulWidget would be better for complex state, but here we trigger provider refresh)
+    // Actually, converting to ConsumerStatefulWidget or HookConsumerWidget is cleaner if we need local state.
+    // For simplicity, I'll rely on the provider refresh which should be fast enough.
+    // To allow optimistic update, I need local state.
+    // I'll make _DistributorCard Stateful.
+    return _DistributorCardStateful(
+      distributor: distributor,
+      theme: theme,
+      currentUser: currentUser,
+      onShowDetails: onShowDetails,
+      initialSubscribed: isSubscribed,
+    );
+  }
+}
+
+class _DistributorCardStateful extends ConsumerStatefulWidget {
+  final DistributorModel distributor;
+  final ThemeData theme;
+  final UserModel? currentUser;
+  final VoidCallback onShowDetails;
+  final bool initialSubscribed;
+
+  const _DistributorCardStateful({
+    required this.distributor,
+    required this.theme,
+    required this.currentUser,
+    required this.onShowDetails,
+    required this.initialSubscribed,
+  });
+
+  @override
+  ConsumerState<_DistributorCardStateful> createState() => _DistributorCardStatefulState();
+}
+
+class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStateful> {
+  late bool isSubscribed;
+  late int subscribersCount;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isSubscribed = widget.initialSubscribed;
+    subscribersCount = widget.distributor.subscribersCount;
+  }
+
+  @override
+  void didUpdateWidget(covariant _DistributorCardStateful oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSubscribed != widget.initialSubscribed) {
+      isSubscribed = widget.initialSubscribed;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: widget.theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1037,7 +1118,7 @@ class _DistributorCard extends HookConsumerWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onShowDetails,
+          onTap: widget.onShowDetails,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1048,20 +1129,20 @@ class _DistributorCard extends HookConsumerWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant,
+                    color: widget.theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: distributor.photoURL != null &&
-                            distributor.photoURL!.isNotEmpty
+                    child: widget.distributor.photoURL != null &&
+                            widget.distributor.photoURL!.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: distributor.photoURL!,
+                            imageUrl: widget.distributor.photoURL!,
                             cacheManager: CustomImageCacheManager(),
                             fit: BoxFit.contain,
                             placeholder: (context, url) => Container(
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant,
+                                color: widget.theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(
@@ -1070,25 +1151,25 @@ class _DistributorCard extends HookConsumerWidget {
                             ),
                             errorWidget: (context, url, error) => Container(
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant,
+                                color: widget.theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
                                 Icons.person_rounded,
                                 size: 28,
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: widget.theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           )
                         : Container(
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceVariant,
+                              color: widget.theme.colorScheme.surfaceVariant,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.person_rounded,
                               size: 28,
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: widget.theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                   ),
@@ -1100,8 +1181,8 @@ class _DistributorCard extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        distributor.displayName,
-                        style: theme.textTheme.bodyLarge?.copyWith(
+                        widget.distributor.displayName,
+                        style: widget.theme.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                         ),
@@ -1113,28 +1194,28 @@ class _DistributorCard extends HookConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
+                          color: widget.theme.colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isCompany
+                              widget.distributor.distributorType == 'company'
                                   ? Icons.business_rounded
                                   : Icons.person_outline_rounded,
                               size: 12,
-                              color: theme.colorScheme.onSecondaryContainer,
+                              color: widget.theme.colorScheme.onSecondaryContainer,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                distributor.companyName ??
-                                    (isCompany
+                                widget.distributor.companyName ??
+                                    (widget.distributor.distributorType == 'company'
                                         ? 'distributors_feature.company'.tr()
                                         : 'distributors_feature.individual'.tr()),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSecondaryContainer,
+                                style: widget.theme.textTheme.labelSmall?.copyWith(
+                                  color: widget.theme.colorScheme.onSecondaryContainer,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 maxLines: 1,
@@ -1151,10 +1232,10 @@ class _DistributorCard extends HookConsumerWidget {
                         runSpacing: 4,
                         children: [
                           // شارة "قريب منك" للمركز
-                          if (currentUser?.centers != null &&
+                          if (widget.currentUser?.centers != null &&
                               LocationProximity.hasCommonCenter(
-                                userCenters: currentUser!.centers!,
-                                distributorCenters: distributor.centers,
+                                userCenters: widget.currentUser!.centers!,
+                                distributorCenters: widget.distributor.centers,
                               ))
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -1187,7 +1268,7 @@ class _DistributorCard extends HookConsumerWidget {
                                   Flexible(
                                     child: Text(
                                       'distributors_feature.near_you'.tr(),
-                                      style: theme.textTheme.labelSmall?.copyWith(
+                                      style: widget.theme.textTheme.labelSmall?.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 9,
@@ -1200,10 +1281,10 @@ class _DistributorCard extends HookConsumerWidget {
                               ),
                             )
                           // أيقونة للمحافظة فقط (بدون مركز مشترك)
-                          else if (currentUser?.governorates != null &&
+                          else if (widget.currentUser?.governorates != null &&
                                    LocationProximity.hasCommonGovernorate(
-                                     userGovernorates: currentUser!.governorates!,
-                                     distributorGovernorates: distributor.governorates,
+                                     userGovernorates: widget.currentUser!.governorates!,
+                                     distributorGovernorates: widget.distributor.governorates,
                                    ))
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -1228,7 +1309,7 @@ class _DistributorCard extends HookConsumerWidget {
                                   Flexible(
                                     child: Text(
                                       'distributors_feature.same_governorate'.tr(),
-                                      style: theme.textTheme.labelSmall?.copyWith(
+                                      style: widget.theme.textTheme.labelSmall?.copyWith(
                                         color: Colors.blue.shade700,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 9,
@@ -1245,7 +1326,7 @@ class _DistributorCard extends HookConsumerWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
+                              color: widget.theme.colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -1254,14 +1335,14 @@ class _DistributorCard extends HookConsumerWidget {
                                 Icon(
                                   Icons.inventory_2_rounded,
                                   size: 11,
-                                  color: theme.colorScheme.onPrimaryContainer,
+                                  color: widget.theme.colorScheme.onPrimaryContainer,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'distributors_feature.product_count_value'.tr(
-                                      namedArgs: {'count': distributor.productCount.toString()}),
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: theme.colorScheme.onPrimaryContainer,
+                                      namedArgs: {'count': widget.distributor.productCount.toString()}),
+                                  style: widget.theme.textTheme.labelMedium?.copyWith(
+                                    color: widget.theme.colorScheme.onPrimaryContainer,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 11,
                                   ),
@@ -1270,12 +1351,12 @@ class _DistributorCard extends HookConsumerWidget {
                             ),
                           ),
                           // عداد المشتركين
-                          if (subscribersCountLocal.value > 0)
+                          if (subscribersCount > 0)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                color: widget.theme.colorScheme.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -1284,13 +1365,13 @@ class _DistributorCard extends HookConsumerWidget {
                                   Icon(
                                     Icons.notifications_active_rounded,
                                     size: 11,
-                                    color: theme.colorScheme.primary,
+                                    color: widget.theme.colorScheme.primary,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${subscribersCountLocal.value}',
-                                    style: theme.textTheme.labelMedium?.copyWith(
-                                      color: theme.colorScheme.primary,
+                                    '$subscribersCount',
+                                    style: widget.theme.textTheme.labelMedium?.copyWith(
+                                      color: widget.theme.colorScheme.primary,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,
                                     ),
@@ -1304,62 +1385,69 @@ class _DistributorCard extends HookConsumerWidget {
                   ),
                 ),
                 // أيقونة الجرس للاشتراك
-                // استخدام حالة الاشتراك من المزود
                 Container(
                     width: 33,
                     height: 33,
                     decoration: BoxDecoration(
                       color: isSubscribed
-                          ? theme.colorScheme.primary // لون صلب عند الاشتراك
+                          ? widget.theme.colorScheme.primary
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10), // تعديل الانحناء
+                      borderRadius: BorderRadius.circular(10),
                       border: isSubscribed
                           ? null
                           : Border.all(
-                              color: theme.colorScheme.outline.withOpacity(0.3),
+                              color: widget.theme.colorScheme.outline.withOpacity(0.3),
                               width: 1,
                             ),
                     ),
                     child: IconButton(
                       iconSize: 16,
-                      padding: EdgeInsets.zero, // إزالة الحواشي ليتناسب مع الكونتينر الصغير
-                      constraints: const BoxConstraints(), // إزالة القيود الافتراضية
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                       icon: Icon(
                         isSubscribed
                             ? Icons.notifications_active_rounded
-                            : Icons.notifications_none_rounded, // تغيير الأيقونة لتكون أجمل
+                            : Icons.notifications_none_rounded,
                         color: isSubscribed
-                            ? Colors.white // أيقونة بيضاء عند الاشتراك
-                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                            ? Colors.white
+                            : widget.theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
-                      onPressed: isLoading.value
+                      onPressed: isLoading
                           ? null
                           : () async {
-                              isLoading.value = true;
+                              setState(() {
+                                isLoading = true;
+                              });
                               // Toggle subscription
                               final success = await DistributorSubscriptionService
-                                  .toggleSubscription(distributor.id);
+                                  .toggleSubscription(widget.distributor.id);
 
                               if (success) {
                                 // Refresh the provider to update UI
                                 ref.invalidate(subscribedDistributorsIdsProvider);
                                 
-                                // تحديث العداد محلياً (Visual feedback)
-                                if (!isSubscribed) {
-                                  subscribersCountLocal.value++;
-                                } else {
-                                  if (subscribersCountLocal.value > 0) {
-                                    subscribersCountLocal.value--;
+                                setState(() {
+                                  // Update local state for immediate feedback
+                                  if (!isSubscribed) {
+                                    isSubscribed = true;
+                                    subscribersCount++;
+                                  } else {
+                                    isSubscribed = false;
+                                    if (subscribersCount > 0) {
+                                      subscribersCount--;
+                                    }
                                   }
-                                }
+                                });
 
-                                if (context.mounted) {
+                                if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        !isSubscribed
-                                            ? 'distributors_feature.subscribed'.tr(namedArgs: {'name': distributor.displayName})
-                                            : 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': distributor.displayName}),
+                                        !isSubscribed // Logic inverted here because we already flipped local state? No, success means operation done.
+                                            // Wait, if I flipped local state ABOVE, then isSubscribed reflects NEW state.
+                                            // So if isSubscribed is true, it means I just subscribed.
+                                            ? 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': widget.distributor.displayName})
+                                            : 'distributors_feature.subscribed'.tr(namedArgs: {'name': widget.distributor.displayName}),
                                         style: const TextStyle(fontSize: 14),
                                       ),
                                       duration: const Duration(seconds: 2),
@@ -1367,7 +1455,9 @@ class _DistributorCard extends HookConsumerWidget {
                                   );
                                 }
                               }
-                              isLoading.value = false;
+                              setState(() {
+                                isLoading = false;
+                              });
                             },
                       tooltip: isSubscribed
                           ? 'distributors_feature.unsubscribe_tooltip'.tr()
@@ -1378,7 +1468,7 @@ class _DistributorCard extends HookConsumerWidget {
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
-                  color: theme.colorScheme.onSurface.withOpacity(0.4),
+                  color: widget.theme.colorScheme.onSurface.withOpacity(0.4),
                 ),
               ],
             ),
@@ -1387,4 +1477,35 @@ class _DistributorCard extends HookConsumerWidget {
       ),
     );
   }
+}
+
+class _ArrowBackPainter extends CustomPainter {
+  final Color color;
+  _ArrowBackPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    // Start from right (shaft)
+    path.moveTo(size.width * 0.8, size.height / 2);
+    // Draw to left
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw upper wing
+    path.moveTo(size.width * 0.45, size.height * 0.25);
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw lower wing
+    path.moveTo(size.width * 0.45, size.height * 0.75);
+    path.lineTo(size.width * 0.2, size.height / 2);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

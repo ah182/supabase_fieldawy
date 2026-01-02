@@ -1,16 +1,28 @@
+import 'package:fieldawy_store/features/jobs/application/job_filters_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fieldawy_store/features/home/application/search_filters_provider.dart';
 import 'package:fieldawy_store/features/stories/application/story_filters_provider.dart';
+import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_filters_provider.dart';
+import 'package:fieldawy_store/features/distributors/application/distributor_filters_provider.dart';
+import 'package:fieldawy_store/features/leaderboard/application/leaderboard_filters_provider.dart';
 
 class QuickFiltersBar extends ConsumerWidget {
   final bool showCheapest;
-  final bool useStoryFilters; // خاصية جديدة لتحديد أي Provider نستخدم
+  final bool useStoryFilters;
+  final bool useJobFilters;
+  final bool useVetSuppliesFilters;
+  final bool useDistributorFilters;
+  final bool useLeaderboardFilters; // خاصية جديدة
 
   const QuickFiltersBar({
     super.key,
     this.showCheapest = true,
     this.useStoryFilters = false,
+    this.useJobFilters = false,
+    this.useVetSuppliesFilters = false,
+    this.useDistributorFilters = false,
+    this.useLeaderboardFilters = false,
   });
 
   static const List<String> governorates = [
@@ -28,16 +40,20 @@ class QuickFiltersBar extends ConsumerWidget {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     // 1. تحديد الـ State والـ Notifier بناءً على النوع
-    final filters = useStoryFilters 
-        ? _getStoryState(ref) 
-        : _getSearchState(ref);
+    final filters = useLeaderboardFilters
+        ? _getLeaderboardState(ref)
+        : (useDistributorFilters
+            ? _getDistributorState(ref)
+            : (useVetSuppliesFilters
+                ? _getVetSuppliesState(ref)
+                : (useJobFilters
+                    ? _getJobState(ref)
+                    : (useStoryFilters 
+                        ? _getStoryState(ref) 
+                        : _getSearchState(ref)))));
     
-    final notifier = useStoryFilters 
-        ? ref.read(storyFiltersProvider.notifier) 
-        : ref.read(searchFiltersProvider.notifier);
-
-    // 2. البناء (نفس المنطق السابق ولكن مع البيانات المختارة)
-    if (!showCheapest) {
+    // 2. البناء
+    if (!showCheapest || useJobFilters || useDistributorFilters || useLeaderboardFilters) { // إخفاء الأرخص للوظائف والموزعين والليدربورد
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -46,9 +62,21 @@ class QuickFiltersBar extends ConsumerWidget {
             label: isAr ? 'الأقرب' : 'Nearest',
             isSelected: filters['isNearest'],
             icon: Icons.near_me_outlined,
-            onTap: () => useStoryFilters 
-                ? (notifier as StoryFiltersNotifier).toggleNearest()
-                : (notifier as SearchFiltersNotifier).toggleNearest(),
+            onTap: () {
+              if (useLeaderboardFilters) {
+                ref.read(leaderboardFiltersProvider.notifier).toggleNearest();
+              } else if (useDistributorFilters) {
+                ref.read(distributorFiltersProvider.notifier).toggleNearest();
+              } else if (useVetSuppliesFilters) {
+                ref.read(vetSuppliesFiltersProvider.notifier).toggleNearest();
+              } else if (useJobFilters) {
+                ref.read(jobFiltersProvider.notifier).toggleNearest();
+              } else if (useStoryFilters) {
+                ref.read(storyFiltersProvider.notifier).toggleNearest();
+              } else {
+                ref.read(searchFiltersProvider.notifier).toggleNearest();
+              }
+            },
           ),
           const SizedBox(width: 8),
           _buildSmallFilterChip(
@@ -58,9 +86,21 @@ class QuickFiltersBar extends ConsumerWidget {
             icon: Icons.location_city_rounded,
             onTap: () => _showGovernoratePicker(context, ref),
             onClear: filters['selectedGovernorate'] != null 
-                ? () => useStoryFilters
-                    ? (notifier as StoryFiltersNotifier).setGovernorate(null)
-                    : (notifier as SearchFiltersNotifier).setGovernorate(null)
+                ? () {
+                    if (useLeaderboardFilters) {
+                      ref.read(leaderboardFiltersProvider.notifier).setGovernorate(null);
+                    } else if (useDistributorFilters) {
+                      ref.read(distributorFiltersProvider.notifier).setGovernorate(null);
+                    } else if (useVetSuppliesFilters) {
+                      ref.read(vetSuppliesFiltersProvider.notifier).setGovernorate(null);
+                    } else if (useJobFilters) {
+                      ref.read(jobFiltersProvider.notifier).setGovernorate(null);
+                    } else if (useStoryFilters) {
+                      ref.read(storyFiltersProvider.notifier).setGovernorate(null);
+                    } else {
+                      ref.read(searchFiltersProvider.notifier).setGovernorate(null);
+                    }
+                  }
                 : null,
           ),
         ],
@@ -77,9 +117,15 @@ class QuickFiltersBar extends ConsumerWidget {
               _buildSmallFilterChip(
                 context,
                 label: isAr ? 'الأرخص' : 'Cheapest',
-                isSelected: filters['isCheapest'] ?? false,
+                isSelected: filters['isCheapest'] == true,
                 icon: Icons.monetization_on_outlined,
-                onTap: () => (notifier as SearchFiltersNotifier).toggleCheapest(),
+                onTap: () {
+                  if (useVetSuppliesFilters) {
+                    ref.read(vetSuppliesFiltersProvider.notifier).toggleCheapest();
+                  } else {
+                    ref.read(searchFiltersProvider.notifier).toggleCheapest();
+                  }
+                },
               ),
               const SizedBox(width: 8),
             ],
@@ -88,9 +134,15 @@ class QuickFiltersBar extends ConsumerWidget {
               label: isAr ? 'الأقرب' : 'Nearest',
               isSelected: filters['isNearest'],
               icon: Icons.near_me_outlined,
-              onTap: () => useStoryFilters 
-                ? (notifier as StoryFiltersNotifier).toggleNearest()
-                : (notifier as SearchFiltersNotifier).toggleNearest(),
+              onTap: () {
+                if (useStoryFilters) {
+                  ref.read(storyFiltersProvider.notifier).toggleNearest();
+                } else if (useVetSuppliesFilters) {
+                  ref.read(vetSuppliesFiltersProvider.notifier).toggleNearest();
+                } else {
+                  ref.read(searchFiltersProvider.notifier).toggleNearest();
+                }
+              },
             ),
           ],
         ),
@@ -106,9 +158,15 @@ class QuickFiltersBar extends ConsumerWidget {
               isWide: true,
               onTap: () => _showGovernoratePicker(context, ref),
               onClear: filters['selectedGovernorate'] != null 
-                  ? () => useStoryFilters
-                      ? (notifier as StoryFiltersNotifier).setGovernorate(null)
-                      : (notifier as SearchFiltersNotifier).setGovernorate(null)
+                  ? () {
+                      if (useStoryFilters) {
+                        ref.read(storyFiltersProvider.notifier).setGovernorate(null);
+                      } else if (useVetSuppliesFilters) {
+                        ref.read(vetSuppliesFiltersProvider.notifier).setGovernorate(null);
+                      } else {
+                        ref.read(searchFiltersProvider.notifier).setGovernorate(null);
+                      }
+                    } 
                   : null,
             ),
           ],
@@ -125,6 +183,26 @@ class QuickFiltersBar extends ConsumerWidget {
 
   Map<String, dynamic> _getStoryState(WidgetRef ref) {
     final s = ref.watch(storyFiltersProvider);
+    return {'isNearest': s.isNearest, 'selectedGovernorate': s.selectedGovernorate};
+  }
+
+  Map<String, dynamic> _getJobState(WidgetRef ref) {
+    final s = ref.watch(jobFiltersProvider);
+    return {'isNearest': s.isNearest, 'selectedGovernorate': s.selectedGovernorate};
+  }
+
+  Map<String, dynamic> _getVetSuppliesState(WidgetRef ref) {
+    final s = ref.watch(vetSuppliesFiltersProvider);
+    return {'isNearest': s.isNearest, 'isCheapest': s.isCheapest, 'selectedGovernorate': s.selectedGovernorate};
+  }
+
+  Map<String, dynamic> _getDistributorState(WidgetRef ref) {
+    final s = ref.watch(distributorFiltersProvider);
+    return {'isNearest': s.isNearest, 'selectedGovernorate': s.selectedGovernorate};
+  }
+
+  Map<String, dynamic> _getLeaderboardState(WidgetRef ref) {
+    final s = ref.watch(leaderboardFiltersProvider);
     return {'isNearest': s.isNearest, 'selectedGovernorate': s.selectedGovernorate};
   }
 
@@ -161,13 +239,37 @@ class QuickFiltersBar extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _GovernoratePickerSheet(
-        useStoryFilters: useStoryFilters, // تمرير العلم للـ Sheet
-        onSelected: (gov) => useStoryFilters 
-            ? ref.read(storyFiltersProvider.notifier).setGovernorate(gov)
-            : ref.read(searchFiltersProvider.notifier).setGovernorate(gov),
-        selectedGovernorate: useStoryFilters 
-            ? ref.read(storyFiltersProvider).selectedGovernorate
-            : ref.read(searchFiltersProvider).selectedGovernorate,
+        useStoryFilters: useStoryFilters,
+        useJobFilters: useJobFilters,
+        useVetSuppliesFilters: useVetSuppliesFilters,
+        useDistributorFilters: useDistributorFilters,
+        useLeaderboardFilters: useLeaderboardFilters,
+        onSelected: (gov) {
+          if (useLeaderboardFilters) {
+            ref.read(leaderboardFiltersProvider.notifier).setGovernorate(gov);
+          } else if (useDistributorFilters) {
+            ref.read(distributorFiltersProvider.notifier).setGovernorate(gov);
+          } else if (useVetSuppliesFilters) {
+            ref.read(vetSuppliesFiltersProvider.notifier).setGovernorate(gov);
+          } else if (useJobFilters) {
+            ref.read(jobFiltersProvider.notifier).setGovernorate(gov);
+          } else if (useStoryFilters) {
+            ref.read(storyFiltersProvider.notifier).setGovernorate(gov);
+          } else {
+            ref.read(searchFiltersProvider.notifier).setGovernorate(gov);
+          }
+        },
+        selectedGovernorate: useLeaderboardFilters
+            ? ref.read(leaderboardFiltersProvider).selectedGovernorate
+            : (useDistributorFilters
+                ? ref.read(distributorFiltersProvider).selectedGovernorate
+                : (useVetSuppliesFilters
+                    ? ref.read(vetSuppliesFiltersProvider).selectedGovernorate
+                    : (useJobFilters
+                        ? ref.read(jobFiltersProvider).selectedGovernorate
+                        : (useStoryFilters 
+                            ? ref.read(storyFiltersProvider).selectedGovernorate
+                            : ref.read(searchFiltersProvider).selectedGovernorate)))),
       ),
     );
   }
@@ -177,8 +279,20 @@ class _GovernoratePickerSheet extends StatefulWidget {
   final Function(String?) onSelected;
   final String? selectedGovernorate;
   final bool useStoryFilters;
+  final bool useJobFilters;
+  final bool useVetSuppliesFilters;
+  final bool useDistributorFilters;
+  final bool useLeaderboardFilters;
 
-  const _GovernoratePickerSheet({required this.onSelected, this.selectedGovernorate, required this.useStoryFilters});
+  const _GovernoratePickerSheet({
+    required this.onSelected,
+    this.selectedGovernorate,
+    required this.useStoryFilters,
+    required this.useJobFilters,
+    required this.useVetSuppliesFilters,
+    required this.useDistributorFilters,
+    required this.useLeaderboardFilters,
+  });
 
   @override
   State<_GovernoratePickerSheet> createState() => _GovernoratePickerSheetState();

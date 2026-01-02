@@ -17,8 +17,19 @@ import 'package:flutter/material.dart';
 import 'package:fieldawy_store/features/home/presentation/mixins/search_tracking_mixin.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+// Added Imports
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
+import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_filters_provider.dart';
+import 'package:fieldawy_store/core/providers/governorates_provider.dart';
+import 'package:fieldawy_store/core/models/governorate_model.dart';
+
 
 class VetSuppliesScreen extends ConsumerStatefulWidget {
   const VetSuppliesScreen({super.key});
@@ -39,6 +50,8 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
   String _fullSuggestion = '';
   Timer? _searchDebounce;
   Timer? _debounce;
+  
+  static const String _historyTabId = 'vet_supplies';
 
   @override
   void initState() {
@@ -49,6 +62,22 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         _hideKeyboard();
+      }
+    });
+
+    _searchFocusNode.addListener(() {
+      setState(() {});
+      if (_searchFocusNode.hasFocus) {
+        HapticFeedback.selectionClick();
+      } else {
+        // إذا فقد التركيز وكان فارغاً، مسح الحالة
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _searchQuery = '';
+            _ghostText = '';
+            _fullSuggestion = '';
+          });
+        }
       }
     });
 
@@ -154,159 +183,497 @@ class _VetSuppliesScreenState extends ConsumerState<VetSuppliesScreen>
     });
   }
 
+  // --- Helper Methods for Dialogs ---
+
+  void _showSearchHistoryDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final history = ref.read(searchHistoryProvider)[_historyTabId] ?? [];
+    
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+      );
+      return;
+    }
+
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: SearchHistoryView(
+        tabId: _historyTabId,
+        onClose: () => Navigator.pop(context),
+        onTermSelected: (term) {
+          _searchController.text = term;
+          setState(() {
+            _searchQuery = term;
+            _debouncedSearchQuery = term;
+          });
+          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _historyTabId);
+          Navigator.pop(context);
+          _searchFocusNode.unfocus();
+        },
+      ),
+    ).show();
+  }
+
+  void _showSearchFiltersDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isAr ? 'الفلاتر السريعة' : 'Quick Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final filters = ref.watch(vetSuppliesFiltersProvider);
+                        final hasActiveFilters = filters.isNearest || filters.selectedGovernorate != null;
+                        
+                        if (!hasActiveFilters) return const SizedBox.shrink();
+                        
+                        return InkWell(
+                          onTap: () {
+                            ref.read(vetSuppliesFiltersProvider.notifier).resetFilters();
+                          },
+                          child: Text(
+                            isAr ? 'مسح الكل' : 'Clear All',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const QuickFiltersBar(showCheapest: true, useVetSuppliesFilters: true),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ).show();
+  }
+
+  Widget _buildSearchActionButton({
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required VoidCallback onTap,
+    List<Color>? gradientColors,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: (isActive && gradientColors != null)
+              ? LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isActive 
+              ? (gradientColors == null ? color : null) 
+              : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: (gradientColors?.last ?? color).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            )
+          ] : [],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isActive 
+              ? Colors.white 
+              : (isDark ? Colors.white70 : color.withOpacity(0.6)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userDataAsync = ref.watch(userDataProvider);
     final user = userDataAsync.asData?.value;
     final isDoctor = user?.role == 'doctor';
+    final theme = Theme.of(context);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _hideKeyboard(),
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('vet_supplies_feature.title'.tr()),
-          bottom: isDoctor 
-            ? null 
-            : TabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(
-                    icon: const Icon(Icons.inventory_2_outlined),
-                    text: 'vet_supplies_feature.tabs.all_supplies'.tr(),
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.store_outlined),
-                    text: 'vet_supplies_feature.tabs.my_supplies'.tr(),
-                  ),
-                ],
-              ),
-        ),
-        body: Column(
-          children: [
-            // شريط البحث
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              child: Stack(
-                children: [
-                  // النص الشبحي
-                  if (_ghostText.isNotEmpty)
-                    Positioned.fill(
-                      child: Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsetsDirectional.only(start: 48, end: 12),
-                        child: Text(
-                          _ghostText,
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 16,
-                          ),
-                        ),
+        backgroundColor: theme.colorScheme.surface,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                expandedHeight: 0,
+                floating: true,
+                pinned: true,
+                elevation: 0,
+                centerTitle: true,
+                backgroundColor: theme.colorScheme.surface,
+                leading: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), // زيادة الهامش الأفقي للداخل
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFFFFF),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
                       ),
-                    ),
-                  // حقل البحث الفعلي
-                  TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'vet_supplies_feature.search.hint'.tr(),
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_fullSuggestion.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.keyboard_tab, color: Colors.blue),
-                                    onPressed: () {
-                                      _searchController.text = _fullSuggestion;
-                                      _searchController.selection = TextSelection.fromPosition(
-                                        TextPosition(offset: _fullSuggestion.length),
-                                      );
-                                      setState(() {
-                                        _searchQuery = _fullSuggestion;
-                                        _ghostText = '';
-                                        _fullSuggestion = '';
-                                      });
-                                    },
-                                    tooltip: 'vet_supplies_feature.search.accept_suggestion'.tr(),
-                                  ),
-                                IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _ghostText = '';
-                                      _fullSuggestion = '';
-                                    });
-                                  },
-                                ),
-                              ],
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                      
-                      // تحديث الاقتراحات مع debounce
-                      _debounce?.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 300), () {
-                        _updateSuggestions(value);
-                      });
-
-                      // تتبع البحث مع debounce
-                      _searchDebounce?.cancel();
-                      _searchDebounce = Timer(const Duration(milliseconds: 1000), () { // تأخير ثانية واحدة
-                        if (mounted) {
-                          setState(() {
-                            _debouncedSearchQuery = value;
-                          });
-                          // تتبع البحث فقط في تاب "جميع المستلزمات" (التاب الأول)
-                          if (_tabController.index == 0) {
-                            _trackVetSuppliesSearch();
-                          }
-                        }
-                      });
-                    },
-                    onTap: () {
-                      // إظهار الاقتراحات عند النقر
-                      if (_searchController.text.isNotEmpty) {
-                        _updateSuggestions(_searchController.text);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            // محتوى التابات
-            Expanded(
-              child: isDoctor 
-                ? _AllSuppliesTab(
-                    searchQuery: _searchQuery,
-                    searchId: _currentSearchId,
-                    onItemTap: _handleItemTap,
-                  )
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _AllSuppliesTab(
-                        searchQuery: _searchQuery,
-                        searchId: _currentSearchId,
-                        onItemTap: _handleItemTap,
-                      ),
-                      _MySuppliesTab(searchQuery: _searchQuery),
                     ],
                   ),
-            ),
-          ],
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: _ArrowBackPainter(color: Colors.black),
+                      ),
+                    ),
+                  ),
+                ),
+                title: Text(
+                  'vet_supplies_feature.title'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: Size.fromHeight(isDoctor ? 105 : 170),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Row(
+                          children: [
+                            // Search Bar
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      if (value.trim().isNotEmpty) {
+                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _historyTabId);
+                                      }
+                                      _searchFocusNode.unfocus();
+                                    },
+                                    onTap: () {
+                                      if (!_searchFocusNode.hasFocus) {
+                                        HapticFeedback.selectionClick();
+                                      }
+                                      if (_searchController.text.isNotEmpty) {
+                                        _updateSuggestions(_searchController.text);
+                                      }
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                      
+                                      _debounce?.cancel();
+                                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                                        setState(() {
+                                          _debouncedSearchQuery = value;
+                                        });
+                                        _updateSuggestions(value);
+                                        
+                                        // تتبع البحث فقط في تاب "جميع المستلزمات" (التاب الأول)
+                                        if (!isDoctor && _tabController.index == 0) {
+                                          _trackVetSuppliesSearch();
+                                        } else if (isDoctor) {
+                                          _trackVetSuppliesSearch();
+                                        }
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: 'vet_supplies_feature.search.hint'.tr(),
+                                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: _searchFocusNode.hasFocus 
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        size: 22,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _debouncedSearchQuery = '';
+                                                  _ghostText = '';
+                                                  _fullSuggestion = '';
+                                                });
+                                                HapticFeedback.lightImpact();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: theme.brightness == Brightness.dark
+                                          ? theme.colorScheme.surface.withOpacity(0.8)
+                                          : theme.colorScheme.surface,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                  ),
+                                  // Ghost Text
+                                  if (_ghostText.isNotEmpty && _searchFocusNode.hasFocus)
+                                    Positioned(
+                                      top: 12,
+                                      right: 37,
+                                      child: AnimatedOpacity(
+                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_fullSuggestion.isNotEmpty) {
+                                              _searchController.text = _fullSuggestion;
+                                              setState(() {
+                                                _searchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _ghostText = '';
+                                                _fullSuggestion = '';
+                                              });
+                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _historyTabId);
+                                              HapticFeedback.selectionClick();
+                                              _searchFocusNode.requestFocus();
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.primary),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    _ghostText,
+                                                    style: TextStyle(
+                                                      color: theme.colorScheme.primary,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Action Buttons (History & Filter)
+                            const SizedBox(width: 8),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final filters = ref.watch(vetSuppliesFiltersProvider);
+                                final history = ref.watch(searchHistoryProvider)[_historyTabId] ?? [];
+                                final isFilterActive = filters.isNearest || filters.selectedGovernorate != null || filters.isCheapest;
+                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildSearchActionButton(
+                                      icon: Icons.history_rounded,
+                                      color: Colors.indigo,
+                                      isActive: isHistoryActive,
+                                      gradientColors: [Colors.indigo, Colors.blueAccent],
+                                      onTap: () => _showSearchHistoryDialog(context),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _buildSearchActionButton(
+                                      icon: Icons.tune_rounded,
+                                      color: Colors.teal,
+                                      isActive: isFilterActive,
+                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
+                                      onTap: () => _showSearchFiltersDialog(context),
+                                    ),
+                                  ],
+                                );
+                              }
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Tabs (Only if not doctor)
+                      if (!isDoctor)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ],
+                          ),
+                          child: TabBar(
+                            controller: _tabController,
+                            indicator: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary.withOpacity(0.8),
+                                  theme.colorScheme.primary.withOpacity(0.8),
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                )
+                              ],
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            indicatorPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+                            labelColor: Colors.white,
+                            unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
+                            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                            dividerColor: Colors.transparent,
+                            tabs: [
+                              Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.inventory_2_outlined, size: 18),
+                                    const SizedBox(width: 6),
+                                    Text('vet_supplies_feature.tabs.all_supplies'.tr()),
+                                  ],
+                                ),
+                              ),
+                              Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.store_outlined, size: 18),
+                                    const SizedBox(width: 6),
+                                    Text('vet_supplies_feature.tabs.my_supplies'.tr()),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ];
+          },
+          body: isDoctor 
+            ? _AllSuppliesTab(
+                searchQuery: _debouncedSearchQuery,
+                searchId: _currentSearchId,
+                onItemTap: _handleItemTap,
+              )
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _AllSuppliesTab(
+                    searchQuery: _debouncedSearchQuery,
+                    searchId: _currentSearchId,
+                    onItemTap: _handleItemTap,
+                  ),
+                  _MySuppliesTab(searchQuery: _debouncedSearchQuery),
+                ],
+              ),
         ),
       floatingActionButton: isDoctor 
         ? null 
@@ -426,20 +793,66 @@ class _AllSuppliesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final suppliesAsync = ref.watch(allVetSuppliesNotifierProvider);
+    final filters = ref.watch(vetSuppliesFiltersProvider);
+    final governoratesAsync = ref.watch(governoratesProvider);
+    
+    // جلب بيانات الموزعين لتحديد الموقع
+    final distributorsAsync = ref.watch(distributorsProvider);
+    final distributorsMap = <String, dynamic>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
 
     return suppliesAsync.when(
       data: (supplies) {
-        // فلترة المستلزمات حسب البحث
-        final filteredSupplies = searchQuery.isEmpty
-            ? supplies
+        // 1. فلترة المستلزمات حسب البحث النصي
+        var filteredSupplies = searchQuery.isEmpty
+            ? supplies.toList() // Create a copy to avoid mutating state
             : supplies.where((supply) =>
                 supply.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
                 supply.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
                 (supply.userName != null && supply.userName!.toLowerCase().contains(searchQuery.toLowerCase()))
               ).toList();
 
+        // 2. فلترة حسب المحافظة (شامل المراكز)
+        if (filters.selectedGovernorate != null) {
+          final governorates = governoratesAsync.asData?.value ?? [];
+          final selectedGovModel = governorates.firstWhere(
+            (g) => g.name == filters.selectedGovernorate,
+            orElse: () => GovernorateModel(id: -1, name: '', centers: []),
+          );
+          
+          filteredSupplies = filteredSupplies.where((supply) {
+             final distributor = distributorsMap[supply.userId];
+             if (distributor != null) {
+               // إذا كان لدينا بيانات الموزع، نتحقق من مناطق التغطية
+               if (distributor.governorates != null && 
+                   (distributor.governorates as List).contains(filters.selectedGovernorate)) {
+                 return true;
+               }
+               // التحقق من المراكز أيضاً
+               if (distributor.centers != null) {
+                  for (final center in (distributor.centers as List)) {
+                    if (selectedGovModel.centers.contains(center)) return true;
+                  }
+               }
+             }
+             
+             // محاولة البحث في العنوان النصي للموزع إذا وجد (أو أي حقل موقع آخر في VetSupply)
+             // حالياً لا يوجد حقل عنوان صريح في VetSupply، نعتمد على بيانات الموزع
+             return false;
+          }).toList();
+        }
+
+        // 3. الترتيب حسب السعر (الأرخص)
+        if (filters.isCheapest) {
+          filteredSupplies.sort((a, b) => a.price.compareTo(b.price));
+        }
+
         if (filteredSupplies.isEmpty) {
-          if (searchQuery.isNotEmpty) {
+          if (searchQuery.isNotEmpty || filters.selectedGovernorate != null) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -471,6 +884,11 @@ class _AllSuppliesTab extends ConsumerWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (filters.selectedGovernorate != null || filters.isNearest)
+                      TextButton(
+                        onPressed: () => ref.read(vetSuppliesFiltersProvider.notifier).resetFilters(),
+                        child: Text('إعادة تعيين الفلاتر'),
+                      ),
                   ],
                 ),
               ),
@@ -531,7 +949,10 @@ class _AllSuppliesTab extends ConsumerWidget {
               return _SupplyCard(
                 supply: supply,
                 showActions: false,
-                onTap: () => _showSupplyDetailsDialog(context, ref, supply),
+                onTap: () {
+                  onItemTap?.call(supply.id);
+                  _showSupplyDetailsDialog(context, ref, supply);
+                },
               );
             },
           ),
@@ -1356,14 +1777,17 @@ class _MySuppliesTab extends ConsumerWidget {
     );
   }
 
-  void _openWhatsApp(BuildContext context, String phone) async {
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
     final url = Uri.parse('https://wa.me/$phone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('vet_supplies_feature.messages.whatsapp_error'.tr())),
+          SnackBar(
+            content: Text('vet_supplies_feature.messages.whatsapp_error'.tr()),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1392,6 +1816,37 @@ class _SupplyCard extends ConsumerStatefulWidget {
   ConsumerState<_SupplyCard> createState() => _SupplyCardState();
 }
 
+class _ArrowBackPainter extends CustomPainter {
+  final Color color;
+  _ArrowBackPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    // Start from right (shaft)
+    path.moveTo(size.width * 0.8, size.height / 2);
+    // Draw to left
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw upper wing
+    path.moveTo(size.width * 0.45, size.height * 0.25);
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw lower wing
+    path.moveTo(size.width * 0.45, size.height * 0.75);
+    path.lineTo(size.width * 0.2, size.height / 2);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _SupplyCardState extends ConsumerState<_SupplyCard> {
   bool _hasBeenViewed = false; // لمنع العد المتكرر
   
@@ -1403,7 +1858,6 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
       // زيادة المشاهدات
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          print('👁️ Supply Card became visible: ${widget.supply.name} (${widget.supply.id})');
           ref.read(allVetSuppliesNotifierProvider.notifier).incrementViews(widget.supply.id);
         }
       });
@@ -1419,155 +1873,154 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
       onVisibilityChanged: _handleVisibilityChanged,
       child: Card(
         elevation: 2,
-        
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: widget.onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: widget.supply.imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
-                    ),
-                  ),
-                  if (widget.showActions)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: PopupMenuButton<String>(
-                        icon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: Icon(Icons.more_vert, size: 20, color: theme.colorScheme.onSurface),
-                        ),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            widget.onEdit?.call();
-                          } else if (value == 'delete') {
-                            widget.onDelete?.call();
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(children: [
-                              Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Text('vet_supplies_feature.actions.edit'.tr(), style: TextStyle(color: theme.colorScheme.onSurface)),
-                            ]),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(children: [
-                              const Icon(Icons.delete_outline, color: Colors.red),
-                              const SizedBox(width: 8),
-                              Text('vet_supplies_feature.actions.delete'.tr()),
-                            ]),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Stack(
                   children: [
-                    Text(
-                      widget.supply.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    CachedNetworkImage(
+                      imageUrl: widget.supply.imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
+                      ),
                     ),
-                    if (widget.supply.userName != null) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.person_outline, size: 12, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              widget.supply.userName!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                    if (widget.showActions)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: PopupMenuButton<String>(
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
+                            child: Icon(Icons.more_vert, size: 20, color: theme.colorScheme.onSurface),
                           ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              widget.onEdit?.call();
+                            } else if (value == 'delete') {
+                              widget.onDelete?.call();
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(children: [
+                                Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Text('vet_supplies_feature.actions.edit'.tr(), style: TextStyle(color: theme.colorScheme.onSurface)),
+                              ]),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(children: [
+                                const Icon(Icons.delete_outline, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Text('vet_supplies_feature.actions.delete'.tr()),
+                              ]),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        widget.supply.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (widget.supply.userName != null) ...[
+                        const SizedBox(height: 2),
                         Row(
                           children: [
-                            Icon(Icons.visibility_outlined,
-                                size: 14, color: Colors.grey[600]),
+                            Icon(Icons.person_outline, size: 12, color: Colors.grey[600]),
                             const SizedBox(width: 4),
-                            Text(
-                              NumberFormatter.formatCompact(widget.supply.viewsCount),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
+                            Expanded(
+                              child: Text(
+                                widget.supply.userName!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                       ],
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.visibility_outlined,
+                                  size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                NumberFormatter.formatCompact(widget.supply.viewsCount),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

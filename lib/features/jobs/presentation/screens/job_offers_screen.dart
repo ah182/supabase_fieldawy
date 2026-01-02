@@ -14,6 +14,13 @@ import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
+import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
+import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
+import 'package:fieldawy_store/features/jobs/application/job_filters_provider.dart';
+import 'package:fieldawy_store/core/providers/governorates_provider.dart';
+import 'package:fieldawy_store/core/models/governorate_model.dart';
 
 class JobOffersScreen extends ConsumerStatefulWidget {
   const JobOffersScreen({super.key});
@@ -28,9 +35,12 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
+  String _debouncedSearchQuery = '';
   String _ghostText = '';
   String _fullSuggestion = '';
   Timer? _debounce;
+  
+  static const String _historyTabId = 'jobs';
 
   @override
   void initState() {
@@ -40,6 +50,21 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         _hideKeyboard();
+      }
+    });
+
+    _searchFocusNode.addListener(() {
+      setState(() {});
+      if (_searchFocusNode.hasFocus) {
+        HapticFeedback.selectionClick();
+      } else {
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _searchQuery = '';
+            _ghostText = '';
+            _fullSuggestion = '';
+          });
+        }
       }
     });
   }
@@ -120,6 +145,169 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
     });
   }
 
+  // --- Helper Methods for Dialogs ---
+
+  void _showSearchHistoryDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final history = ref.read(searchHistoryProvider)[_historyTabId] ?? [];
+    
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+      );
+      return;
+    }
+
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: SearchHistoryView(
+        tabId: _historyTabId,
+        onClose: () => Navigator.pop(context),
+        onTermSelected: (term) {
+          _searchController.text = term;
+          setState(() {
+            _searchQuery = term;
+            _debouncedSearchQuery = term;
+          });
+          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _historyTabId);
+          Navigator.pop(context);
+          _searchFocusNode.unfocus();
+        },
+      ),
+    ).show();
+  }
+
+  void _showSearchFiltersDialog(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.scale,
+      alignment: const Alignment(0, -0.5),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isAr ? 'الفلاتر السريعة' : 'Quick Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final filters = ref.watch(jobFiltersProvider);
+                        final hasActiveFilters = filters.isNearest || filters.selectedGovernorate != null;
+                        
+                        if (!hasActiveFilters) return const SizedBox.shrink();
+                        
+                        return InkWell(
+                          onTap: () {
+                            ref.read(jobFiltersProvider.notifier).resetFilters();
+                          },
+                          child: Text(
+                            isAr ? 'مسح الكل' : 'Clear All',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const QuickFiltersBar(showCheapest: false, useJobFilters: true),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ).show();
+  }
+
+  Widget _buildSearchActionButton({
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required VoidCallback onTap,
+    List<Color>? gradientColors,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: (isActive && gradientColors != null)
+              ? LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isActive 
+              ? (gradientColors == null ? color : null) 
+              : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: (gradientColors?.last ?? color).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            )
+          ] : [],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isActive 
+              ? Colors.white 
+              : (isDark ? Colors.white70 : color.withOpacity(0.6)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -133,259 +321,278 @@ class _JobOffersScreenState extends ConsumerState<JobOffersScreen>
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                expandedHeight: 140,
-                floating: false,
+                expandedHeight: 0, // No expanded height needed as content is in bottom
+                floating: true,
                 pinned: true,
                 elevation: 0,
                 backgroundColor: theme.colorScheme.surface,
-                iconTheme: const IconThemeData(color: Colors.white),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.tertiary,
-                        ],
+                leading: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFFFFF),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(20, 20),
+                        painter: _ArrowBackPainter(color: Colors.black),
                       ),
                     ),
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                ),
+                title: Text(
+                  'job_offers_feature.title'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(165),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.1),
-                                      width: 1,
+                            // Search Bar
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      if (value.trim().isNotEmpty) {
+                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _historyTabId);
+                                      }
+                                      _searchFocusNode.unfocus();
+                                    },
+                                    onTap: () {
+                                      if (!_searchFocusNode.hasFocus) {
+                                        HapticFeedback.selectionClick();
+                                      }
+                                      if (_searchController.text.isNotEmpty) {
+                                        _updateSuggestions(_searchController.text);
+                                      }
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                      });
+                                      _debounce?.cancel();
+                                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                                        setState(() {
+                                          _debouncedSearchQuery = value;
+                                        });
+                                        _updateSuggestions(value);
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: 'job_offers_feature.search_hint'.tr(),
+                                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        color: _searchFocusNode.hasFocus 
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                                        size: 22,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(Icons.clear, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _debouncedSearchQuery = '';
+                                                  _ghostText = '';
+                                                  _fullSuggestion = '';
+                                                });
+                                                HapticFeedback.lightImpact();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: theme.brightness == Brightness.dark
+                                          ? theme.colorScheme.surface.withOpacity(0.8)
+                                          : theme.colorScheme.surface,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                     ),
                                   ),
-                                  child: const Icon(
-                                    Icons.work_outline_rounded,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'job_offers_feature.title'.tr(),
-                                        style: theme.textTheme.headlineSmall
-                                            ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          height: 1.2,
+                                  // Ghost Text
+                                  if (_ghostText.isNotEmpty && _searchFocusNode.hasFocus)
+                                    Positioned(
+                                      top: 12,
+                                      right: 37,
+                                      child: AnimatedOpacity(
+                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 200),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_fullSuggestion.isNotEmpty) {
+                                              _searchController.text = _fullSuggestion;
+                                              setState(() {
+                                                _searchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _ghostText = '';
+                                                _fullSuggestion = '';
+                                              });
+                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _historyTabId);
+                                              HapticFeedback.selectionClick();
+                                              _searchFocusNode.requestFocus();
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.primary),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    _ghostText,
+                                                    style: TextStyle(
+                                                      color: theme.colorScheme.primary,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'job_offers_feature.subtitle'.tr(),
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                          color: Colors.white.withOpacity(0.85),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Action Buttons (History & Filter)
+                            const SizedBox(width: 8),
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final filters = ref.watch(jobFiltersProvider);
+                                final history = ref.watch(searchHistoryProvider)[_historyTabId] ?? [];
+                                final isFilterActive = filters.isNearest || filters.selectedGovernorate != null;
+                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildSearchActionButton(
+                                      icon: Icons.history_rounded,
+                                      color: Colors.indigo,
+                                      isActive: isHistoryActive,
+                                      gradientColors: [Colors.indigo, Colors.blueAccent],
+                                      onTap: () => _showSearchHistoryDialog(context),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _buildSearchActionButton(
+                                      icon: Icons.tune_rounded,
+                                      color: Colors.teal,
+                                      isActive: isFilterActive,
+                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
+                                      onTap: () => _showSearchFiltersDialog(context),
+                                    ),
+                                  ],
+                                );
+                              }
                             ),
                           ],
                         ),
                       ),
-                    ),
+                      
+                      // Tabs
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          indicator: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.colorScheme.primary.withOpacity(0.8),
+                                theme.colorScheme.primary.withOpacity(0.8),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              )
+                            ],
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          indicatorPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+                          labelColor: Colors.white,
+                          unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
+                          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                          dividerColor: Colors.transparent,
+                          tabs: [
+                            Tab(text: 'job_offers_feature.available_jobs'.tr()),
+                            Tab(text: 'job_offers_feature.my_jobs'.tr()),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                title: innerBoxIsScrolled
-                    ? Text(
-                        'job_offers_feature.title'.tr(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
               ),
             ];
           },
-          body: Column(
+          body: TabBarView(
+            controller: _tabController,
             children: [
-              // Search bar
-               Transform.translate(
-              offset: const Offset(0, -10),
-               child: Container(
-                 margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      if (_ghostText.isNotEmpty)
-                        Positioned.fill(
-                          child: Container(
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(left: 52, right: 12),
-                            child: Text(
-                              _ghostText,
-                              style: TextStyle(
-                                color: theme.colorScheme.onSurface.withOpacity(0.3),
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        decoration: InputDecoration(
-                          hintText: 'job_offers_feature.search_hint'.tr(),
-                          hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search_rounded,
-                            color: theme.colorScheme.primary,
-                            size: 24,
-                          ),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_fullSuggestion.isNotEmpty)
-                                      IconButton(
-                                        icon: const Icon(
-                                            Icons.keyboard_tab_rounded),
-                                        color: theme.colorScheme.primary,
-                                        tooltip: 'job_offers_feature.search.accept_suggestion'.tr(),
-                                        onPressed: () {
-                                          _searchController.text =
-                                              _fullSuggestion;
-                                          _searchController.selection =
-                                              TextSelection.fromPosition(
-                                            TextPosition(
-                                                offset: _fullSuggestion.length),
-                                          );
-                                          setState(() {
-                                            _searchQuery = _fullSuggestion;
-                                            _ghostText = '';
-                                            _fullSuggestion = '';
-                                          });
-                                        },
-                                      ),
-                                    IconButton(
-                                      icon: const Icon(Icons.clear_rounded),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() {
-                                          _searchQuery = '';
-                                          _ghostText = '';
-                                          _fullSuggestion = '';
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: theme.colorScheme.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                          _debounce?.cancel();
-                          _debounce = Timer(const Duration(milliseconds: 300), () {
-                            _updateSuggestions(value);
-                          });
-                        },
-                        onTap: () {
-                          if (_searchController.text.isNotEmpty) {
-                            _updateSuggestions(_searchController.text);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-
-              // Tabs
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                height: 48,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  dividerColor: Colors.transparent,
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
-                  padding: const EdgeInsets.all(4),
-                  tabs: [
-                    Tab(text: 'job_offers_feature.available_jobs'.tr()),
-                    Tab(text: 'job_offers_feature.my_jobs'.tr()),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Tab content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _AvailableJobsTab(searchQuery: _searchQuery),
-                    _MyJobOffersTab(searchQuery: _searchQuery),
-                  ],
-                ),
-              ),
+              _AvailableJobsTab(searchQuery: _debouncedSearchQuery),
+              _MyJobOffersTab(searchQuery: _debouncedSearchQuery),
             ],
           ),
         ),
@@ -425,10 +632,13 @@ class _AvailableJobsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(allJobOffersNotifierProvider);
     final theme = Theme.of(context);
+    final filters = ref.watch(jobFiltersProvider);
+    final governoratesAsync = ref.watch(governoratesProvider);
 
     return jobsAsync.when(
       data: (jobs) {
-        final filteredJobs = searchQuery.isEmpty
+        // 1. Initial Filtering by Search Query
+        var filteredJobs = searchQuery.isEmpty
             ? jobs
             : jobs.where((job) {
                 final query = searchQuery.toLowerCase();
@@ -438,6 +648,30 @@ class _AvailableJobsTab extends ConsumerWidget {
                     (job.userName != null &&
                         job.userName!.toLowerCase().contains(query));
               }).toList();
+
+        // 2. Filter by Governorate (Local Logic including Centers)
+        if (filters.selectedGovernorate != null) {
+          final governorates = governoratesAsync.asData?.value ?? [];
+          final selectedGovModel = governorates.firstWhere(
+            (g) => g.name == filters.selectedGovernorate,
+            orElse: () => GovernorateModel(id: -1, name: '', centers: []),
+          );
+          
+          final searchTerms = [filters.selectedGovernorate!, ...selectedGovModel.centers];
+
+          filteredJobs = filteredJobs.where((job) {
+             for (final term in searchTerms) {
+               if (job.workplaceAddress.contains(term)) return true;
+             }
+             return false;
+          }).toList();
+        }
+
+        // 3. Sorting
+        // Nearest is not easily applicable without user coordinates relative to job.
+        // Assuming there is no coordinate data for jobs currently in this simple model, 
+        // we might skip actual geo-calculation unless 'workplaceAddress' can be resolved.
+        // For now, if "Nearest" is selected, we might just keep default sort or implement if coordinates existed.
 
         if (filteredJobs.isEmpty) {
           return Center(
@@ -451,7 +685,7 @@ class _AvailableJobsTab extends ConsumerWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    searchQuery.isNotEmpty
+                    searchQuery.isNotEmpty || filters.selectedGovernorate != null
                         ? Icons.search_off_rounded
                         : Icons.work_off_outlined,
                     size: 64,
@@ -460,7 +694,7 @@ class _AvailableJobsTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isNotEmpty
+                  searchQuery.isNotEmpty || filters.selectedGovernorate != null
                       ? 'job_offers_feature.no_jobs_found'.tr()
                       : 'job_offers_feature.no_jobs_available'.tr(),
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -468,6 +702,11 @@ class _AvailableJobsTab extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (filters.selectedGovernorate != null || filters.isNearest)
+                  TextButton(
+                    onPressed: () => ref.read(jobFiltersProvider.notifier).resetFilters(),
+                    child: Text('إعادة تعيين الفلاتر'),
+                  ),
               ],
             ),
           );
@@ -478,7 +717,7 @@ class _AvailableJobsTab extends ConsumerWidget {
             await ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
@@ -569,7 +808,7 @@ class _MyJobOffersTab extends ConsumerWidget {
             await ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
           },
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
             itemCount: filteredJobs.length,
             itemBuilder: (context, index) {
               final job = filteredJobs[index];
@@ -1375,6 +1614,37 @@ String _getDistributionMethodLabel(String method) {
     case 'both': return 'auth.profile.distribution.both_methods'.tr();
     default: return method;
   }
+}
+
+class _ArrowBackPainter extends CustomPainter {
+  final Color color;
+  _ArrowBackPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    // Start from right (shaft)
+    path.moveTo(size.width * 0.8, size.height / 2);
+    // Draw to left
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw upper wing
+    path.moveTo(size.width * 0.45, size.height * 0.25);
+    path.lineTo(size.width * 0.2, size.height / 2);
+    // Draw lower wing
+    path.moveTo(size.width * 0.45, size.height * 0.75);
+    path.lineTo(size.width * 0.2, size.height / 2);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 Future<void> _openWhatsApp(String phone) async {
