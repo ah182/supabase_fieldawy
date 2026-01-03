@@ -1,6 +1,7 @@
 import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/stories/domain/story_model.dart';
+import 'package:fieldawy_store/core/utils/network_guard.dart'; // إضافة NetworkGuard
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,41 +20,45 @@ final storiesProvider = FutureProvider<List<DistributorStoriesGroup>>((ref) asyn
 });
 
 Future<List<DistributorStoriesGroup>> _fetchStoriesFromServer(Ref ref) async {
-  final supabase = Supabase.instance.client;
-  
-  final response = await supabase
-      .from('distributor_stories')
-      .select()
-      .gt('expires_at', DateTime.now().toUtc().toIso8601String())
-      .order('created_at', ascending: false);
-
-  if ((response as List).isEmpty) {
-    return [];
-  }
-
-  final storiesData = List<Map<String, dynamic>>.from(response);
-  final distributors = await ref.watch(distributorsProvider.future);
-  final distributorsMap = {for (var d in distributors) d.id: d};
-
-  final Map<String, List<StoryModel>> groupedMap = {};
-  
-  for (var data in storiesData) {
-    final distId = data['distributor_id'];
-    if (!distributorsMap.containsKey(distId)) continue;
-
-    final story = StoryModel.fromMap(data, distributor: distributorsMap[distId]);
+  return await NetworkGuard.execute(() async { // استخدام NetworkGuard
+    final supabase = Supabase.instance.client;
     
-    if (groupedMap.containsKey(distId)) {
-      groupedMap[distId]!.add(story);
-    } else {
-      groupedMap[distId] = [story];
-    }
-  }
+    final response = await supabase
+        .from('distributor_stories')
+        .select()
+        .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+        .order('created_at', ascending: false);
 
-  return groupedMap.entries.map((entry) {
-    return DistributorStoriesGroup(
-      distributor: distributorsMap[entry.key]!,
-      stories: entry.value,
-    );
-  }).toList();
+    if ((response as List).isEmpty) {
+      return [];
+    }
+
+    final storiesData = List<Map<String, dynamic>>.from(response);
+    // نستخدم ref.read بدلاً من ref.watch داخل دالة الـ fetch لتجنب إعادة البناء المتكرر غير الضروري
+    // لكن بما أننا داخل دالة عادية، سنستخدم الـ future الممرر
+    final distributors = await ref.read(distributorsProvider.future);
+    final distributorsMap = {for (var d in distributors) d.id: d};
+
+    final Map<String, List<StoryModel>> groupedMap = {};
+    
+    for (var data in storiesData) {
+      final distId = data['distributor_id'];
+      if (!distributorsMap.containsKey(distId)) continue;
+
+      final story = StoryModel.fromMap(data, distributor: distributorsMap[distId]);
+      
+      if (groupedMap.containsKey(distId)) {
+        groupedMap[distId]!.add(story);
+      } else {
+        groupedMap[distId] = [story];
+      }
+    }
+
+    return groupedMap.entries.map((entry) {
+      return DistributorStoriesGroup(
+        distributor: distributorsMap[entry.key]!,
+        stories: entry.value,
+      );
+    }).toList();
+  });
 }
