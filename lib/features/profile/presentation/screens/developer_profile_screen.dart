@@ -10,19 +10,26 @@ class DeveloperProfileScreen extends StatelessWidget {
   Future<void> _launchSocial(String url) async {
     Uri uri = Uri.parse(url);
     
-    // Facebook App Deep Linking Logic
     if (url.contains('facebook.com')) {
-      // Try to open in Facebook App first
-      final String fbProtocolUrl = 'fb://facewebmodal/f?href=$url';
-      final Uri fbUri = Uri.parse(fbProtocolUrl);
-      if (await canLaunchUrl(fbUri)) {
-        await launchUrl(fbUri, mode: LaunchMode.externalApplication);
-        return;
+      // Try native Facebook app scheme
+      final fbUri = Uri.parse('fb://facewebmodal/f?href=$url');
+      try {
+        if (await canLaunchUrl(fbUri)) {
+          await launchUrl(fbUri);
+          return;
+        }
+      } catch (e) {
+        debugPrint('Facebook app not found');
       }
     }
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Fallback to browser/external app
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Could not launch url: $e');
     }
   }
 

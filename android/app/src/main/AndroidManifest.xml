@@ -24,6 +24,8 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- Facebook App Support -->
+        <package android:name="com.facebook.katana" />
     </queries>
 
     <application
