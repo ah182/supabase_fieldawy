@@ -64,6 +64,7 @@ class UserRepository {
     await NetworkGuard.execute(() async {
       try {
         final updateData = {
+          'id': id,
           'role': role,
           'document_url': documentUrl,
           'display_name': displayName,
@@ -71,6 +72,8 @@ class UserRepository {
           'governorates': governorates,
           'centers': centers,
           'is_profile_complete': true,
+          'email': _client.auth.currentUser?.email, // Ensure email is present for new rows
+          'account_status': 'pending_review', // Default status for new profiles
         };
 
         if (distributionMethod != null) {
@@ -81,7 +84,8 @@ class UserRepository {
           updateData['photo_url'] = photoUrl;
         }
 
-        await _client.from('users').update(updateData).eq('id', id);
+        // Use upsert to create the user record if it doesn't exist (deferred save) or update if it does.
+        await _client.from('users').upsert(updateData);
         _cache.invalidate('distributors');
         _cache.invalidate('user_$id');
 

@@ -33,6 +33,8 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:fieldawy_store/features/ocr_test/services/ai_analysis_service.dart';
 
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool showExpirationDate;
   final bool isFromOfferScreen;
@@ -79,8 +81,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
   // AI Service Instance
   final _aiService = AiAnalysisService();
-  // TODO: Move this key to secure storage or remote config
-  final String _openRouterApiKey = "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"; 
+
+  final String _openRouterApiKey = dotenv.env['OPENROUTER_API_KEY'] ?? "";  
 
   final List<String> _packageTypes = [
     'bottle',

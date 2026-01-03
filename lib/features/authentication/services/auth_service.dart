@@ -60,8 +60,9 @@ class SupabaseAuthService {
           throw 'Sign-in failed: No user returned from Supabase';
         }
 
-        final isNewUser = await _userRepository.saveNewUser(user);
-        return isNewUser;
+        // Defer saving to public database until profile completion
+        // final isNewUser = await _userRepository.saveNewUser(user);
+        return true;
 
       } catch (e) {
         print('Error signing in with Google: $e');
@@ -81,9 +82,9 @@ class SupabaseAuthService {
           throw 'Sign-in failed: No user returned from Supabase';
         }
 
-        // حفظ المستخدم الجديد في قاعدة البيانات
-        final isNewUser = await _userRepository.saveNewUser(user);
-        return isNewUser;
+        // Defer saving to public database until profile completion
+        // final isNewUser = await _userRepository.saveNewUser(user);
+        return true;
       } catch (e) {
         print('Error signing in anonymously: $e');
         rethrow;

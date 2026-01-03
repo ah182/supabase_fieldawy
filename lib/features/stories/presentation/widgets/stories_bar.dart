@@ -37,7 +37,17 @@ class StoriesBar extends ConsumerWidget {
       loading: () => const _StoriesLoadingSkeleton(),
       error: (err, stack) => const SizedBox.shrink(),
       data: (groups) {
-        if (groups.isEmpty) return const SizedBox.shrink();
+        if (groups.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                isAr ? 'لا توجد قصص نشطة حالياً' : 'No active stories right now',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          );
+        }
 
         final Set<String> seenIds = ref.watch(seenStoriesProvider); // تحديد النوع صراحةً
 

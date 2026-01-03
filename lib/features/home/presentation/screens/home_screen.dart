@@ -1627,7 +1627,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       final storiesAsync = ref.watch(storiesProvider);
                       return storiesAsync.maybeWhen(
                         data: (groups) {
-                          if (groups.isEmpty) return const SizedBox.shrink();
+                          // Always show the icon, even if groups is empty
                           return IconButton(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             constraints: const BoxConstraints(),
@@ -1635,26 +1635,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               children: [
                                 Icon(Icons.emergency_recording_rounded, 
                                   color: Theme.of(context).colorScheme.primary, 
-                                  size: 22 // زيادة 2 بكسل
+                                  size: 22 
                                 ),
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(1.5),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
+                                if (groups.isNotEmpty)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(1.5),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(minWidth: 7, minHeight: 7),
                                     ),
-                                    constraints: const BoxConstraints(minWidth: 7, minHeight: 7),
                                   ),
-                                ),
                               ],
                             ),
                             onPressed: () => _showStoriesDialog(context),
                           );
                         },
-                        orElse: () => const SizedBox.shrink(),
+                        // Show icon even in loading/error state to prevent layout jump
+                        orElse: () => IconButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            constraints: const BoxConstraints(),
+                            icon: Icon(Icons.emergency_recording_rounded, 
+                              color: Theme.of(context).colorScheme.primary, 
+                              size: 22 
+                            ),
+                            onPressed: () => _showStoriesDialog(context),
+                          ),
                       );
                     }
                   ),

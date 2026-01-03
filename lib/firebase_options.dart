@@ -14,6 +14,8 @@ import 'package:flutter/foundation.dart'
 ///   options: DefaultFirebaseOptions.currentPlatform,
 /// );
 /// ```
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -53,7 +55,7 @@ class DefaultFirebaseOptions {
   }
 
   static final FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAySg6p5glXrsJUV2xPqzx47DDj0f3hy3c',
+    apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
     appId: '1:665551059689:android:cd266cedbef84f5c888e78',
     messagingSenderId: '665551059689',
     projectId: 'fieldawy-store-app',

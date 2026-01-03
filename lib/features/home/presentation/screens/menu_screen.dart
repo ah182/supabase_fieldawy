@@ -30,6 +30,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 
+import 'package:fieldawy_store/features/profile/presentation/screens/developer_profile_screen.dart';
+
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
 
@@ -100,13 +102,14 @@ class MenuScreen extends ConsumerWidget {
                       ...menuItems,
                       const Divider(color: Colors.white24, thickness: 1, height: 24),
                       _buildMenuItem(
-                        icon: FontAwesomeIcons.whatsapp,
+                        icon: FontAwesomeIcons.headset, // Changed icon to headset
                         title: (context.locale.languageCode == 'en') ? 'Contact Support' : 'تواصل مع الدعم',
-                        onTap: () async {
-                          final Uri whatsappUrl = Uri.parse("https://wa.me/201017016217?text=مرحبا، أحتاج مساعدة في تطبيق فيلداوي");
-                          if (await canLaunchUrl(whatsappUrl)) {
-                            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-                          }
+                        onTap: () {
+                          // Close drawer and navigate
+                          ZoomDrawer.of(context)!.close();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const DeveloperProfileScreen()),
+                          );
                         },
                       ),
                     ],

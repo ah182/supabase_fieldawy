@@ -14,10 +14,14 @@ if (!admin.apps.length) {
   });
 }
 
-// 🗄️ تهيئة Supabase
-// استبدل هذه القيم من Supabase Dashboard > Project Settings > API
+// 🔑 تهيئة Supabase Client بمفتاح الـ Service Role
 const SUPABASE_URL = "https://rkukzuwerbvmueuxadul.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrdWt6dXdlcmJ2bXVldXhhZHVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Nzg1NzA4NywiZXhwIjoyMDczNDMzMDg3fQ.NvyFIXcwJdKPZZZ9zJXP-K_3FovI6_8XtEeuip_9IGk";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("❌ ERROR: SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables.");
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 

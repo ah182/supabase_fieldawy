@@ -10,7 +10,7 @@ final storiesProvider = FutureProvider<List<DistributorStoriesGroup>>((ref) asyn
   
   // استخدام Stale-While-Revalidate لظهور لحظي وتحديث في الخلفية
   return await cache.staleWhileRevalidate<List<DistributorStoriesGroup>>(
-    key: 'active_distributor_stories_v1',
+    key: 'active_distributor_stories_v2',
     duration: const Duration(minutes: 10), // بقاء البيانات في الكاش
     staleTime: const Duration(minutes: 5), // تحديث البيانات بعد 5 دقائق
     fetchFromNetwork: () => _fetchStoriesFromServer(ref),
@@ -24,7 +24,7 @@ Future<List<DistributorStoriesGroup>> _fetchStoriesFromServer(Ref ref) async {
   final response = await supabase
       .from('distributor_stories')
       .select()
-      .gt('expires_at', DateTime.now().toIso8601String())
+      .gt('expires_at', DateTime.now().toUtc().toIso8601String())
       .order('created_at', ascending: false);
 
   if ((response as List).isEmpty) {

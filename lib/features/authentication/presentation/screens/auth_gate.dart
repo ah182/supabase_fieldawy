@@ -57,11 +57,8 @@ class AuthGate extends HookConsumerWidget {
           return userData.when(
             data: (userModel) {
               if (userModel == null) {
-                // المستخدم موجود في auth لكن مش موجود في DB
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  ref.read(authServiceProvider).signOut();
-                });
-                return const SplashScreen();
+                // المستخدم موجود في auth لكن مش موجود في DB -> يروح يكمل تسجيل
+                return const OnboardingSelectionScreen();
               }
 
               // 🔴 حالة الرفض

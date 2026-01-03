@@ -255,8 +255,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           },
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.primary 
+                : Theme.of(context).primaryColor,
+            foregroundColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.onPrimary 
+                : Colors.white,
             elevation: 2,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

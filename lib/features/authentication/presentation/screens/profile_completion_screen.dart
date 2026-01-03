@@ -173,7 +173,8 @@ class _ProfileCompletionScreenState
             photoUrl: photoUrl,
           );
 
-      ref.invalidate(userDataProvider);
+      // Force refresh and wait for updated data to ensure AuthGate sees the correct state
+      await ref.refresh(userDataProvider.future);
 
       _hideLoadingDialog();
       if (!mounted) return;
