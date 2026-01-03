@@ -762,16 +762,10 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
               children: [
                 _buildDetailListTile(
                   theme,
-                  Icons.email_rounded,
-                  'distributors_feature.email'.tr(),
-                  distributor.email ?? 'distributors_feature.not_available'.tr(),
-                ),
-                _buildDetailListTile(
-                  theme,
                   Icons.inventory_2_rounded,
                   'distributors_feature.products_count'.tr(),
-                  'distributors_feature.product_count_value'
-                      .tr(namedArgs: {'count': distributor.productCount.toString()}),
+                  'distributors_feature.product_count_value'.tr(
+                      namedArgs: {'count': distributor.productCount.toString()}),
                 ),
                 _buildDetailListTile(
                   theme,

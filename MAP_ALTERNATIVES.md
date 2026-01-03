@@ -12,7 +12,7 @@ children: [
   // Google Satellite + Labels (Hybrid)
   TileLayer(
     urlTemplate: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    userAgentPackageName: 'com.fieldawy.store',
+    userAgentPackageName: 'com.fieldawy.app',
     maxZoom: 22,
     tileProvider: NetworkTileProvider(),
   ),
@@ -49,7 +49,7 @@ children: [
   // Mapbox Satellite Streets
   TileLayer(
     urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=YOUR_TOKEN_HERE',
-    userAgentPackageName: 'com.fieldawy.store',
+    userAgentPackageName: 'com.fieldawy.app',
     maxZoom: 22,
     tileProvider: NetworkTileProvider(),
   ),

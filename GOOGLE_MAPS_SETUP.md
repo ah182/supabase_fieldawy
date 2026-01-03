@@ -69,7 +69,7 @@ Flutter Map + ESRI
    - Edit API key
    - **Application restrictions:**
      - Android: ضع SHA-1 fingerprint
-     - iOS: ضع Bundle ID: `com.fieldawy.store`
+     - iOS: ضع Bundle ID: `com.fieldawy.app`
    - **API restrictions:**
      - Restrict key
      - اختر:
@@ -227,7 +227,7 @@ https://console.cloud.google.com/billing
    - Add package name: `com.example.fieldawy_store`
 
 2. **iOS restrictions:**
-   - Add Bundle ID: `com.fieldawy.store`
+   - Add Bundle ID: `com.fieldawy.app`
 
 3. **API restrictions:**
    - Restrict to:

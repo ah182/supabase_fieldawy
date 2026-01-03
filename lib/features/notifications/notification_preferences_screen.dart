@@ -800,13 +800,6 @@ class _NotificationPreferencesScreenState
                   _buildDetailListTile(
                     colorScheme,
                     textTheme,
-                    Icons.email_rounded,
-                    'email'.tr(),
-                    distributor.email ?? 'notAvailable'.tr(),
-                  ),
-                  _buildDetailListTile(
-                    colorScheme,
-                    textTheme,
                     Icons.inventory_2_rounded,
                     'numberOfProducts'.tr(),
                     'productCount'.tr(args: [distributor.productCount.toString()]),

@@ -56,8 +56,10 @@ class OnboardingSelectionScreen extends HookConsumerWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-          tooltip: 'العودة لتسجيل الدخول',
-          onPressed: () => ref.read(authServiceProvider).signOut(),
+          tooltip: 'backToLogin'.tr(),
+          onPressed: () async {
+            await ref.read(authServiceProvider).signOut();
+          },
         ),
       ),
       body: Container(

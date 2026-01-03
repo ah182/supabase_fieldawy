@@ -338,9 +338,9 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> with Automa
 
   List<Widget> _getTileLayers() {
     return [
-      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.store', maxZoom: 20, tileProvider: RetryTileProvider()),
-      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.store', maxZoom: 20, tileProvider: RetryTileProvider()),
-      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.store', maxZoom: 20, tileProvider: RetryTileProvider()),
+      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.app', maxZoom: 20, tileProvider: RetryTileProvider()),
+      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.app', maxZoom: 20, tileProvider: RetryTileProvider()),
+      TileLayer(urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', userAgentPackageName: 'com.fieldawy.app', maxZoom: 20, tileProvider: RetryTileProvider()),
     ];
   }
 

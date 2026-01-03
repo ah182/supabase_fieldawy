@@ -17,12 +17,11 @@ class RejectionScreen extends ConsumerWidget {
     // 1. جلب الاسم والبريد الإلكتروني للمستخدم الحالي
     final user = ref.read(authServiceProvider).currentUser;
     final userName = user?.userMetadata?['name'] ?? 'غير متوفر';
-    final userEmail = user?.email ?? 'غير متوفر';
+
 
     // 2. إنشاء نص الرسالة مع تمرير البيانات
     final message = 'auth.rejection.support_message'.tr(namedArgs: {
       'name': userName,
-      'email': userEmail,
     });
 
     final encodedMessage = Uri.encodeComponent(message);

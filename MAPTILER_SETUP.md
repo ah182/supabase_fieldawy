@@ -263,7 +263,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> {
 1. اذهب لـ: https://cloud.maptiler.com/account/keys/
 2. اختر الـ Key
 3. أضف Restrictions:
-   - **HTTP Referrers:** `com.fieldawy.store`
+   - **HTTP Referrers:** `com.fieldawy.app`
 
 ---
 

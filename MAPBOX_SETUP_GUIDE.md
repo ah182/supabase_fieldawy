@@ -69,7 +69,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> {
       // Mapbox Satellite Streets
       TileLayer(
         urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=$_mapboxToken',
-        userAgentPackageName: 'com.fieldawy.store',
+        userAgentPackageName: 'com.fieldawy.app',
         maxZoom: 22,
         tileProvider: NetworkTileProvider(),
       ),
@@ -249,7 +249,7 @@ class _ClinicsMapScreenState extends ConsumerState<ClinicsMapScreen> {
 1. **حدد URL Restrictions في Mapbox Dashboard:**
    - اذهب لـ: https://account.mapbox.com/access-tokens/
    - اختر الـ Token
-   - أضف: `com.fieldawy.store://` في URL restrictions
+   - أضف: `com.fieldawy.app://` في URL restrictions
 
 2. **راقب الاستخدام:**
    - Dashboard → Statistics

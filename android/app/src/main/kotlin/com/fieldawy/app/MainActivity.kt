@@ -1,4 +1,4 @@
-package com.fieldawy.store
+package com.fieldawy.app
 
 import io.flutter.embedding.android.FlutterActivity
 

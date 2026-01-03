@@ -13,7 +13,7 @@
 TileLayer(
   urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   subdomains: const ['a', 'b', 'c'],  // ✅ توزيع الحمل على 3 servers
-  userAgentPackageName: 'com.fieldawy.store',
+  userAgentPackageName: 'com.fieldawy.app',
   maxZoom: 19,
   tileProvider: NetworkTileProvider(),  // ✅ استخدام network provider
 )
@@ -77,7 +77,7 @@ flutter run
 TileLayer(
   urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   subdomains: const ['a', 'b', 'c'],
-  userAgentPackageName: 'com.fieldawy.store',
+  userAgentPackageName: 'com.fieldawy.app',
   maxZoom: 19,
   tileProvider: NetworkTileProvider(),
   errorTileCallback: (tile, error, stackTrace) {
@@ -126,7 +126,7 @@ children: [
   TileLayer(
     urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     subdomains: const ['a', 'b', 'c', 'd'],
-    userAgentPackageName: 'com.fieldawy.store',
+    userAgentPackageName: 'com.fieldawy.app',
     maxZoom: 20,
     tileProvider: NetworkTileProvider(),
     additionalOptions: const {

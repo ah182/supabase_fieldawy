@@ -26,7 +26,7 @@ if (localPropertiesFile.exists()) {
 val flutterMinSdkVersion = localProperties.getProperty("flutter.minSdkVersion")?.toInt() ?: 23
 
 android {
-    namespace = "com.fieldawy.store"
+    namespace = "com.fieldawy.app"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -50,7 +50,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.fieldawy.store"
+        applicationId = "com.fieldawy.app"
         minSdk = flutterMinSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode

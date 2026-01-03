@@ -388,38 +388,6 @@ class ProfileScreen extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-
-                              if (userModel.distributionMethod == null && userModel.email != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.email_rounded,
-                                        size: 14,
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          userModel.email!,
-                                          style: textTheme.bodySmall?.copyWith(
-                                            color: colorScheme.onPrimaryContainer,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                             ],
                           ),
                           const SizedBox(height: 32),

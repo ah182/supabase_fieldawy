@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fieldawy.store">
+    package="com.fieldawy.app">
 
 
     <uses-permission android:name="android.permission.INTERNET"/>

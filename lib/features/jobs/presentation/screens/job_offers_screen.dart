@@ -1544,18 +1544,17 @@ void _showUserBottomSheet(BuildContext context, UserModel user) {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
-                        final distributor = DistributorModel(
-                          id: user.id,
-                          displayName: user.displayName ?? '',
-                          photoURL: user.photoUrl,
-                          email: user.email,
-                          distributorType: user.role,
-                          whatsappNumber: user.whatsappNumber,
-                          governorates: user.governorates,
-                          centers: user.centers,
-                          distributionMethod: user.distributionMethod,
-                        );
-                        
+                                                  final distributor = DistributorModel(
+                                                    id: user.id,
+                                                    displayName: user.displayName ?? '',
+                                                    photoURL: user.photoUrl,
+                                                    // email: user.email, // Removed
+                                                    distributorType: user.role,
+                                                    whatsappNumber: user.whatsappNumber,
+                                                    governorates: user.governorates,
+                                                    centers: user.centers,
+                                                    distributionMethod: user.distributionMethod,
+                                                  );                        
                         Navigator.push(
                           context,
                           MaterialPageRoute(

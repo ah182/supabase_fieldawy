@@ -9,7 +9,7 @@
 ### أ. تغيير اسم الحزمة (Package Name)
 تأكد من أن اسم الحزمة فريد ولا يتشابه مع أي تطبيق آخر.
 *   الملف: `android/app/build.gradle`
-*   القيمة: `applicationId "com.fieldawy.store"` (أو الاسم الذي تختاره).
+*   القيمة: `applicationId "com.fieldawy.app"` (أو الاسم الذي تختاره).
 
 ### ب. تحديث الإصدار (Versioning)
 قم بتحديث رقم الإصدار في ملف `pubspec.yaml` قبل كل عملية بناء جديدة:

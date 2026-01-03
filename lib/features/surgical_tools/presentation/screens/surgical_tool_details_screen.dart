@@ -322,7 +322,7 @@ class _SurgicalToolDetailsScreenState
                             id: user.id,
                             displayName: user.displayName ?? '',
                             photoURL: user.photoUrl,
-                            email: user.email,
+                            // email: user.email, // Removed
                             distributorType: user.role,
                             whatsappNumber: user.whatsappNumber,
                             governorates: user.governorates,

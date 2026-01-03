@@ -92,6 +92,23 @@ class _ProfileCompletionScreenState
 
   Future<void> _submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // التحقق من رفع الصورة الشخصية (إجباري)
+    if (_imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'alert_title'.tr(),
+            message: 'auth.profile.please_select_profile_image'.tr(),
+            contentType: ContentType.warning,
+          ),
+        ),
+      );
+      return;
+    }
     
     // التحقق من اختيار طريقة التوزيع للشركات والموزعين
     if ((widget.selectedRole == 'company' || widget.selectedRole == 'distributor') && 
@@ -122,8 +139,7 @@ class _ProfileCompletionScreenState
       );
 
       String? photoUrl;
-
-      // Upload Profile Image if selected
+      // ... image upload logic ...
       if (_imageFile != null) {
         try {
           final tempDir = await getTemporaryDirectory();
@@ -142,7 +158,6 @@ class _ProfileCompletionScreenState
           photoUrl = await ref.read(storageServiceProvider).uploadDocument(fileToUpload, 'profile_images');
         } catch (e) {
           debugPrint('Error uploading profile image: $e');
-          // Proceed without image if upload fails
         }
       }
 
@@ -170,14 +185,20 @@ class _ProfileCompletionScreenState
     } catch (e) {
       if (mounted) {
         _hideLoadingDialog();
+        
+        String errorMessage = 'auth.profile.update_failed'.tr();
+        if (e.toString().contains('email_exists') || e.toString().contains('already been registered')) {
+          errorMessage = 'phone_already_exists'.tr();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             elevation: 0,
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.transparent,
             content: AwesomeSnackbarContent(
-              title: 'خطأ'.tr(),
-              message: '${'auth.profile.update_failed'.tr()}: $e',
+              title: 'error_title'.tr(),
+              message: errorMessage,
               contentType: ContentType.failure,
             ),
           ),

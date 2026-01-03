@@ -6,11 +6,13 @@
     "signInWithGoogle": "Sign in with Google",
     "letsStart": "Let's Start",
     "login": "Login",
-    "have_account_login": "Already have an account? Login",
+    "have_account_question": "Already have an account?",
+    "have_account_login": "Login",
     "password": "Password",
     "password_too_short": "Password must be at least 6 characters",
-    "forgot_password_link": "Forgot Password? Contact Support",
-    "welcome": "Welcome",
+    "forgot_password_question": "Forgot Password?",
+    "contact_support_action": "Contact Support",
+
     "login_failed": "Login failed. Please try again.",
     "login_cancelled": "Login was cancelled.",
     "unexpected_error": "An unexpected error occurred. Please try again later.",
@@ -30,6 +32,7 @@
     "pleaseEnterName": "Please enter a name",
     "pleaseEnterValidPhone": "Please enter a valid phone number",
     "profileUpdateFailed": "Profile update failed",
+    "phone_already_exists": "This phone number is already registered. Please login instead.",
     "documentsMismatch": "Documents Do Not Match",
     "rejectionMessage": "This application is designated for veterinarians and veterinary medicine distributors only. Access is not permitted for unauthorized categories.\n\nIf you belong to the mentioned categories, please re-upload the documents and wait for admin approval.",
     "reuploadDocuments": "Re-upload Documents",
@@ -163,9 +166,9 @@
       "order_delivery": "Order Delivery",
       "both_methods": "Both Methods",
       "please_select_distribution": "Please select a distribution method",
-      "finish_save": "Finish & Save",
-      "enter_name": "Please enter a name",
-      "enter_valid_phone": "Please enter a valid phone number",
+          "finish_save": "Finish & Save",
+          "please_select_profile_image": "Please select a profile image first",
+          "enter_name": "Please enter a name",      "enter_valid_phone": "Please enter a valid phone number",
       "update_failed": "Profile update failed",
       "distribution": {
         "direct_distribution": "Direct Distribution",
@@ -179,13 +182,13 @@
       "contact_support": "Contact Support",
       "cannot_open_whatsapp": "Could not open WhatsApp. Make sure the app is installed.",
       "sign_out": "Sign Out",
-      "support_message": "Hello,\nI am writing to inquire about my application to join the Fieldawy Store app.\nMy details are:\nEmail: {email} \n Name: {name}"
+      "support_message": "Hello,\nI am writing to inquire about my application to join the Fieldawy Store app.\nMy details are:\n Name: {name}"
     },
     "rejection": {
       "documents_mismatch": "Documents Do Not Match",
       "rejection_message": "This application is designated for veterinarians and veterinary medicine distributors only. Access is not permitted for unauthorized categories.\n\nIf you belong to the mentioned categories, please re-upload the documents and wait for admin approval.",
       "reupload_documents": "Re-upload Documents",
-      "support_message": "Hello,\nI am having trouble with my account approval on the Fieldawy Store app and I need assistance.\nMy details are:\nEmail: {email} \n Name: {name}",
+      "support_message": "Hello,\nI am having trouble with my account approval on the Fieldawy Store app and I need assistance.\nMy details are:\n Name: {name}",
       "reason": "Reason for Rejection:"
     }
   },
@@ -951,7 +954,6 @@
     },
     "product_id_missing_error": "Error: Product ID is missing.",
     "invalid_response_from_server": "Invalid response from server.",
-    "unexpected_error": "An unexpected error occurred. Please try again later.",
     "loading_reviews_error": "An error occurred while loading review requests. Please try again.",
     "delete_error_generic": "An error occurred during deletion.",
     "report_reason_label": "Reason",

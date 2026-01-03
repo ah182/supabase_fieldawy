@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../../widgets/shimmer_loader.dart';
 import '../../services/auth_service.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
@@ -84,11 +85,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     if (!_formKey.currentState!.validate()) return;
     if (_isLoading) return;
 
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // التحقق من بيانات الأدمن للتحويل لتسجيل جوجل
+    final adminPhone = dotenv.env['ADMIN_PHONE'] ?? '';
+    final adminPass = dotenv.env['ADMIN_PASSWORD'] ?? '';
+
+    if (phone == adminPhone && password == adminPass) {
+      await _signInWithGoogle();
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final phone = _phoneController.text.trim();
-      final password = _passwordController.text.trim();
       final fakeEmail = "$phone@fieldawy.com";
 
       await ref.read(authServiceProvider).signInWithEmailAndPassword(
@@ -121,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _contactSupportForPassword() async {
     final phone = _phoneController.text.trim();
     final message = "أهلاً إدارة فيلدوي، لقد نسيت كلمة المرور الخاصة بحسابي.\nرقم الهاتف: $phone";
-    final url = Uri.parse("https://wa.me/201016610554?text=${Uri.encodeComponent(message)}");
+    final url = Uri.parse("https://wa.me/201017016217?text=${Uri.encodeComponent(message)}");
     
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -154,110 +165,147 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     bool isTablet = size.width >= 600 && size.width < 1024;
     bool isDesktop = size.width >= 1024;
 
-    double logoHeight = isSmallScreen
-        ? size.height * 0.4 // Reduced to make space
-        : size.height * 0.5;
+    double logoHeight = _showLoginForm
+        ? (isSmallScreen ? size.height * 0.25 + 5 : size.height * 0.3 + 5)
+        : (isSmallScreen ? size.height * 0.4 + 5 : size.height * 0.5 + 5);
 
     double horizontalPadding = isSmallScreen ? 20.0 : size.width * 0.1;
 
-    return Scaffold(
-      body: Container(
-        height: size.height,
-        width: size.width,
-        decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 8, 119, 136),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                  minHeight: size.height - MediaQuery.of(context).padding.top),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: size.height * 0.02),
-                    
-                    // Logo Section
-                    if (!_showLoginForm)
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: Container(
-                          constraints: BoxConstraints(
-                            maxHeight: logoHeight,
-                            maxWidth: isDesktop ? 500 : double.infinity,
-                          ),
-                          child: ClipRect(
-                            child: Image.asset(
-                              'assets/main_logo.png',
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              height: logoHeight,
+    return PopScope(
+      canPop: !_showLoginForm,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        if (_showLoginForm) {
+          setState(() => _showLoginForm = false);
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          height: size.height,
+          width: size.width,
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 8, 119, 136),
+          ),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // المحتوى الرئيسي
+                SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                        minHeight: size.height - MediaQuery.of(context).padding.top),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(height: size.height * 0.02),
+                          
+                          // Logo Section
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxHeight: logoHeight,
+                                  maxWidth: isDesktop ? 500 : double.infinity,
+                                ),
+                                child: ClipRect(
+                                  child: Image.asset(
+                                    'assets/main_logo.png',
+                                    fit: BoxFit.contain,
+                                    width: double.infinity,
+                                    height: logoHeight,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          
+                          SizedBox(height: size.height * 0.05),
+    
+                          // Main Action Area
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 1),
+                                end: Offset.zero,
+                              ).animate(CurvedAnimation(
+                                parent: _animationController,
+                                curve: const Interval(0.5, 1.0,
+                                    curve: Curves.elasticOut),
+                              )),
+                              child: _isLoading
+                                  ? _buildLoadingWidget()
+                                  : _showLoginForm 
+                                      ? _buildLoginForm() 
+                                      : _buildStartButton(isSmallScreen),
+                            ),
+                          ),
+                          
+                          SizedBox(height: size.height * 0.03),
+    
+                          // Toggle Button (Start New vs Login) - REMOVED FROM HERE
+    
+                          if (!_showLoginForm) ...[
+                             SizedBox(height: size.height * 0.02),
+                            _buildSecureBadge(textTheme),
+                          ],
+    
+                          SizedBox(height: size.height * 0.02),
+                        ],
                       ),
                     ),
-                    
-                    if (_showLoginForm) SizedBox(height: size.height * 0.05),
-
-                    SizedBox(height: size.height * 0.05),
-
-                    // Main Action Area
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 1),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                          parent: _animationController,
-                          curve: const Interval(0.5, 1.0,
-                              curve: Curves.elasticOut),
-                        )),
-                        child: _isLoading
-                            ? _buildLoadingWidget()
-                            : _showLoginForm 
-                                ? _buildLoginForm() 
-                                : _buildStartButton(isSmallScreen),
-                      ),
-                    ),
-                    
-                    SizedBox(height: size.height * 0.03),
-
-                    // Toggle Button (Start New vs Login)
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _showLoginForm = !_showLoginForm;
-                        });
-                      },
-                      child: Text(
-                        _showLoginForm 
-                            ? "letsStart".tr() 
-                            : "have_account_login".tr(), // Needs key
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.white,
-                        ),
-                      ),
-                    ),
-
-                    if (!_showLoginForm) ...[
-                       SizedBox(height: size.height * 0.02),
-                      _buildSecureBadge(textTheme),
-                    ],
-
-                    SizedBox(height: size.height * 0.02),
-                  ],
+                  ),
                 ),
-              ),
+                
+                // زر الرجوع - يجب أن يكون في نهاية الـ Stack ليكون فوق الـ SingleChildScrollView
+                if (_showLoginForm)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                      onPressed: () => setState(() => _showLoginForm = false),
+                    ),
+                  ),
+
+                // --- Footer: Login Toggle (RichText for perfect BiDi support) ---
+                if (!_showLoginForm)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 25),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showLoginForm = true),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: "${'have_account_question'.tr()} ",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 15,
+                                ),
+                              ),
+                              TextSpan(
+                                text: "login".tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -290,8 +338,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               filled: true,
               fillColor: Colors.white,
               hintText: 'auth.profile.whatsapp_label'.tr(),
-              prefixIcon: const Icon(Icons.phone, color: Color(0xFF087788)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              prefixIcon: const Icon(Icons.phone, color: Color.fromARGB(255, 36, 203, 228)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Color(0xFF00B894), width: 1.5)),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1)),
+              focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
             ),
           ),
           const SizedBox(height: 16),
@@ -306,28 +358,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               filled: true,
               fillColor: Colors.white,
               hintText: 'password'.tr(),
-              prefixIcon: const Icon(Icons.lock, color: Color(0xFF087788)),
+              prefixIcon: const Icon(Icons.lock, color: Color.fromARGB(255, 69, 212, 234)),
               suffixIcon: IconButton(
-                icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: const Color.fromARGB(255, 142, 137, 137)),
                 onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Color(0xFF00B894), width: 1.5)),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1)),
+              focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // --- Forgot Password Link ---
+          // --- Forgot Password Link (Styled with Contrast) ---
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: _contactSupportForPassword,
-              child: Text(
-                "forgot_password_link".tr(), // Needs key
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "${'forgot_password_question'.tr()} ",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "contact_support_action".tr(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
           // Login Button
           SizedBox(
@@ -336,7 +415,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: ElevatedButton(
               onPressed: _signInWithCredentials,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF42A5F5),
+                backgroundColor: const Color.fromARGB(255, 49, 174, 188),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -345,50 +424,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
               ),
             ),
-          ),
-
-          const SizedBox(height: 20),
-          
-          // --- Google Sign In Divider ---
-          Row(
-            children: [
-              Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text("OR", style: TextStyle(color: Colors.white.withOpacity(0.8))),
-              ),
-              Expanded(child: Divider(color: Colors.white.withOpacity(0.5))),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // --- Google Sign In Button (Legacy) ---
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton.icon(
-              onPressed: _signInWithGoogle,
-              icon: Image.asset(
-                'assets/google_icon.png',
-                width: 24,
-                height: 24,
-              ),
-              label: Text(
-                'signInWithGoogle'.tr(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
+          )
         ],
       ),
     );
@@ -516,36 +552,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildStartButton(bool isSmallScreen) {
     return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxWidth: isSmallScreen ? double.infinity : 400,
-      ),
-      height: 55,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      width: 220, // تصغير عرض الزر
+      height: 50, // تصغير ارتفاع الزر
+      margin: const EdgeInsets.symmetric(vertical: 12),
       child: ElevatedButton.icon(
         onPressed: _signInAnonymously,
         icon: const Icon(
-          Icons.rocket_launch_rounded,
+          Icons.shopping_bag_rounded,
           color: Colors.white,
-          size: 24,
+          size: 20,
         ),
         label: Text(
           "letsStart".tr(), 
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.white,
             letterSpacing: 0.5,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF42A5F5), // Blue accent color
+          backgroundColor: const Color.fromARGB(255, 48, 182, 192), // Vibrant Mint/Teal Green
           foregroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: Colors.blueAccent.withOpacity(0.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          elevation: 3,
+          shadowColor: Colors.black26,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(30), // دائرية بالكامل لشكل عصري
           ),
         ),
       ),

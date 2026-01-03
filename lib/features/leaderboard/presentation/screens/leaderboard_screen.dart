@@ -559,8 +559,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 // Text Search
                 if (_debouncedSearchQuery.isNotEmpty) {
                   final query = _debouncedSearchQuery.toLowerCase();
-                  final matchesName = (user.displayName ?? '').toLowerCase().contains(query) ||
-                                      (user.email ?? '').toLowerCase().contains(query);
+                  final matchesName = (user.displayName ?? '').toLowerCase().contains(query);
                   if (!matchesName) return false;
                 }
                 

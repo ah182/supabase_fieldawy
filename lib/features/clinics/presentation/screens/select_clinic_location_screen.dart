@@ -310,17 +310,17 @@ class _SelectClinicLocationScreenState
               TileLayer(
                 urlTemplate:
                     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.fieldawy.store',
+                userAgentPackageName: 'com.fieldawy.app',
               ),
               TileLayer(
                 urlTemplate:
                     'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.fieldawy.store',
+                userAgentPackageName: 'com.fieldawy.app',
               ),
               TileLayer(
                 urlTemplate:
                     'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.fieldawy.store',
+                userAgentPackageName: 'com.fieldawy.app',
               ),
             ],
           ),

@@ -1,4 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
+// ignore: unused_import
+import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,17 +10,15 @@ import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 class PendingReviewScreen extends ConsumerWidget {
   const PendingReviewScreen({super.key});
 
-  Future<void> _contactSupport(BuildContext context, WidgetRef ref) async {
-    // 1. جلب الاسم والبريد الإلكتروني للمستخدم الحالي
-    final user = ref.read(authServiceProvider).currentUser;
-    final userName = user?.userMetadata?['name'] ?? 'غير متوفر';
-    final userEmail = user?.email ?? 'غير متوفر';
+   
 
-    // 2. إنشاء نص الرسالة مع تمرير البيانات
-    final message = 'auth.pending.support_message'.tr(namedArgs: {
-      'name': userName,
-      'email': userEmail,
-    });
+    Future<void> _contactSupport(BuildContext context, WidgetRef ref) async {
+       final user = ref.read(authServiceProvider).currentUser;
+    final userName = user?.userMetadata?['name'] ?? 'غير متوفر';
+      final message = 'auth.pending.support_message'.tr(namedArgs: {
+        'name': userName,
+      });
+      // ... whatsapp logic ...
 
     final encodedMessage = Uri.encodeComponent(message);
     final Uri whatsappUrl = Uri.parse(
