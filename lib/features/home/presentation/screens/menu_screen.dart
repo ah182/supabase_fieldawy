@@ -25,7 +25,7 @@ import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_p
 import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
 import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';

@@ -174,6 +174,7 @@ class _ProfileCompletionScreenState
           );
 
       // Force refresh and wait for updated data to ensure AuthGate sees the correct state
+      // ignore: unused_result
       await ref.refresh(userDataProvider.future);
 
       _hideLoadingDialog();
