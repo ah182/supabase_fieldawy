@@ -337,7 +337,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              hintText: 'auth.profile.whatsapp_label'.tr(),
+              labelText: 'auth.profile.whatsapp_label'.tr(),
+              labelStyle: const TextStyle(color: Colors.grey),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+              hintText: '01xxxxxxxxx',
+              hintStyle: const TextStyle(color: Colors.grey),
               prefixIcon: const Icon(Icons.phone, color: Color.fromARGB(255, 36, 203, 228)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
@@ -357,7 +361,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              hintText: 'password'.tr(),
+              labelText: 'password'.tr(),
+              labelStyle: const TextStyle(color: Colors.grey),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+              hintText: '******',
+              hintStyle: const TextStyle(color: Colors.grey),
               prefixIcon: const Icon(Icons.lock, color: Color.fromARGB(255, 69, 212, 234)),
               suffixIcon: IconButton(
                 icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: const Color.fromARGB(255, 142, 137, 137)),
