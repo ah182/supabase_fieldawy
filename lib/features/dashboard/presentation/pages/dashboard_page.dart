@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/dashboard/application/dashboard_provider.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/dashboard_stats_card.dart';
 import 'package:fieldawy_store/features/dashboard/presentation/widgets/quick_actions_panel.dart';
@@ -410,45 +411,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   _buildLoadingCard(),
                 ],
               ),
-              error: (error, stack) => Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.red.withOpacity(0.3),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.error_outline,
-                          color: Colors.red, size: 40),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'dashboard_feature.stats.failed_load'.tr(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _refreshDashboard,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: Text('dashboard_feature.stats.retry'.tr()),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
+              error: (error, stack) => RefreshableErrorWidget(
+                message: 'dashboard_feature.stats.failed_load'.tr(),
+                onRetry: _refreshDashboard,
               ),
             ),
 

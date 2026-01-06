@@ -7,6 +7,7 @@ import 'package:fieldawy_store/features/products/presentation/screens/add_produc
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert'; // Added for jsonDecode
 
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/products/application/catalog_selection_controller.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
@@ -861,6 +862,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     @override
     Widget build(BuildContext context) {
     final allProductsAsync = ref.watch(productsProvider);
+    final ocrProductsAsync = ref.watch(ocrProductsProvider);
     final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
 
     // Determine which list of items to use based on the active tab
@@ -1725,23 +1727,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                         );
                       },
                     ),
-                    error: (error, stack) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 60,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'حدث خطأ: $error',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                    error: (error, stack) => RefreshableErrorWidget(
+                      message: 'حدث خطأ: $error',
+                      onRetry: () => ref.refresh(productsProvider),
                     ),
                   ),
                   // Tab for OCR Catalog - fetch and display OCR products
@@ -1859,23 +1847,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                         );
                       },
                     ),
-                    error: (error, stack) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 60,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'حدث خطأ في تحميل OCR: $error',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                    error: (error, stack) => RefreshableErrorWidget(
+                      message: 'حدث خطأ في تحميل OCR: $error',
+                      onRetry: () => ref.refresh(ocrProductsProvider),
                     ),
                   ),
                 ],
@@ -1917,7 +1891,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                 bottom: 16,
                 child: Builder(
                   builder: (context) {
-                    final categorized = _categorizeProducts();
+                    final isMainTab = _tabController?.index == 0;
+                    final products = isMainTab 
+                        ? (allProductsAsync.valueOrNull ?? []) 
+                        : (ocrProductsAsync.valueOrNull ?? []);
+
+                    final categorized = _categorizeProducts(products);
                     final completeCount = categorized['complete']?.length ?? 0;
                     final missingPriceCount = categorized['missingPrice']?.length ?? 0;
                     final notActivatedCount = categorized['notActivated']?.length ?? 0;
@@ -1952,7 +1931,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     label: 'مكتمل',
                                     color: Colors.green,
                                     icon: Icons.check_circle,
-                                    onTap: () => _showStatsDialog('complete'),
+                                    onTap: () => _showStatsDialog('complete', products),
                                   ),
                                 if (completeCount > 0 && (missingPriceCount > 0 || notActivatedCount > 0))
                                   const SizedBox(height: 6),
@@ -1963,7 +1942,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     label: 'بدون سعر',
                                     color: Colors.orange,
                                     icon: Icons.warning_amber_rounded,
-                                    onTap: () => _showStatsDialog('missingPrice'),
+                                    onTap: () => _showStatsDialog('missingPrice', products),
                                   ),
                                 if (missingPriceCount > 0 && notActivatedCount > 0)
                                   const SizedBox(height: 6),
@@ -1974,7 +1953,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                                     label: 'غير مفعّل',
                                     color: Colors.red,
                                     icon: Icons.toggle_off,
-                                    onTap: () => _showStatsDialog('notActivated'),
+                                    onTap: () => _showStatsDialog('notActivated', products),
                                   ),
                               ],
                             ),
@@ -2015,11 +1994,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   }
 
   // Method to calculate product states
-  Map<String, List<Map<String, dynamic>>> _categorizeProducts() {
+  Map<String, List<Map<String, dynamic>>> _categorizeProducts(List<ProductModel> products) {
     final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
-    final currentItems = _tabController?.index == 0
-        ? _mainCatalogShuffledDisplayItems
-        : _ocrCatalogShuffledDisplayItems;
 
     final Map<String, List<Map<String, dynamic>>> categorized = {
       'complete': [], // مفعّل + كاتب السعر
@@ -2027,38 +2003,38 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       'notActivated': [], // كاتب السعر + مش مفعّل
     };
 
-    for (var item in currentItems) {
-      final ProductModel product = item['product'];
-      final String package = item['package'];
-      final String key = '${product.id}_$package';
-      
-      final bool isSelected = selection.selectedKeys.contains(key); // استخدام selectedKeys
-      final double? price = selection.prices[key];
-      final bool hasValidPrice = price != null && price > 0;
+    for (var product in products) {
+      for (var package in product.availablePackages) {
+        final String key = '${product.id}_$package';
+        
+        final bool isSelected = selection.selectedKeys.contains(key);
+        final double? price = selection.prices[key];
+        final bool hasValidPrice = price != null && price > 0;
 
-      if (isSelected && hasValidPrice) {
-        // الحالة 1: مفعّل + كاتب السعر
-        categorized['complete']!.add({
-          'product': product,
-          'package': package,
-          'key': key,
-          'price': price,
-        });
-      } else if (isSelected && !hasValidPrice) {
-        // الحالة 2: مفعّل + مش كاتب السعر
-        categorized['missingPrice']!.add({
-          'product': product,
-          'package': package,
-          'key': key,
-        });
-      } else if (!isSelected && hasValidPrice) {
-        // الحالة 3: كاتب السعر + مش مفعّل
-        categorized['notActivated']!.add({
-          'product': product,
-          'package': package,
-          'key': key,
-          'price': price,
-        });
+        if (isSelected && hasValidPrice) {
+          // الحالة 1: مفعّل + كاتب السعر
+          categorized['complete']!.add({
+            'product': product,
+            'package': package,
+            'key': key,
+            'price': price,
+          });
+        } else if (isSelected && !hasValidPrice) {
+          // الحالة 2: مفعّل + مش كاتب السعر
+          categorized['missingPrice']!.add({
+            'product': product,
+            'package': package,
+            'key': key,
+          });
+        } else if (!isSelected && hasValidPrice) {
+          // الحالة 3: كاتب السعر + مش مفعّل
+          categorized['notActivated']!.add({
+            'product': product,
+            'package': package,
+            'key': key,
+            'price': price,
+          });
+        }
       }
     }
 
@@ -2066,8 +2042,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   }
 
   // Show stats dialog
-  void _showStatsDialog(String category) {
-    final categorized = _categorizeProducts();
+  void _showStatsDialog(String category, List<ProductModel> products) {
+    final categorized = _categorizeProducts(products);
     final items = categorized[category] ?? [];
 
     if (items.isEmpty) {

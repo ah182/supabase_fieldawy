@@ -1469,6 +1469,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 const Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text('home.search.no_products'.tr()),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => ref.read(paginatedProductsProvider.notifier).refresh(),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -2062,8 +2068,9 @@ class PriceUpdateTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Text('Error: ${err.toString()}'),
+      error: (err, stack) => TabErrorView(
+        message: 'home.search.error_occurred'.tr(), // Using a generic error message key or string
+        onRetry: () => ref.refresh(priceUpdatesProvider),
       ),
       data: (products) {
         // 1. فلترة البحث

@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -297,6 +298,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 24),
+                    TextButton.icon(
+                      onPressed: () => ref.refresh(distributorsProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: Text('retry'.tr()),
+                    ),
                   ],
                 ),
               );
@@ -511,7 +518,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('orders.load_error'.tr())),
+          error: (err, stack) => RefreshableErrorWidget(
+            message: 'orders.load_error'.tr(),
+            onRetry: () => ref.refresh(distributorsProvider),
+          ),
         ),
       ),
     );

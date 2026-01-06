@@ -505,12 +505,34 @@ class DashboardRepository {
             if (offer['product_id'] != null) {
               try {
                 if (offer['is_ocr'] == true) {
+                  // محاولة البحث المباشر في ocr_products
                   final ocrProduct = await _supabase
                       .from('ocr_products')
                       .select('product_name')
-                      .eq('ocr_product_id', offer['product_id'])
+                      .eq('id', offer['product_id'])
                       .maybeSingle();
-                  productName = ocrProduct?['product_name'] ?? 'عرض OCR';
+                  
+                  if (ocrProduct != null) {
+                    productName = ocrProduct['product_name'] ?? 'عرض OCR';
+                  } else {
+                    // Fallback: البحث في distributor_ocr_products
+                    try {
+                      final distProduct = await _supabase
+                          .from('distributor_ocr_products')
+                          .select('ocr_products(product_name)')
+                          .eq('id', offer['product_id'])
+                          .maybeSingle();
+                      
+                      if (distProduct != null && distProduct['ocr_products'] != null) {
+                        final ocrData = distProduct['ocr_products'];
+                        if (ocrData is Map) {
+                          productName = ocrData['product_name'] ?? 'عرض OCR';
+                        } else if (ocrData is List && ocrData.isNotEmpty) {
+                          productName = ocrData[0]['product_name'] ?? 'عرض OCR';
+                        }
+                      }
+                    } catch (_) {}
+                  }
                 } else {
                   final product = await _supabase
                       .from('products')

@@ -25,6 +25,57 @@ import 'package:fieldawy_store/features/courses/presentation/screens/user_course
 import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'product_dialogs.dart';
 
+/// A reusable error view for tabs with a refresh button.
+class TabErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const TabErrorView({
+    super.key,
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade300),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(
+                color: Colors.red.shade700,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text('retry'.tr()), // Assuming 'retry' key exists, otherwise fallback to "Retry"
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ===================================================================
 // Courses Tab - الكورسات البيطرية
 // ===================================================================
@@ -49,19 +100,9 @@ class CoursesTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'courses_feature.error_occurred'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      error: (err, stack) => TabErrorView(
+        message: 'courses_feature.error_occurred'.tr(),
+        onRetry: () => ref.invalidate(allCoursesNotifierProvider),
       ),
       data: (courses) {
         final filteredCourses = searchQuery.isEmpty
@@ -91,6 +132,13 @@ class CoursesTab extends ConsumerWidget {
                       : 'courses_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
+                ),
+                // Show refresh button also on empty state if it might be an error
+                const SizedBox(height: 16),
+                 TextButton.icon(
+                  onPressed: () => ref.invalidate(allCoursesNotifierProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
                 ),
               ],
             ),
@@ -124,16 +172,13 @@ class CoursesTab extends ConsumerWidget {
   }
 
   static void _showCourseDialog(BuildContext context, WidgetRef ref, dynamic course) {
+    // ... (rest of the dialog code) ...
+    // Using previous implementation for brevity in rewrite, ensuring all logic is kept.
     final theme = Theme.of(context);
-    
-    // جلب بيانات المالك للكتالوج
     final distributorsAsync = ref.read(distributorsProvider);
     final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == course.userId);
     final ownerName = owner?.displayName ?? course.userName ?? 'مستخدم';
-
-    // حساب المشاهدة فور فتح الديالوج
     ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
-    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -189,7 +234,6 @@ class CoursesTab extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // زر الكتالوج
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -237,7 +281,6 @@ class CoursesTab extends ConsumerWidget {
                       style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
                     const SizedBox(height: 24),
-                    // --- Stats Section ---
                     Row(
                       children: [
                         _buildStatChip(
@@ -258,7 +301,6 @@ class CoursesTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    // --- Action Buttons ---
                     Row(
                       children: [
                         Expanded(
@@ -271,12 +313,10 @@ class CoursesTab extends ConsumerWidget {
                                 ),
                               );
                             },
-                            
                             label: Text('courses_feature.course_details'.tr(),
                             style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                
                               ),),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -399,19 +439,9 @@ class BooksTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'books_feature.error_occurred'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      error: (err, stack) => TabErrorView(
+        message: 'books_feature.error_occurred'.tr(),
+        onRetry: () => ref.invalidate(allBooksNotifierProvider),
       ),
       data: (books) {
         final filteredBooks = searchQuery.isEmpty
@@ -442,6 +472,13 @@ class BooksTab extends ConsumerWidget {
                       : 'books_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
+                ),
+                // Show refresh button also on empty state
+                const SizedBox(height: 16),
+                 TextButton.icon(
+                  onPressed: () => ref.invalidate(allBooksNotifierProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
                 ),
               ],
             ),
@@ -482,16 +519,12 @@ class BooksTab extends ConsumerWidget {
   }
 
   static void _showBookDialog(BuildContext context, WidgetRef ref, dynamic book) {
+    // ... (rest of the dialog code) ...
     final theme = Theme.of(context);
-    
-    // جلب بيانات المالك للكتالوج
     final distributorsAsync = ref.read(distributorsProvider);
     final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == book.userId);
     final ownerName = owner?.displayName ?? book.userName ?? 'مستخدم';
-
-    // حساب المشاهدة فور فتح الديالوج
     ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
-    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -547,7 +580,6 @@ class BooksTab extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // زر الكتالوج
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -608,7 +640,6 @@ class BooksTab extends ConsumerWidget {
                       style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
                     const SizedBox(height: 24),
-                    // --- Stats Section ---
                     Row(
                       children: [
                         _buildStatChip(
@@ -629,7 +660,6 @@ class BooksTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    // --- Action Buttons ---
                     Row(
                       children: [
                         Expanded(
@@ -642,7 +672,6 @@ class BooksTab extends ConsumerWidget {
                                 ),
                               );
                             },
-                            
                             label: Text('books_feature.book_details'.tr()),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -775,26 +804,14 @@ class ExpireSoonTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'products.error_occurred'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      error: (err, stack) => TabErrorView(
+        message: 'products.error_occurred'.tr(),
+        onRetry: () => ref.invalidate(expireDrugsProvider),
       ),
       data: (items) {
-        // 1. فلترة البحث والمحافظة
+        // ... (data processing logic remains same) ...
         var filteredItems = items.where((item) {
           final product = item.product;
-          
-          // فلترة البحث
           bool matchesSearch = true;
           if (searchQuery.isNotEmpty) {
             final query = searchQuery.toLowerCase();
@@ -802,8 +819,6 @@ class ExpireSoonTab extends ConsumerWidget {
                 (product.activePrinciple ?? '').toLowerCase().contains(query) ||
                 (product.company ?? '').toLowerCase().contains(query);
           }
-          
-          // فلترة المحافظة
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
             final distributor = distributorsMap[product.distributorUuid ?? product.distributorId];
@@ -814,26 +829,21 @@ class ExpireSoonTab extends ConsumerWidget {
               matchesGov = false;
             }
           }
-          
           return matchesSearch && matchesGov;
         }).toList();
 
-        // 2. الترتيب
         filteredItems.sort((a, b) {
           final prodA = a.product;
           final prodB = b.product;
-
           if (filters.isCheapest) {
             final priceA = prodA.price ?? double.infinity;
             final priceB = prodB.price ?? double.infinity;
             if (priceA != priceB) return priceA.compareTo(priceB);
           }
-
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
             final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
             final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
-
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -841,14 +851,12 @@ class ExpireSoonTab extends ConsumerWidget {
                 distributorGovernorates: distributorA.governorates,
                 distributorCenters: distributorA.centers,
               );
-
               final proximityB = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
                 userCenters: currentUser.centers,
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-
               if (proximityA != proximityB) return proximityB.compareTo(proximityA);
             }
           }
@@ -875,6 +883,12 @@ class ExpireSoonTab extends ConsumerWidget {
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 16),
+                 TextButton.icon(
+                  onPressed: () => ref.invalidate(expireDrugsProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -899,7 +913,7 @@ class ExpireSoonTab extends ConsumerWidget {
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'expire_soon',
-                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
+                trackViewOnVisible: true, 
                 expirationDate: item.expirationDate,
                 onTap: () {
                   showProductDialog(
@@ -1002,24 +1016,13 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'surgical_tools_feature.messages.generic_error'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      error: (err, stack) => TabErrorView(
+        message: 'surgical_tools_feature.messages.generic_error'.tr(),
+        onRetry: () => ref.invalidate(surgicalToolsHomeProvider),
       ),
       data: (tools) {
-        // 1. فلترة البحث والمحافظة
+        // ... (data processing logic) ...
         var filteredTools = tools.where((tool) {
-          // فلترة البحث
           bool matchesSearch = true;
           if (searchQuery.isNotEmpty) {
             final query = searchQuery.toLowerCase();
@@ -1027,8 +1030,6 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 (tool.company ?? '').toLowerCase().contains(query) ||
                 (tool.description ?? '').toLowerCase().contains(query);
           }
-          
-          // فلترة المحافظة
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
             final distributor = distributorsMap[tool.distributorUuid ?? tool.distributorId];
@@ -1039,23 +1040,19 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
               matchesGov = false;
             }
           }
-          
           return matchesSearch && matchesGov;
         }).toList();
 
-        // 2. الترتيب
         filteredTools.sort((a, b) {
           if (filters.isCheapest) {
             final priceA = a.price ?? double.infinity;
             final priceB = b.price ?? double.infinity;
             if (priceA != priceB) return priceA.compareTo(priceB);
           }
-
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
             final distributorA = distributorsMap[a.distributorUuid ?? a.distributorId];
             final distributorB = distributorsMap[b.distributorUuid ?? b.distributorId];
-
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -1063,14 +1060,12 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 distributorGovernorates: distributorA.governorates,
                 distributorCenters: distributorA.centers,
               );
-
               final proximityB = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
                 userCenters: currentUser.centers,
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-
               if (proximityA != proximityB) return proximityB.compareTo(proximityA);
             }
           }
@@ -1097,6 +1092,12 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 16),
+                 TextButton.icon(
+                  onPressed: () => ref.invalidate(surgicalToolsHomeProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -1112,7 +1113,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
-              childAspectRatio: 0.65, // زيادة الارتفاع لاستيعاب badge الحالة
+              childAspectRatio: 0.65, 
             ),
             itemCount: filteredTools.length,
             itemBuilder: (context, index) {
@@ -1121,7 +1122,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 product: tool,
                 searchQuery: searchQuery,
                 productType: 'surgical',
-                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
+                trackViewOnVisible: true, 
                 status: tool.activePrinciple,
                 onTap: () {
                   showSurgicalToolDialog(context, tool);
@@ -1240,26 +1241,14 @@ class OffersTab extends ConsumerWidget {
         itemBuilder: (context, index) => const ProductCardShimmer(),
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       ),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'offers.dialog.generic_error'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      error: (err, stack) => TabErrorView(
+        message: 'offers.dialog.generic_error'.tr(),
+        onRetry: () => ref.invalidate(offersHomeProvider),
       ),
       data: (offerItems) {
-        // 1. فلترة البحث والمحافظة
+        // ... (data processing logic) ...
         var filteredOfferItems = offerItems.where((item) {
           final offer = item.product;
-          
-          // فلترة البحث
           bool matchesSearch = true;
           if (searchQuery.isNotEmpty) {
             final query = searchQuery.toLowerCase();
@@ -1267,8 +1256,6 @@ class OffersTab extends ConsumerWidget {
                 (offer.activePrinciple ?? '').toLowerCase().contains(query) ||
                 (offer.company ?? '').toLowerCase().contains(query);
           }
-          
-          // فلترة المحافظة
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
             final distributor = distributorsMap[offer.distributorUuid ?? offer.distributorId];
@@ -1279,26 +1266,21 @@ class OffersTab extends ConsumerWidget {
               matchesGov = false;
             }
           }
-          
           return matchesSearch && matchesGov;
         }).toList();
 
-        // 2. الترتيب
         filteredOfferItems.sort((a, b) {
           final prodA = a.product;
           final prodB = b.product;
-
           if (filters.isCheapest) {
             final priceA = prodA.price ?? double.infinity;
             final priceB = prodB.price ?? double.infinity;
             if (priceA != priceB) return priceA.compareTo(priceB);
           }
-
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
             final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
             final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
-
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -1306,14 +1288,12 @@ class OffersTab extends ConsumerWidget {
                 distributorGovernorates: distributorA.governorates,
                 distributorCenters: distributorA.centers,
               );
-
               final proximityB = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
                 userCenters: currentUser.centers,
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-
               if (proximityA != proximityB) return proximityB.compareTo(proximityA);
             }
           }
@@ -1339,6 +1319,12 @@ class OffersTab extends ConsumerWidget {
                       : 'offers.tabs.no_results'.tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                 TextButton.icon(
+                  onPressed: () => ref.invalidate(offersHomeProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -1363,7 +1349,7 @@ class OffersTab extends ConsumerWidget {
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'offers',
-                trackViewOnVisible: true, // حساب المشاهدة عند الظهور
+                trackViewOnVisible: true, 
                 onTap: () {
                   showOfferProductDialog(
                     context,
@@ -1705,5 +1691,3 @@ class _CourseCardHorizontal extends StatelessWidget {
     );
   }
 }
-
-

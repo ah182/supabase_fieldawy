@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/product_dialogs.dart';
@@ -9,7 +10,7 @@ import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
 
-class DistributorSurgicalToolsScreen extends ConsumerWidget {
+class DistributorSurgicalToolsScreen extends ConsumerStatefulWidget {
   final String distributorId;
   final String distributorName;
 
@@ -20,7 +21,24 @@ class DistributorSurgicalToolsScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DistributorSurgicalToolsScreen> createState() => _DistributorSurgicalToolsScreenState();
+}
+
+class _DistributorSurgicalToolsScreenState extends ConsumerState<DistributorSurgicalToolsScreen> {
+  late Future<List<Map<String, dynamic>>> _toolsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTools();
+  }
+
+  void _loadTools() {
+    _toolsFuture = ref.read(productRepositoryProvider).getMySurgicalTools(widget.distributorId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -35,7 +53,7 @@ class DistributorSurgicalToolsScreen extends ConsumerWidget {
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
-              distributorName,
+              widget.distributorName,
               style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
             ),
           ],
@@ -45,14 +63,21 @@ class DistributorSurgicalToolsScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: ref.read(productRepositoryProvider).getMySurgicalTools(distributorId),
+        future: _toolsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return RefreshableErrorWidget(
+              message: 'Error: ${snapshot.error}',
+              onRetry: () {
+                setState(() {
+                  _loadTools();
+                });
+              },
+            );
           }
 
           final tools = snapshot.data ?? [];
@@ -65,60 +90,78 @@ class DistributorSurgicalToolsScreen extends ConsumerWidget {
                   Icon(Icons.medical_services_outlined, size: 80, color: colorScheme.onSurface.withOpacity(0.2)),
                   const SizedBox(height: 16),
                   Text('surgical_tools_feature.empty.no_tools'.tr(), style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _loadTools();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: Text('retry'.tr()),
+                  ),
                 ],
               ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: tools.length,
-            itemBuilder: (context, index) {
-              final tool = tools[index];
-              final surgicalTool = tool['surgical_tools'] as Map<String, dynamic>?;
-
-              final id = tool['id'] ?? '';
-              final toolName = surgicalTool?['tool_name'] ?? 'Unknown';
-              final company = surgicalTool?['company'];
-              final imageUrl = surgicalTool?['image_url'];
-              final description = tool['description'] ?? '';
-              final price = (tool['price'] as num?)?.toDouble() ?? 0.0;
-              final status = tool['status'] ?? 'جديد';
-
-              // Translate status for display
-              String displayStatus = status;
-              if (status == 'جديد') displayStatus = 'surgical_tools_feature.status.new'.tr();
-              else if (status == 'مستعمل') displayStatus = 'surgical_tools_feature.status.used'.tr();
-              else if (status == 'كسر زيرو') displayStatus = 'surgical_tools_feature.status.like_new'.tr();
-
-              return _ModernToolCard(
-                id: id,
-                toolName: toolName,
-                company: company,
-                imageUrl: imageUrl,
-                description: description,
-                price: price,
-                status: status,
-                displayStatus: displayStatus,
-                index: index,
-                onTap: () {
-                  // تحويل البيانات لنموذج ProductModel لعرض الديالوج
-                  final toolModel = ProductModel(
-                    id: id,
-                    name: toolName,
-                    imageUrl: imageUrl ?? '',
-                    company: company,
-                    description: description,
-                    price: price,
-                    distributorId: distributorName,
-                    distributorUuid: distributorId,
-                    availablePackages: [],
-                    activePrinciple: status, // نستخدمه لحمل الحالة في هذا الديالوج
-                  );
-                  showSurgicalToolDialog(context, toolModel);
-                },
-              );
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _loadTools();
+              });
+              await _toolsFuture;
             },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: tools.length,
+              itemBuilder: (context, index) {
+                final tool = tools[index];
+                final surgicalTool = tool['surgical_tools'] as Map<String, dynamic>?;
+
+                final id = tool['id'] ?? '';
+                final toolName = surgicalTool?['tool_name'] ?? 'Unknown';
+                final company = surgicalTool?['company'];
+                final imageUrl = surgicalTool?['image_url'];
+                final description = tool['description'] ?? '';
+                final price = (tool['price'] as num?)?.toDouble() ?? 0.0;
+                final status = tool['status'] ?? 'جديد';
+
+                // Translate status for display
+                String displayStatus = status;
+                if (status == 'جديد') displayStatus = 'surgical_tools_feature.status.new'.tr();
+                else if (status == 'مستعمل') displayStatus = 'surgical_tools_feature.status.used'.tr();
+                else if (status == 'كسر زيرو') displayStatus = 'surgical_tools_feature.status.like_new'.tr();
+
+                return _ModernToolCard(
+                  id: id,
+                  toolName: toolName,
+                  company: company,
+                  imageUrl: imageUrl,
+                  description: description,
+                  price: price,
+                  status: status,
+                  displayStatus: displayStatus,
+                  index: index,
+                  onTap: () {
+                    // تحويل البيانات لنموذج ProductModel لعرض الديالوج
+                    final toolModel = ProductModel(
+                      id: id,
+                      name: toolName,
+                      imageUrl: imageUrl ?? '',
+                      company: company,
+                      description: description,
+                      price: price,
+                      distributorId: widget.distributorName,
+                      distributorUuid: widget.distributorId,
+                      availablePackages: [],
+                      activePrinciple: status, // نستخدمه لحمل الحالة في هذا الديالوج
+                    );
+                    showSurgicalToolDialog(context, toolModel);
+                  },
+                );
+              },
+            ),
           );
         },
       ),

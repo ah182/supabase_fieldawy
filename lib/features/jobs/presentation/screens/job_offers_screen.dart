@@ -19,6 +19,7 @@ import 'package:fieldawy_store/features/home/presentation/widgets/search_history
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
 import 'package:fieldawy_store/features/jobs/application/job_filters_provider.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/core/providers/governorates_provider.dart';
 import 'package:fieldawy_store/core/models/governorate_model.dart';
 
@@ -707,6 +708,12 @@ class _AvailableJobsTab extends ConsumerWidget {
                     onPressed: () => ref.read(jobFiltersProvider.notifier).resetFilters(),
                     child: Text('إعادة تعيين الفلاتر'),
                   ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs(),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -731,7 +738,10 @@ class _AvailableJobsTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('products.error_occurred'.tr())),
+      error: (error, stack) => RefreshableErrorWidget(
+        message: 'products.error_occurred'.tr(),
+        onRetry: () => ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs(),
+      ),
     );
   }
 
@@ -798,6 +808,12 @@ class _MyJobOffersTab extends ConsumerWidget {
                     label: Text('job_offers_feature.add_first_job'.tr()),
                   ),
                 ],
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs(),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
               ],
             ),
           );
@@ -847,7 +863,10 @@ class _MyJobOffersTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('products.error_occurred'.tr())),
+      error: (error, stack) => RefreshableErrorWidget(
+        message: 'products.error_occurred'.tr(),
+        onRetry: () => ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs(),
+      ),
     );
   }
 

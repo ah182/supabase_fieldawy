@@ -1,6 +1,7 @@
 // ignore_for_file: unused_import
 
 import 'package:collection/collection.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
@@ -701,6 +702,12 @@ class FavoritesScreen extends HookConsumerWidget {
                                 style: Theme.of(context).textTheme.titleLarge,
                                 textAlign: TextAlign.center,
                               ),
+                              const SizedBox(height: 16),
+                              TextButton.icon(
+                                onPressed: () => ref.refresh(favoriteProductsProvider),
+                                icon: const Icon(Icons.refresh),
+                                label: Text('retry'.tr()),
+                              ),
                             ],
                           ),
                         ),
@@ -790,8 +797,9 @@ class FavoritesScreen extends HookConsumerWidget {
                     );
                   }(),
                 AsyncError(:final error) => SliverFillRemaining(
-                    child: Center(
-                      child: Text('Error: $error'),
+                    child: RefreshableErrorWidget(
+                      message: 'حدث خطأ: $error',
+                      onRetry: () => ref.refresh(favoriteProductsProvider),
                     ),
                   ),
                 _ => const SliverFillRemaining(

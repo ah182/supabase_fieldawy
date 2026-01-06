@@ -517,38 +517,49 @@ class TopProductsWidget extends ConsumerWidget {
                   final linkedProductId = offer['product_id'];
                   
                   if (isOcr) {
-                     // البحث في ocr_products
+                     // محاولة البحث المباشر في ocr_products باستخدام id
                      final productResponse = await Supabase.instance.client
                         .from('ocr_products')
-                        .select('image_url')
-                        .eq('ocr_product_id', linkedProductId)
+                        .select('image_url, product_name')
+                        .eq('id', linkedProductId)
                         .maybeSingle();
                      
-                     if (productResponse != null) {
+                     if (productResponse != null && productResponse['image_url'] != null) {
                        imageUrl = productResponse['image_url']?.toString();
+                       final pName = productResponse['product_name'];
+                       print('✅ Found top offer linked product (OCR): $pName, Image: $imageUrl');
                      } else {
-                       // Fallback: Try with 'id' just in case
-                       final fallbackResponse = await Supabase.instance.client
-                          .from('ocr_products')
-                          .select('image_url')
-                          .eq('id', linkedProductId)
-                          .maybeSingle();
-                       if (fallbackResponse != null) {
-                         imageUrl = fallbackResponse['image_url']?.toString();
-                       }
+                       // Fallback: ربما يكون الآيدي هو id لجدول distributor_ocr_products
+                       try {
+                         final distResponse = await Supabase.instance.client
+                            .from('distributor_ocr_products')
+                            .select('ocr_products(image_url, product_name)')
+                            .eq('id', linkedProductId)
+                            .maybeSingle();
+                         
+                         if (distResponse != null && distResponse['ocr_products'] != null) {
+                           final ocrData = distResponse['ocr_products'];
+                           if (ocrData is Map) {
+                             imageUrl = ocrData['image_url']?.toString();
+                             final pName = ocrData['product_name'];
+                             print('✅ Found top offer linked product (Distributor OCR): $pName, Image: $imageUrl');
+                           }
+                         }
+                       } catch (_) {}
                      }
                   } else {
                      final productResponse = await Supabase.instance.client
                         .from('products')
-                        .select('image_url')
+                        .select('image_url, name')
                         .eq('id', linkedProductId)
                         .maybeSingle();
                      
                      if (productResponse != null) {
                        imageUrl = productResponse['image_url']?.toString();
+                       final pName = productResponse['name'];
+                       print('✅ Found top offer linked product (Catalog): $pName, Image: $imageUrl');
                      }
                   }
-                  print('✅ Found top offer linked product image: $imageUrl');
                 }
               }
             } catch (e) {

@@ -17,6 +17,7 @@ import 'package:fieldawy_store/features/settings/presentation/screens/settings_s
 
 // Added Imports
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
@@ -612,6 +613,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                           onPressed: () => ref.read(leaderboardFiltersProvider.notifier).resetFilters(),
                           child: Text('إعادة تعيين الفلاتر'),
                         ),
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: () {
+                          ref.invalidate(leaderboardProvider);
+                          ref.invalidate(currentSeasonProvider);
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: Text('retry'.tr()),
+                      ),
                     ],
                   ),
                 );
@@ -701,7 +711,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error')),
+            error: (error, stack) => RefreshableErrorWidget(
+              message: 'حدث خطأ: $error',
+              onRetry: () {
+                ref.invalidate(leaderboardProvider);
+                ref.invalidate(currentSeasonProvider);
+              },
+            ),
           ),
         ),
         floatingActionButton: Container(

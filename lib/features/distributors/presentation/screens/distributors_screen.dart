@@ -16,6 +16,7 @@ import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_
 import 'package:fieldawy_store/features/home/presentation/widgets/search_history_view.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
 import 'package:fieldawy_store/services/subscription_cache_service.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/widgets/main_scaffold.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
@@ -625,6 +626,12 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                           onPressed: () => ref.read(distributorFiltersProvider.notifier).resetFilters(),
                           child: Text('إعادة تعيين الفلاتر'),
                         ),
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: () => ref.refresh(distributorsProvider),
+                        icon: const Icon(Icons.refresh),
+                        label: Text('retry'.tr()),
+                      ),
                     ],
                   ),
                 );
@@ -647,7 +654,10 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error')),
+            error: (error, stack) => RefreshableErrorWidget(
+              message: 'حدث خطأ: $error',
+              onRetry: () => ref.refresh(distributorsProvider),
+            ),
           ),
         ),
       ),

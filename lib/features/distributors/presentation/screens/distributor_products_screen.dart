@@ -30,6 +30,7 @@ import "package:fieldawy_store/features/products/application/favorites_provider.
 import "package:fieldawy_store/main.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:fieldawy_store/features/authentication/domain/user_model.dart";
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart';
 import "package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart";
@@ -1650,6 +1651,12 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                         .withAlpha(179),
                                   ),
                             ),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () => ref.refresh(distributorProductsProvider(_distributorId)),
+                              icon: const Icon(Icons.refresh),
+                              label: Text('retry'.tr()),
+                            ),
                           ],
                         ),
                       );
@@ -1813,29 +1820,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       );
                     },
                   ),
-                  error: (error, stack) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 60,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text('distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            ref.invalidate(distributorProductsProvider(_distributorId));
-                          },
-                          icon: const Icon(Icons.refresh, size: 18),
-                          label: Text('distributors_feature.retry'.tr()),
-                        ),
-                      ],
-                    ),
+                  error: (error, stack) => RefreshableErrorWidget(
+                    message: 'distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
+                    onRetry: () => ref.refresh(distributorProductsProvider(_distributorId)),
                   ),
                 ),
               ),
@@ -1866,6 +1853,12 @@ class DistributorProductsScreen extends HookConsumerWidget {
                                         .onSurface
                                         .withAlpha(179),
                                   ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () => ref.refresh(distributorVetSuppliesProvider(_distributorId)),
+                              icon: const Icon(Icons.refresh),
+                              label: Text('retry'.tr()),
                             ),
                           ],
                         ),
@@ -1956,8 +1949,9 @@ class DistributorProductsScreen extends HookConsumerWidget {
                       );
                     },
                   ),
-                  error: (error, stack) => Center(
-                    child: Text('Error: $error'),
+                  error: (error, stack) => RefreshableErrorWidget(
+                    message: 'حدث خطأ: $error',
+                    onRetry: () => ref.refresh(distributorVetSuppliesProvider(_distributorId)),
                   ),
                 ),
               ),
@@ -2249,7 +2243,7 @@ class DistributorProductsScreen extends HookConsumerWidget {
   }
 }
 
-class _VetSupplyCard extends ConsumerWidget {
+class _VetSupplyCard extends ConsumerStatefulWidget {
   final VetSupply supply;
   final String distributorName;
   final String distributorId;
@@ -2261,6 +2255,26 @@ class _VetSupplyCard extends ConsumerWidget {
     required this.distributorId,
     this.onTap,
   });
+
+  @override
+  ConsumerState<_VetSupplyCard> createState() => _VetSupplyCardState();
+}
+
+class _VetSupplyCardState extends ConsumerState<_VetSupplyCard> {
+  bool _hasBeenViewed = false;
+
+  void _handleVisibilityChanged(VisibilityInfo info) {
+    if (info.visibleFraction > 0.5 && !_hasBeenViewed) {
+      _hasBeenViewed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          // Assuming the notifier is available and we want to track views here too
+          // If not, this part can be removed or adjusted
+          // ref.read(allVetSuppliesNotifierProvider.notifier).incrementViews(widget.supply.id);
+        }
+      });
+    }
+  }
 
   ProductModel _convertSupplyToProduct(VetSupply supply, String distributorName) {
     return ProductModel(
@@ -2278,156 +2292,227 @@ class _VetSupplyCard extends ConsumerWidget {
       distributorUuid: supply.userId,
       createdAt: supply.createdAt,
       selectedPackage: supply.package,
-      isFavorite: false, 
+      isFavorite: false,
       views: supply.viewsCount,
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final order = ref.watch(orderProvider);
-    final productModel = _convertSupplyToProduct(supply, distributorName);
+    final productModel = _convertSupplyToProduct(widget.supply, widget.distributorName);
     
     final orderItemInCart = order.firstWhereOrNull((item) =>
         item.product.id == productModel.id);
     final isProductInCart = orderItemInCart != null;
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: supply.imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: isProductInCart
-                            ? Colors.green.withAlpha(230)
-                            : Theme.of(context).colorScheme.primary.withAlpha(230),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(30),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Icon(isProductInCart ? Icons.check : Icons.add, color: Colors.white),
-                        iconSize: 18,
-                        onPressed: () {
-                          if (isProductInCart) {
-                            ref.read(orderProvider.notifier).removeProduct(orderItemInCart);
-                          } else {
-                            ref.read(orderProvider.notifier).addProduct(productModel);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+    return VisibilityDetector(
+      key: Key('dist_supply_card_${widget.supply.id}'),
+      onVisibilityChanged: _handleVisibilityChanged,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Stack(
                   children: [
-                    Text(
-                      supply.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (distributorName.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.store_outlined, size: 12, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              distributorName,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      child: CachedNetworkImage(
+                        imageUrl: widget.supply.imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => Container(
+                          color: Colors.transparent,
+                          child: const Center(child: CircularProgressIndicator()),
                         ),
-                        const SizedBox(width: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.visibility_outlined,
-                                size: 14, color: Colors.grey[600]),
-                            const SizedBox(width: 4),
-                            Text(
-                              NumberFormatter.formatCompact(supply.viewsCount),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.transparent,
+                          child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
+                        ),
+                      ),
+                    ),
+                    // Add to Cart Button (Overlay)
+                    Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isProductInCart
+                              ? Colors.green.withAlpha(230)
+                              : theme.colorScheme.primary.withAlpha(230),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(30),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                      ],
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(isProductInCart ? Icons.check : Icons.add, color: Colors.white),
+                          iconSize: 18,
+                          onPressed: () {
+                            if (isProductInCart) {
+                              ref.read(orderProvider.notifier).removeProduct(orderItemInCart);
+                            } else {
+                              ref.read(orderProvider.notifier).addProduct(productModel);
+                            }
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Name
+                      Text(
+                        widget.supply.name,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      // User/Distributor Name
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          children: [
+                            Icon(Icons.store_outlined, size: 10, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                widget.distributorName,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  fontSize: 9,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      // Price and Views
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Price Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+
+                          // Views Badge
+                          if (widget.supply.viewsCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.secondary.withOpacity(0.1),
+                                    theme.colorScheme.secondary.withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.secondary.withOpacity(0.2),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 8,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    NumberFormatter.formatCompact(widget.supply.viewsCount),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.secondary,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Package Size
+                      if (widget.supply.package.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.supply.package,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

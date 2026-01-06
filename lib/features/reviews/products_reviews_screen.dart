@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'dart:async';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/features/products/presentation/screens/add_product_ocr_screen.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:fieldawy_store/widgets/user_details_sheet.dart';
@@ -253,6 +254,12 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
                         color: Colors.grey[500],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () => ref.refresh(activeReviewRequestsProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: Text('retry'.tr()),
+                    ),
                   ],
                 ),
               );
@@ -284,23 +291,9 @@ class ProductsWithReviewsScreen extends HookConsumerWidget {
             );
           },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 60, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('reviews_feature.loading_reviews_error'.tr()),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ref.invalidate(activeReviewRequestsProvider);
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'),
-              ),
-            ],
-          ),
+        error: (error, stack) => RefreshableErrorWidget(
+          message: 'reviews_feature.loading_reviews_error'.tr(),
+          onRetry: () => ref.refresh(activeReviewRequestsProvider),
         ),
       ),
         floatingActionButton: FloatingActionButton.extended(
@@ -1518,6 +1511,18 @@ class _ProductReviewDetailsScreenState
                             color: Colors.grey[500],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: () {
+                            ref.invalidate(productReviewsProvider((
+                              productId: widget.request.productId,
+                              productType: widget.request.productType,
+                            )));
+                            ref.invalidate(activeReviewRequestsProvider);
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: Text('retry'.tr()),
+                        ),
                       ],
                     ),
                   );
@@ -1546,8 +1551,15 @@ class _ProductReviewDetailsScreenState
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text('reviews_feature.loading_reviews_error'.tr()),
+              error: (error, stack) => RefreshableErrorWidget(
+                message: 'reviews_feature.loading_reviews_error'.tr(),
+                onRetry: () {
+                  ref.invalidate(productReviewsProvider((
+                    productId: widget.request.productId,
+                    productType: widget.request.productType,
+                  )));
+                  ref.invalidate(activeReviewRequestsProvider);
+                },
               ),
             ),
           ),

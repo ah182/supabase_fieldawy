@@ -27,6 +27,7 @@ import 'package:fieldawy_store/features/home/presentation/widgets/search_history
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 import 'package:fieldawy_store/features/home/presentation/widgets/quick_filters_bar.dart';
 import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_filters_provider.dart';
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/core/providers/governorates_provider.dart';
 import 'package:fieldawy_store/core/models/governorate_model.dart';
 
@@ -916,21 +917,26 @@ class _AllSuppliesTab extends ConsumerWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'vet_supplies_feature.empty.be_first'.tr(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
+                                      Text(
+                                        'vet_supplies_feature.empty.be_first'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                          height: 1.5,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextButton.icon(
+                                        onPressed: () => ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies(),
+                                        icon: const Icon(Icons.refresh),
+                                        label: Text('retry'.tr()),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
         return RefreshIndicator(
           onRefresh: () async {
             await ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
@@ -939,9 +945,9 @@ class _AllSuppliesTab extends ConsumerWidget {
             padding: const EdgeInsets.all(16.0),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.62,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 10.0,
+              childAspectRatio: 0.60,
             ),
             itemCount: filteredSupplies.length,
             itemBuilder: (context, index) {
@@ -959,26 +965,9 @@ class _AllSuppliesTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'vet_supplies_feature.messages.generic_error'.tr(),
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
-                            },
-                            child: Text('vet_supplies_feature.actions.retry'.tr()),
-                          ),
-                        ],
-                      ),
+                    error: (error, stack) => RefreshableErrorWidget(
+                      message: 'vet_supplies_feature.messages.generic_error'.tr(),
+                      onRetry: () => ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies(),
                     ),    );
   }
 
@@ -1370,21 +1359,26 @@ class _MySuppliesTab extends ConsumerWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'vet_supplies_feature.empty.add_first'.tr(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
+                                      Text(
+                                        'vet_supplies_feature.empty.add_first'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                          height: 1.5,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextButton.icon(
+                                        onPressed: () => ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies(),
+                                        icon: const Icon(Icons.refresh),
+                                        label: Text('retry'.tr()),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
         return RefreshIndicator(
           onRefresh: () async {
             await ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
@@ -1393,9 +1387,9 @@ class _MySuppliesTab extends ConsumerWidget {
             padding: const EdgeInsets.all(16.0),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.62,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 10.0,
+              childAspectRatio: 0.60,
             ),
             itemCount: filteredSupplies.length,
             itemBuilder: (context, index) {
@@ -1423,26 +1417,9 @@ class _MySuppliesTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'vet_supplies_feature.messages.generic_error'.tr(),
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
-              },
-              child: Text('vet_supplies_feature.actions.retry'.tr()),
-            ),
-          ],
-        ),
+      error: (error, stack) => RefreshableErrorWidget(
+        message: 'vet_supplies_feature.messages.generic_error'.tr(),
+        onRetry: () => ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies(),
       ),
     );
   }
@@ -2014,7 +1991,7 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -2075,7 +2052,7 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                               widget.supply.package,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onSecondaryContainer,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

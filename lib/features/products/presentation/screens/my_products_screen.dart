@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -1268,6 +1269,12 @@ class MyProductsScreen extends HookConsumerWidget {
                             icon: const Icon(Icons.add, size: 18),
                             label: Text('products.add_product'.tr()),
                           ),
+                          const SizedBox(height: 16),
+                          TextButton.icon(
+                            onPressed: () => ref.refresh(myProductsProvider),
+                            icon: const Icon(Icons.refresh),
+                            label: Text('retry'.tr()),
+                          ),
                         ],
                       ),
                     ),
@@ -1664,23 +1671,9 @@ class MyProductsScreen extends HookConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 60,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'products.error_occurred'.tr(namedArgs: {'error': error.toString()}),
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              child: RefreshableErrorWidget(
+                message: 'products.error_occurred'.tr(namedArgs: {'error': error.toString()}),
+                onRetry: () => ref.refresh(myProductsProvider),
               ),
             ),
           );
@@ -1824,6 +1817,12 @@ class MyProductsScreen extends HookConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 32, vertical: 16),
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton.icon(
+                            onPressed: () => ref.refresh(myOcrProductsProvider),
+                            icon: const Icon(Icons.refresh),
+                            label: Text('retry'.tr()),
                           ),
                         ],
                       ),
@@ -2272,23 +2271,9 @@ class MyProductsScreen extends HookConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 60,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'An error occurred: $error',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              child: RefreshableErrorWidget(
+                message: 'حدث خطأ: $error',
+                onRetry: () => ref.refresh(myOcrProductsProvider),
               ),
             ),
           );
