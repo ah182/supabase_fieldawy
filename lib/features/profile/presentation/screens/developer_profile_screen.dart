@@ -116,7 +116,7 @@ class DeveloperProfileScreen extends StatelessWidget {
                     curve: Curves.easeOutBack,
                     builder: (context, value, child) {
                       return Opacity(
-                        opacity: value,
+                        opacity: value.clamp(0.0, 1.0),
                         child: Transform.translate(
                           offset: Offset(0, 20 * (1 - value)),
                           child: child,
@@ -201,15 +201,41 @@ class DeveloperProfileScreen extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  // Footer
-                  Text(
-                    'Fieldawy Store v1.0.0',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark ? Colors.white30 : Colors.grey[400],
-                      letterSpacing: 1.2,
+                  // Stylish Version Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark 
+                        ? Colors.white.withOpacity(0.05) 
+                        : Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: isDark 
+                          ? Colors.white.withOpacity(0.1) 
+                          : Colors.grey.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_user_rounded,
+                          size: 14,
+                          color: accentColor.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Fieldawy Store v1.0.0',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.white54 : Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
