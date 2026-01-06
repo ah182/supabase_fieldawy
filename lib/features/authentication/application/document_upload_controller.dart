@@ -14,50 +14,48 @@ class DocumentUploadController extends StateNotifier<File?> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> pickImage(ImageSource source, BuildContext context) async {
-    Permission permission;
-    // اعتماد الحل النهائي الذي نجح
     if (source == ImageSource.camera) {
-      permission = Permission.camera;
-    } else {
-      permission = Permission.storage;
+      final permission = Permission.camera;
+      final PermissionStatus status = await permission.request();
+
+      if (!status.isGranted) {
+        if (status.isPermanentlyDenied) {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('الصلاحية مطلوبة'),
+                content: const Text(
+                    'لإكمال هذه العملية، الرجاء تمكين صلاحية الوصول للكاميرا يدويا من إعدادات التطبيق.'),
+                actions: [
+                  TextButton(
+                    child: const Text('إلغاء'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  TextButton(
+                    child: const Text('فتح الإعدادات'),
+                    onPressed: () {
+                      openAppSettings();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+        return;
+      }
     }
 
-    final PermissionStatus status = await permission.request();
-
-    if (status.isGranted) {
-      try {
-        final pickedFile =
-            await _picker.pickImage(source: source, imageQuality: 50);
-        if (pickedFile != null) {
-          state = File(pickedFile.path);
-        }
-      } catch (e) {
-        // Handle error
+    try {
+      final pickedFile =
+          await _picker.pickImage(source: source, imageQuality: 50);
+      if (pickedFile != null) {
+        state = File(pickedFile.path);
       }
-    } else if (status.isPermanentlyDenied) {
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('الصلاحية مطلوبة'),
-            content: const Text(
-                'لإكمال هذه العملية، الرجاء تمكين صلاحية الوصول يدويا من إعدادات التطبيق.'),
-            actions: [
-              TextButton(
-                child: const Text('إلغاء'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              TextButton(
-                child: const Text('فتح الإعدادات'),
-                onPressed: () {
-                  openAppSettings();
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        );
-      }
+    } catch (e) {
+      // Handle error
     }
   }
 

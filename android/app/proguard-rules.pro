@@ -20,3 +20,20 @@
 -keep class io.flutter.view.** { *; }
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
+
+# Google Sign-In & Firebase
+-keep class com.google.android.gms.** { *; }
+-keep class com.google.firebase.** { *; }
+-keep class com.google.api.** { *; }
+
+# Supabase (if applicable for native parts)
+-keep class io.supabase.** { *; }
+
+# Prevent R8 from stripping generic types in JSON serialization (common issue)
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+
+# Coroutines (if used by plugins)
+-keep class kotlinx.coroutines.** { *; }

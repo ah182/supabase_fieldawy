@@ -1884,17 +1884,24 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
                 flex: 3,
                 child: Stack(
                   children: [
-                    CachedNetworkImage(
-                      imageUrl: widget.supply.imageUrl,
+                    Container(
                       width: double.infinity,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator()),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[200],
-                        child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
+                      child: CachedNetworkImage(
+                        imageUrl: widget.supply.imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => Container(
+                          color: Colors.transparent,
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.transparent,
+                          child: Icon(Icons.inventory_2, size: 50, color: Colors.grey[400]),
+                        ),
                       ),
                     ),
                     if (widget.showActions)
@@ -1949,71 +1956,131 @@ class _SupplyCardState extends ConsumerState<_SupplyCard> {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0),
+                  padding: const EdgeInsets.all(8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Name
                       Text(
                         widget.supply.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
+                          height: 1.1,
+                          fontSize: 14,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (widget.supply.userName != null) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.person_outline, size: 12, color: Colors.grey[600]),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                widget.supply.userName!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.green,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Row(
+
+                      // User/Distributor Name
+                      if (widget.supply.userName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
                             children: [
-                              Icon(Icons.visibility_outlined,
-                                  size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                NumberFormatter.formatCompact(widget.supply.viewsCount),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
+                              Icon(Icons.store_outlined, size: 10, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  widget.supply.userName!,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                    fontSize: 9,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
+                        ),
+
+                      const SizedBox(height: 4),
+
+                      // Price and Views
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Price Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+
+                          // Views Badge
+                          if (widget.supply.viewsCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.secondary.withOpacity(0.1),
+                                    theme.colorScheme.secondary.withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.secondary.withOpacity(0.2),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 8,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    NumberFormatter.formatCompact(widget.supply.viewsCount),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.secondary,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
+
+                      // Package Size (Matching ProductCard style)
+                      if (widget.supply.package.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.supply.package,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
