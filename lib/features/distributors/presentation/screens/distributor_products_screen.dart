@@ -1822,7 +1822,11 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   ),
                   error: (error, stack) => RefreshableErrorWidget(
                     message: 'distributors_feature.products_screen.error_occurred'.tr(namedArgs: {'error': error.toString()}),
-                    onRetry: () => ref.refresh(distributorProductsProvider(_distributorId)),
+                    onRetry: () {
+                      ref.read(cachingServiceProvider).invalidateWithPrefix('distributor_products_edge_${_distributorId}');
+                      // ignore: unused_result
+                      ref.refresh(distributorProductsProvider(_distributorId));
+                    },
                   ),
                 ),
               ),
@@ -1951,7 +1955,11 @@ class DistributorProductsScreen extends HookConsumerWidget {
                   ),
                   error: (error, stack) => RefreshableErrorWidget(
                     message: 'حدث خطأ: $error',
-                    onRetry: () => ref.refresh(distributorVetSuppliesProvider(_distributorId)),
+                    onRetry: () {
+                      ref.read(cachingServiceProvider).invalidateWithPrefix('distributor_vet_supplies_${_distributorId}');
+                      // ignore: unused_result
+                      ref.refresh(distributorVetSuppliesProvider(_distributorId));
+                    },
                   ),
                 ),
               ),

@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/widgets/refreshable_error_widget.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -520,7 +521,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => RefreshableErrorWidget(
             message: 'orders.load_error'.tr(),
-            onRetry: () => ref.refresh(distributorsProvider),
+            onRetry: () {
+              ref.read(cachingServiceProvider).invalidate('distributors_edge');
+              // ignore: unused_result
+              ref.refresh(distributorsProvider);
+            },
           ),
         ),
       ),

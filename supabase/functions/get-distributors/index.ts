@@ -52,22 +52,62 @@ serve(async (req) => {
 
     const distributorIds = users.map((u) => u.id);
 
-    // 🟢 استعلام المنتجات الخاصة بالموزعين
-    const { data: productRows, error: productsError } = await supabase
-      .from("distributor_products")
-      .select("distributor_id")
-      .in("distributor_id", distributorIds);
+    // 🟢 استعلام المنتجات من جميع الجداول بالتوازي
+    const [
+      { data: standardProducts, error: standardError },
+      { data: ocrProducts, error: ocrError },
+      { data: surgicalTools, error: surgicalError },
+      { data: vetSupplies, error: vetError }
+    ] = await Promise.all([
+      // 1. منتجات عادية
+      supabase
+        .from("distributor_products")
+        .select("distributor_id")
+        .in("distributor_id", distributorIds),
+      
+      // 2. منتجات OCR
+      supabase
+        .from("distributor_ocr_products")
+        .select("distributor_id")
+        .in("distributor_id", distributorIds),
 
-    if (productsError) throw productsError;
+      // 3. أدوات جراحية
+      supabase
+        .from("distributor_surgical_tools")
+        .select("distributor_id")
+        .in("distributor_id", distributorIds),
 
-    // 🟢 حساب عدد المنتجات لكل موزع
+      // 4. مستلزمات بيطرية (Active only)
+      supabase
+        .from("vet_supplies")
+        .select("user_id")
+        .in("user_id", distributorIds)
+        .eq("status", "active")
+    ]);
+
+    if (standardError) throw standardError;
+    if (ocrError) throw ocrError;
+    if (surgicalError) throw surgicalError;
+    if (vetError) throw vetError;
+
+    // 🟢 حساب المجموع الكلي لكل موزع
     const counts = new Map<string, number>();
-    for (const row of productRows) {
-      counts.set(
-        row.distributor_id,
-        (counts.get(row.distributor_id) || 0) + 1,
-      );
-    }
+
+    // دالة مساعدة لجمع الأعداد
+    const addCounts = (items: any[] | null, idKey: string) => {
+      if (!items) return;
+      for (const item of items) {
+        const id = item[idKey];
+        if (id) {
+          counts.set(id, (counts.get(id) || 0) + 1);
+        }
+      }
+    };
+
+    addCounts(standardProducts, 'distributor_id');
+    addCounts(ocrProducts, 'distributor_id');
+    addCounts(surgicalTools, 'distributor_id');
+    addCounts(vetSupplies, 'user_id');
 
     // 🟢 تجهيز النتيجة النهائية
     const result = users.map((u) => ({

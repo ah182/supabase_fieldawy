@@ -3,6 +3,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../../widgets/shimmer_loader.dart';
@@ -107,6 +108,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         password: password
       );
       
+    } on AuthException catch (e) {
+      if (mounted) {
+        String errorMessage = 'login_failed'.tr();
+        if (e.message.contains('Invalid login credentials')) {
+          errorMessage = context.locale.languageCode == 'ar' 
+              ? 'رقم الهاتف أو كلمة المرور غير صحيحة' 
+              : 'Invalid phone number or password';
+        }
+        _showError(errorMessage);
+      }
     } catch (e) {
       if (mounted) _showError('login_failed'.tr()); 
     } finally {

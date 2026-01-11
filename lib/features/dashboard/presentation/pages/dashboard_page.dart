@@ -1,3 +1,4 @@
+import 'package:fieldawy_store/features/dashboard/data/dashboard_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -47,6 +48,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Future<void> _refreshDashboard() async {
+    // Invalidate cache first
+    ref.read(dashboardRepositoryProvider).invalidateDashboardCache();
+    
     final currentCount = ref.read(dashboardRefreshProvider);
     ref.read(dashboardRefreshProvider.notifier).state = currentCount + 1;
   }

@@ -15,6 +15,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'dart:ui' as ui;
+import 'package:fieldawy_store/features/products/application/product_interaction_provider.dart';
 
 // Set لتتبع المنتجات التي تم حساب مشاهداتها لتجنب التكرار
 // ignore: unused_element
@@ -395,6 +396,139 @@ class ProductCard extends ConsumerWidget {
                     ),
                   // === Badge إضافي (مثل تاريخ الصلاحية) ===
                   if (overlayBadge != null) overlayBadge!,
+
+                  // === Like / Dislike Buttons (Bottom Right) ===
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final interactionMap = ref.watch(productInteractionProvider);
+                        final key = '${product.id}_${product.distributorId ?? ""}';
+                        final state = interactionMap[key];
+                        final currentInteraction = state?.userInteraction;
+                        
+                        // Load interaction if not loaded
+                        if (!interactionMap.containsKey(key)) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            ref.read(productInteractionProvider.notifier).loadInteraction(
+                                  product.id,
+                                  product.distributorId ?? "",
+                                );
+                          });
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Dislike Button & Count
+                              InkWell(
+                                onTap: () {
+                                  ref.read(productInteractionProvider.notifier).toggleInteraction(
+                                        product.id,
+                                        product.distributorId ?? "",
+                                        'dislike',
+                                      );
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        currentInteraction == 'dislike'
+                                            ? Icons.thumb_down
+                                            : Icons.thumb_down_outlined,
+                                        size: 14,
+                                        color: currentInteraction == 'dislike'
+                                            ? Colors.red
+                                            : Colors.grey,
+                                      ),
+                                      if ((state?.dislikes ?? 0) > 0) ...[
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          NumberFormatter.formatCompact(state!.dislikes),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: currentInteraction == 'dislike' 
+                                                ? Colors.red 
+                                                : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              
+                              // Divider
+                              Container(
+                                height: 12,
+                                width: 1,
+                                margin: const EdgeInsets.symmetric(horizontal: 6),
+                                color: Colors.grey.withOpacity(0.3),
+                              ),
+
+                              // Like Button & Count
+                              InkWell(
+                                onTap: () {
+                                  ref.read(productInteractionProvider.notifier).toggleInteraction(
+                                        product.id,
+                                        product.distributorId ?? "",
+                                        'like',
+                                      );
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        currentInteraction == 'like'
+                                            ? Icons.thumb_up
+                                            : Icons.thumb_up_outlined,
+                                        size: 14,
+                                        color: currentInteraction == 'like'
+                                            ? Colors.blue
+                                            : Colors.grey,
+                                      ),
+                                      if ((state?.likes ?? 0) > 0) ...[
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          NumberFormatter.formatCompact(state!.likes),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: currentInteraction == 'like' 
+                                                ? Colors.blue 
+                                                : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -453,6 +587,7 @@ class ProductCard extends ConsumerWidget {
                                             ?.copyWith(
                                               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                               fontWeight: FontWeight.w500,
+                                              fontSize: 10,
                                             ),
                                       ),
                                     ),
@@ -481,6 +616,7 @@ class ProductCard extends ConsumerWidget {
                                         ?.copyWith(
                                           color: Theme.of(context).colorScheme.primary,
                                           fontWeight: FontWeight.bold,
+                                          fontSize: 10,
                                         ),
                                   ),
                                 ),
@@ -535,7 +671,7 @@ class ProductCard extends ConsumerWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 2),
+
 
                     // === اسم الموزع ===
                     Row(
@@ -656,6 +792,7 @@ class _PriceChangeBadge extends StatelessWidget {
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: solidBadgeColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 10,
                 ),
           ),
         ],

@@ -18,12 +18,12 @@ export default {
     }
 
     const url = new URL(request.url);
-    
+
     // 🎯 Custom Notification Endpoint (من Dashboard)
     if (url.pathname === '/send-custom-notification' && request.method === 'POST') {
       return handleCustomNotification(request, env, corsHeaders);
     }
-    
+
     // Health check endpoint
     if (url.pathname === '/health' && request.method === 'GET') {
       return new Response(JSON.stringify({ status: 'ok', service: 'fieldawy-notifications' }), {
@@ -34,15 +34,15 @@ export default {
 
     // Only accept POST requests for webhook
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { 
+      return new Response('Method not allowed', {
         status: 405,
-        headers: corsHeaders 
+        headers: corsHeaders
       });
     }
 
     try {
       const payload = await request.json();
-      
+
       console.log('📩 Received webhook from Supabase');
       console.log('   Type:', payload.type);
       console.log('   Table:', payload.table);
@@ -50,11 +50,11 @@ export default {
 
       // Extract data
       const { type: operation, table, record, old_record } = payload;
-      
+
       if (!record) {
-        return new Response('No record in payload', { 
+        return new Response('No record in payload', {
           status: 400,
-          headers: corsHeaders 
+          headers: corsHeaders
         });
       }
 
@@ -80,12 +80,12 @@ export default {
         const bookName = record.name || 'كتاب بيطري';
         const authorName = record.author || 'مؤلف';
         const isNew = operation === 'INSERT';
-        
+
         const title = isNew ? '📚 كتاب بيطري جديد' : '📚 تحديث كتاب بيطري';
-        const body = isNew 
+        const body = isNew
           ? `${bookName}\nبواسطة ${authorName}`
           : `تم تحديث ${bookName}`;
-        
+
         const extraData = {
           type: 'books',
           operation,
@@ -94,7 +94,7 @@ export default {
           author_name: authorName,
           price: record.price ? String(record.price) : '0',
         };
-        
+
         return await sendFCMNotification(env, title, body, 'books', extraData);
       }
 
@@ -102,12 +102,12 @@ export default {
       if (table === 'vet_courses') {
         const courseTitle = record.title || 'كورس بيطري';
         const isNew = operation === 'INSERT';
-        
+
         const title = isNew ? '🎓 كورس بيطري جديد' : '🎓 تحديث كورس بيطري';
-        const body = isNew 
+        const body = isNew
           ? `${courseTitle}`
           : `تم تحديث ${courseTitle}`;
-        
+
         const extraData = {
           type: 'courses',
           operation,
@@ -115,7 +115,7 @@ export default {
           course_title: courseTitle,
           price: record.price ? String(record.price) : '0',
         };
-        
+
         return await sendFCMNotification(env, title, body, 'courses', extraData);
       }
 
@@ -123,12 +123,12 @@ export default {
       if (table === 'job_offers') {
         const jobTitle = record.title || 'وظيفة بيطرية';
         const isNew = operation === 'INSERT';
-        
+
         const title = isNew ? '💼 وظيفة بيطرية جديدة' : '💼 تحديث وظيفة بيطرية';
-        const body = isNew 
+        const body = isNew
           ? `${jobTitle}`
           : `تم تحديث ${jobTitle}`;
-        
+
         const extraData = {
           type: 'job_offers',
           operation,
@@ -136,7 +136,7 @@ export default {
           job_title: jobTitle,
           phone: record.phone || null,
         };
-        
+
         return await sendFCMNotification(env, title, body, 'job_offers', extraData);
       }
 
@@ -144,12 +144,12 @@ export default {
       if (table === 'vet_supplies') {
         const supplyName = record.name || 'مستلزم بيطري';
         const isNew = operation === 'INSERT';
-        
+
         const title = isNew ? '🏥 مستلزم بيطري جديد' : '🏥 تحديث مستلزم بيطري';
-        const body = isNew 
+        const body = isNew
           ? `${supplyName}`
           : `تم تحديث ${supplyName}`;
-        
+
         const extraData = {
           type: 'vet_supplies',
           operation,
@@ -158,7 +158,7 @@ export default {
           price: record.price ? String(record.price) : null,
           phone: record.phone || null,
         };
-        
+
         return await sendFCMNotification(env, title, body, 'vet_supplies', extraData);
       }
 
@@ -172,10 +172,10 @@ export default {
             headers: corsHeaders
           });
         }
-        
+
         let productName = record.product_name || 'منتج';
         let requesterName = 'مستخدم';
-        
+
         // جلب اسم صاحب الطلب من users
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY && record.requested_by) {
           try {
@@ -196,12 +196,12 @@ export default {
             console.error('Error fetching requester data:', err);
           }
         }
-        
+
         tabName = 'reviews';
-        
+
         const title = '⭐ طلب تقييم جديد';
         const body = `طلب ${requesterName} تقييم ${productName}`;
-        
+
         return await sendFCMNotification(env, title, body, 'reviews', {
           type: 'new_review_request',
           review_request_id: record.id,
@@ -209,7 +209,7 @@ export default {
           product_type: record.product_type,
         });
       }
-      
+
       // Handle product reviews (comments)
       if (table === 'product_reviews') {
         // فقط للإضافات الجديدة (INSERT)
@@ -220,7 +220,7 @@ export default {
             headers: corsHeaders
           });
         }
-        
+
         // ✅ ✅ ✅ تجاهل التقييمات بدون تعليق!
         const comment = record.comment || '';
         if (!comment || comment.trim() === '') {
@@ -230,11 +230,11 @@ export default {
             headers: corsHeaders
           });
         }
-        
+
         let productName = 'منتج';
         let reviewerName = 'مستخدم';
         const rating = record.rating || 0;
-        
+
         // جلب البيانات من Supabase
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
           try {
@@ -254,7 +254,7 @@ export default {
                 productName = reqData[0].product_name;
               }
             }
-            
+
             // جلب اسم المراجع من users
             if (record.user_id) {
               const userResponse = await fetch(
@@ -275,13 +275,13 @@ export default {
             console.error('Error fetching user/product data:', err);
           }
         }
-        
+
         tabName = 'reviews';
-        
+
         // رسالة واضحة عن التقييم
         const title = `⭐ تم تقييم ${productName}`;
         const body = `${reviewerName} (${rating}⭐): ${comment}`;
-        
+
         return await sendFCMNotification(env, title, body, 'reviews', {
           type: 'new_product_review',
           review_id: record.id,
@@ -296,11 +296,36 @@ export default {
       if (table === 'distributor_surgical_tools' || table === 'surgical_tools') {
         productName = record.tool_name || record.description || 'أداة جراحية';
         tabName = 'surgical';
-        
+
         // Check price update for surgical tools
         if (operation === 'UPDATE' && old_record && old_record.price !== record.price) {
           tabName = 'price_action';
           isPriceUpdate = true;
+        }
+
+        // Fetch distributor name if available
+        if (record.distributor_id && env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
+          try {
+            const userResponse = await fetch(
+              `${env.SUPABASE_URL}/rest/v1/users?id=eq.${record.distributor_id}&select=display_name,email`,
+              {
+                headers: {
+                  'apikey': env.SUPABASE_SERVICE_KEY,
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                }
+              }
+            );
+            const userData = await userResponse.json();
+            if (userData && userData[0]) {
+              const distributorName = userData[0].display_name || userData[0].email || '';
+              if (distributorName) {
+                // Combine distributor name with product name
+                productName = `${distributorName}\n${productName}`;
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching distributor for surgical tool:', err);
+          }
         }
       } else if (table === 'offers') {
         // Skip offers without description
@@ -317,7 +342,7 @@ export default {
           try {
             const tableName = record.is_ocr ? 'ocr_products' : 'products';
             const columnName = record.is_ocr ? 'product_name' : 'name';
-            
+
             const response = await fetch(
               `${env.SUPABASE_URL}/rest/v1/${tableName}?id=eq.${record.product_id}&select=${columnName}`,
               {
@@ -327,7 +352,7 @@ export default {
                 }
               }
             );
-            
+
             const data = await response.json();
             if (data && data[0]) {
               const prodName = data[0][columnName];
@@ -343,7 +368,7 @@ export default {
         } else {
           productName = record.description || 'عرض';
         }
-        
+
         // Check price update for offers
         if (operation === 'UPDATE' && old_record && old_record.price !== record.price) {
           tabName = 'price_action';
@@ -355,7 +380,7 @@ export default {
         // Get product name and distributor name separately for flexible notification
         let prodName = 'منتج';
         let distributorName = '';
-        
+
         if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
           try {
             // Fetch product name
@@ -388,7 +413,7 @@ export default {
                 prodName = prodData[0].product_name;
               }
             }
-            
+
             // Fetch distributor name
             if (record.distributor_id) {
               const userResponse = await fetch(
@@ -407,24 +432,28 @@ export default {
                 console.log('   Distributor name:', distributorName);
               }
             }
-            
-            // Keep product name clean (without distributor)
-            // Client will combine them based on subscription status
-            productName = prodName;
+
+            // Combine product name and distributor name for all users
+            // Client will display this directly
+            if (distributorName) {
+              productName = `${distributorName}\n${prodName}`;
+            } else {
+              productName = prodName;
+            }
           } catch (err) {
             console.error('Error fetching product/distributor:', err);
             productName = 'منتج';
           }
         }
-        
+
         // Store separately for flexible client-side handling
         record._product_name_only = prodName;
         record._distributor_name = distributorName;
-        
+
         // Check expiration date
         let isExpiringSoon = false;
         let expirationDate = record.expiration_date;
-        
+
         // Fetch expiration_date if not in payload
         if (!expirationDate && record.id && env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
           try {
@@ -445,7 +474,7 @@ export default {
             console.error('Error fetching expiration_date:', err);
           }
         }
-        
+
         // Check if expiring soon (within 365 days)
         if (expirationDate) {
           const expDate = new Date(expirationDate);
@@ -455,7 +484,7 @@ export default {
             isExpiringSoon = true;
           }
         }
-        
+
         // Determine tab_name
         if (operation === 'UPDATE') {
           if (old_record && old_record.price !== record.price) {
@@ -467,11 +496,11 @@ export default {
         } else if (isExpiringSoon) {
           tabName = 'expire_soon';
         }
-        
+
         // Skip regular product inserts (but NOT from distributors)
         // Distributor products should trigger notifications for subscribers
-        if (operation === 'INSERT' && tabName === 'home' && 
-            table !== 'distributor_products' && table !== 'distributor_ocr_products') {
+        if (operation === 'INSERT' && tabName === 'home' &&
+          table !== 'distributor_products' && table !== 'distributor_ocr_products') {
           console.log('⏭️ Skipping regular product insert');
           return new Response('Skipped - regular product insert', {
             status: 200,
@@ -558,7 +587,7 @@ export default {
       const accessToken = await getAccessToken(serviceAccount);
 
       const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-      
+
       // Build data payload with flexible fields for client-side customization
       const dataPayload = {
         title: title,
@@ -566,20 +595,21 @@ export default {
         type: 'product_update',
         screen: screen,
       };
-      
+
       // Add distributor info for all distributor products (new or price update)
-      if (record.distributor_id && (table === 'distributor_products' || table === 'distributor_ocr_products')) {
+      if (record.distributor_id && (table === 'distributor_products' || table === 'distributor_ocr_products' || table === 'distributor_surgical_tools')) {
         dataPayload.distributor_id = record.distributor_id;
-        
-        // Add separated product and distributor names for flexible handling
-        if (record._product_name_only) {
-          dataPayload.product_name = record._product_name_only;
-        }
-        if (record._distributor_name) {
-          dataPayload.distributor_name = record._distributor_name;
-        }
+
+        // Use the combined productName (which includes distributor name)
+        // This ensures all users see the distributor name
+        dataPayload.product_name = productName;
+
+        // Do NOT send distributor_name separately to prevent client from duplicating it
+        // if (record._distributor_name) {
+        //   dataPayload.distributor_name = record._distributor_name;
+        // }
       }
-      
+
       const message = {
         message: {
           topic: 'all_users',
@@ -640,14 +670,14 @@ async function sendFCMNotification(env, title, body, screen, extraData = {}) {
     const accessToken = await getAccessToken(serviceAccount);
 
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-    
+
     const dataPayload = {
       title: title,
       body: body,
       screen: screen,
       ...extraData,
     };
-    
+
     const message = {
       message: {
         topic: 'all_users',
@@ -698,7 +728,7 @@ async function sendFCMNotification(env, title, body, screen, extraData = {}) {
 // Helper function to get Firebase access token
 async function getAccessToken(serviceAccount) {
   const jwtHeader = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  
+
   const now = Math.floor(Date.now() / 1000);
   const jwtClaimSet = {
     iss: serviceAccount.client_email,
@@ -707,10 +737,10 @@ async function getAccessToken(serviceAccount) {
     exp: now + 3600,
     iat: now,
   };
-  
+
   const jwtClaimSetEncoded = btoa(JSON.stringify(jwtClaimSet));
   const signatureInput = `${jwtHeader}.${jwtClaimSetEncoded}`;
-  
+
   // Import private key
   const privateKey = await crypto.subtle.importKey(
     'pkcs8',
@@ -719,28 +749,28 @@ async function getAccessToken(serviceAccount) {
     false,
     ['sign']
   );
-  
+
   // Sign
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5',
     privateKey,
     new TextEncoder().encode(signatureInput)
   );
-  
+
   const jwtSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
-  
+
   const jwt = `${signatureInput}.${jwtSignature}`;
-  
+
   // Exchange JWT for access token
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
-  
+
   const data = await response.json();
   return data.access_token;
 }
@@ -751,7 +781,7 @@ function pemToArrayBuffer(pem) {
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
     .replace(/\s/g, '');
-  
+
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -765,20 +795,20 @@ function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
   // تحويل الكائنات لمصفوفات من المفاتيح
   const oldKeys = Object.keys(oldRecord);
   const newKeys = Object.keys(newRecord);
-  
+
   // التحقق من أن عدد الحقول متساوٍ
   if (oldKeys.length !== newKeys.length) {
     return false;
   }
-  
+
   let hasChanges = false;
   let onlyViewsChanged = true;
-  
+
   // فحص كل حقل
   for (const key of oldKeys) {
     if (oldRecord[key] !== newRecord[key]) {
       hasChanges = true;
-      
+
       // إذا تغير حقل غير views أو views_count أو updated_at، فهذا ليس تحديث views فقط
       if (key !== 'views' && key !== 'views_count' && key !== 'updated_at') {
         onlyViewsChanged = false;
@@ -786,7 +816,7 @@ function checkIfOnlyViewsUpdate(oldRecord, newRecord) {
       }
     }
   }
-  
+
   // إرجاع true إذا كان هناك تغييرات وكانت فقط على views أو views_count أو updated_at
   return hasChanges && onlyViewsChanged;
 }
@@ -860,18 +890,18 @@ async function sendBatchNotifications(tokens, title, message, accessToken, proje
 
   // FCM HTTP v1 يدعم multicast لـ 500 token
   const batchSize = 500;
-  
+
   for (let i = 0; i < tokens.length; i += batchSize) {
     const batch = tokens.slice(i, i + batchSize);
-    
+
     try {
       // استخدام multicast للـ batch
-      const promises = batch.map(token => 
+      const promises = batch.map(token =>
         sendSingleNotification(token, title, message, accessToken, projectId)
       );
-      
+
       const results = await Promise.allSettled(promises);
-      
+
       results.forEach(result => {
         if (result.status === 'fulfilled' && result.value === true) {
           successCount++;
@@ -879,9 +909,9 @@ async function sendBatchNotifications(tokens, title, message, accessToken, proje
           failureCount++;
         }
       });
-      
+
       console.log(`  Batch ${Math.floor(i / batchSize) + 1}: ✅ ${successCount} ❌ ${failureCount}`);
-      
+
     } catch (error) {
       console.error(`Batch ${i} failed:`, error);
       failureCount += batch.length;
@@ -895,7 +925,7 @@ async function sendBatchNotifications(tokens, title, message, accessToken, proje
 async function sendSingleNotification(token, title, message, accessToken, projectId) {
   try {
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-    
+
     const fcmMessage = {
       message: {
         token: token,

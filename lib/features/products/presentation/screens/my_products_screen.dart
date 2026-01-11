@@ -412,8 +412,8 @@ class MyProductsScreen extends HookConsumerWidget {
       animType: AnimType.scale,
       title: 'products.confirm_delete'.tr(),
       desc: descMessage,
-      btnCancelText: 'products.cancel'.tr(),
-      btnOkText: 'products.delete'.tr(),
+      btnCancelText: context.locale.languageCode == 'ar' ? 'الغاء' : 'Cancel',
+      btnOkText: context.locale.languageCode == 'ar' ? 'حذف' : 'Delete',
       btnCancelIcon: Icons.cancel_outlined,
       btnOkIcon: Icons.delete,
       btnCancelColor: Colors.grey,
@@ -492,8 +492,8 @@ class MyProductsScreen extends HookConsumerWidget {
           ),
         ],
       ),
-      btnCancelText: 'products.cancel'.tr(),
-      btnOkText: 'products.update'.tr(),
+      btnCancelText: context.locale.languageCode == 'ar' ? 'الغاء' : 'Cancel',
+      btnOkText: context.locale.languageCode == 'ar' ? 'تحديث' : 'Update',
       btnCancelIcon: Icons.cancel_outlined,
       btnOkIcon: Icons.check,
       btnCancelColor: Colors.grey,
@@ -1673,7 +1673,11 @@ class MyProductsScreen extends HookConsumerWidget {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: RefreshableErrorWidget(
                 message: 'products.error_occurred'.tr(namedArgs: {'error': error.toString()}),
-                onRetry: () => ref.refresh(myProductsProvider),
+                onRetry: () {
+                  ref.read(cachingServiceProvider).invalidateWithPrefix('my_products_');
+                  // ignore: unused_result
+                  ref.refresh(myProductsProvider);
+                },
               ),
             ),
           );
@@ -2273,7 +2277,11 @@ class MyProductsScreen extends HookConsumerWidget {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: RefreshableErrorWidget(
                 message: 'حدث خطأ: $error',
-                onRetry: () => ref.refresh(myOcrProductsProvider),
+                onRetry: () {
+                  ref.read(cachingServiceProvider).invalidateWithPrefix('my_ocr_products_');
+                  // ignore: unused_result
+                  ref.refresh(myOcrProductsProvider);
+                },
               ),
             ),
           );

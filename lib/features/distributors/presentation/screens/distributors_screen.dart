@@ -656,7 +656,11 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => RefreshableErrorWidget(
               message: 'حدث خطأ: $error',
-              onRetry: () => ref.refresh(distributorsProvider),
+              onRetry: () {
+                ref.read(cachingServiceProvider).invalidate('distributors_edge');
+                // ignore: unused_result
+                ref.refresh(distributorsProvider);
+              },
             ),
           ),
         ),

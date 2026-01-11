@@ -189,7 +189,12 @@ class _ProfileCompletionScreenState
         _hideLoadingDialog();
         
         String errorMessage = 'auth.profile.update_failed'.tr();
-        if (e.toString().contains('email_exists') || e.toString().contains('already been registered')) {
+        final errorString = e.toString().toLowerCase();
+        
+        if (errorString.contains('email_exists') || 
+            errorString.contains('already been registered') ||
+            errorString.contains('duplicate key') ||
+            errorString.contains('23505')) {
           errorMessage = 'phone_already_exists'.tr();
         }
 
@@ -393,9 +398,43 @@ class _ProfileCompletionScreenState
 
               /// زر الحفظ أو اللودر
               _buildGradientButton(
-                        text: 'auth.profile.finish_save'.tr(),
-                        onPressed: _submitProfile,
-                      ),
+                text: 'auth.profile.finish_save'.tr(),
+                onPressed: _submitProfile,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 55,
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () async {
+                    await ref.read(authServiceProvider).signOut();
+                    if (context.mounted) {
+                       Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const AuthGate()),
+                        (Route<dynamic> route) => false,
+                      );
+                    }
+                  },
+                  child: Text(
+                    context.locale.languageCode == 'ar' 
+                        ? 'حذف الحساب والمتابعة من جديد' 
+                        : 'Delete Account & Restart',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

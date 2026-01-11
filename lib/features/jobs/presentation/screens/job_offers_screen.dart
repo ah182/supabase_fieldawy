@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/features/jobs/application/job_offers_provider.dart';
 import 'package:fieldawy_store/features/jobs/domain/job_offer_model.dart';
 import 'package:fieldawy_store/features/jobs/presentation/screens/add_job_offer_screen.dart';
@@ -740,7 +741,10 @@ class _AvailableJobsTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => RefreshableErrorWidget(
         message: 'products.error_occurred'.tr(),
-        onRetry: () => ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs(),
+        onRetry: () {
+          ref.read(cachingServiceProvider).invalidate('all_job_offers_v2');
+          ref.read(allJobOffersNotifierProvider.notifier).refreshAllJobs();
+        },
       ),
     );
   }
@@ -865,7 +869,10 @@ class _MyJobOffersTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => RefreshableErrorWidget(
         message: 'products.error_occurred'.tr(),
-        onRetry: () => ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs(),
+        onRetry: () {
+          ref.read(cachingServiceProvider).invalidateWithPrefix('my_job_offers_');
+          ref.read(myJobOffersNotifierProvider.notifier).refreshMyJobs();
+        },
       ),
     );
   }

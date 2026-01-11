@@ -114,6 +114,53 @@ serve(async (req) => {
       allProducts.push(...ocrProducts);
     }
 
+    // ========================================
+    // 3. Fetch from distributor_surgical_tools
+    // ========================================
+    const { data: toolRows, error: toolRowsError } = await supabase
+      .from("distributor_surgical_tools")
+      .select("surgical_tool_id, price, description, distributor_name")
+      .eq("distributor_id", distributorId);
+
+    if (toolRowsError) throw toolRowsError;
+
+    if (toolRows && toolRows.length > 0) {
+      const toolIds = toolRows.map((row) => row.surgical_tool_id);
+
+      const { data: toolsDocs, error: toolsError } = await supabase
+        .from("surgical_tools")
+        .select("*")
+        .in("id", toolIds);
+
+      if (toolsError) throw toolsError;
+
+      const toolsMap = new Map(toolsDocs.map((doc) => [doc.id, doc]));
+
+      const tools = toolRows
+        .map((row) => {
+          const tool = toolsMap.get(row.surgical_tool_id);
+          if (!tool) return null;
+          return {
+            id: tool.id,
+            name: tool.tool_name,
+            company: tool.company,
+            activePrinciple: null,
+            imageUrl: tool.image_url,
+            package: null,
+            availablePackages: [],
+            price: row.price,
+            oldPrice: null,
+            priceUpdatedAt: null,
+            selectedPackage: null,
+            distributorId: row.distributor_name,
+            description: row.description,
+          };
+        })
+        .filter((p) => p !== null);
+
+      allProducts.push(...tools);
+    }
+
     return new Response(JSON.stringify(allProducts), {
       headers: {
         "Content-Type": "application/json",

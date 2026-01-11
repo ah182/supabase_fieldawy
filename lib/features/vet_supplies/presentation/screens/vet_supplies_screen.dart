@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fieldawy_store/core/caching/caching_service.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
@@ -967,7 +968,10 @@ class _AllSuppliesTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
                     error: (error, stack) => RefreshableErrorWidget(
                       message: 'vet_supplies_feature.messages.generic_error'.tr(),
-                      onRetry: () => ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies(),
+                      onRetry: () {
+                        ref.read(cachingServiceProvider).invalidate('all_vet_supplies');
+                        ref.read(allVetSuppliesNotifierProvider.notifier).refreshAllSupplies();
+                      },
                     ),    );
   }
 
@@ -1419,7 +1423,10 @@ class _MySuppliesTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => RefreshableErrorWidget(
         message: 'vet_supplies_feature.messages.generic_error'.tr(),
-        onRetry: () => ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies(),
+        onRetry: () {
+          ref.read(cachingServiceProvider).invalidateWithPrefix('my_vet_supplies_');
+          ref.read(myVetSuppliesNotifierProvider.notifier).refreshMySupplies();
+        },
       ),
     );
   }
