@@ -2,8 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/products/application/favorites_provider.dart';
+// ignore: unused_import
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
+// ignore: unused_import
 import 'package:fieldawy_store/main.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
@@ -16,6 +18,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'dart:ui' as ui;
 import 'package:fieldawy_store/features/products/application/product_interaction_provider.dart';
+import 'package:fieldawy_store/features/comments/presentation/sheets/product_comments_sheet.dart';
 
 // Set لتتبع المنتجات التي تم حساب مشاهداتها لتجنب التكرار
 // ignore: unused_element
@@ -269,6 +272,7 @@ class ProductCard extends ConsumerWidget {
     print('ProductCard Build: name=${product.name}, distributorId=${product.distributorId}, distributorUuid=${product.distributorUuid}, currentName=$currentDistributorName');
 
     final favoritesMap = ref.watch(favoritesProvider);
+    // ignore: unused_local_variable
     final isFavorite = favoritesMap.containsKey(
         '${product.id}_${product.distributorId}_${product.selectedPackage}');
 
@@ -318,7 +322,7 @@ class ProductCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  // === أيقونة المفضلة ===
+                  // === Comment Icon (Replaces Favorite) ===
                   Positioned(
                     top: 4,
                     right: 4,
@@ -339,38 +343,17 @@ class ProductCard extends ConsumerWidget {
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite
-                              ? Colors.red
-                              : Theme.of(context).colorScheme.error,
+                          Icons.comment_outlined, // Changed to outlined as per typical "action" style or keep filled? User didn't specify, but outlined fits "favorite border" replacement.
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        iconSize: 14,
+                        // iconSize: 14, // Handled in Icon above or here
                         onPressed: () {
-                          ref
-                              .read(favoritesProvider.notifier)
-                              .toggleFavorite(
-                                product,
-                                type: productType,
-                                expirationDate: expirationDate,
-                                status: status,
-                                showPriceChange: showPriceChange,
-                              );
-                          scaffoldMessengerKey.currentState?.showSnackBar(
-                            SnackBar(
-                              elevation: 0,
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: Colors.transparent,
-                              content: AwesomeSnackbarContent(
-                                title: isFavorite ? 'تم الحذف' : 'نجاح',
-                                message: isFavorite
-                                    ? 'تمت إزالة ${product.name} من المفضلة'
-                                    : 'تمت إضافة ${product.name} للمفضلة',
-                                contentType: isFavorite
-                                    ? ContentType.failure
-                                    : ContentType.success,
-                              ),
-                              duration: const Duration(seconds: 2),
-                            ),
+                          // Open Comments Sheet
+                          ProductCommentsSheet.show(
+                            context, 
+                            product.id, 
+                            product.distributorId ?? "",
                           );
                         },
                       ),
@@ -397,7 +380,24 @@ class ProductCard extends ConsumerWidget {
                   // === Badge إضافي (مثل تاريخ الصلاحية) ===
                   if (overlayBadge != null) overlayBadge!,
 
+                  // === Comment Button (Top Right / Left based on locale, but let's put it top-left if search is not there, or shift it) ===
+                  // The user requested Top Corner. Search is Top Left (4,4). Favorite is Top Right (4,4).
+                  // Let's put Comment at Top Left, below search if search exists, or Top Left (4,4) if search empty?
+                  // Or maybe Center Left? Or Top Left but shifted if search exists.
+                  // Current Search is at Top-Left (4,4).
+                  // Let's put Comment at Top-Left, but with top margin if search exists, or just next to it?
+                  // Easier: Put it Top-Left (40, 4) or (4, 40). Let's go with Top Left (4, 40) vertically stacked or (40, 4) horizontally.
+                  // Since Search is small bubble, maybe (30, 4)?
+                  // Actually, let's put it on Top Left, and shift Search if needed or vice versa.
+                  // Search is specifically showing "Search Result" Indicator. 
+                  // Let's put Comment Icon at Top Left (4, 4). If Search is present, we might overlap.
+                  // Search code: `if (searchQuery.isNotEmpty) Positioned(top: 4, left: 4...`
+                  // Let's put Comment at `top: 4, left: searchQuery.isNotEmpty ? 30 : 4` to avoid overlap.
+                  
+
+
                   // === Like / Dislike Buttons (Bottom Right) ===
+                  if (productType != 'expire_soon')
                   Positioned(
                     bottom: 4,
                     right: 4,

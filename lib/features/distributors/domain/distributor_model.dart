@@ -16,6 +16,8 @@ class DistributorModel {
   final List<String>? centers;
   final int subscribersCount;
   final String? distributionMethod;
+  final int recommendationCount;
+  final int reportCount;
 
   DistributorModel({
     required this.id,
@@ -32,6 +34,8 @@ class DistributorModel {
     this.centers,
     this.subscribersCount = 0,
     this.distributionMethod,
+    this.recommendationCount = 0,
+    this.reportCount = 0,
   });
 
   factory DistributorModel.fromMap(Map<String, dynamic> data) {
@@ -60,6 +64,8 @@ class DistributorModel {
           : null,
       subscribersCount: data['subscribers_count'] ?? 0,
       distributionMethod: data['distribution_method'] ?? data['distributionMethod'],
+      recommendationCount: data['recommendation_count'] ?? data['recommendationCount'] ?? 0,
+      reportCount: data['report_count'] ?? data['reportCount'] ?? 0,
     );
   }
 }

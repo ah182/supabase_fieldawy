@@ -1,86 +1,29 @@
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
-import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:collection/collection.dart'; 
 
-class DistributorDetailsSheet {
-  static Future<void> show(BuildContext context, String distributorId) async {
-    // ignore: unused_local_variable
-    final theme = Theme.of(context);
-    DistributorModel? distributor;
-
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      distributor = await _fetchDistributorDetails(distributorId);
-    } catch (e) {
-      debugPrint('Error fetching distributor details: $e');
-    }
-
-    if (!context.mounted) return;
-    Navigator.of(context).pop(); // Close loading
-
-    if (distributor == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('distributors_feature.products_screen.load_error'.tr())),
-      );
-      return;
-    }
-
-    showWithModel(context, distributor);
-  }
-
-  static void showWithModel(BuildContext context, DistributorModel distributor) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DistributorDetailsContent(distributor: distributor),
-    );
-  }
-
-  static Future<DistributorModel?> _fetchDistributorDetails(String id) async {
-    try {
-      final supabase = Supabase.instance.client;
-      final response = await supabase.functions.invoke('get-distributors');
-      
-      if (response.data != null) {
-        final List<dynamic> data = response.data;
-        final distributorData = data.firstWhereOrNull((d) => d['id'] == id);
-        
-        if (distributorData != null) {
-          return DistributorModel.fromMap(Map<String, dynamic>.from(distributorData));
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching distributor details: $e');
-    }
-    return null;
-  }
-}
-
-class DistributorDetailsContent extends StatefulWidget {
+class DistributorSheetContent extends StatefulWidget {
   final DistributorModel distributor;
+  final ThemeData theme;
 
-  const DistributorDetailsContent({Key? key, required this.distributor}) : super(key: key);
+  const DistributorSheetContent({
+    super.key,
+    required this.distributor,
+    required this.theme,
+  });
 
   @override
-  State<DistributorDetailsContent> createState() => _DistributorDetailsContentState();
+  State<DistributorSheetContent> createState() => _DistributorSheetContentState();
 }
 
-class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
+class _DistributorSheetContentState extends State<DistributorSheetContent> {
   late int _recommendationCount;
   late int _reportCount;
   bool _hasRecommended = false;
@@ -92,26 +35,6 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     _recommendationCount = widget.distributor.recommendationCount;
     _reportCount = widget.distributor.reportCount;
     _checkInteractionStatus();
-    _fetchFreshCounts(); 
-  }
-
-  Future<void> _fetchFreshCounts() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('recommendation_count, report_count')
-          .eq('id', widget.distributor.id)
-          .maybeSingle();
-
-      if (mounted && response != null) {
-        setState(() {
-          _recommendationCount = response['recommendation_count'] ?? 0;
-          _reportCount = response['report_count'] ?? 0;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching fresh counts: $e');
-    }
   }
 
   Future<void> _checkInteractionStatus() async {
@@ -128,11 +51,12 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
         });
       }
     } catch (e) {
-      debugPrint('Error checking interaction status: $e');
+      print('Error checking interaction status: $e');
     }
   }
 
   Future<void> _toggleRecommendation() async {
+    // Optimistic Update
     final wasRecommended = _hasRecommended;
     final wasReported = _hasReported;
     
@@ -156,8 +80,11 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
         params: {'p_distributor_id': widget.distributor.id},
       );
       
-      if (response['success'] != true) throw Exception('Operation failed');
+      if (response['success'] != true) {
+        throw Exception('Operation failed');
+      }
     } catch (e) {
+      // Revert
       if (mounted) {
         setState(() {
           _hasRecommended = wasRecommended;
@@ -174,6 +101,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
   }
 
   Future<void> _toggleReport() async {
+     // Optimistic Update
     final wasRecommended = _hasRecommended;
     final wasReported = _hasReported;
     
@@ -197,8 +125,11 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
         params: {'p_distributor_id': widget.distributor.id},
       );
       
-      if (response['success'] != true) throw Exception('Operation failed');
+      if (response['success'] != true) {
+        throw Exception('Operation failed');
+      }
     } catch (e) {
+      // Revert
       if (mounted) {
         setState(() {
           _hasRecommended = wasRecommended;
@@ -222,39 +153,59 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
+    final theme = widget.theme;
     final buttonColor = isActive ? color : theme.colorScheme.surfaceVariant;
     final iconColor = isActive ? Colors.white : theme.colorScheme.onSurfaceVariant;
     final textColor = isActive ? Colors.white : theme.colorScheme.onSurfaceVariant;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: buttonColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: isActive ? null : Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
           boxShadow: isActive
-              ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
               : [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: iconColor, size: 16),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(width: 6),
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: isActive ? Colors.white.withOpacity(0.2) : theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('$count', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 10)),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ),
           ],
         ),
@@ -262,14 +213,17 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     );
   }
 
-  Widget _buildDetailListTile(IconData icon, String title, String subtitle) {
-    final theme = Theme.of(context);
+  // Helper method for detail tiles (copied from original)
+  Widget _buildDetailListTile(
+      IconData icon, String title, String subtitle) {
+    final theme = widget.theme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
@@ -281,9 +235,19 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
               ],
             ),
           ),
@@ -292,13 +256,14 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     );
   }
 
-  Future<void> _openWhatsApp(BuildContext context, DistributorModel distributor) async {
+  static Future<void> _openWhatsApp(
+      BuildContext context, DistributorModel distributor) async {
     final phoneNumber = distributor.whatsappNumber;
 
     if (phoneNumber == null || phoneNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('distributors_feature.phone_not_available'.tr()),
+          content: Text('phoneNumberNotAvailable'.tr()),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -306,7 +271,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     }
 
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final message = Uri.encodeComponent('distributors_feature.whatsapp_inquiry'.tr());
+    final message = Uri.encodeComponent('whatsappInquiry'.tr());
     final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
 
     try {
@@ -317,12 +282,15 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
         throw 'Could not launch WhatsApp';
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('distributors_feature.whatsapp_error'.tr()),
+            content: Text('couldNotOpenWhatsApp'.tr()),
             backgroundColor: Theme.of(context).colorScheme.error,
-            action: SnackBarAction(label: 'distributors_feature.ok'.tr(), onPressed: () {}),
+            action: SnackBarAction(
+              label: 'ok'.tr(),
+              onPressed: () {},
+            ),
           ),
         );
       }
@@ -331,7 +299,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme = widget.theme;
     final distributor = widget.distributor;
 
     return Container(
@@ -345,7 +313,8 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
           // Handle
           Container(
             margin: const EdgeInsets.only(top: 8),
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: theme.colorScheme.onSurface.withOpacity(0.3),
               borderRadius: BorderRadius.circular(2),
@@ -357,28 +326,38 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
             child: Column(
               children: [
                 Container(
-                  width: 80, height: 80,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: distributor.photoURL != null && distributor.photoURL!.isNotEmpty
+                    child: distributor.photoURL != null &&
+                            distributor.photoURL!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: distributor.photoURL!,
                             cacheManager: CustomImageCacheManager(),
                             fit: BoxFit.contain,
-                            placeholder: (context, url) => const Center(child: ImageLoadingIndicator(size: 32)),
-                            errorWidget: (context, url, error) => Icon(Icons.person_rounded, size: 40, color: theme.colorScheme.onSurfaceVariant),
+                            placeholder: (context, url) => const Center(
+                                child: ImageLoadingIndicator(size: 32)),
+                            errorWidget: (context, url, error) => Icon(
+                                Icons.person_rounded,
+                                size: 40,
+                                color: theme.colorScheme.onSurfaceVariant),
                           )
-                        : Icon(Icons.person_rounded, size: 40, color: theme.colorScheme.onSurfaceVariant),
+                        : Icon(Icons.person_rounded,
+                            size: 40,
+                            color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   distributor.displayName,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (distributor.companyName != null)
@@ -386,14 +365,15 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       distributor.companyName!,
-                      style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                
-                const SizedBox(height: 16),
-                // === Interaction Buttons ===
-                Row(
+                 const SizedBox(height: 16),
+                 // === Action Buttons (Integration) ===
+                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildInteractionButton(
@@ -423,15 +403,31 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildDetailListTile(Icons.inventory_2_rounded, 'distributors_feature.products_count'.tr(), 'distributors_feature.product_count_value'.tr(namedArgs: {'count': distributor.productCount.toString()})),
-                _buildDetailListTile(Icons.business_rounded, 'distributors_feature.type'.tr(), distributor.distributorType == 'company' ? 'distributors_feature.company'.tr() : 'distributors_feature.individual'.tr()),
+                _buildDetailListTile(
+                  Icons.inventory_2_rounded,
+                  'distributors_feature.products_count'.tr(),
+                  'distributors_feature.product_count_value'.tr(
+                      namedArgs: {'count': distributor.productCount.toString()}),
+                ),
+                _buildDetailListTile(
+                  Icons.business_rounded,
+                  'distributors_feature.type'.tr(),
+                  distributor.distributorType == 'company'
+                      ? 'distributors_feature.company'.tr()
+                      : 'distributors_feature.individual'.tr(),
+                ),
                 if (distributor.distributionMethod != null)
                   _buildDetailListTile(
                     Icons.local_shipping_rounded,
                     'distributors_feature.distribution_method'.tr(),
-                    distributor.distributionMethod == 'direct_distribution' ? 'distributors_feature.direct'.tr() : distributor.distributionMethod == 'order_delivery' ? 'distributors_feature.delivery'.tr() : 'distributors_feature.both'.tr(),
+                    distributor.distributionMethod == 'direct_distribution'
+                        ? 'distributors_feature.direct'.tr()
+                        : distributor.distributionMethod == 'order_delivery'
+                            ? 'distributors_feature.delivery'.tr()
+                            : 'distributors_feature.both'.tr(),
                   ),
-                if (distributor.governorates != null && distributor.governorates!.isNotEmpty)
+                   if (distributor.governorates != null &&
+                    distributor.governorates!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Column(
@@ -440,37 +436,88 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
                         Row(
                           children: [
                             Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                              child: Icon(Icons.map_rounded, color: theme.colorScheme.primary, size: 20),
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.map_rounded,
+                                  color: theme.colorScheme.primary, size: 20),
                             ),
                             const SizedBox(width: 16),
-                            Text('distributors_feature.coverage_areas'.tr(), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            Text(
+                              'distributors_feature.coverage_areas'.tr(),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Padding(
-                          padding: const EdgeInsets.only(right: 16.0, left: 56.0),
+                          padding: const EdgeInsets.only(right: 56.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Wrap(
-                                spacing: 8, runSpacing: 8,
-                                children: distributor.governorates!.map((gov) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3))),
-                                  child: Text(gov, style: TextStyle(color: theme.colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
-                                )).toList(),
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: distributor.governorates!
+                                    .map((gov) => Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.primary
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: theme.colorScheme.primary
+                                                    .withOpacity(0.3)),
+                                          ),
+                                          child: Text(
+                                            gov,
+                                            style: TextStyle(
+                                              color: theme.colorScheme.primary,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ))
+                                    .toList(),
                               ),
-                              if (distributor.centers != null && distributor.centers!.isNotEmpty) ...[
+                              if (distributor.centers != null &&
+                                  distributor.centers!.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 Wrap(
-                                  spacing: 8, runSpacing: 8,
-                                  children: distributor.centers!.map((center) => Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(color: theme.colorScheme.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.3))),
-                                    child: Text(center, style: TextStyle(color: theme.colorScheme.secondary, fontSize: 12, fontWeight: FontWeight.w600)),
-                                  )).toList(),
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: distributor.centers!
+                                      .map((center) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.secondary
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: theme
+                                                      .colorScheme.secondary
+                                                      .withOpacity(0.3)),
+                                            ),
+                                            child: Text(
+                                              center,
+                                              style: TextStyle(
+                                                color:
+                                                    theme.colorScheme.secondary,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ))
+                                      .toList(),
                                 ),
                               ],
                             ],
@@ -479,42 +526,34 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
                       ],
                     ),
                   ),
-                if (distributor.whatsappNumber != null && distributor.whatsappNumber!.isNotEmpty)
-                  _buildDetailListTile(FontAwesomeIcons.whatsapp, 'distributors_feature.whatsapp'.tr(), distributor.whatsappNumber!),
               ],
             ),
           ),
-          // Actions (View Products & WhatsApp)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => DistributorProductsScreen(distributor: distributor)));
-                    },
-                    icon: const Icon(Icons.inventory_2_rounded, size: 18),
-                    label: Text('distributors_feature.view_products'.tr()),
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          if (distributor.whatsappNumber != null &&
+              distributor.whatsappNumber!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await _openWhatsApp(context, distributor);
+                  },
+                  icon: const FaIcon(FontAwesomeIcons.whatsapp,
+                      color: Colors.white, size: 20),
+                  label: Text('distributors_feature.contact_whatsapp'.tr()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(color: const Color(0xFF25D366), borderRadius: BorderRadius.circular(12)),
-                  child: IconButton(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      await _openWhatsApp(context, distributor);
-                    },
-                    icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 20),
-                    style: IconButton.styleFrom(padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );

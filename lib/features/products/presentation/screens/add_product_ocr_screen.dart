@@ -101,6 +101,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   String? _selectedPackageType;
   final List<String> _statusKeys = ['جديد', 'مستعمل', 'كسر زيرو'];
   late String _selectedStatus;
+  bool _addToGeneralCatalog = true; // الخيار الافتراضي: إضافة للكتالوج العام
 
   @override
   void initState() {
@@ -835,15 +836,21 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         if (widget.isFromSurgicalTools) {
           final description = _descriptionController.text;
           
-          // إضافة الأداة للكتالوج العام
-          final surgicalToolId = await productRepo.addSurgicalTool(
-            toolName: name,
-            company: company.isNotEmpty ? company : null,
-            imageUrl: finalUrl,
-            createdBy: userId,
-          );
+          String? surgicalToolId;
+          
+          // إضافة الأداة للكتالوج العام فقط إذا تم تحديد الخيار
+          if (_addToGeneralCatalog) {
+             surgicalToolId = await productRepo.addSurgicalTool(
+              toolName: name,
+              company: company.isNotEmpty ? company : null,
+              imageUrl: finalUrl,
+              createdBy: userId,
+            );
+          }
 
-          if (surgicalToolId != null) {
+          // إذا لم يتم الإضافة للكتالوج العام، أو إذا نجحت الإضافة (في حالة التحديد)
+          // نضيفها للموزع. في حالة عدم التحديد، surgicalToolId سيكون null
+          if (!_addToGeneralCatalog || surgicalToolId != null) {
             // ربط الأداة بالموزع مع السعر والوصف الخاص به
             final success = await productRepo.addDistributorSurgicalTool(
               distributorId: userId,
@@ -852,6 +859,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               description: description,
               price: price!,
               status: _selectedStatus,
+              // تمرير البيانات الإضافية في حالة عدم الإضافة للكتالوج العام
+              toolName: !_addToGeneralCatalog ? name : null,
+              company: !_addToGeneralCatalog && company.isNotEmpty ? company : null,
+              imageUrl: !_addToGeneralCatalog ? finalUrl : null,
             );
 
             if (success && mounted) {
@@ -1458,6 +1469,67 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                             });
                           }
                         },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // خيار الإضافة للكتالوج العام - تصميم احترافي
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _addToGeneralCatalog 
+                              ? accentColor.withOpacity(0.1) 
+                              : inputBgColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _addToGeneralCatalog 
+                                ? accentColor.withOpacity(0.5) 
+                                : inputBorderColor,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: SwitchListTile(
+                          value: _addToGeneralCatalog,
+                          onChanged: (bool value) {
+                            setState(() {
+                              _addToGeneralCatalog = value;
+                            });
+                          },
+                          title: Row(
+                            children: [
+                              Icon(
+                                _addToGeneralCatalog ? Icons.public : Icons.public_off,
+                                size: 20,
+                                color: _addToGeneralCatalog ? accentColor : theme.colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'إضافة للكتالوج العام',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _addToGeneralCatalog ? accentColor : theme.colorScheme.onSurface,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4, left: 32), // Indent to align with text
+                            child: Text(
+                              'عند التفعيل، سيتم إدراج الأداة في قاعدة البيانات العامة ليتمكن الموزعون الآخرون من استخدامها.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          activeColor: accentColor,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],

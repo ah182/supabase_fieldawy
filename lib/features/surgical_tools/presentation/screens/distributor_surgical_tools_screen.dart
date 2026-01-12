@@ -120,9 +120,9 @@ class _DistributorSurgicalToolsScreenState extends ConsumerState<DistributorSurg
                 final surgicalTool = tool['surgical_tools'] as Map<String, dynamic>?;
 
                 final id = tool['id'] ?? '';
-                final toolName = surgicalTool?['tool_name'] ?? 'Unknown';
-                final company = surgicalTool?['company'];
-                final imageUrl = surgicalTool?['image_url'];
+                final toolName = surgicalTool?['tool_name'] ?? tool['tool_name'] ?? 'Unknown';
+                final company = surgicalTool?['company'] ?? tool['company'];
+                final imageUrl = surgicalTool?['image_url'] ?? tool['image_url'];
                 final description = tool['description'] ?? '';
                 final price = (tool['price'] as num?)?.toDouble() ?? 0.0;
                 final status = tool['status'] ?? 'جديد';

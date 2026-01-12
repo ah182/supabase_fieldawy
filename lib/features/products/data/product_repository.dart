@@ -1414,20 +1414,26 @@ class ProductRepository {
   Future<bool> addDistributorSurgicalTool({
     required String distributorId,
     required String distributorName,
-    required String surgicalToolId,
+    String? surgicalToolId,
     required String description,
     required double price,
     String status = 'جديد',
+    String? toolName,
+    String? company,
+    String? imageUrl,
   }) async {
     return await NetworkGuard.execute(() async {
       try {
         await _supabase.from('distributor_surgical_tools').insert({
           'distributor_id': distributorId,
           'distributor_name': distributorName,
-          'surgical_tool_id': surgicalToolId,
+          if (surgicalToolId != null) 'surgical_tool_id': surgicalToolId,
           'description': description,
           'price': price,
           'status': status,
+          if (toolName != null) 'tool_name': toolName,
+          if (company != null) 'company': company,
+          if (imageUrl != null) 'image_url': imageUrl,
         });
 
         _scheduleCacheInvalidation();
@@ -1451,6 +1457,9 @@ class ProductRepository {
               price,
               status,
               created_at,
+              tool_name,
+              company,
+              image_url,
               surgical_tools (
                 id,
                 tool_name,
@@ -1547,6 +1556,9 @@ class ProductRepository {
               distributor_name,
               distributor_id,
               created_at,
+              tool_name,
+              company,
+              image_url,
               surgical_tools (
                 id,
                 tool_name,

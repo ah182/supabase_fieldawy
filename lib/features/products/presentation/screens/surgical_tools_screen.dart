@@ -411,9 +411,9 @@ class _SurgicalToolsScreenState extends ConsumerState<SurgicalToolsScreen> {
 
                             final id = tool['id'] ?? '';
                             final toolName =
-                                surgicalTool?['tool_name'] ?? 'Unknown';
-                            final company = surgicalTool?['company'];
-                            final imageUrl = surgicalTool?['image_url'];
+                                surgicalTool?['tool_name'] ?? tool['tool_name'] ?? 'Unknown';
+                            final company = surgicalTool?['company'] ?? tool['company'];
+                            final imageUrl = surgicalTool?['image_url'] ?? tool['image_url'];
                             final description = tool['description'] ?? '';
                             final price =
                                 (tool['price'] as num?)?.toDouble() ?? 0.0;
