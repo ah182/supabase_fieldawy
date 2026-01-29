@@ -19,6 +19,8 @@ import '../../../../core/services/location_service.dart';
 import '../../../authentication/data/user_repository.dart';
 import '../../../home/application/user_data_provider.dart';
 import 'package:collection/collection.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 
 class ClinicsMapScreen extends ConsumerStatefulWidget {
   const ClinicsMapScreen({super.key});
@@ -518,7 +520,33 @@ class _ClinicDetailsSheet extends ConsumerWidget {
         _buildInfoRow(context, Icons.phone_outlined, 'clinics_feature.details.phone'.tr(), clinic.clinicPhoneNumber ?? clinic.doctorWhatsappNumber, showIfEmpty: true),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(children: [Icon(FontAwesomeIcons.whatsapp, color: Theme.of(context).primaryColor, size: 22), const SizedBox(width: 16), const Expanded(child: Text('WhatsApp', style: TextStyle(fontSize: 16))), IconButton(icon: const Icon(Icons.send, color: Colors.green), onPressed: () async { final phone = clinic.doctorWhatsappNumber?.replaceAll(RegExp(r'[^0-9]'), ''); if (phone != null) await launchUrl(Uri.parse('https://wa.me/${phone.startsWith('20') ? phone : '20$phone'}'), mode: LaunchMode.externalApplication); })]),
+          child: Row(children: [
+            Icon(FontAwesomeIcons.whatsapp, color: Theme.of(context).primaryColor, size: 22),
+            const SizedBox(width: 16),
+            const Expanded(child: Text('WhatsApp', style: TextStyle(fontSize: 16))),
+            IconButton(
+                icon: const Icon(Icons.send, color: Colors.green),
+                onPressed: () async {
+                  if (clinic.doctorWhatsappNumber == null) return;
+                  
+                  final distributor = DistributorModel(
+                    id: clinic.userId,
+                    displayName: clinic.clinicName,
+                    photoURL: clinic.doctorPhotoUrl ?? '',
+                    distributorType: 'doctor',
+                    whatsappNumber: clinic.doctorWhatsappNumber,
+                    governorates: null,
+                    centers: null,
+                    distributionMethod: null,
+                  );
+
+                  await DistributorAnalyticsService.instance.openWhatsApp(
+                    context,
+                    distributor,
+                    message: 'clinics_feature.whatsapp_inquiry'.tr(),
+                  );
+                })
+          ]),
         ),
         const SizedBox(height: 24),
         Row(

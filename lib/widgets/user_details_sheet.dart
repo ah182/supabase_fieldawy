@@ -4,10 +4,11 @@ import 'package:fieldawy_store/features/authentication/data/user_repository.dart
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 
 class UserDetailsSheet {
   static void show(BuildContext context, WidgetRef ref, String userId) async {
@@ -190,7 +191,19 @@ class UserDetailsSheet {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _openWhatsApp(context, user.whatsappNumber!),
+                        onPressed: () {
+                           final distributor = DistributorModel(
+                            id: user.id,
+                            displayName: user.displayName ?? '',
+                            photoURL: user.photoUrl,
+                            distributorType: user.role,
+                            whatsappNumber: user.whatsappNumber,
+                            governorates: user.governorates,
+                            centers: user.centers,
+                            distributionMethod: user.distributionMethod,
+                          );
+                          DistributorAnalyticsService.instance.openWhatsApp(context, distributor);
+                        },
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
                         label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
@@ -278,21 +291,5 @@ class UserDetailsSheet {
     }
   }
 
-  static Future<void> _openWhatsApp(BuildContext context, String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    final url = 'https://wa.me/20$cleanPhone';
-    try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يمكن فتح واتساب')),
-          );
-        }
-      }
-    } catch (e) {
-      // Handle error
-    }
-  }
+
 }

@@ -27,6 +27,7 @@ import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -199,10 +200,39 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           // ignore: unnecessary_null_comparison
+
+                          // ignore: unnecessary_null_comparison
                           if (userModel.role != null)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                if (userModel.role == 'distributor' || userModel.role == 'company') ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // ignore: deprecated_member_use
+                                        const Icon(FontAwesomeIcons.whatsapp, size: 12, color: Colors.green),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${userModel.whatsappClicks ?? 0} ${context.locale.languageCode == 'ar' ? 'طلب او محادثة' : 'requests'}',
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 6),

@@ -10,6 +10,7 @@ import 'package:fieldawy_store/core/utils/network_guard.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/application/distributor_filters_provider.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_leaderboard_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/home/application/search_history_provider.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
@@ -343,6 +344,17 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
       onTap: _hideKeyboard,
       child: MainScaffold(
         selectedIndex: 0,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DistributorLeaderboardScreen(),
+              ),
+            );
+          },
+          child: const Icon(Icons.leaderboard_outlined),
+        ),
         body: NestedScrollView(
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[

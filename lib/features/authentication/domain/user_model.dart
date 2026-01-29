@@ -73,6 +73,9 @@ class UserModel {
   @HiveField(21)
   final String? clinicCode;
 
+  @HiveField(22)
+  final int? whatsappClicks;
+
   UserModel({
     required this.id,
     this.displayName,
@@ -96,6 +99,7 @@ class UserModel {
     this.subscribersCount,
     this.rejectionReason,
     this.clinicCode,
+    this.whatsappClicks,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -124,6 +128,7 @@ class UserModel {
       subscribersCount: map['subscribers_count'] ?? 0,
       rejectionReason: map['rejection_reason'],
       clinicCode: map['clinic_code'],
+      whatsappClicks: map['whatsapp_clicks'],
     );
   }
 
@@ -151,6 +156,7 @@ class UserModel {
       'subscribers_count': subscribersCount ?? 0,
       'rejection_reason': rejectionReason,
       'clinic_code': clinicCode,
+      'whatsapp_clicks': whatsappClicks,
     };
   }
 
@@ -177,6 +183,7 @@ class UserModel {
     int? subscribersCount,
     String? rejectionReason,
     String? clinicCode,
+    int? whatsappClicks,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -201,6 +208,7 @@ class UserModel {
       subscribersCount: subscribersCount ?? this.subscribersCount,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       clinicCode: clinicCode ?? this.clinicCode,
+      whatsappClicks: whatsappClicks ?? this.whatsappClicks,
     );
   }
 }

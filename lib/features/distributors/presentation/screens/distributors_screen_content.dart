@@ -3,11 +3,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 
 class DistributorSheetContent extends StatefulWidget {
   final DistributorModel distributor;
@@ -256,46 +257,7 @@ class _DistributorSheetContentState extends State<DistributorSheetContent> {
     );
   }
 
-  static Future<void> _openWhatsApp(
-      BuildContext context, DistributorModel distributor) async {
-    final phoneNumber = distributor.whatsappNumber;
 
-    if (phoneNumber == null || phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('phoneNumberNotAvailable'.tr()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return;
-    }
-
-    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final message = Uri.encodeComponent('whatsappInquiry'.tr());
-    final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
-
-    try {
-      final uri = Uri.parse(whatsappUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch WhatsApp';
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('couldNotOpenWhatsApp'.tr()),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            action: SnackBarAction(
-              label: 'ok'.tr(),
-              onPressed: () {},
-            ),
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +500,7 @@ class _DistributorSheetContentState extends State<DistributorSheetContent> {
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     Navigator.of(context).pop();
-                    await _openWhatsApp(context, distributor);
+                    await DistributorAnalyticsService.instance.openWhatsApp(context, distributor);
                   },
                   icon: const FaIcon(FontAwesomeIcons.whatsapp,
                       color: Colors.white, size: 20),

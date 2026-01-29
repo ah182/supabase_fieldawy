@@ -18,6 +18,8 @@ class DistributorModel {
   final String? distributionMethod;
   final int recommendationCount;
   final int reportCount;
+  final int whatsappClicks;
+  final String? role;
 
   DistributorModel({
     required this.id,
@@ -36,6 +38,8 @@ class DistributorModel {
     this.distributionMethod,
     this.recommendationCount = 0,
     this.reportCount = 0,
+    this.whatsappClicks = 0,
+    this.role,
   });
 
   factory DistributorModel.fromMap(Map<String, dynamic> data) {
@@ -66,6 +70,8 @@ class DistributorModel {
       distributionMethod: data['distribution_method'] ?? data['distributionMethod'],
       recommendationCount: data['recommendation_count'] ?? data['recommendationCount'] ?? 0,
       reportCount: data['report_count'] ?? data['reportCount'] ?? 0,
+      whatsappClicks: data['whatsapp_clicks'] ?? data['whatsappClicks'] ?? 0,
+      role: data['role'],
     );
   }
 }

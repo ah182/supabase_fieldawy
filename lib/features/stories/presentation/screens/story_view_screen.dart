@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import 'package:fieldawy_store/features/stories/domain/story_model.dart';
 import 'package:fieldawy_store/features/stories/presentation/widgets/product_tag_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:fieldawy_store/features/stories/application/seen_stories_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,6 +20,7 @@ import 'package:path_provider/path_provider.dart'; // For temp path
 import 'package:shared_preferences/shared_preferences.dart'; // Import for local storage
 import 'package:fieldawy_store/core/caching/caching_service.dart'; // Import caching service
 import 'package:fieldawy_store/features/stories/application/stories_provider.dart'; // Import stories provider
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 
 class StoryViewScreen extends ConsumerStatefulWidget {
   final List<DistributorStoriesGroup> groups;
@@ -687,18 +689,15 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen> {
   Future<void> _openWhatsApp(String? phone, String imageUrl) async {
     if (phone == null || phone.isEmpty) return;
 
-    String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
-    if (!cleanPhone.startsWith('2') && !cleanPhone.startsWith('+')) {
-      cleanPhone = '2$cleanPhone';
-    }
-    if (!cleanPhone.startsWith('+')) {
-      cleanPhone = '+$cleanPhone';
-    }
-
-    final url = Uri.parse("https://wa.me/${cleanPhone.replaceAll('+', '')}");
+    final distributor = widget.groups[_currentGroupIndex].distributor;
     
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+    // Create a message about the story
+    final message = 'home.product_dialog.whatsapp_interest'.tr(namedArgs: {'name': 'Story'}); 
+
+    await DistributorAnalyticsService.instance.openWhatsApp(
+      context, 
+      distributor,
+      message: message, // You might want to customize this message more
+    );
   }
 }

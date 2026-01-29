@@ -17,12 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/user_books_screen.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/user_courses_screen.dart';
 
 import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'product_dialogs.dart';
 
 /// A reusable error view for tabs with a refresh button.
@@ -331,7 +333,23 @@ class CoursesTab extends ConsumerWidget {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               Navigator.pop(context);
-                              _openWhatsApp(context, course.phone);
+                              // Calculate distributor for tracking
+                              final distributor = owner ?? DistributorModel(
+                                id: course.userId,
+                                displayName: ownerName,
+                                photoURL: course.userPhotoUrl,
+                                distributorType: 'user', // Fallback
+                                whatsappNumber: course.phone,
+                                governorates: [],
+                                centers: [],
+                                distributionMethod: '',
+                              );
+                              
+                              DistributorAnalyticsService.instance.openWhatsApp(
+                                context,
+                                distributor,
+                                message: 'courses_feature.whatsapp_inquiry'.tr(),
+                              );
                             },
                             icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
                             label: Text(
@@ -398,21 +416,7 @@ class CoursesTab extends ConsumerWidget {
     );
   }
 
-  static Future<void> _openWhatsApp(BuildContext context, String phone) async {
-    final url = Uri.parse('https://wa.me/$phone');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('courses_feature.whatsapp_error'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+
 }
 
 // ===================================================================
@@ -686,7 +690,23 @@ class BooksTab extends ConsumerWidget {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               Navigator.pop(context);
-                              _openWhatsApp(context, book.phone);
+                              // Calculate distributor for tracking
+                              final distributor = owner ?? DistributorModel(
+                                id: book.userId,
+                                displayName: ownerName,
+                                photoURL: book.userPhotoUrl,
+                                distributorType: 'user', // Fallback
+                                whatsappNumber: book.phone,
+                                governorates: [],
+                                centers: [],
+                                distributionMethod: '',
+                              );
+                              
+                              DistributorAnalyticsService.instance.openWhatsApp(
+                                context,
+                                distributor,
+                                message: 'books_feature.whatsapp_inquiry'.tr(),
+                              );
                             },
                             icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
                             label: Text(
@@ -753,21 +773,7 @@ class BooksTab extends ConsumerWidget {
     );
   }
 
-  static Future<void> _openWhatsApp(BuildContext context, String phone) async {
-    final url = Uri.parse('https://wa.me/$phone');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('books_feature.whatsapp_error'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+
 }
 
 // ===================================================================

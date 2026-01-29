@@ -1,12 +1,14 @@
 // ignore_for_file: unused_import
 
 import 'package:collection/collection.dart';
+import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'dart:ui' as ui;
 // ignore: unnecessary_import
 import 'package:intl/intl.dart';
 import 'package:fieldawy_store/features/books/presentation/screens/book_details_screen.dart';
 import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 import 'package:fieldawy_store/widgets/user_details_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -260,26 +262,28 @@ class _VetSupplyDialog extends ConsumerWidget {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Note: Accessing provider from here might require importing the provider file
-                          // For now we skip view increment call here to keep imports clean or rely on parent
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
                           Navigator.pop(context);
-                          _openWhatsApp(context, supply.phone);
+                          if (distributor != null) {
+                            await DistributorAnalyticsService.instance
+                                .openWhatsApp(context, distributor);
+                          } else {
+                            await _openWhatsApp(context, supply.phone);
+                          }
                         },
-                        icon: const Icon(Icons.phone_in_talk_outlined,
-                            color: Colors.white),
+                        icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
                         label: Text(
                           'vet_supplies_feature.actions.contact_seller'.tr(),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
@@ -376,6 +380,7 @@ class _ProductDialog extends StatefulWidget {
 class _ProductDialogState extends State<_ProductDialog> {
   String? _phoneNumber;
   String? _role;
+  String? _distributorId;
   bool _isLoadingPhone = false;
 
   @override
@@ -393,7 +398,7 @@ class _ProductDialogState extends State<_ProductDialog> {
         final response = await NetworkGuard.execute(() async {
           return await supabase
               .from('users')
-              .select('whatsapp_number, role')
+              .select('whatsapp_number, role, id')
               .eq('id', widget.product.distributorUuid!)
               .maybeSingle();
         });
@@ -404,6 +409,7 @@ class _ProductDialogState extends State<_ProductDialog> {
               _phoneNumber = response['whatsapp_number'].toString();
             }
             _role = response['role']?.toString();
+            _distributorId = response['id']?.toString();
           });
           return;
         }
@@ -416,7 +422,7 @@ class _ProductDialogState extends State<_ProductDialog> {
       final response = await NetworkGuard.execute(() async {
         return await supabase
             .from('users')
-            .select('whatsapp_number, role')
+            .select('whatsapp_number, role, id')
             .eq('display_name', widget.product.distributorId!)
             .maybeSingle();
       });
@@ -427,6 +433,7 @@ class _ProductDialogState extends State<_ProductDialog> {
             _phoneNumber = response['whatsapp_number'].toString();
           }
           _role = response['role']?.toString();
+           _distributorId = response['id']?.toString();
         });
       }
     } catch (e) {
@@ -438,6 +445,18 @@ class _ProductDialogState extends State<_ProductDialog> {
 
   Future<void> _openWhatsApp() async {
     if (_phoneNumber == null || _phoneNumber!.isEmpty) return;
+
+    if (_distributorId != null && _distributorId!.isNotEmpty) {
+      final distributor = DistributorModel(
+        id: _distributorId!,
+        displayName: widget.product.distributorId ?? widget.product.company ?? '',
+        photoURL: null, // We don't have this readily available here, but it's okay for tracking
+        whatsappNumber: _phoneNumber,
+        distributorType: _role,
+      );
+      await DistributorAnalyticsService.instance.openWhatsApp(context, distributor);
+      return;
+    }
 
     String phone = _phoneNumber!.replaceAll(RegExp(r'[^\d+]'), '');
     
@@ -974,6 +993,8 @@ class _OfferProductDialog extends StatefulWidget {
 class _OfferProductDialogState extends State<_OfferProductDialog> {
   String? _phoneNumber;
   String? _role;
+  // ignore: unused_field
+  String? _distributorId;
   bool _isLoadingPhone = false;
 
   @override
@@ -991,7 +1012,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
         final response = await NetworkGuard.execute(() async {
           return await supabase
               .from('users')
-              .select('whatsapp_number, role')
+              .select('whatsapp_number, role, id')
               .eq('id', widget.offer.distributorUuid!)
               .maybeSingle();
         });
@@ -1002,6 +1023,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
               _phoneNumber = response['whatsapp_number'].toString();
             }
             _role = response['role']?.toString();
+            _distributorId = response['id']?.toString();
           });
           return;
         }
@@ -1014,7 +1036,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
       final response = await NetworkGuard.execute(() async {
         return await supabase
             .from('users')
-            .select('whatsapp_number, role')
+            .select('whatsapp_number, role, id')
             .eq('display_name', widget.offer.distributorId!)
             .maybeSingle();
       });
@@ -1025,6 +1047,7 @@ class _OfferProductDialogState extends State<_OfferProductDialog> {
             _phoneNumber = response['whatsapp_number'].toString();
           }
           _role = response['role']?.toString();
+          _distributorId = response['id']?.toString();
         });
       }
     } catch (e) {

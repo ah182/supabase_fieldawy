@@ -5,12 +5,13 @@ import 'package:fieldawy_store/core/utils/number_formatter.dart';
 import '../../../comments/data/comments_repository.dart';
 import '../../../comments/domain/comment_model.dart';
 import '../../../products/domain/product_model.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:fieldawy_store/features/authentication/data/user_repository.dart';
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/features/reviews/review_system.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -302,7 +303,19 @@ class _SurgicalToolDetailsScreenState
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _openWhatsApp(user.whatsappNumber!),
+                        onPressed: () {
+                           final distributor = DistributorModel(
+                            id: user.id,
+                            displayName: user.displayName ?? '',
+                            photoURL: user.photoUrl,
+                            distributorType: user.role,
+                            whatsappNumber: user.whatsappNumber,
+                            governorates: user.governorates,
+                            centers: user.centers,
+                            distributionMethod: user.distributionMethod,
+                          );
+                          DistributorAnalyticsService.instance.openWhatsApp(context, distributor);
+                        },
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
                         label: Text('surgical_tools_feature.actions.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
@@ -390,23 +403,7 @@ class _SurgicalToolDetailsScreenState
     }
   }
 
-  Future<void> _openWhatsApp(String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    final url = 'https://wa.me/20$cleanPhone';
-    try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('surgical_tools_feature.messages.whatsapp_error'.tr())),
-          );
-        }
-      }
-    } catch (e) {
-      // Handle error
-    }
-  }
+
 
   void _showReportDialog(BuildContext context, WidgetRef ref, String reviewId) {
     final reasons = [

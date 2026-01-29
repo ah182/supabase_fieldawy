@@ -515,6 +515,7 @@ class DistributorOrderDetailsScreen extends HookConsumerWidget {
                                               imageBytesList: imageBytesList,
                                               pdfBytes: pdfBytes,
                                               whatsappNumber: whatsappNumber,
+                                              distributorId: distributor?.id,
                                             ),
                                           ),
                                         );

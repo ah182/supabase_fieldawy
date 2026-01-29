@@ -6,7 +6,7 @@ import 'package:fieldawy_store/features/notifications/data/notification_preferen
 import 'package:fieldawy_store/features/notifications/application/notification_preferences_provider.dart';
 import 'package:fieldawy_store/services/distributor_subscription_service.dart';
 // ignore: unnecessary_import
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
@@ -14,8 +14,9 @@ import 'package:fieldawy_store/features/distributors/presentation/screens/distri
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 
 class NotificationPreferencesScreen extends ConsumerStatefulWidget {
   const NotificationPreferencesScreen({super.key});
@@ -918,41 +919,11 @@ class _NotificationPreferencesScreenState
   }
 
   Future<void> _openWhatsApp(BuildContext context, DistributorModel distributor) async {
-    final phoneNumber = distributor.whatsappNumber;
-
-    if (phoneNumber == null || phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('phoneNumberNotAvailable'.tr()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return;
-    }
-
-    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final message = Uri.encodeComponent('whatsappInquiry'.tr());
-    final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
-
-    try {
-      final uri = Uri.parse(whatsappUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch WhatsApp';
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('couldNotOpenWhatsApp'.tr()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          action: SnackBarAction(
-            label: 'ok'.tr(),
-            onPressed: () {},
-          ),
-        ),
-      );
-    }
+    await DistributorAnalyticsService.instance.openWhatsApp(
+      context,
+      distributor,
+      message: 'whatsappInquiry'.tr(),
+    );
   }
 
   Widget _buildNotificationToggle({

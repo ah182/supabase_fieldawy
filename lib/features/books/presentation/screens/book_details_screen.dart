@@ -9,6 +9,7 @@ import 'package:fieldawy_store/features/authentication/data/user_repository.dart
 import 'package:fieldawy_store/features/authentication/domain/user_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:fieldawy_store/features/reviews/review_system.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -314,7 +315,27 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _openWhatsApp(user.whatsappNumber!),
+                        onPressed: () {
+                           if (isDistributor) {
+                              final distributor = DistributorModel(
+                                id: user.id,
+                                displayName: user.displayName ?? '',
+                                photoURL: user.photoUrl,
+                                distributorType: user.role,
+                                whatsappNumber: user.whatsappNumber,
+                                governorates: user.governorates,
+                                centers: user.centers,
+                                distributionMethod: user.distributionMethod,
+                              );
+                              DistributorAnalyticsService.instance.openWhatsApp(
+                                context,
+                                distributor,
+                                message: 'books_feature.whatsapp_inquiry'.tr(),
+                              );
+                           } else {
+                              _openWhatsApp(user.whatsappNumber!);
+                           }
+                        },
                         icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
                         label: Text('distributors_feature.contact_whatsapp'.tr(), style: const TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(

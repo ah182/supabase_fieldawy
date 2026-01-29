@@ -11,6 +11,7 @@ import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_pr
 import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 // ignore: unused_import
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/add_vet_supply_screen.dart';
 import 'package:fieldawy_store/features/vet_supplies/presentation/screens/edit_vet_supply_screen.dart';
@@ -1192,27 +1193,31 @@ class _AllSuppliesTab extends ConsumerWidget {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton.icon(
-                          onPressed: () {
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            if (distributor != null) {
+                              await DistributorAnalyticsService.instance
+                                  .openWhatsApp(context, distributor);
+                            } else {
+                              await _openWhatsApp(context, supply.phone);
+                            }
                             ref
                                 .read(allVetSuppliesNotifierProvider.notifier)
                                 .incrementViews(supply.id);
-                            Navigator.pop(context);
-                            _openWhatsApp(context, supply.phone);
                           },
-                          icon: const Icon(Icons.phone_in_talk_outlined,
-                              color: Colors.white),
+                          icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.white),
                           label: Text(
                             'vet_supplies_feature.actions.contact_seller'.tr(),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),

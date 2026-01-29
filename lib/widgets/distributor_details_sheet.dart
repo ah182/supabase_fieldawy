@@ -3,11 +3,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/core/caching/image_cache_manager.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:collection/collection.dart'; 
 
 class DistributorDetailsSheet {
@@ -82,7 +83,9 @@ class DistributorDetailsContent extends StatefulWidget {
 
 class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
   late int _recommendationCount;
+
   late int _reportCount;
+  late int _whatsappClicks;
   bool _hasRecommended = false;
   bool _hasReported = false;
 
@@ -91,6 +94,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     super.initState();
     _recommendationCount = widget.distributor.recommendationCount;
     _reportCount = widget.distributor.reportCount;
+    _whatsappClicks = widget.distributor.whatsappClicks;
     _checkInteractionStatus();
     _fetchFreshCounts(); 
   }
@@ -99,7 +103,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     try {
       final response = await Supabase.instance.client
           .from('users')
-          .select('recommendation_count, report_count')
+          .select('recommendation_count, report_count, whatsapp_clicks')
           .eq('id', widget.distributor.id)
           .maybeSingle();
 
@@ -107,6 +111,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
         setState(() {
           _recommendationCount = response['recommendation_count'] ?? 0;
           _reportCount = response['report_count'] ?? 0;
+          _whatsappClicks = response['whatsapp_clicks'] ?? 0;
         });
       }
     } catch (e) {
@@ -292,42 +297,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
     );
   }
 
-  Future<void> _openWhatsApp(BuildContext context, DistributorModel distributor) async {
-    final phoneNumber = distributor.whatsappNumber;
 
-    if (phoneNumber == null || phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('distributors_feature.phone_not_available'.tr()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      return;
-    }
-
-    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final message = Uri.encodeComponent('distributors_feature.whatsapp_inquiry'.tr());
-    final whatsappUrl = 'https://wa.me/20$cleanPhone?text=$message';
-
-    try {
-      final uri = Uri.parse(whatsappUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch WhatsApp';
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('distributors_feature.whatsapp_error'.tr()),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            action: SnackBarAction(label: 'distributors_feature.ok'.tr(), onPressed: () {}),
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -375,7 +345,31 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
                         : Icon(Icons.person_rounded, size: 40, color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const FaIcon(FontAwesomeIcons.whatsapp, size: 12, color: Colors.green),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_whatsappClicks ${context.locale.languageCode == 'ar' ? 'طلب او محادثة' : 'requests'}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   distributor.displayName,
                   style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -506,7 +500,7 @@ class _DistributorDetailsContentState extends State<DistributorDetailsContent> {
                   child: IconButton(
                     onPressed: () async {
                       Navigator.of(context).pop();
-                      await _openWhatsApp(context, distributor);
+                      await DistributorAnalyticsService.instance.openWhatsApp(context, distributor);
                     },
                     icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 20),
                     style: IconButton.styleFrom(padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
