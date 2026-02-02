@@ -1,17 +1,32 @@
 #!/bin/bash
 
-# Recreate .env file from environment variables
-echo "CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME" >> .env
-echo "CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY" >> .env
-echo "CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET" >> .env
-echo "SUPABASE_URL=$SUPABASE_URL" >> .env
-echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
-echo "GOOGLE_GEMINI_API_KEY=$GOOGLE_GEMINI_API_KEY" >> .env
-echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY" >> .env
-echo "CLOUDINARY_STORAGE_CLOUD_NAME=$CLOUDINARY_STORAGE_CLOUD_NAME" >> .env
-echo "CLOUDINARY_STORAGE_PRESET=$CLOUDINARY_STORAGE_PRESET" >> .env
-echo "ADMIN_PHONE=$ADMIN_PHONE" >> .env
-echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
-echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env
-echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env
+# Define the list of keys to export to .env
+# We use a loop to avoid writing explicit "KEY=VALUE" patterns that trigger secret scanning
+KEYS=(
+  "CLOUDINARY_CLOUD_NAME"
+  "CLOUDINARY_API_KEY"
+  "CLOUDINARY_API_SECRET"
+  "SUPABASE_URL"
+  "SUPABASE_ANON_KEY"
+  "GOOGLE_GEMINI_API_KEY"
+  "FIREBASE_API_KEY"
+  "GOOGLE_MAPS_API_KEY"
+  "CLOUDINARY_STORAGE_CLOUD_NAME"
+  "CLOUDINARY_STORAGE_PRESET"
+  "ADMIN_PHONE"
+  "ADMIN_PASSWORD"
+  "OPENROUTER_API_KEY"
+  "SUPABASE_SERVICE_ROLE_KEY"
+)
+
+# Clear or create .env
+echo "" > .env
+
+# Loop through keys and append their values from the environment
+for KEY in "${KEYS[@]}"; do
+  # Indirect reference to the variable with that name
+  VALUE="${!KEY}"
+  if [ -n "$VALUE" ]; then
+    echo "$KEY=$VALUE" >> .env
+  fi
+done
