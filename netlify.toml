@@ -4,6 +4,23 @@
   # Commands to install Flutter and build the web application
   # We clone the stable channel of Flutter, enable web support, and build.
   command = """
+    # Create .env file for the build
+    echo "CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME" > .env
+    echo "CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY" >> .env
+    echo "CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET" >> .env
+    echo "SUPABASE_URL=$SUPABASE_URL" >> .env
+    echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
+    echo "GOOGLE_GEMINI_API_KEY=$GOOGLE_GEMINI_API_KEY" >> .env
+    echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
+    echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY" >> .env
+    echo "CLOUDINARY_STORAGE_CLOUD_NAME=$CLOUDINARY_STORAGE_CLOUD_NAME" >> .env
+    echo "CLOUDINARY_STORAGE_PRESET=$CLOUDINARY_STORAGE_PRESET" >> .env
+    echo "ADMIN_PHONE=$ADMIN_PHONE" >> .env
+    echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
+    echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env
+    echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> .env
+
+    # Install and build Flutter
     if [ ! -d "flutter" ]; then
       git clone https://github.com/flutter/flutter.git -b stable
     fi
