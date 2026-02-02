@@ -43,6 +43,7 @@ import 'core/supabase/supabase_init.dart';
 import 'package:fieldawy_store/features/products/domain/product_model.dart';
 import 'package:fieldawy_store/core/utils/network_guard.dart'; // Add NetworkGuard import
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:fieldawy_store/features/drug_ranking_gamification/domain/daily_challenge_model.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,8 +51,9 @@ import 'package:fieldawy_store/features/home/application/search_history_provider
 
 // ✅ Firebase imports
 import 'package:firebase_core/firebase_core.dart';
-                                                                 
-// دالة للتنقل للوظائف                                           
+import 'package:fieldawy_store/config/firebase_config.dart';
+
+// دالة للتنقل للوظائف
 void _navigateToJobOffers() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     final context = navigatorKey.currentContext;
@@ -77,8 +79,8 @@ void _navigateToVetSupplies() {
       );
     }
   });
-}                                                                
-                                                                 
+}
+
 // ✅ ملف إعدادات Firebase
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -104,7 +106,8 @@ String? _pendingNotificationDistributorId;
 
 // Getters for pending notification
 String? getPendingNotificationScreen() => _pendingNotificationScreen;
-String? getPendingNotificationDistributorId() => _pendingNotificationDistributorId;
+String? getPendingNotificationDistributorId() =>
+    _pendingNotificationDistributorId;
 void clearPendingNotification() {
   _pendingNotificationScreen = null;
   _pendingNotificationDistributorId = null;
@@ -115,7 +118,7 @@ void clearPendingNotification() {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     print('🔵 === Background handler started ===');
-    
+
     // Initialize dotenv for background handler BEFORE Firebase
     try {
       await dotenv.load(fileName: ".env");
@@ -126,225 +129,238 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  
-  // Initialize Hive for background operations (for subscription cache)
-  try {
-    await Hive.initFlutter();
-  } catch (e) {
-    print('Hive already initialized in background: $e');
-  }
-  
-  // Initialize subscription cache service
-  await SubscriptionCacheService.init();
-  
-  // Initialize Supabase for background operations
-  try {
-    await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL'] ?? '',
-      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-    );
-  } catch (e) {
-    // Supabase already initialized
-    print('Supabase already initialized in background: $e');
-  }
-  
-  final data = message.data;
-  
-  // إنشاء وتهيئة notification plugin في background
-  final FlutterLocalNotificationsPlugin localNotifications = 
-      FlutterLocalNotificationsPlugin();
-  
-  const AndroidInitializationSettings androidSettings =
-      AndroidInitializationSettings('@drawable/ic_notification');
-  await localNotifications.initialize(
-    const InitializationSettings(android: androidSettings),
-  );
 
-  // إنشاء القنوات
-  const AndroidNotificationChannel ordersChannel = AndroidNotificationChannel(
-    'orders_channel',
-    'طلبات جديدة',
-    description: 'إشعارات الطلبات والمبيعات',
-    importance: Importance.max,
-  );
-
-  const AndroidNotificationChannel offersChannel = AndroidNotificationChannel(
-    'offers_channel',
-    'العروض والتخفيضات',
-    description: 'إشعارات العروض الخاصة والتخفيضات',
-    importance: Importance.high,
-  );
-
-  const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
-    'general_channel',
-    'إشعارات عامة',
-    description: 'إشعارات عامة من التطبيق',
-    importance: Importance.defaultImportance,
-  );
-
-  await localNotifications
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(ordersChannel);
-
-  await localNotifications
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(offersChannel);
-
-  await localNotifications
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(generalChannel);
-
-  // استخراج البيانات
-  final String title = data['title'] ?? 'إشعار جديد';
-  String body = data['body'] ?? '';
-  final String type = data['type'] ?? 'general';
-  final String screen = data['screen'] ?? 'home';
-  final String? distributorId = data['distributor_id'];
-  final String? productName = data['product_name'];
-  final String? distributorName = data['distributor_name'];
-  
-  // ✅ تخطي الإشعارات الفارغة
-  if (body.trim().isEmpty && productName == null) {
-    print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
-    return;
-  }
-  
-  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-  
-  print('📋 Background notification check:');
-  print('   Current User ID: ${currentUserId ?? "Not logged in"}');
-  print('   Distributor ID: ${distributorId ?? "None"}');
-  print('   Title: $title');
-  
-  // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
-  
-  // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
-  // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
-  // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
-  bool shouldShow = true;
-  bool isSubscribedToDistributor = false;
-  try {
-    shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
-    print('   Should show: $shouldShow');
-    
-    // Check subscription status for price updates from distributors
-    if (shouldShow && (screen == 'price_action' || screen == 'expire_soon_price') && distributorId != null && distributorId.isNotEmpty) {
-      if (currentUserId != null) {
-        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
-      } else {
-        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
-      }
-      print('   Is subscribed to distributor: $isSubscribedToDistributor');
-      print('   Product name: $productName');
-      print('   Distributor name: $distributorName');
-      
-      // Customize body based on subscription status
-      if (isSubscribedToDistributor && productName != null && distributorName != null && distributorName.isNotEmpty) {
-        // User IS subscribed - show distributor name first, then product name
-        body = '$distributorName\n$productName';
-        print('   Body customized (subscribed): $body');
-      } else if (productName != null && productName.isNotEmpty) {
-        // User is NOT subscribed OR distributor name not available
-        // Show product name only
-        body = productName;
-        print('   Body customized (not subscribed or no distributor name): $body');
-      }
+    // Initialize Hive for background operations (for subscription cache)
+    try {
+      await Hive.initFlutter();
+    } catch (e) {
+      print('Hive already initialized in background: $e');
     }
-  } catch (e) {
-    print('⚠️ خطأ في فحص الإشعارات في الخلفية: $e');
-    // في حالة الخطأ، نعرض الإشعار
-    shouldShow = true;
-  }
-  
-  if (!shouldShow) {
-    print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
-    return;
-  }
 
-  print('📩 إشعار في الخلفية:');
-  print('   العنوان: $title');
-  print('   المحتوى (قبل التخصيص): $body');
-  print('   النوع: $type');
-  print('   الموزع: ${distributorId ?? "عام"}');
+    // Initialize subscription cache service
+    await SubscriptionCacheService.init();
 
-  // ✅ إشعارات التقييمات فيها notification payload من FCM - مش محتاجين نعرضها
-  // FCM بيعرضهم تلقائياً → لو عرضناهم هنا هيتكرروا!
-  if (type == 'new_product_review' || type == 'new_review_request') {
-    print('⏭️ Skipping review notification - FCM already shows it');
-    print('🔵 === Background handler completed successfully ===');
-    return;
-  }
+    // Initialize Supabase for background operations
+    try {
+      await Supabase.initialize(
+        url: dotenv.env['SUPABASE_URL'] ?? '',
+        anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+      );
+    } catch (e) {
+      // Supabase already initialized
+      print('Supabase already initialized in background: $e');
+    }
 
-  // ✅ نعرض الإشعار مع التخصيص الكامل (نفس الـ foreground)
-  // باقي الإشعارات (منتجات، موزعين، إلخ) محتاجين نعرضها هنا
-  
-  // تحديد القناة واللون
-  String channelId = 'general_channel';
-  String channelName = 'إشعارات عامة';
-  Color color = const Color(0xFF2196F3);
+    final data = message.data;
 
-  if (type == 'order') {
-    channelId = 'orders_channel';
-    channelName = 'طلبات جديدة';
-    color = const Color(0xFF4CAF50);
-  } else if (type == 'offer') {
-    channelId = 'offers_channel';
-    channelName = 'العروض والتخفيضات';
-    color = const Color(0xFFFF9800);
-  }
+    // إنشاء وتهيئة notification plugin في background
+    final FlutterLocalNotificationsPlugin localNotifications =
+        FlutterLocalNotificationsPlugin();
 
-  // Build payload: JSON string with all data
-  final payloadData = {
-    'screen': screen,
-    'distributor_id': distributorId,
-    'type': type,
-    'review_request_id': data['review_request_id'],
-    'product_id': data['product_id'],
-    'product_type': data['product_type'],
-  };
-  final payload = jsonEncode(payloadData);
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@drawable/ic_notification');
+    await localNotifications.initialize(
+      const InitializationSettings(android: androidSettings),
+    );
 
-  print('   المحتوى النهائي: $body');
-  print('   Payload: $payload');
-  
-  // عرض الإشعار المخصص
-  await localNotifications.show(
-    DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    title,
-    body,
-    NotificationDetails(
-      android: AndroidNotificationDetails(
-        channelId,
-        channelName,
-        channelDescription: 'إشعارات $channelName',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: true,
-        enableVibration: true,
-        color: color,
-        colorized: true,
-        icon: '@drawable/ic_notification',
-        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-        styleInformation: body.length > 50
-            ? BigTextStyleInformation(
-                body,
-                contentTitle: title,
-                summaryText: 'Fieldawy Store',
-              )
-            : null,
-        ticker: title,
-        showWhen: true,
-        category: AndroidNotificationCategory.message,
-        tag: 'fieldawy_${DateTime.now().millisecondsSinceEpoch}', // منع التكرار
+    // إنشاء القنوات
+    const AndroidNotificationChannel ordersChannel = AndroidNotificationChannel(
+      'orders_channel',
+      'طلبات جديدة',
+      description: 'إشعارات الطلبات والمبيعات',
+      importance: Importance.max,
+    );
+
+    const AndroidNotificationChannel offersChannel = AndroidNotificationChannel(
+      'offers_channel',
+      'العروض والتخفيضات',
+      description: 'إشعارات العروض الخاصة والتخفيضات',
+      importance: Importance.high,
+    );
+
+    const AndroidNotificationChannel generalChannel =
+        AndroidNotificationChannel(
+      'general_channel',
+      'إشعارات عامة',
+      description: 'إشعارات عامة من التطبيق',
+      importance: Importance.defaultImportance,
+    );
+
+    await localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(ordersChannel);
+
+    await localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(offersChannel);
+
+    await localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(generalChannel);
+
+    // استخراج البيانات
+    final String title = data['title'] ?? 'إشعار جديد';
+    String body = data['body'] ?? '';
+    final String type = data['type'] ?? 'general';
+    final String screen = data['screen'] ?? 'home';
+    final String? distributorId = data['distributor_id'];
+    final String? productName = data['product_name'];
+    final String? distributorName = data['distributor_name'];
+
+    // ✅ تخطي الإشعارات الفارغة
+    if (body.trim().isEmpty && productName == null) {
+      print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
+      return;
+    }
+
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    print('📋 Background notification check:');
+    print('   Current User ID: ${currentUserId ?? "Not logged in"}');
+    print('   Distributor ID: ${distributorId ?? "None"}');
+    print('   Title: $title');
+
+    // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
+
+    // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
+    // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
+    // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
+    bool shouldShow = true;
+    bool isSubscribedToDistributor = false;
+    try {
+      shouldShow =
+          await _shouldShowNotification(screen, distributorId: distributorId);
+      print('   Should show: $shouldShow');
+
+      // Check subscription status for price updates from distributors
+      if (shouldShow &&
+          (screen == 'price_action' || screen == 'expire_soon_price') &&
+          distributorId != null &&
+          distributorId.isNotEmpty) {
+        if (currentUserId != null) {
+          isSubscribedToDistributor =
+              await DistributorSubscriptionService.isSubscribed(distributorId);
+        } else {
+          isSubscribedToDistributor =
+              await SubscriptionCacheService.isSubscribedCached(distributorId);
+        }
+        print('   Is subscribed to distributor: $isSubscribedToDistributor');
+        print('   Product name: $productName');
+        print('   Distributor name: $distributorName');
+
+        // Customize body based on subscription status
+        if (isSubscribedToDistributor &&
+            productName != null &&
+            distributorName != null &&
+            distributorName.isNotEmpty) {
+          // User IS subscribed - show distributor name first, then product name
+          body = '$distributorName\n$productName';
+          print('   Body customized (subscribed): $body');
+        } else if (productName != null && productName.isNotEmpty) {
+          // User is NOT subscribed OR distributor name not available
+          // Show product name only
+          body = productName;
+          print(
+              '   Body customized (not subscribed or no distributor name): $body');
+        }
+      }
+    } catch (e) {
+      print('⚠️ خطأ في فحص الإشعارات في الخلفية: $e');
+      // في حالة الخطأ، نعرض الإشعار
+      shouldShow = true;
+    }
+
+    if (!shouldShow) {
+      print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
+      return;
+    }
+
+    print('📩 إشعار في الخلفية:');
+    print('   العنوان: $title');
+    print('   المحتوى (قبل التخصيص): $body');
+    print('   النوع: $type');
+    print('   الموزع: ${distributorId ?? "عام"}');
+
+    // ✅ إشعارات التقييمات فيها notification payload من FCM - مش محتاجين نعرضها
+    // FCM بيعرضهم تلقائياً → لو عرضناهم هنا هيتكرروا!
+    if (type == 'new_product_review' || type == 'new_review_request') {
+      print('⏭️ Skipping review notification - FCM already shows it');
+      print('🔵 === Background handler completed successfully ===');
+      return;
+    }
+
+    // ✅ نعرض الإشعار مع التخصيص الكامل (نفس الـ foreground)
+    // باقي الإشعارات (منتجات، موزعين، إلخ) محتاجين نعرضها هنا
+
+    // تحديد القناة واللون
+    String channelId = 'general_channel';
+    String channelName = 'إشعارات عامة';
+    Color color = const Color(0xFF2196F3);
+
+    if (type == 'order') {
+      channelId = 'orders_channel';
+      channelName = 'طلبات جديدة';
+      color = const Color(0xFF4CAF50);
+    } else if (type == 'offer') {
+      channelId = 'offers_channel';
+      channelName = 'العروض والتخفيضات';
+      color = const Color(0xFFFF9800);
+    }
+
+    // Build payload: JSON string with all data
+    final payloadData = {
+      'screen': screen,
+      'distributor_id': distributorId,
+      'type': type,
+      'review_request_id': data['review_request_id'],
+      'product_id': data['product_id'],
+      'product_type': data['product_type'],
+    };
+    final payload = jsonEncode(payloadData);
+
+    print('   المحتوى النهائي: $body');
+    print('   Payload: $payload');
+
+    // عرض الإشعار المخصص
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          channelName,
+          channelDescription: 'إشعارات $channelName',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          color: color,
+          colorized: true,
+          icon: '@drawable/ic_notification',
+          largeIcon:
+              const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          styleInformation: body.length > 50
+              ? BigTextStyleInformation(
+                  body,
+                  contentTitle: title,
+                  summaryText: 'Fieldawy Store',
+                )
+              : null,
+          ticker: title,
+          showWhen: true,
+          category: AndroidNotificationCategory.message,
+          tag:
+              'fieldawy_${DateTime.now().millisecondsSinceEpoch}', // منع التكرار
+        ),
       ),
-    ),
-    payload: payload,
-  );
-  
-  print('🔵 === Background handler completed successfully ===');
+      payload: payload,
+    );
+
+    print('🔵 === Background handler completed successfully ===');
   } catch (e, stackTrace) {
     print('❌❌❌ FATAL ERROR in background handler: $e');
     print('Stack trace: $stackTrace');
@@ -354,12 +370,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 // ✅ دالة للتحقق من تفضيلات الإشعارات للمستقبل فقط
 // هذه الدالة تفحص إعدادات استقبال الإشعارات للمستخدم الحالي (المستقبل)
 // ولا تتأثر بإعدادات المرسل - فالموزع يمكنه إرسال إشعارات حتى لو قافل استقباله
-Future<bool> _shouldShowNotification(String screen, {String? distributorId}) async {
-  print('🔍 _shouldShowNotification called: screen=$screen, distributor=$distributorId');
+Future<bool> _shouldShowNotification(String screen,
+    {String? distributorId}) async {
+  print(
+      '🔍 _shouldShowNotification called: screen=$screen, distributor=$distributorId');
   try {
     // تحديد نوع الإشعار من screen name
     String? notificationType;
-    
+
     switch (screen) {
       case 'price_action':
         notificationType = 'price_action';
@@ -389,22 +407,24 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
         // أنواع أخرى (home, orders, إلخ) تُعرض دائماً
         notificationType = null;
     }
-    
+
     // أولاً: فحص إذا كان الإشعار من موزع معين
     if (distributorId != null && distributorId.isNotEmpty) {
       // Check if user is logged in
       final userId = Supabase.instance.client.auth.currentUser?.id;
-      
+
       bool isSubscribedToDistributor;
       if (userId != null) {
         // User is logged in, check from Supabase
-        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
+        isSubscribedToDistributor =
+            await DistributorSubscriptionService.isSubscribed(distributorId);
       } else {
         // User not logged in (background isolate), check from local cache
         print('📦 Checking subscription from local cache (background mode)');
-        isSubscribedToDistributor = await SubscriptionCacheService.isSubscribedCached(distributorId);
+        isSubscribedToDistributor =
+            await SubscriptionCacheService.isSubscribedCached(distributorId);
       }
-      
+
       if (isSubscribedToDistributor) {
         // إذا كان مشترك في الموزع، يستقبل كل إشعاراته (override للإعدادات العامة)
         print('✅ إشعار من موزع مشترك فيه - سيُعرض');
@@ -413,16 +433,19 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
       // إذا لم يكن مشترك، نكمل للإعدادات العامة
       print('ℹ️ إشعار من موزع غير مشترك - نفحص الإعدادات العامة');
     }
-    
+
     // ثانياً: فحص الإعدادات العامة
     if (notificationType == null) {
       // أنواع أخرى تُعرض دائماً
       return true;
     }
-    
+
     // التحقق من تفضيلات المستخدم العامة
-    final isEnabled = await NotificationPreferencesService.isNotificationEnabled(notificationType);
-    print('📋 فحص الإعدادات العامة لـ $notificationType: ${isEnabled ? "مفعل" : "معطل"}');
+    final isEnabled =
+        await NotificationPreferencesService.isNotificationEnabled(
+            notificationType);
+    print(
+        '📋 فحص الإعدادات العامة لـ $notificationType: ${isEnabled ? "مفعل" : "معطل"}');
     return isEnabled;
   } catch (e) {
     print('⚠️ خطأ في فحص تفضيلات الإشعارات: $e');
@@ -432,11 +455,13 @@ Future<bool> _shouldShowNotification(String screen, {String? distributorId}) asy
 }
 
 // دالة للتعامل مع النقر على الإشعارات
-void _handleNotificationTap(String screen, {String? distributorId, Map<String, dynamic>? data}) {
-  print('🔔 معالجة النقر على الإشعار: $screen, distributor: $distributorId, data: $data');
-  
+void _handleNotificationTap(String screen,
+    {String? distributorId, Map<String, dynamic>? data}) {
+  print(
+      '🔔 معالجة النقر على الإشعار: $screen, distributor: $distributorId, data: $data');
+
   final context = navigatorKey.currentContext;
-  
+
   if (context != null) {
     // Context متاح، نفذ التنقل مباشرة
     print('✅ NavigatorContext متاح - بدء التنقل');
@@ -450,11 +475,13 @@ void _handleNotificationTap(String screen, {String? distributorId, Map<String, d
 }
 
 // دالة منفصلة لتنفيذ التنقل
-void _performNavigation(BuildContext context, String screen, String? distributorId, {Map<String, dynamic>? data}) async {
+void _performNavigation(
+    BuildContext context, String screen, String? distributorId,
+    {Map<String, dynamic>? data}) async {
   // ✅ معالجة إشعارات التقييمات
   if (data != null && data['type'] != null) {
     final type = data['type'];
-    
+
     // إشعار طلب تقييم جديد → صفحة التقييمات العامة
     if (type == 'new_review_request') {
       print('🔔 الانتقال إلى صفحة التقييمات العامة');
@@ -463,15 +490,15 @@ void _performNavigation(BuildContext context, String screen, String? distributor
           builder: (context) => const ProductsWithReviewsScreen(),
         ),
       );
-      return; 
+      return;
     }
-    
+
     // إشعار تعليق/تقييم جديد → صفحة تفاصيل التقييمات للمنتج
     if (type == 'new_product_review') {
       final reviewRequestId = data['review_request_id'];
       if (reviewRequestId != null) {
         print('🔔 الانتقال إلى صفحة تفاصيل التقييمات: $reviewRequestId');
-        
+
         // جلب بيانات الـ request من Supabase
         try {
           final response = await NetworkGuard.execute(() async {
@@ -481,12 +508,13 @@ void _performNavigation(BuildContext context, String screen, String? distributor
                 .eq('id', reviewRequestId)
                 .single();
           });
-          
+
           final request = ReviewRequestModel.fromJson(response);
-          
+
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => ProductReviewDetailsScreen(request: request),
+              builder: (context) =>
+                  ProductReviewDetailsScreen(request: request),
             ),
           );
         } catch (e) {
@@ -502,22 +530,25 @@ void _performNavigation(BuildContext context, String screen, String? distributor
       }
     }
   }
-  
+
   // ✅ فقط منتج جديد (home) + مشترك → صفحة الموزع
   // باقي الحالات → التاب المناسب
   if (distributorId != null && distributorId.isNotEmpty && screen == 'home') {
     // فحص الاشتراك
     final userId = Supabase.instance.client.auth.currentUser?.id;
     bool isSubscribed = false;
-    
+
     if (userId != null) {
-      isSubscribed = await DistributorSubscriptionService.isSubscribed(distributorId);
+      isSubscribed =
+          await DistributorSubscriptionService.isSubscribed(distributorId);
     } else {
-      isSubscribed = await SubscriptionCacheService.isSubscribedCached(distributorId);
+      isSubscribed =
+          await SubscriptionCacheService.isSubscribedCached(distributorId);
     }
-    
+
     if (isSubscribed) {
-      print('🔔 منتج جديد من موزع مشترك - الانتقال إلى صفحة الموزع: $distributorId');
+      print(
+          '🔔 منتج جديد من موزع مشترك - الانتقال إلى صفحة الموزع: $distributorId');
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => DrawerWrapper(distributorId: distributorId),
@@ -533,7 +564,7 @@ void _performNavigation(BuildContext context, String screen, String? distributor
 
   // تحديد tab index بناءً على screen
   final tabIndex = _getTabIndexFromScreen(screen);
-  
+
   print('🔔 الانتقال إلى Tab: $tabIndex ($screen)');
 
   // الانتقال إلى HomeScreen مع التاب المحدد
@@ -544,7 +575,8 @@ void _performNavigation(BuildContext context, String screen, String? distributor
     (route) => false,
   );
 }
-// دالة مساعدة لتحديد tab index من screen name                      
+
+// دالة مساعدة لتحديد tab index من screen name
 int _getTabIndexFromScreen(String screen) {
   switch (screen) {
     case 'home':
@@ -572,7 +604,7 @@ int _getTabIndexFromScreen(String screen) {
     default:
       return 0;
   }
-}                                                                   
+}
 
 Future<void> main() async {
   HttpOverrides.global = MyHttpOverrides();
@@ -585,329 +617,362 @@ Future<void> main() async {
     print("⚠️ Failed to load .env file: $e");
   }
 
-  // ✅ Firebase initialization
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // ✅ Firebase initialization (conditional)
+  if (FirebaseConfig.isFirebaseEnabled) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      print('✅ Firebase initialized successfully');
+    } catch (e) {
+      print('❌ Firebase initialization failed: $e');
+      print('⚠️ التطبيق سيعمل بدون خدمات Firebase');
+    }
+  } else {
+    print('⚠️ Firebase is disabled in FirebaseConfig');
+    print('⚠️ الإشعارات لن تعمل حتى يتم تفعيل Firebase');
+  }
 
   // ✅ تعطيل Firebase Messaging على الويب (للـ Admin Dashboard)
-  // فقط للموبايل
-  if (!kIsWeb) {
-    // ✅ إعداد handler للخلفية
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // فقط للموبايل وعندما يكون Firebase مفعل
+  if (!kIsWeb && FirebaseConfig.isFirebaseEnabled) {
+    try {
+      // ✅ إعداد handler للخلفية
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
 
-    // ✅ طلب إذن من المستخدم
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
+      // ✅ طلب إذن من المستخدم
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      // ✅ الحصول على FCM Token وحفظه في Supabase (سيتم بعد تسجيل الدخول)
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        print(
+            '❌ خطأ في جلب FCM Token (Firebase Service might be unavailable): $e');
+      }
+
+      print('═══════════════════════════════════════════════════════════');
+      print('🔑 FCM TOKEN للاختبار:');
+      print('═══════════════════════════════════════════════════════════');
+      if (fcmToken != null) {
+        print(fcmToken);
+        print('═══════════════════════════════════════════════════════════');
+        print('✅ تم الحصول على FCM Token بنجاح');
+        print('💾 سيتم حفظه في Supabase بعد تسجيل الدخول');
+      } else {
+        print('❌ فشل الحصول على FCM Token');
+      }
+      print('═══════════════════════════════════════════════════════════');
+
+      // ✅ الاشتراك في Topics تلقائياً
+      try {
+        await FirebaseMessaging.instance.subscribeToTopic('all_users');
+        print('✅ تم الاشتراك في topic: all_users بنجاح');
+      } catch (e) {
+        print('❌ خطأ في الاشتراك في topic: $e');
+      }
+
+      // ✅ حفظ FCM Token في Supabase (للاختبار)
+      if (fcmToken != null) {
+        print('📤 محاولة حفظ FCM Token في Supabase...');
+      }
+
+      // يمكنك إضافة topics أخرى حسب نوع المستخدم
+      // await FirebaseMessaging.instance.subscribeToTopic('orders');
+      // await FirebaseMessaging.instance.subscribeToTopic('offers');
+
+      // ✅ الاستماع لتحديثات الـ Token
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        print('🔄 تم تحديث FCM Token الجديد');
+        // سيتم حفظه تلقائياً عبر FCMTokenService
+      });
+
+      // ✅ معالجة النقر على الإشعار عندما يكون التطبيق مغلق
+      FirebaseMessaging.instance.getInitialMessage().then((message) {
+        if (message != null) {
+          print('🔔 تم فتح التطبيق من الإشعار: ${message.data}');
+          final screen = message.data['screen'] ?? 'home';
+          final distributorId = message.data['distributor_id'];
+          _handleNotificationTap(screen,
+              distributorId: distributorId, data: message.data);
+        }
+      });
+
+      // ✅ معالجة النقر على الإشعار عندما يكون التطبيق في الخلفية
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        print('🔔 تم فتح الإشعار من الخلفية: ${message.data}');
+        final screen = message.data['screen'] ?? 'home';
+        final distributorId = message.data['distributor_id'];
+        _handleNotificationTap(screen,
+            distributorId: distributorId, data: message.data);
+      });
+    } catch (e) {
+      print('❌ Firebase Messaging setup failed: $e');
+      print('⚠️ الإشعارات لن تعمل - Firebase service is unavailable');
+    }
+
+    // ✅ إعدادات الإشعارات المحلية (تعمل حتى لو Firebase معطل)
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    // إنشاء قنوات الإشعارات
+    const AndroidNotificationChannel ordersChannel = AndroidNotificationChannel(
+      'orders_channel',
+      'طلبات جديدة',
+      description: 'إشعارات الطلبات والمبيعات',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
     );
 
-    // ✅ الحصول على FCM Token وحفظه في Supabase (سيتم بعد تسجيل الدخول)
-    String? fcmToken;
-    try {
-      fcmToken = await FirebaseMessaging.instance.getToken();
-    } catch (e) {
-      print('❌ خطأ في جلب FCM Token (Firebase Service might be unavailable): $e');
-    }
-    
-  print('═══════════════════════════════════════════════════════════');
-  print('🔑 FCM TOKEN للاختبار:');
-  print('═══════════════════════════════════════════════════════════');
-  if (fcmToken != null) {
-    print(fcmToken);
-    print('═══════════════════════════════════════════════════════════');
-    print('✅ تم الحصول على FCM Token بنجاح');
-    print('💾 سيتم حفظه في Supabase بعد تسجيل الدخول');
-  } else {
-    print('❌ فشل الحصول على FCM Token');
-  }
-  print('═══════════════════════════════════════════════════════════');
+    const AndroidNotificationChannel offersChannel = AndroidNotificationChannel(
+      'offers_channel',
+      'العروض والتخفيضات',
+      description: 'إشعارات العروض الخاصة والتخفيضات',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
 
-  // ✅ الاشتراك في Topics تلقائياً
-  try {
-    await FirebaseMessaging.instance.subscribeToTopic('all_users');
-    print('✅ تم الاشتراك في topic: all_users بنجاح');
-  } catch (e) {
-    print('❌ خطأ في الاشتراك في topic: $e');
-  }
-  
-  // ✅ حفظ FCM Token في Supabase (للاختبار)
-  if (fcmToken != null) {
-    print('📤 محاولة حفظ FCM Token في Supabase...');
-  }
-  
-  // يمكنك إضافة topics أخرى حسب نوع المستخدم
-  // await FirebaseMessaging.instance.subscribeToTopic('orders');
-  // await FirebaseMessaging.instance.subscribeToTopic('offers');
+    const AndroidNotificationChannel generalChannel =
+        AndroidNotificationChannel(
+      'general_channel',
+      'إشعارات عامة',
+      description: 'إشعارات عامة من التطبيق',
+      importance: Importance.defaultImportance,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
 
-  // ✅ الاستماع لتحديثات الـ Token
-  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-    print('🔄 تم تحديث FCM Token الجديد');
-    // سيتم حفظه تلقائياً عبر FCMTokenService
-  });
+    // تسجيل القنوات
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(ordersChannel);
 
-  // ✅ معالجة النقر على الإشعار عندما يكون التطبيق مغلق
-  FirebaseMessaging.instance.getInitialMessage().then((message) {
-    if (message != null) {
-      print('🔔 تم فتح التطبيق من الإشعار: ${message.data}');
-      final screen = message.data['screen'] ?? 'home';
-      final distributorId = message.data['distributor_id'];
-      _handleNotificationTap(screen, distributorId: distributorId, data: message.data);
-    }
-  });
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(offersChannel);
 
-  // ✅ معالجة النقر على الإشعار عندما يكون التطبيق في الخلفية
-  FirebaseMessaging.onMessageOpenedApp.listen((message) {
-    print('🔔 تم فتح الإشعار من الخلفية: ${message.data}');
-    final screen = message.data['screen'] ?? 'home';
-    final distributorId = message.data['distributor_id'];
-    _handleNotificationTap(screen, distributorId: distributorId, data: message.data);
-  });
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(generalChannel);
 
-  // ✅ إعدادات الإشعارات المحلية
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@drawable/ic_notification');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
 
-  // إنشاء قنوات الإشعارات
-  const AndroidNotificationChannel ordersChannel = AndroidNotificationChannel(
-    'orders_channel',
-    'طلبات جديدة',
-    description: 'إشعارات الطلبات والمبيعات',
-    importance: Importance.max,
-    playSound: true,
-    enableVibration: true,
-    showBadge: true,
-  );
+    // معالجة النقر على الإشعار
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload != null) {
+          print('🔔 تم النقر على الإشعار: ${response.payload}');
 
-  const AndroidNotificationChannel offersChannel = AndroidNotificationChannel(
-    'offers_channel',
-    'العروض والتخفيضات',
-    description: 'إشعارات العروض الخاصة والتخفيضات',
-    importance: Importance.high,
-    playSound: true,
-    enableVibration: true,
-    showBadge: true,
-  );
+          try {
+            // Parse JSON payload
+            final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+            final screen = data['screen'] ?? 'home';
+            final distributorId = data['distributor_id'];
 
-  const AndroidNotificationChannel generalChannel = AndroidNotificationChannel(
-    'general_channel',
-    'إشعارات عامة',
-    description: 'إشعارات عامة من التطبيق',
-    importance: Importance.defaultImportance,
-    playSound: true,
-    enableVibration: true,
-    showBadge: true,
-  );
-
-  // تسجيل القنوات
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(ordersChannel);
-
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(offersChannel);
-
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(generalChannel);
-
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@drawable/ic_notification');
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
-
-  // معالجة النقر على الإشعار
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      if (response.payload != null) {
-        print('🔔 تم النقر على الإشعار: ${response.payload}');
-        
-        try {
-          // Parse JSON payload
-          final data = jsonDecode(response.payload!) as Map<String, dynamic>;
-          final screen = data['screen'] ?? 'home';
-          final distributorId = data['distributor_id'];
-          
-          _handleNotificationTap(screen, distributorId: distributorId, data: data);
-        } catch (e) {
-          print('❌ خطأ في parse الـ payload: $e');
-          // Fallback: old format "screen|distributor_id"
-          final parts = response.payload!.split('|');
-          final screen = parts[0];
-          final distributorId = parts.length > 1 ? parts[1] : null;
-          _handleNotificationTap(screen, distributorId: distributorId);
+            _handleNotificationTap(screen,
+                distributorId: distributorId, data: data);
+          } catch (e) {
+            print('❌ خطأ في parse الـ payload: $e');
+            // Fallback: old format "screen|distributor_id"
+            final parts = response.payload!.split('|');
+            final screen = parts[0];
+            final distributorId = parts.length > 1 ? parts[1] : null;
+            _handleNotificationTap(screen, distributorId: distributorId);
+          }
         }
-      }
-    },
-  );
+      },
+    );
 
     // ✅ listen للإشعارات أثناء فتح التطبيق (data-only messages)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    try {
-      print('🟢 === Foreground handler started ===');
-      
-      final data = message.data;
+      try {
+        print('🟢 === Foreground handler started ===');
 
-      // استخراج البيانات من data payload
-      final String title = data['title'] ?? 'إشعار جديد';
-      String body = data['body'] ?? '';
-      final String type = data['type'] ?? 'general';
-      final String screen = data['screen'] ?? 'home';
-      final String? distributorId = data['distributor_id'];
-      final String? productName = data['product_name'];
-      final String? distributorName = data['distributor_name'];
+        final data = message.data;
 
-      // ✅ تخطي الإشعارات الفارغة
-      if (body.trim().isEmpty && productName == null) {
-        print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
-        return;
-      }
+        // استخراج البيانات من data payload
+        final String title = data['title'] ?? 'إشعار جديد';
+        String body = data['body'] ?? '';
+        final String type = data['type'] ?? 'general';
+        final String screen = data['screen'] ?? 'home';
+        final String? distributorId = data['distributor_id'];
+        final String? productName = data['product_name'];
+        final String? distributorName = data['distributor_name'];
 
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    
-    print('📱 Foreground notification received:');
-    print('   Current User ID: ${currentUserId ?? "Not logged in"}');
-    print('   Distributor ID: ${distributorId ?? "None"}');
-    print('   Title: $title');
-    
-    // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
-
-    // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
-    // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
-    // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
-    bool shouldShow = true;
-    bool isSubscribedToDistributor = false;
-    try {
-      shouldShow = await _shouldShowNotification(screen, distributorId: distributorId);
-      print('   Should show: $shouldShow');
-      
-      // Check subscription status for price updates from distributors
-      if (shouldShow && (screen == 'price_action' || screen == 'expire_soon_price') && distributorId != null && distributorId.isNotEmpty) {
-        isSubscribedToDistributor = await DistributorSubscriptionService.isSubscribed(distributorId);
-        print('   Is subscribed to distributor: $isSubscribedToDistributor');
-        print('   Product name: $productName');
-        print('   Distributor name: $distributorName');
-        
-        // Customize body based on subscription status
-        if (isSubscribedToDistributor && productName != null && distributorName != null && distributorName.isNotEmpty) {
-          // User IS subscribed - show distributor name first, then product name
-          body = '$distributorName\n$productName';
-          print('   Body customized (subscribed): $body');
-        } else if (productName != null && productName.isNotEmpty) {
-          // User is NOT subscribed OR distributor name not available
-          // Show product name only
-          body = productName;
-          print('   Body customized (not subscribed or no distributor name): $body');
+        // ✅ تخطي الإشعارات الفارغة
+        if (body.trim().isEmpty && productName == null) {
+          print('⏭️ تم تخطي إشعار فارغ (بدون body أو product name)');
+          return;
         }
+
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+        print('📱 Foreground notification received:');
+        print('   Current User ID: ${currentUserId ?? "Not logged in"}');
+        print('   Distributor ID: ${distributorId ?? "None"}');
+        print('   Title: $title');
+
+        // ✅ تم السماح للمرسل باستقبال إشعاراته الخاصة بناءً على طلب المستخدم
+
+        // ✅ فلترة الإشعارات حسب تفضيلات المستخدم المستقبل (وليس المرسل)
+        // هنا نفحص إعدادات الاستقبال الخاصة بالمستخدم الحالي
+        // المرسل (الموزع) يمكنه إرسال الإشعارات حتى لو كان قافل استقباله لنفس النوع
+        bool shouldShow = true;
+        bool isSubscribedToDistributor = false;
+        try {
+          shouldShow = await _shouldShowNotification(screen,
+              distributorId: distributorId);
+          print('   Should show: $shouldShow');
+
+          // Check subscription status for price updates from distributors
+          if (shouldShow &&
+              (screen == 'price_action' || screen == 'expire_soon_price') &&
+              distributorId != null &&
+              distributorId.isNotEmpty) {
+            isSubscribedToDistributor =
+                await DistributorSubscriptionService.isSubscribed(
+                    distributorId);
+            print(
+                '   Is subscribed to distributor: $isSubscribedToDistributor');
+            print('   Product name: $productName');
+            print('   Distributor name: $distributorName');
+
+            // Customize body based on subscription status
+            if (isSubscribedToDistributor &&
+                productName != null &&
+                distributorName != null &&
+                distributorName.isNotEmpty) {
+              // User IS subscribed - show distributor name first, then product name
+              body = '$distributorName\n$productName';
+              print('   Body customized (subscribed): $body');
+            } else if (productName != null && productName.isNotEmpty) {
+              // User is NOT subscribed OR distributor name not available
+              // Show product name only
+              body = productName;
+              print(
+                  '   Body customized (not subscribed or no distributor name): $body');
+            }
+          }
+        } catch (e) {
+          print('⚠️ خطأ في فحص الإشعارات: $e');
+          shouldShow = true;
+        }
+
+        if (!shouldShow) {
+          print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
+          return;
+        }
+
+        // تحديد نوع الإشعار والقناة المناسبة
+        String channelId = 'general_channel';
+        String channelName = 'إشعارات عامة';
+        Color color = const Color(0xFF2196F3);
+
+        if (type == 'order') {
+          channelId = 'orders_channel';
+          channelName = 'طلبات جديدة';
+          color = const Color(0xFF4CAF50);
+        } else if (type == 'offer') {
+          channelId = 'offers_channel';
+          channelName = 'العروض والتخفيضات';
+          color = const Color(0xFFFF9800);
+        }
+
+        print('📩 إشعار جديد: $title');
+        print('📝 المحتوى: $body');
+        print('🏷️ النوع: $type');
+        print('👤 الموزع: ${distributorId ?? "عام"}');
+
+        // Build payload: JSON string with all data
+        final payloadData = {
+          'screen': screen,
+          'distributor_id': distributorId,
+          'type': type,
+          'review_request_id': data['review_request_id'],
+          'product_id': data['product_id'],
+          'product_type': data['product_type'],
+        };
+        final payload = jsonEncode(payloadData);
+
+        flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title,
+          body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channelId,
+              channelName,
+              channelDescription: 'إشعارات $channelName',
+              importance: Importance.max,
+              priority: Priority.high,
+              playSound: true,
+              enableVibration: true,
+              color: color,
+              colorized: true,
+              icon: '@drawable/ic_notification',
+              largeIcon:
+                  const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+              styleInformation: body.length > 50
+                  ? BigTextStyleInformation(
+                      body,
+                      contentTitle: title,
+                      summaryText: 'Fieldawy Store',
+                      htmlFormatContentTitle: true,
+                      htmlFormatSummaryText: true,
+                    )
+                  : null,
+              ticker: title,
+              showWhen: true,
+              category: AndroidNotificationCategory.message,
+            ),
+          ),
+          payload: payload,
+        );
+
+        print('🟢 === Foreground handler completed successfully ===');
+      } catch (e, stackTrace) {
+        print('❌❌❌ FATAL ERROR in foreground handler: $e');
+        print('Stack trace: $stackTrace');
       }
-    } catch (e) {
-      print('⚠️ خطأ في فحص الإشعارات: $e');
-      shouldShow = true;
-    }
-    
-    if (!shouldShow) {
-      print('⏭️ تم تخطي الإشعار: $title (تم تعطيله في الإعدادات)');
-      return;
-    }
-
-    // تحديد نوع الإشعار والقناة المناسبة
-    String channelId = 'general_channel';
-    String channelName = 'إشعارات عامة';
-    Color color = const Color(0xFF2196F3);
-
-    if (type == 'order') {
-      channelId = 'orders_channel';
-      channelName = 'طلبات جديدة';
-      color = const Color(0xFF4CAF50);
-    } else if (type == 'offer') {
-      channelId = 'offers_channel';
-      channelName = 'العروض والتخفيضات';
-      color = const Color(0xFFFF9800);
-    }
-
-    print('📩 إشعار جديد: $title');
-    print('📝 المحتوى: $body');
-    print('🏷️ النوع: $type');
-    print('👤 الموزع: ${distributorId ?? "عام"}');
-
-    // Build payload: JSON string with all data
-    final payloadData = {
-      'screen': screen,
-      'distributor_id': distributorId,
-      'type': type,
-      'review_request_id': data['review_request_id'],
-      'product_id': data['product_id'],
-      'product_type': data['product_type'],
-    };
-    final payload = jsonEncode(payloadData);
-    
-    flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelId,
-          channelName,
-          channelDescription: 'إشعارات $channelName',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
-          color: color,
-          colorized: true,
-          icon: '@drawable/ic_notification',
-          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-          styleInformation: body.length > 50
-              ? BigTextStyleInformation(
-                  body,
-                  contentTitle: title,
-                  summaryText: 'Fieldawy Store',
-                  htmlFormatContentTitle: true,
-                  htmlFormatSummaryText: true,
-                )
-              : null,
-          ticker: title,
-          showWhen: true,
-          category: AndroidNotificationCategory.message,
-        ),
-      ),
-      payload: payload,
-    );
-    
-      print('🟢 === Foreground handler completed successfully ===');
-    } catch (e, stackTrace) {
-      print('❌❌❌ FATAL ERROR in foreground handler: $e');
-      print('Stack trace: $stackTrace');
-    }
     });
   } // End of if (!kIsWeb) for Firebase Messaging
 
   // pdfrxFlutterInitialize(); // Not needed in pdfrx 1.3.5
   await EasyLocalization.ensureInitialized();
-  
+
   await Hive.initFlutter();
 
- 
-
   Hive.registerAdapter(ProductModelAdapter());
+  Hive.registerAdapter(DailyChallengeModelAdapter());
   Hive.registerAdapter(OrderItemModelAdapter());
   Hive.registerAdapter(CacheEntryAdapter());
   Hive.registerAdapter(UserModelAdapter());
   await Hive.openBox<OrderItemModel>('orders');
   await Hive.openBox('favorites'); // Store as Map<String, Map<String, dynamic>>
   await Hive.openBox('api_cache');
-  
+
   // Initialize subscription cache for background notifications
   await SubscriptionCacheService.init();
   print('✅ Subscription cache initialized');
@@ -1001,32 +1066,39 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
       print('⚠️ Supabase initialization failed (likely offline): $e');
       // Continue initialization even if Supabase fails (for offline mode)
     }
-    
+
     // ✅ إعداد FCM Token Service لحفظ Token في Supabase
     _setupFCMTokenService();
   }
 
   void _setupFCMTokenService() {
+    // Skip FCM setup if Firebase is disabled
+    if (!FirebaseConfig.isFirebaseEnabled) {
+      print('⚠️ FCM Token Service skipped - Firebase is disabled');
+      return;
+    }
+
     final fcmService = FCMTokenService();
-    
+
     // حفظ Token إذا كان المستخدم مسجل دخول بالفعل
     if (Supabase.instance.client.auth.currentUser != null) {
       print('👤 المستخدم مسجل دخول - جاري حفظ FCM Token...');
       fcmService.getAndSaveToken();
     }
-    
+
     // الاستماع لتغييرات حالة المصادقة
     Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
-      
+
       if (event == AuthChangeEvent.signedIn) {
         print('🔐 تم تسجيل الدخول - جاري حفظ FCM Token...');
         fcmService.getAndSaveToken();
-        
+
         // Sync distributor subscriptions to local cache
         print('📦 Syncing subscriptions to local cache...');
         try {
-          final subscriptions = await DistributorSubscriptionService.getSubscribedDistributorIds();
+          final subscriptions = await DistributorSubscriptionService
+              .getSubscribedDistributorIds();
           print('✅ Synced ${subscriptions.length} subscriptions to cache');
         } catch (e) {
           print('⚠️ Error syncing subscriptions: $e');
@@ -1038,7 +1110,7 @@ class _InitializedAppState extends ConsumerState<InitializedApp> {
         print('🗑️ Subscription cache cleared');
       }
     });
-    
+
     // إعداد مستمع لتحديثات Token
     fcmService.setupTokenRefreshListener();
   }
@@ -1158,9 +1230,8 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(currentRouteProvider.notifier).restoreLastRoute();
-    });
+    // تم إزالة restoreLastRoute() - لما التطبيق يتقفل ويفتح تاني يبدأ من الـ Home
+    // Flutter بيحافظ على الـ state تلقائياً لما التطبيق يكون في الـ background
   }
 
   @override
@@ -1188,19 +1259,21 @@ class _FieldawyStoreAppState extends ConsumerState<FieldawyStoreApp> {
       themeMode: themeMode,
       themeAnimationDuration: const Duration(milliseconds: 200),
       themeAnimationCurve: Curves.easeOutCubic,
+      navigatorObservers: [AppRouteObserver(ref)],
       // For Web: start with Admin Login, for Mobile: start with regular app
       initialRoute: kIsWeb ? '/admin/login' : '/',
       onGenerateRoute: (settings) {
         // Check if it's an admin route
         if (settings.name != null && settings.name!.startsWith('/admin')) {
           if (settings.name == '/admin/login') {
-            return MaterialPageRoute(builder: (_) => const AdminLoginRealScreen());
+            return MaterialPageRoute(
+                builder: (_) => const AdminLoginRealScreen());
           }
           if (settings.name == '/admin/dashboard') {
             return MaterialPageRoute(builder: (_) => const AdminScaffold());
           }
         }
-        
+
         // Handle regular routes
         switch (settings.name) {
           case '/':

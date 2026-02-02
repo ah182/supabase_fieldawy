@@ -10,7 +10,7 @@ import 'package:fieldawy_store/features/authentication/presentation/screens/reje
 import 'package:fieldawy_store/features/authentication/presentation/screens/pending_review_screen.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
-import 'package:fieldawy_store/services/app_state_manager.dart';
+
 import 'package:fieldawy_store/features/authentication/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -19,7 +19,6 @@ import 'package:fieldawy_store/features/products/data/product_repository.dart';
 import 'package:fieldawy_store/features/clinics/presentation/widgets/location_permission_dialog.dart';
 import 'package:fieldawy_store/features/clinics/data/clinic_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 class AuthGate extends HookConsumerWidget {
   const AuthGate({super.key});
@@ -32,7 +31,8 @@ class AuthGate extends HookConsumerWidget {
 
     return authState.when(
       data: (user) {
-        print('[AuthGate] authState.when data: user is ${user == null ? "null" : "not null"}');
+        print(
+            '[AuthGate] authState.when data: user is ${user == null ? "null" : "not null"}');
 
         if (user == null) {
           print('[AuthGate] User is null, returning LoginScreen.');
@@ -42,7 +42,8 @@ class AuthGate extends HookConsumerWidget {
         // ignore: unnecessary_null_comparison
         if (user != null) {
           // Listen for userDataProvider to recover from an error, then refresh home data.
-          ref.listen<AsyncValue<UserModel?>>(userDataProvider, (previous, next) {
+          ref.listen<AsyncValue<UserModel?>>(userDataProvider,
+              (previous, next) {
             final wasError = previous?.hasError ?? false;
             final hasData = next.hasValue;
             if (wasError && hasData) {
@@ -76,16 +77,9 @@ class AuthGate extends HookConsumerWidget {
                 return const PendingReviewScreen();
               }
 
-              // ✅ المستخدم تمام → نشوف آخر Route
-              final lastRoute = ref.watch(currentRouteProvider);
-              if (lastRoute != 'home') {
-                if (_isValidRouteForUser(lastRoute, userModel)) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    final navService = NavigationService(context, ref);
-                    navService.navigateTo(lastRoute);
-                  });
-                }
-              }
+              // ✅ المستخدم تمام
+              // تم إزالة استعادة الـ route لأنها تسبب تكرار التنقل (double navigation)
+              // ولأن Flutter يحافظ على الـ state تلقائياً
 
               // طلب الموقع للأطباء عند أول تسجيل دخول
               _checkAndRequestLocationForDoctor(context, ref, userModel);
@@ -140,7 +134,8 @@ class AuthGate extends HookConsumerWidget {
 
         return connectivity.when(
           data: (status) {
-            if (status.contains(ConnectivityResult.none) && currentUser != null) {
+            if (status.contains(ConnectivityResult.none) &&
+                currentUser != null) {
               // Offline but has a cached user, so let them in.
               return const DrawerWrapper();
             }
@@ -153,19 +148,6 @@ class AuthGate extends HookConsumerWidget {
         );
       },
     );
-  }
-
-  bool _isValidRouteForUser(String route, dynamic userModel) {
-    final allowedRoutes = ['home'];
-
-    if (userModel.role == 'doctor') {
-      allowedRoutes.addAll(['distributors', 'addDrug', 'category']);
-    } else if (userModel.role == 'distributor' || userModel.role == 'company') {
-      allowedRoutes.addAll(['products', 'dashboard', 'category']);
-    }
-
-    allowedRoutes.addAll(['profile', 'settings']);
-    return allowedRoutes.contains(route);
   }
 
   // طلب الموقع للأطباء عند أول تسجيل دخول
@@ -186,7 +168,9 @@ class AuthGate extends HookConsumerWidget {
     if (hasRequestedBefore) return;
 
     // تحقق إذا كان لدى الطبيب موقع مسجل
-    final clinic = await ref.read(clinicRepositoryProvider).getClinicByUserId(userModel.id);
+    final clinic = await ref
+        .read(clinicRepositoryProvider)
+        .getClinicByUserId(userModel.id);
 
     // إذا لم يكن لديه موقع، اطلب الموقع
     if (clinic == null && context.mounted) {

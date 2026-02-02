@@ -1,4 +1,5 @@
 {
+    "suggested_price": "Suggested puplic Price",
     "welcome": "Welcome to fieldawy store",
     "contact_support": "Contact Support",
     "choose_your_role": "Please choose your role to continue",
@@ -196,6 +197,7 @@
             "price_action": "Price Action",
             "expire_soon": "Expire Soon",
             "surgical": "Surgical & Diagnostic",
+            "vet_supplies": "Vet Supplies",
             "offers": "Offers",
             "courses": "Courses",
             "books": "Books"

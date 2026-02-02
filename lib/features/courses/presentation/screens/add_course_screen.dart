@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
 import 'package:fieldawy_store/features/courses/data/courses_repository.dart';
-import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +27,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
   final _priceController = TextEditingController();
   final _phoneController = TextEditingController();
   String _completePhoneNumber = '';
-  
+
   File? _originalImage;
   File? _processedImageFile;
   Uint8List? _processedImageBytes;
@@ -70,7 +70,7 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
 
       // Use the cropped image directly
       final imageBytes = await croppedImage.readAsBytes();
-      
+
       setState(() {
         _processedImageFile = croppedImage;
         _processedImageBytes = imageBytes;
@@ -91,7 +91,8 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
 
   Future<File> _compressImage(File file) async {
     final tempDir = await getTemporaryDirectory();
-    final tempJpegPath = p.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
+    final tempJpegPath = p.join(
+        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
     final compressedFile = await FlutterImageCompress.compressAndGetFile(
       file.path,
       tempJpegPath,
@@ -168,11 +169,11 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Upload image to Cloudinary
-      final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final imageUrl = await cloudinaryService.uploadImage(
-        imageFile: _processedImageFile!,
-        folder: 'vet_courses',
+      // 1. Upload image using SmartImageService (Supabase - Direct)
+      final smartImageService = ref.read(smartImageServiceProvider);
+      final imageUrl = await smartImageService.uploadDirectly(
+        _processedImageFile!,
+        'vet_courses',
       );
 
       if (imageUrl == null) {
@@ -181,19 +182,19 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
 
       // 2. Save course data to Supabase
       final repository = ref.read(coursesRepositoryProvider);
-      
+
       // Clean and validate phone number format (E.164)
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
-      
+
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
-      
+
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
-      
+
       await repository.createCourse(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -201,26 +202,26 @@ class _AddCourseScreenState extends ConsumerState<AddCourseScreen> {
         phone: cleanPhone,
         imageUrl: imageUrl,
       );
-      
+
       // Refresh courses list
       ref.invalidate(myCoursesNotifierProvider);
 
       if (mounted) {
         setState(() => _isSubmitting = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('courses_feature.add_success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
-        
+
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('courses_feature.error_occurred'.tr()),

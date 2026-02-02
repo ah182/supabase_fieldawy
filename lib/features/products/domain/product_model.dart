@@ -39,6 +39,8 @@ class ProductModel {
   @HiveField(15)
   final String? surgicalToolId;
   final String? distributorUuid;
+  @HiveField(16)
+  final double? efficiencyScore;
 
   ProductModel({
     required this.id,
@@ -60,16 +62,22 @@ class ProductModel {
     this.views = 0,
     this.surgicalToolId,
     this.distributorUuid,
+    this.efficiencyScore,
   });
 
   // --- من Supabase (row) ---
   factory ProductModel.fromMap(Map<String, dynamic> data) {
     // دعم كلا النمطين لاسم الحقل (snake_case و camelCase)
     final String packageString = data['package'] ?? '';
-    final String? selectedPkg = data['selected_package']?.toString() ?? data['selectedPackage']?.toString();
-    final String? distId = data['distributor_id']?.toString() ?? data['distributorId']?.toString();
-    final String? distUuid = data['distributor_uuid']?.toString() ?? data['distributorUuid']?.toString() ?? distId;
-    final String? priceUpdate = data['price_updated_at']?.toString() ?? data['priceUpdatedAt']?.toString();
+    final String? selectedPkg = data['selected_package']?.toString() ??
+        data['selectedPackage']?.toString();
+    final String? distId =
+        data['distributor_id']?.toString() ?? data['distributorId']?.toString();
+    final String? distUuid = data['distributor_uuid']?.toString() ??
+        data['distributorUuid']?.toString() ??
+        distId;
+    final String? priceUpdate = data['price_updated_at']?.toString() ??
+        data['priceUpdatedAt']?.toString();
 
     final packages = packageString
         .split('-')
@@ -81,7 +89,8 @@ class ProductModel {
       id: data['id'].toString(),
       name: data['name'] ?? data['product_name'] ?? 'Unnamed Product',
       description: data['description'] as String?,
-      activePrinciple: (data['active_principle'] ?? data['activePrinciple']) as String?,
+      activePrinciple:
+          (data['active_principle'] ?? data['activePrinciple']) as String?,
       company: (data['company'] ?? data['product_company']) as String?,
       action: data['action'] as String?,
       package: packageString,
@@ -92,11 +101,14 @@ class ProductModel {
       distributorId: distId,
       distributorUuid: distUuid,
       createdAt: (data['created_at'] ?? data['createdAt']) != null
-          ? DateTime.tryParse((data['created_at'] ?? data['createdAt']).toString())
+          ? DateTime.tryParse(
+              (data['created_at'] ?? data['createdAt']).toString())
           : null,
-      priceUpdatedAt: priceUpdate != null ? DateTime.tryParse(priceUpdate) : null,
+      priceUpdatedAt:
+          priceUpdate != null ? DateTime.tryParse(priceUpdate) : null,
       selectedPackage: selectedPkg,
       views: (data['views'] as int?) ?? 0,
+      efficiencyScore: (data['efficiency_score'] as num?)?.toDouble(),
     );
   }
 
@@ -121,6 +133,7 @@ class ProductModel {
       'selected_package': selectedPackage,
       'is_favorite': isFavorite,
       'views': views,
+      'efficiency_score': efficiencyScore,
     };
   }
 
@@ -151,6 +164,7 @@ class ProductModel {
     int? views,
     String? surgicalToolId,
     String? distributorUuid,
+    double? efficiencyScore,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -172,6 +186,7 @@ class ProductModel {
       views: views ?? this.views,
       surgicalToolId: surgicalToolId ?? this.surgicalToolId,
       distributorUuid: distributorUuid ?? this.distributorUuid,
+      efficiencyScore: efficiencyScore ?? this.efficiencyScore,
     );
   }
 }
@@ -181,28 +196,28 @@ class ProductModel {
 class OCRProductModel {
   @HiveField(0)
   final String id;
-  
+
   @HiveField(1)
   final String distributorId;
-  
+
   @HiveField(2)
   final String distributorName;
-  
+
   @HiveField(3)
   final String productName;
-  
+
   @HiveField(4)
   final String productCompany;
-  
+
   @HiveField(5)
   final String activePrinciple;
-  
+
   @HiveField(6)
   final String package;
-  
+
   @HiveField(7)
   final String imageUrl;
-  
+
   @HiveField(8)
   final DateTime? createdAt;
 
@@ -256,7 +271,9 @@ class OCRProductModel {
       company: productCompany,
       activePrinciple: activePrinciple,
       package: package,
-      availablePackages: [package], // OCR products typically have a single package
+      availablePackages: [
+        package
+      ], // OCR products typically have a single package
       imageUrl: imageUrl,
       createdAt: createdAt,
       selectedPackage: package,

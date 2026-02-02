@@ -9,6 +9,8 @@ import 'package:fieldawy_store/features/products/application/expire_drugs_provid
 import 'package:fieldawy_store/features/products/application/surgical_tools_home_provider.dart';
 import 'package:fieldawy_store/features/products/application/offers_home_provider.dart';
 import 'package:fieldawy_store/features/home/application/search_filters_provider.dart';
+import 'package:fieldawy_store/features/vet_supplies/application/vet_supplies_provider.dart';
+import 'package:fieldawy_store/features/vet_supplies/domain/vet_supply_model.dart';
 import 'package:fieldawy_store/features/home/application/user_data_provider.dart';
 import 'package:fieldawy_store/core/utils/location_proximity.dart';
 import 'package:fieldawy_store/widgets/product_card.dart';
@@ -25,6 +27,9 @@ import 'package:fieldawy_store/features/courses/presentation/screens/user_course
 import 'package:fieldawy_store/features/courses/presentation/screens/course_details_screen.dart';
 import 'package:fieldawy_store/features/distributors/domain/distributor_model.dart';
 import 'package:fieldawy_store/features/distributors/services/distributor_analytics_service.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributor_products_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'product_dialogs.dart';
 
 /// A reusable error view for tabs with a refresh button.
@@ -46,7 +51,8 @@ class TabErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade300),
+            Icon(Icons.error_outline_rounded,
+                size: 64, color: Colors.red.shade300),
             const SizedBox(height: 16),
             Text(
               message,
@@ -61,11 +67,13 @@ class TabErrorView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: Text('retry'.tr()), // Assuming 'retry' key exists, otherwise fallback to "Retry"
+              label: Text('retry'
+                  .tr()), // Assuming 'retry' key exists, otherwise fallback to "Retry"
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Theme.of(context).colorScheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -131,13 +139,14 @@ class CoursesTab extends ConsumerWidget {
                 Text(
                   searchQuery.isEmpty
                       ? 'courses_feature.empty.no_courses_available'.tr()
-                      : 'courses_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
+                      : 'courses_feature.empty.no_results'
+                          .tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 // Show refresh button also on empty state if it might be an error
                 const SizedBox(height: 16),
-                 TextButton.icon(
+                TextButton.icon(
                   onPressed: () => ref.invalidate(allCoursesNotifierProvider),
                   icon: const Icon(Icons.refresh),
                   label: Text('retry'.tr()),
@@ -173,12 +182,14 @@ class CoursesTab extends ConsumerWidget {
     );
   }
 
-  static void _showCourseDialog(BuildContext context, WidgetRef ref, dynamic course) {
+  static void _showCourseDialog(
+      BuildContext context, WidgetRef ref, dynamic course) {
     // ... (rest of the dialog code) ...
     // Using previous implementation for brevity in rewrite, ensuring all logic is kept.
     final theme = Theme.of(context);
     final distributorsAsync = ref.read(distributorsProvider);
-    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == course.userId);
+    final owner = distributorsAsync.asData?.value
+        .firstWhereOrNull((d) => d.id == course.userId);
     final ownerName = owner?.displayName ?? course.userName ?? 'مستخدم';
     ref.read(allCoursesNotifierProvider.notifier).incrementViews(course.id);
     showDialog(
@@ -202,7 +213,8 @@ class CoursesTab extends ConsumerWidget {
                 Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(24)),
                       child: CachedNetworkImage(
                         imageUrl: course.imageUrl,
                         height: 200,
@@ -231,146 +243,161 @@ class CoursesTab extends ConsumerWidget {
                     children: [
                       Text(
                         course.title,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UserCoursesScreen(
-                              userId: course.userId,
-                              userName: ownerName,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_stories_rounded, size: 16, color: theme.colorScheme.primary),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                ownerName,
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserCoursesScreen(
+                                userId: course.userId,
+                                userName: ownerName,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.auto_stories_rounded,
+                                  size: 16, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  ownerName,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        course.description,
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.price_change,
+                            label: 'courses_feature.price'.tr(),
+                            value:
+                                '${NumberFormatter.formatCompact(course.price)} ${'products.currency'.tr()}',
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.visibility,
+                            label: 'courses_feature.views'.tr(),
+                            value: NumberFormatter.formatCompact(course.views),
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        CourseDetailsScreen(course: course),
+                                  ),
+                                );
+                              },
+                              label: Text(
+                                'courses_feature.course_details'.tr(),
+                                style: const TextStyle(
                                   fontSize: 13,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Calculate distributor for tracking
+                                final distributor = owner ??
+                                    DistributorModel(
+                                      id: course.userId,
+                                      displayName: ownerName,
+                                      photoURL: course.userPhotoUrl,
+                                      distributorType: 'user', // Fallback
+                                      whatsappNumber: course.phone,
+                                      governorates: [],
+                                      centers: [],
+                                      distributionMethod: '',
+                                    );
+
+                                DistributorAnalyticsService.instance
+                                    .openWhatsApp(
+                                  context,
+                                  distributor,
+                                  message:
+                                      'courses_feature.whatsapp_inquiry'.tr(),
+                                );
+                              },
+                              icon: const Icon(Icons.phone_in_talk,
+                                  color: Colors.white, size: 20),
+                              label: Text(
+                                'courses_feature.contact'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      course.description,
-                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        _buildStatChip(
-                          context: context,
-                          icon: Icons.price_change,
-                          label: 'courses_feature.price'.tr(),
-                          value: '${NumberFormatter.formatCompact(course.price)} ${'products.currency'.tr()}',
-                          color: Colors.green,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatChip(
-                          context: context,
-                          icon: Icons.visibility,
-                          label: 'courses_feature.views'.tr(),
-                          value: NumberFormatter.formatCompact(course.views),
-                          color: theme.colorScheme.primary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => CourseDetailsScreen(course: course),
-                                ),
-                              );
-                            },
-                            label: Text('courses_feature.course_details'.tr(),
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Calculate distributor for tracking
-                              final distributor = owner ?? DistributorModel(
-                                id: course.userId,
-                                displayName: ownerName,
-                                photoURL: course.userPhotoUrl,
-                                distributorType: 'user', // Fallback
-                                whatsappNumber: course.phone,
-                                governorates: [],
-                                centers: [],
-                                distributionMethod: '',
-                              );
-                              
-                              DistributorAnalyticsService.instance.openWhatsApp(
-                                context,
-                                distributor,
-                                message: 'courses_feature.whatsapp_inquiry'.tr(),
-                              );
-                            },
-                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                            label: Text(
-                              'courses_feature.contact'.tr(),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF25D366),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     ],
                   ),
                 ),
@@ -415,8 +442,6 @@ class CoursesTab extends ConsumerWidget {
       ),
     );
   }
-
-
 }
 
 // ===================================================================
@@ -473,13 +498,14 @@ class BooksTab extends ConsumerWidget {
                 Text(
                   searchQuery.isEmpty
                       ? 'books_feature.empty.no_books_available'.tr()
-                      : 'books_feature.empty.no_results'.tr(namedArgs: {'query': searchQuery}),
+                      : 'books_feature.empty.no_results'
+                          .tr(namedArgs: {'query': searchQuery}),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 // Show refresh button also on empty state
                 const SizedBox(height: 16),
-                 TextButton.icon(
+                TextButton.icon(
                   onPressed: () => ref.invalidate(allBooksNotifierProvider),
                   icon: const Icon(Icons.refresh),
                   label: Text('retry'.tr()),
@@ -522,11 +548,13 @@ class BooksTab extends ConsumerWidget {
     );
   }
 
-  static void _showBookDialog(BuildContext context, WidgetRef ref, dynamic book) {
+  static void _showBookDialog(
+      BuildContext context, WidgetRef ref, dynamic book) {
     // ... (rest of the dialog code) ...
     final theme = Theme.of(context);
     final distributorsAsync = ref.read(distributorsProvider);
-    final owner = distributorsAsync.asData?.value.firstWhereOrNull((d) => d.id == book.userId);
+    final owner = distributorsAsync.asData?.value
+        .firstWhereOrNull((d) => d.id == book.userId);
     final ownerName = owner?.displayName ?? book.userName ?? 'مستخدم';
     ref.read(allBooksNotifierProvider.notifier).incrementViews(book.id);
     showDialog(
@@ -550,7 +578,8 @@ class BooksTab extends ConsumerWidget {
                 Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(24)),
                       child: CachedNetworkImage(
                         imageUrl: book.imageUrl,
                         height: 250,
@@ -579,155 +608,170 @@ class BooksTab extends ConsumerWidget {
                     children: [
                       Text(
                         book.name,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UserBooksScreen(
-                              userId: book.userId,
-                              userName: ownerName,
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserBooksScreen(
+                                userId: book.userId,
+                                userName: ownerName,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.auto_stories_rounded,
+                                  size: 16, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  ownerName,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline,
+                              size: 18,
+                              color: theme.textTheme.bodySmall?.color),
+                          const SizedBox(width: 8),
+                          Text(
+                            book.author,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_stories_rounded, size: 16, color: theme.colorScheme.primary),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                ownerName,
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        book.description,
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.price_change,
+                            label: 'books_feature.price'.tr(),
+                            value:
+                                '${NumberFormatter.formatCompact(book.price)} ${'products.currency'.tr()}',
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.visibility,
+                            label: 'books_feature.views'.tr(),
+                            value: NumberFormatter.formatCompact(book.views),
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        BookDetailsScreen(book: book),
+                                  ),
+                                );
+                              },
+                              label: Text('books_feature.book_details'.tr()),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Calculate distributor for tracking
+                                final distributor = owner ??
+                                    DistributorModel(
+                                      id: book.userId,
+                                      displayName: ownerName,
+                                      photoURL: book.userPhotoUrl,
+                                      distributorType: 'user', // Fallback
+                                      whatsappNumber: book.phone,
+                                      governorates: [],
+                                      centers: [],
+                                      distributionMethod: '',
+                                    );
+
+                                DistributorAnalyticsService.instance
+                                    .openWhatsApp(
+                                  context,
+                                  distributor,
+                                  message:
+                                      'books_feature.whatsapp_inquiry'.tr(),
+                                );
+                              },
+                              icon: const Icon(Icons.phone_in_talk,
+                                  color: Colors.white, size: 20),
+                              label: Text(
+                                'books_feature.contact'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  color: Colors.white,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.person_outline, size: 18, color: theme.textTheme.bodySmall?.color),
-                        const SizedBox(width: 8),
-                        Text(
-                          book.author,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      book.description,
-                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        _buildStatChip(
-                          context: context,
-                          icon: Icons.price_change,
-                          label: 'books_feature.price'.tr(),
-                          value: '${NumberFormatter.formatCompact(book.price)} ${'products.currency'.tr()}',
-                          color: Colors.green,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatChip(
-                          context: context,
-                          icon: Icons.visibility,
-                          label: 'books_feature.views'.tr(),
-                          value: NumberFormatter.formatCompact(book.views),
-                          color: theme.colorScheme.primary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => BookDetailsScreen(book: book),
-                                ),
-                              );
-                            },
-                            label: Text('books_feature.book_details'.tr()),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Calculate distributor for tracking
-                              final distributor = owner ?? DistributorModel(
-                                id: book.userId,
-                                displayName: ownerName,
-                                photoURL: book.userPhotoUrl,
-                                distributorType: 'user', // Fallback
-                                whatsappNumber: book.phone,
-                                governorates: [],
-                                centers: [],
-                                distributionMethod: '',
-                              );
-                              
-                              DistributorAnalyticsService.instance.openWhatsApp(
-                                context,
-                                distributor,
-                                message: 'books_feature.whatsapp_inquiry'.tr(),
-                              );
-                            },
-                            icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                            label: Text(
-                              'books_feature.contact'.tr(),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF25D366),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     ],
                   ),
                 ),
@@ -772,8 +816,6 @@ class BooksTab extends ConsumerWidget {
       ),
     );
   }
-
-
 }
 
 // ===================================================================
@@ -827,9 +869,11 @@ class ExpireSoonTab extends ConsumerWidget {
           }
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
-            final distributor = distributorsMap[product.distributorUuid ?? product.distributorId];
+            final distributor = distributorsMap[
+                product.distributorUuid ?? product.distributorId];
             if (distributor != null) {
-              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              final List<String> govList =
+                  List<String>.from(distributor.governorates ?? []);
               matchesGov = govList.contains(filters.selectedGovernorate);
             } else {
               matchesGov = false;
@@ -848,8 +892,10 @@ class ExpireSoonTab extends ConsumerWidget {
           }
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
-            final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
-            final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
+            final distributorA =
+                distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
+            final distributorB =
+                distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -863,7 +909,8 @@ class ExpireSoonTab extends ConsumerWidget {
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+              if (proximityA != proximityB)
+                return proximityB.compareTo(proximityA);
             }
           }
           return 0;
@@ -890,7 +937,7 @@ class ExpireSoonTab extends ConsumerWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                 TextButton.icon(
+                TextButton.icon(
                   onPressed: () => ref.invalidate(expireDrugsProvider),
                   icon: const Icon(Icons.refresh),
                   label: Text('retry'.tr()),
@@ -919,7 +966,7 @@ class ExpireSoonTab extends ConsumerWidget {
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'expire_soon',
-                trackViewOnVisible: true, 
+                trackViewOnVisible: true,
                 expirationDate: item.expirationDate,
                 onTap: () {
                   showProductDialog(
@@ -946,7 +993,8 @@ class ExpireSoonTab extends ConsumerWidget {
 
   Widget _buildExpirationBadge(BuildContext context, DateTime expirationDate) {
     final now = DateTime.now();
-    final isExpired = expirationDate.isBefore(DateTime(now.year, now.month + 1));
+    final isExpired =
+        expirationDate.isBefore(DateTime(now.year, now.month + 1));
 
     return Positioned(
       bottom: 4,
@@ -1038,9 +1086,11 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
           }
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
-            final distributor = distributorsMap[tool.distributorUuid ?? tool.distributorId];
+            final distributor =
+                distributorsMap[tool.distributorUuid ?? tool.distributorId];
             if (distributor != null) {
-              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              final List<String> govList =
+                  List<String>.from(distributor.governorates ?? []);
               matchesGov = govList.contains(filters.selectedGovernorate);
             } else {
               matchesGov = false;
@@ -1057,8 +1107,10 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
           }
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
-            final distributorA = distributorsMap[a.distributorUuid ?? a.distributorId];
-            final distributorB = distributorsMap[b.distributorUuid ?? b.distributorId];
+            final distributorA =
+                distributorsMap[a.distributorUuid ?? a.distributorId];
+            final distributorB =
+                distributorsMap[b.distributorUuid ?? b.distributorId];
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -1072,7 +1124,8 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+              if (proximityA != proximityB)
+                return proximityB.compareTo(proximityA);
             }
           }
           return 0;
@@ -1099,7 +1152,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                 TextButton.icon(
+                TextButton.icon(
                   onPressed: () => ref.invalidate(surgicalToolsHomeProvider),
                   icon: const Icon(Icons.refresh),
                   label: Text('retry'.tr()),
@@ -1119,7 +1172,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
-              childAspectRatio: 0.65, 
+              childAspectRatio: 0.65,
             ),
             itemCount: filteredTools.length,
             itemBuilder: (context, index) {
@@ -1128,7 +1181,7 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
                 product: tool,
                 searchQuery: searchQuery,
                 productType: 'surgical',
-                trackViewOnVisible: true, 
+                trackViewOnVisible: true,
                 status: tool.activePrinciple,
                 onTap: () {
                   showSurgicalToolDialog(context, tool);
@@ -1214,6 +1267,739 @@ class SurgicalDiagnosticTab extends ConsumerWidget {
 }
 
 // ===================================================================
+// Vet Supplies Tab - المستلزمات البيطرية
+// ===================================================================
+class VetSuppliesTab extends ConsumerWidget {
+  const VetSuppliesTab({super.key, this.searchQuery = ''});
+
+  final String searchQuery;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suppliesAsync = ref.watch(allVetSuppliesNotifierProvider);
+    final filters = ref.watch(searchFiltersProvider);
+    final currentUserAsync = ref.watch(userDataProvider);
+    final distributorsAsync = ref.watch(distributorsProvider);
+
+    final distributorsMap = <String, DistributorModel>{};
+    distributorsAsync.whenData((distributors) {
+      for (final distributor in distributors) {
+        distributorsMap[distributor.id] = distributor;
+      }
+    });
+
+    return suppliesAsync.when(
+      loading: () => GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8.0,
+          mainAxisSpacing: 8.0,
+          childAspectRatio: 0.65,
+        ),
+        itemCount: 6,
+        itemBuilder: (context, index) => const ProductCardShimmer(),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      ),
+      error: (err, stack) => TabErrorView(
+        message: 'vet_supplies_feature.messages.load_error'.tr(),
+        onRetry: () => ref
+            .read(allVetSuppliesNotifierProvider.notifier)
+            .refreshAllSupplies(),
+      ),
+      data: (supplies) {
+        var filteredSupplies = supplies.where((supply) {
+          bool matchesSearch = true;
+          if (searchQuery.isNotEmpty) {
+            final query = searchQuery.toLowerCase();
+            matchesSearch = supply.name.toLowerCase().contains(query) ||
+                supply.description.toLowerCase().contains(query) ||
+                (supply.userName ?? '').toLowerCase().contains(query);
+          }
+          bool matchesGov = true;
+          if (filters.selectedGovernorate != null) {
+            final distributor = distributorsMap[supply.userId];
+            if (distributor != null) {
+              final List<String> govList =
+                  List<String>.from(distributor.governorates ?? []);
+              matchesGov = govList.contains(filters.selectedGovernorate);
+            } else {
+              matchesGov = false;
+            }
+          }
+          return matchesSearch && matchesGov;
+        }).toList();
+
+        filteredSupplies.sort((a, b) {
+          if (filters.isCheapest) {
+            final priceA = a.price;
+            final priceB = b.price;
+            if (priceA != priceB) return priceA.compareTo(priceB);
+          }
+          final currentUser = currentUserAsync.asData?.value;
+          if (currentUser != null && distributorsMap.isNotEmpty) {
+            final distributorA = distributorsMap[a.userId];
+            final distributorB = distributorsMap[b.userId];
+            if (distributorA != null && distributorB != null) {
+              final proximityA = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorA.governorates,
+                distributorCenters: distributorA.centers,
+              );
+              final proximityB = LocationProximity.calculateProximityScore(
+                userGovernorates: currentUser.governorates,
+                userCenters: currentUser.centers,
+                distributorGovernorates: distributorB.governorates,
+                distributorCenters: distributorB.centers,
+              );
+              if (proximityA != proximityB)
+                return proximityB.compareTo(proximityA);
+            }
+          }
+          return 0;
+        });
+
+        if (filteredSupplies.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
+                      ? Icons.inventory_2_outlined
+                      : Icons.search_off_outlined,
+                  size: 80,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  searchQuery.isEmpty && filters.selectedGovernorate == null
+                      ? 'vet_supplies_feature.empty.no_supplies'.tr()
+                      : 'vet_supplies_feature.search.no_results'.tr(),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => ref
+                      .read(allVetSuppliesNotifierProvider.notifier)
+                      .refreshAllSupplies(),
+                  icon: const Icon(Icons.refresh),
+                  label: Text('retry'.tr()),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await ref
+                .read(allVetSuppliesNotifierProvider.notifier)
+                .refreshAllSupplies();
+          },
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8.0,
+              mainAxisSpacing: 10.0,
+              childAspectRatio: 0.60,
+            ),
+            itemCount: filteredSupplies.length,
+            itemBuilder: (context, index) {
+              final supply = filteredSupplies[index];
+              return _VetSupplyCard(
+                supply: supply,
+                searchQuery: searchQuery,
+                onTap: () => _showVetSupplyDialog(context, ref, supply),
+              );
+            },
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showVetSupplyDialog(
+      BuildContext context, WidgetRef ref, VetSupply supply) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // جلب بيانات الموزعين للبحث عن صاحب المستلزم
+    final distributorsAsync = ref.read(distributorsProvider);
+    final distributor = distributorsAsync.asData?.value
+        .firstWhereOrNull((d) => d.id == supply.userId);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(24)),
+                      child: CachedNetworkImage(
+                        imageUrl: supply.imageUrl,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.5),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        supply.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.store_outlined,
+                              size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () async {
+                              if (distributor == null) return;
+
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                    child: CircularProgressIndicator()),
+                              );
+
+                              await Future.delayed(
+                                  const Duration(milliseconds: 300));
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pop();
+
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DistributorProductsScreen(
+                                    distributor: distributor,
+                                    initialTabIndex: 1,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  distributor?.displayName ??
+                                      supply.userName ??
+                                      'distributors_feature.unknown_distributor'
+                                          .tr(),
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.touch_app_rounded,
+                                    size: 14,
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.7)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        supply.description,
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                      ),
+                      const SizedBox(height: 24),
+                      // Info Grid: Price, Views, and Package
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.price_change,
+                            label: 'vet_supplies_feature.fields.price'.tr(),
+                            value:
+                                '${NumberFormatter.formatCompact(supply.price)} ${"EGP".tr()}',
+                            color: Colors.green,
+                          ),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.inventory_2_outlined,
+                            label: 'vet_supplies_feature.fields.package_label'
+                                .tr()
+                                .replaceAll(' *', ''),
+                            value: supply.package,
+                            color: Colors.blue,
+                          ),
+                          _buildStatChip(
+                            context: context,
+                            icon: Icons.visibility,
+                            label: 'vet_supplies_feature.fields.views'.tr(),
+                            value: NumberFormatter.formatCompact(
+                                supply.viewsCount),
+                            color: colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Coverage Areas Section
+                      if (distributor != null &&
+                          distributor.governorates != null &&
+                          distributor.governorates!.isNotEmpty) ...[
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.map_outlined,
+                                color: colorScheme.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'distributors_feature.coverage_areas'.tr(),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: distributor.governorates!
+                              .map((gov) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          colorScheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: colorScheme.primary
+                                              .withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      gov,
+                                      style: TextStyle(
+                                        color: colorScheme.primary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                        if (distributor.centers != null &&
+                            distributor.centers!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: distributor.centers!
+                                .map((center) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color:
+                                                Colors.grey.withOpacity(0.3)),
+                                      ),
+                                      child: Text(
+                                        center,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          fontSize: 10,
+                                          color: theme
+                                              .textTheme.bodyMedium?.color
+                                              ?.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                      ],
+
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            if (distributor != null) {
+                              await DistributorAnalyticsService.instance
+                                  .openWhatsApp(context, distributor);
+                            } else {
+                              await _openWhatsApp(context, supply.phone);
+                            }
+                            ref
+                                .read(allVetSuppliesNotifierProvider.notifier)
+                                .incrementViews(supply.id);
+                          },
+                          icon: const Icon(Icons.phone_in_talk_outlined,
+                              color: Colors.white),
+                          label: Text(
+                            'vet_supplies_feature.actions.contact_seller'.tr(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 100),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(label,
+              style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
+    final url = Uri.parse('https://wa.me/$phone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('vet_supplies_feature.messages.whatsapp_error'.tr()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
+// Vet Supply Card Widget - matching VetSuppliesScreen design with view tracking
+class _VetSupplyCard extends ConsumerStatefulWidget {
+  final VetSupply supply;
+  final String searchQuery;
+  final VoidCallback onTap;
+
+  const _VetSupplyCard({
+    required this.supply,
+    required this.searchQuery,
+    required this.onTap,
+  });
+
+  @override
+  ConsumerState<_VetSupplyCard> createState() => _VetSupplyCardState();
+}
+
+class _VetSupplyCardState extends ConsumerState<_VetSupplyCard> {
+  bool _hasBeenViewed = false; // لمنع العد المتكرر
+
+  void _handleVisibilityChanged(VisibilityInfo info) {
+    // إذا كان الكارت مرئي أكثر من 50% ولم يتم عده مسبقاً
+    if (info.visibleFraction > 0.5 && !_hasBeenViewed) {
+      _hasBeenViewed = true; // منع العد المتكرر
+
+      // زيادة المشاهدات
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref
+              .read(allVetSuppliesNotifierProvider.notifier)
+              .incrementViews(widget.supply.id);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return VisibilityDetector(
+      key: Key('supply_card_${widget.supply.id}'),
+      onVisibilityChanged: _handleVisibilityChanged,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image Section
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.supply.imageUrl,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Container(
+                      color: Colors.transparent,
+                      child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.transparent,
+                      child: Icon(Icons.inventory_2,
+                          size: 50, color: Colors.grey[400]),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Info Section
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Name
+                      Text(
+                        widget.supply.name,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      // User/Distributor Name
+                      if (widget.supply.userName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              Icon(Icons.store_outlined,
+                                  size: 10,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.6)),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  widget.supply.userName!,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.7),
+                                    fontSize: 9,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 4),
+
+                      // Price and Views Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Price Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${NumberFormatter.formatCompact(widget.supply.price)} ${"EGP".tr()}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+
+                          // Views Badge
+                          if (widget.supply.viewsCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    theme.colorScheme.secondary
+                                        .withOpacity(0.1),
+                                    theme.colorScheme.secondary
+                                        .withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.secondary
+                                      .withOpacity(0.2),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 8,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    NumberFormatter.formatCompact(
+                                        widget.supply.viewsCount),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.secondary,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Package Size Badge
+                      if (widget.supply.package.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.supply.package,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ===================================================================
 // Offers Tab - العروض
 // ===================================================================
 class OffersTab extends ConsumerWidget {
@@ -1264,9 +2050,11 @@ class OffersTab extends ConsumerWidget {
           }
           bool matchesGov = true;
           if (filters.selectedGovernorate != null) {
-            final distributor = distributorsMap[offer.distributorUuid ?? offer.distributorId];
+            final distributor =
+                distributorsMap[offer.distributorUuid ?? offer.distributorId];
             if (distributor != null) {
-              final List<String> govList = List<String>.from(distributor.governorates ?? []);
+              final List<String> govList =
+                  List<String>.from(distributor.governorates ?? []);
               matchesGov = govList.contains(filters.selectedGovernorate);
             } else {
               matchesGov = false;
@@ -1285,8 +2073,10 @@ class OffersTab extends ConsumerWidget {
           }
           final currentUser = currentUserAsync.asData?.value;
           if (currentUser != null && distributorsMap.isNotEmpty) {
-            final distributorA = distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
-            final distributorB = distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
+            final distributorA =
+                distributorsMap[prodA.distributorUuid ?? prodA.distributorId];
+            final distributorB =
+                distributorsMap[prodB.distributorUuid ?? prodB.distributorId];
             if (distributorA != null && distributorB != null) {
               final proximityA = LocationProximity.calculateProximityScore(
                 userGovernorates: currentUser.governorates,
@@ -1300,7 +2090,8 @@ class OffersTab extends ConsumerWidget {
                 distributorGovernorates: distributorB.governorates,
                 distributorCenters: distributorB.centers,
               );
-              if (proximityA != proximityB) return proximityB.compareTo(proximityA);
+              if (proximityA != proximityB)
+                return proximityB.compareTo(proximityA);
             }
           }
           return 0;
@@ -1320,13 +2111,14 @@ class OffersTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty && filters.selectedGovernorate == null
-                      ? 'offers.tabs.no_offers'.tr()
-                      : 'offers.tabs.no_results'.tr(namedArgs: {'query': searchQuery}),
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  textAlign: TextAlign.center),
+                    searchQuery.isEmpty && filters.selectedGovernorate == null
+                        ? 'offers.tabs.no_offers'.tr()
+                        : 'offers.tabs.no_results'
+                            .tr(namedArgs: {'query': searchQuery}),
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center),
                 const SizedBox(height: 16),
-                 TextButton.icon(
+                TextButton.icon(
                   onPressed: () => ref.invalidate(offersHomeProvider),
                   icon: const Icon(Icons.refresh),
                   label: Text('retry'.tr()),
@@ -1355,7 +2147,7 @@ class OffersTab extends ConsumerWidget {
                 product: item.product,
                 searchQuery: searchQuery,
                 productType: 'offers',
-                trackViewOnVisible: true, 
+                trackViewOnVisible: true,
                 onTap: () {
                   showOfferProductDialog(
                     context,
@@ -1448,9 +2240,10 @@ class _BookCard extends StatelessWidget {
           children: [
             // Book Cover Image
             Expanded(
-              flex: 3,
+              flex: 4,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
                 child: CachedNetworkImage(
                   imageUrl: book.imageUrl,
                   width: double.infinity,
@@ -1474,7 +2267,7 @@ class _BookCard extends StatelessWidget {
             ),
             // Book Info
             Expanded(
-              flex: 2,
+              flex: 3,
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
@@ -1489,7 +2282,7 @@ class _BookCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       book.author,
                       style: TextStyle(
@@ -1513,11 +2306,13 @@ class _BookCard extends StatelessWidget {
                         ),
                         Row(
                           children: [
-                            Icon(Icons.remove_red_eye_outlined, size: 12, color: Colors.grey[600]),
+                            Icon(Icons.remove_red_eye_outlined,
+                                size: 12, color: Colors.grey[600]),
                             const SizedBox(width: 2),
                             Text(
                               NumberFormatter.formatCompact(book.views),
-                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -1561,7 +2356,7 @@ class _CourseCardHorizontal extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 140,
+          height: 150,
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [

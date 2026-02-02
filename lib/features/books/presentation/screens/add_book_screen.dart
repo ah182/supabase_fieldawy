@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
 import 'package:fieldawy_store/features/books/data/books_repository.dart';
-import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,7 +94,8 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
   Future<File> _compressImage(File file) async {
     final tempDir = await getTemporaryDirectory();
-    final tempJpegPath = p.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
+    final tempJpegPath = p.join(
+        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
     final compressedFile = await FlutterImageCompress.compressAndGetFile(
       file.path,
       tempJpegPath,
@@ -124,8 +125,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
     );
     return croppedFile != null ? File(croppedFile.path) : null;
   }
-
-
 
   void _showImageSourceDialog() {
     showModalBottomSheet(
@@ -173,11 +172,11 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Upload image to Cloudinary
-      final cloudinaryService = ref.read(cloudinaryServiceProvider);
-      final imageUrl = await cloudinaryService.uploadImage(
-        imageFile: _processedImageFile!,
-        folder: 'vet_books',
+      // 1. Upload image using SmartImageService (Supabase - Direct)
+      final smartImageService = ref.read(smartImageServiceProvider);
+      final imageUrl = await smartImageService.uploadDirectly(
+        _processedImageFile!,
+        'vet_books',
       );
 
       if (imageUrl == null) {
@@ -186,14 +185,14 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
       // 2. Save book data to Supabase
       final repository = ref.read(booksRepositoryProvider);
-      
+
       // Clean and validate phone number format (E.164)
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
-      
+
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
-      
+
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
@@ -207,26 +206,26 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
         phone: cleanPhone,
         imageUrl: imageUrl,
       );
-      
+
       // Refresh books list
       ref.invalidate(myBooksNotifierProvider);
 
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('books_feature.add_success'.tr()),
             backgroundColor: Colors.green,
           ),
         );
-        
+
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('books_feature.error_occurred'.tr()),
@@ -287,7 +286,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                               Icon(
+                              Icon(
                                 Icons.menu_book_rounded,
                                 size: 80,
                                 color: Colors.grey[600],
@@ -295,7 +294,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                               const SizedBox(height: 16),
                               Text(
                                 'books_feature.tap_to_add_cover'.tr(),
-                                style:  TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[700],
                                   fontWeight: FontWeight.w500,
@@ -304,21 +303,21 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 'books_feature.from_camera_or_gallery'.tr(),
-                                style:  TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[600],
                                 ),
                               ),
                             ],
                           )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.memory(
-                          _processedImageBytes!,
-                          fit: BoxFit.contain,
-                          width: double.infinity,
-                        ),
-                      ),
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _processedImageBytes!,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                            ),
+                          ),
               ),
             ),
             if (_processedImageBytes != null && !_isProcessing) ...[
@@ -485,7 +484,9 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'books_feature.saving'.tr() : 'books_feature.save_book_button'.tr(),
+                  _isSaving
+                      ? 'books_feature.saving'.tr()
+                      : 'books_feature.save_book_button'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

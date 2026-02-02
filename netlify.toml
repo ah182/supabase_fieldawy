@@ -1,0 +1,31 @@
+# Netlify Configuration for Fieldawy Store (Flutter Web)
+
+[build]
+  # Commands to install Flutter and build the web application
+  # We clone the stable channel of Flutter, enable web support, and build.
+  command = """
+    if [ ! -d "flutter" ]; then
+      git clone https://github.com/flutter/flutter.git -b stable
+    fi
+    ./flutter/bin/flutter config --enable-web
+    ./flutter/bin/flutter build web --release --no-tree-shake-icons
+  """
+  
+  # The directory that Netlify should publish
+  publish = "build/web"
+
+[build.environment]
+  # Optional: Setting Flutter version if we used a specific script, 
+  # but here we pull stable directly.
+  FLUTTER_CHANNEL = "stable"
+
+# ==========================================================
+# Single Page Application (SPA) Redirect Rule
+# ==========================================================
+# This ensures that when a user refreshes a page like /login, 
+# Netlify serves index.html instead of returning a 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true

@@ -30,7 +30,10 @@ class ProductRepository {
   }
 
   // New Unified View Tracking Method
-  Future<bool> trackUnifiedView({required String productType, required String productId, String? distributorName}) async {
+  Future<bool> trackUnifiedView(
+      {required String productType,
+      required String productId,
+      String? distributorName}) async {
     try {
       return await NetworkGuard.execute(() async {
         final response = await _supabase.rpc('increment_unified_view', params: {
@@ -65,7 +68,9 @@ class ProductRepository {
           .select('price')
           .match(matchMap)
           .maybeSingle();
-      final oldPrice = (response != null && response['price'] != null) ? (response['price'] as num?)?.toDouble() : null;
+      final oldPrice = (response != null && response['price'] != null)
+          ? (response['price'] as num?)?.toDouble()
+          : null;
       await _supabase.from('distributor_products').update({
         'price': newPrice,
         'old_price': oldPrice,
@@ -93,6 +98,7 @@ class ProductRepository {
     });
     _scheduleCacheInvalidation();
   }
+
   final SupabaseClient _supabase = Supabase.instance.client;
   final CachingService _cache;
   late final Ref _ref;
@@ -105,21 +111,22 @@ class ProductRepository {
   Future<List<String>> getAllDistributorProductIds() async {
     return await NetworkGuard.execute(() async {
       final List<String> allIds = [];
-      
+
       // Get IDs from distributor_products - filter out products with expiration_date
       final regularRows = await _supabase
           .from('distributor_products')
           .select('id, views')
           .filter('expiration_date', 'is', null);
       allIds.addAll(regularRows.map((row) => 'regular_${row['id']}'));
-      
+
       // Get IDs from distributor_ocr_products - filter out products with expiration_date
       final ocrRows = await _supabase
           .from('distributor_ocr_products')
           .select('distributor_id, ocr_product_id')
           .filter('expiration_date', 'is', null);
-      allIds.addAll(ocrRows.map((row) => 'ocr_${row['distributor_id']}_${row['ocr_product_id']}'));
-      
+      allIds.addAll(ocrRows.map(
+          (row) => 'ocr_${row['distributor_id']}_${row['ocr_product_id']}'));
+
       return allIds;
     });
   }
@@ -129,9 +136,12 @@ class ProductRepository {
 
     return await NetworkGuard.execute(() async {
       final List<ProductModel> orderedProducts = [];
-      
+
       // Separate regular and OCR IDs
-      final regularIds = ids.where((id) => id.startsWith('regular_')).map((id) => id.substring(8)).toList();
+      final regularIds = ids
+          .where((id) => id.startsWith('regular_'))
+          .map((id) => id.substring(8))
+          .toList();
       final ocrIdsPrefixed = ids.where((id) => id.startsWith('ocr_')).toList();
 
       // ========================================
@@ -151,8 +161,10 @@ class ProductRepository {
           final productIds =
               rows.map((row) => row['product_id'] as String).toSet().toList();
 
-          final productDocs =
-              await _supabase.from('products').select('*').inFilter('id', productIds);
+          final productDocs = await _supabase
+              .from('products')
+              .select('*')
+              .inFilter('id', productIds);
 
           final productsMap = {
             for (var doc in productDocs)
@@ -162,19 +174,27 @@ class ProductRepository {
           for (final id in ids) {
             if (id.startsWith('regular_')) {
               final actualId = id.substring(8);
-              final distributorProductRow = distributorProductDetailsMap[actualId];
+              final distributorProductRow =
+                  distributorProductDetailsMap[actualId];
               if (distributorProductRow != null) {
-                final productDetails = productsMap[distributorProductRow['product_id']];
+                final productDetails =
+                    productsMap[distributorProductRow['product_id']];
                 if (productDetails != null) {
                   orderedProducts.add(productDetails.copyWith(
                     price: (distributorProductRow['price'] as num?)?.toDouble(),
-                    oldPrice: (distributorProductRow['old_price'] as num?)?.toDouble(),
-                    priceUpdatedAt: distributorProductRow['price_updated_at'] != null
-                        ? DateTime.tryParse(distributorProductRow['price_updated_at'])
-                        : null,
-                    selectedPackage: distributorProductRow['package'] as String?,
-                    distributorId: distributorProductRow['distributor_name'] as String?,
-                    distributorUuid: distributorProductRow['distributor_id'] as String?,
+                    oldPrice: (distributorProductRow['old_price'] as num?)
+                        ?.toDouble(),
+                    priceUpdatedAt:
+                        distributorProductRow['price_updated_at'] != null
+                            ? DateTime.tryParse(
+                                distributorProductRow['price_updated_at'])
+                            : null,
+                    selectedPackage:
+                        distributorProductRow['package'] as String?,
+                    distributorId:
+                        distributorProductRow['distributor_name'] as String?,
+                    distributorUuid:
+                        distributorProductRow['distributor_id'] as String?,
                     views: (distributorProductRow['views'] as int?) ?? 0,
                   ));
                 }
@@ -190,7 +210,7 @@ class ProductRepository {
       if (ocrIdsPrefixed.isNotEmpty) {
         // Parse OCR IDs to get ocr_product_id
         final ocrProductIds = <String>{};
-        
+
         for (final id in ocrIdsPrefixed) {
           final parts = id.split('_');
           if (parts.length >= 3) {
@@ -203,17 +223,19 @@ class ProductRepository {
           // Fetch distributor_ocr_products
           final distOcrRows = await _supabase
               .from('distributor_ocr_products')
-              .select('ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
+              .select(
+                  'ocr_product_id, price, old_price, price_updated_at, distributor_name, distributor_id, views')
               .inFilter('ocr_product_id', ocrProductIds.toList());
 
           if (distOcrRows.isNotEmpty) {
             // Create a map for quick lookup
             final distOcrMap = <String, Map<String, dynamic>>{};
             for (var row in distOcrRows) {
-              final key = 'ocr_${row['distributor_id']}_${row['ocr_product_id']}';
+              final key =
+                  'ocr_${row['distributor_id']}_${row['ocr_product_id']}';
               distOcrMap[key] = row;
             }
-            
+
             // Fetch the corresponding OCR products
             final ocrProductDocs = await _supabase
                 .from('ocr_products')
@@ -237,7 +259,8 @@ class ProductRepository {
                       company: ocrProductData['product_company'] ?? '',
                       activePrinciple: ocrProductData['active_principle'] ?? '',
                       imageUrl: ocrProductData['image_url'] ?? '',
-                      availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
+                      availablePackages:
+                          packageStr.isNotEmpty ? [packageStr] : [],
                       selectedPackage: packageStr,
                       price: (row['price'] as num?)?.toDouble(),
                       oldPrice: (row['old_price'] as num?)?.toDouble(),
@@ -274,8 +297,10 @@ class ProductRepository {
 
       List<ProductModel> catalogProducts = [];
       if (productIds.isNotEmpty) {
-        final productDocs =
-            await _supabase.from('products').select().inFilter('id', productIds);
+        final productDocs = await _supabase
+            .from('products')
+            .select()
+            .inFilter('id', productIds);
 
         final productsMap = {
           for (var doc in productDocs)
@@ -357,14 +382,15 @@ class ProductRepository {
                   id: ocrProductDoc['id']?.toString() ?? '',
                   name: ocrProductDoc['product_name']?.toString() ?? '',
                   description: ocrProductDoc['description']?.toString(),
-                  activePrinciple: ocrProductDoc['active_principle']?.toString(),
+                  activePrinciple:
+                      ocrProductDoc['active_principle']?.toString(),
                   company: ocrProductDoc['product_company']?.toString(),
                   action: '',
                   package: ocrProductDoc['package']?.toString() ?? '',
-                  imageUrl:
-                      (ocrProductDoc['image_url']?.toString() ?? '').startsWith('http')
-                          ? ocrProductDoc['image_url'].toString()
-                          : '',
+                  imageUrl: (ocrProductDoc['image_url']?.toString() ?? '')
+                          .startsWith('http')
+                      ? ocrProductDoc['image_url'].toString()
+                      : '',
                   price: (row['price'] as num?)?.toDouble(),
                   oldPrice: (row['old_price'] as num?)?.toDouble(),
                   priceUpdatedAt: row['price_updated_at'] != null
@@ -375,7 +401,9 @@ class ProductRepository {
                   createdAt: row['created_at'] != null
                       ? DateTime.tryParse(row['created_at'].toString())
                       : null,
-                  availablePackages: [ocrProductDoc['package']?.toString() ?? ''],
+                  availablePackages: [
+                    ocrProductDoc['package']?.toString() ?? ''
+                  ],
                   selectedPackage: ocrProductDoc['package']?.toString() ?? '',
                   isFavorite: false,
                   views: (row['views'] as int?) ?? 0,
@@ -456,7 +484,7 @@ class ProductRepository {
     // This fixes the issue where search results show old distributor names because the Edge Function
     // might not be returning the distributorUuid correctly for fresh lookup.
     return _fetchAllDistributorProductsDirectly();
-    
+
     /* 
     // Edge Function implementation commented out to fix distributor name update issue in search
     return await NetworkGuard.execute(() async {
@@ -477,7 +505,7 @@ class ProductRepository {
       const cacheKey = 'all_distributor_products';
       try {
         final List<ProductModel> allProducts = [];
-        
+
         // ========================================
         // 1. Fetch from distributor_products
         // ========================================
@@ -493,8 +521,10 @@ class ProductRepository {
               .toSet()
               .toList();
 
-          final productDocs =
-              await _supabase.from('products').select().inFilter('id', productIds);
+          final productDocs = await _supabase
+              .from('products')
+              .select()
+              .inFilter('id', productIds);
 
           final productsMap = {
             for (var doc in productDocs)
@@ -521,7 +551,7 @@ class ProductRepository {
               })
               .whereType<ProductModel>()
               .toList();
-          
+
           allProducts.addAll(products);
         }
 
@@ -560,7 +590,8 @@ class ProductRepository {
                     company: ocrProductData['product_company'] ?? '',
                     activePrinciple: ocrProductData['active_principle'] ?? '',
                     imageUrl: ocrProductData['image_url'] ?? '',
-                    availablePackages: packageStr.isNotEmpty ? [packageStr] : [],
+                    availablePackages:
+                        packageStr.isNotEmpty ? [packageStr] : [],
                     selectedPackage: packageStr,
                     price: (row['price'] as num?)?.toDouble(),
                     oldPrice: (row['old_price'] as num?)?.toDouble(),
@@ -576,11 +607,12 @@ class ProductRepository {
               })
               .whereType<ProductModel>()
               .toList();
-          
+
           allProducts.addAll(ocrProducts);
         }
 
-        _cache.set(cacheKey, allProducts, duration: const Duration(minutes: 30));
+        _cache.set(cacheKey, allProducts,
+            duration: const Duration(minutes: 30));
 
         return allProducts;
       } catch (e) {
@@ -591,30 +623,47 @@ class ProductRepository {
   }
 
   /// Admin: Get ALL products (Catalog + Distributor) for admin panel
-  Future<List<ProductModel>> getAllProductsForAdmin({bool bypassCache = false}) async {
+  Future<List<ProductModel>> getAllProductsForAdmin(
+      {bool bypassCache = false}) async {
     try {
       // Fetch catalog products
       final catalogProducts = await getAllProducts();
-      
+
       // Fetch distributor products
-      final distributorProducts = await getAllDistributorProducts(bypassCache: bypassCache);
-      
+      final distributorProducts =
+          await getAllDistributorProducts(bypassCache: bypassCache);
+
       // Combine both lists
       final allProducts = [...catalogProducts, ...distributorProducts];
-      
+
       return allProducts;
     } catch (e) {
       print('Error fetching all products for admin: $e');
       return [];
     }
   }
-  
+
+  /// Ranking: Get all products to select candidates for daily challenge
+  /// Ranking: Get all products to select candidates for daily challenge
+  Future<List<ProductModel>> getAllProductsForRanking() async {
+    try {
+      // Optimized: Fetch only catalog products.
+      // We don't need specific distributor items (which might be duplicates) for the efficiency ranking.
+      final products = await getAllProducts();
+      return products;
+    } catch (e) {
+      print("Error fetching products for ranking: $e");
+      return [];
+    }
+  }
+
   /// Admin: Get ONLY regular distributor products (excluding OCR products)
-  Future<List<ProductModel>> getOnlyDistributorProducts({bool bypassCache = false}) async {
+  Future<List<ProductModel>> getOnlyDistributorProducts(
+      {bool bypassCache = false}) async {
     return await NetworkGuard.execute(() async {
       try {
         final List<ProductModel> allProducts = [];
-        
+
         // Fetch ONLY from distributor_products table (NOT ocr)
         final distProductsResponse = await _supabase
             .from('distributor_products')
@@ -628,8 +677,10 @@ class ProductRepository {
               .toSet()
               .toList();
 
-          final productDocs =
-              await _supabase.from('products').select().inFilter('id', productIds);
+          final productDocs = await _supabase
+              .from('products')
+              .select()
+              .inFilter('id', productIds);
 
           final productsMap = {
             for (var doc in productDocs)
@@ -655,7 +706,7 @@ class ProductRepository {
               })
               .whereType<ProductModel>()
               .toList();
-          
+
           allProducts.addAll(products);
         }
 
@@ -757,13 +808,14 @@ class ProductRepository {
         await _supabase
             .from('distributor_ocr_products')
             .delete()
-            .match({'distributor_id': distributorId})
-            .inFilter('ocr_product_id', ocrProductIds);
+            .match({'distributor_id': distributorId}).inFilter(
+                'ocr_product_id', ocrProductIds);
       });
 
       _scheduleCacheInvalidation();
     } catch (e) {
-      print('Error deleting multiple OCR products from distributor catalog: $e');
+      print(
+          'Error deleting multiple OCR products from distributor catalog: $e');
       rethrow;
     }
   }
@@ -808,19 +860,17 @@ class ProductRepository {
         final updates = <String, dynamic>{};
         if (name != null) updates['product_name'] = name;
         if (company != null) updates['product_company'] = company;
-        if (activePrinciple != null) updates['active_principle'] = activePrinciple;
+        if (activePrinciple != null)
+          updates['active_principle'] = activePrinciple;
         if (package != null) updates['package'] = package;
         if (imageUrl != null) updates['image_url'] = imageUrl;
 
         if (updates.isEmpty) return false;
 
-        await _supabase
-            .from('ocr_products')
-            .update(updates)
-            .match({
-              'id': ocrProductId,
-              'distributor_id': distributorId,
-            });
+        await _supabase.from('ocr_products').update(updates).match({
+          'id': ocrProductId,
+          'distributor_id': distributorId,
+        });
 
         _scheduleCacheInvalidation();
         return true;
@@ -854,7 +904,8 @@ class ProductRepository {
   Future<void> addMultipleDistributorOcrProducts({
     required String distributorId,
     required String distributorName,
-    required List<Map<String, dynamic>> ocrProducts, // List of {ocrProductId: String, price: double}
+    required List<Map<String, dynamic>>
+        ocrProducts, // List of {ocrProductId: String, price: double}
   }) async {
     await NetworkGuard.execute(() async {
       final rows = ocrProducts.map((product) {
@@ -867,7 +918,9 @@ class ProductRepository {
         };
       }).toList();
 
-      await _supabase.from('distributor_ocr_products').upsert(rows, onConflict: 'distributor_id,ocr_product_id');
+      await _supabase
+          .from('distributor_ocr_products')
+          .upsert(rows, onConflict: 'distributor_id,ocr_product_id');
     });
   }
 
@@ -916,7 +969,8 @@ class ProductRepository {
           return ProductModel(
             id: row['id']?.toString() ?? '',
             name: row['product_name']?.toString() ?? '',
-            description: '', // OCR products don't have description in the schema
+            description:
+                '', // OCR products don't have description in the schema
             activePrinciple: row['active_principle']?.toString(),
             company: row['product_company']?.toString(),
             action: '', // OCR products don't have action in the schema
@@ -1108,10 +1162,9 @@ class ProductRepository {
           .from('distributor_ocr_products')
           .select('price')
           .match({
-            'distributor_id': distributorId,
-            'ocr_product_id': ocrProductId,
-          })
-          .maybeSingle();
+        'distributor_id': distributorId,
+        'ocr_product_id': ocrProductId,
+      }).maybeSingle();
 
       final oldPrice = (response?['price'] as num?)?.toDouble();
 
@@ -1144,14 +1197,14 @@ class ProductRepository {
         _cache.invalidateWithPrefix('distributor_products_');
         _cache.invalidateWithPrefix('my_products_');
         _cache.invalidateWithPrefix('my_ocr_products_');
-        
+
         // حذف كاش العروض
         _cache.invalidateWithPrefix('my_offers_');
         _cache.invalidateWithPrefix('my_offers_with_products_');
-        
+
         // حذف كاش الأدوات الجراحية
         _cache.invalidateWithPrefix('my_surgical_tools_');
-        
+
         print('🧹 Product cache invalidated successfully');
       } catch (e) {
         print('Error during cache invalidation: $e');
@@ -1160,7 +1213,7 @@ class ProductRepository {
   }
 
   // ========== Offers Methods ==========
-  
+
   // دالة لزيادة عدد مشاهدات العرض
   static Future<void> incrementOfferViews(String offerId) async {
     try {
@@ -1173,7 +1226,7 @@ class ProductRepository {
       print('خطأ في زيادة مشاهدات العرض: $e');
     }
   }
-  
+
   Future<String?> addOffer({
     required String productId,
     required bool isOcr,
@@ -1193,7 +1246,7 @@ class ProductRepository {
         'description': description,
         'package': package,
       }).select();
-      
+
       if (response.isNotEmpty) {
         return response.first['id'].toString();
       }
@@ -1277,22 +1330,25 @@ class ProductRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMyOffersWithProducts(String userId) async {
+  Future<List<Map<String, dynamic>>> getMyOffersWithProducts(
+      String userId) async {
     // استخدام Cache-First للعروض مع المنتجات (تحتوي على بيانات مفصلة)
     return await _cache.cacheFirst<List<Map<String, dynamic>>>(
       key: 'my_offers_with_products_$userId',
       duration: CacheDurations.short, // 15 دقيقة
       fetchFromNetwork: () => _fetchMyOffersWithProducts(userId),
-      fromCache: (data) => (data as List).map((e) => Map<String, dynamic>.from(e)).toList(),
+      fromCache: (data) =>
+          (data as List).map((e) => Map<String, dynamic>.from(e)).toList(),
     );
   }
 
-  Future<List<Map<String, dynamic>>> _fetchMyOffersWithProducts(String userId) async {
+  Future<List<Map<String, dynamic>>> _fetchMyOffersWithProducts(
+      String userId) async {
     return await NetworkGuard.execute(() async {
       try {
         // حذف العروض المنتهية منذ أكثر من 7 أيام قبل جلب القائمة
         await deleteExpiredOffers();
-        
+
         final offers = await _supabase
             .from('offers')
             .select('*, views')
@@ -1306,8 +1362,9 @@ class ProductRepository {
         for (var offer in offers) {
           final isOcr = offer['is_ocr'] as bool;
           final productId = offer['product_id'] as String;
-          
-          print('🔍 Processing offer: id=${offer['id']}, is_ocr=$isOcr, product_id=$productId');
+
+          print(
+              '🔍 Processing offer: id=${offer['id']}, is_ocr=$isOcr, product_id=$productId');
 
           Map<String, dynamic>? productData;
 
@@ -1318,7 +1375,7 @@ class ProductRepository {
                 .select()
                 .eq('id', productId)
                 .maybeSingle();
-            
+
             if (ocrProduct != null) {
               productData = {
                 'id': ocrProduct['id'],
@@ -1327,27 +1384,28 @@ class ProductRepository {
                 'package': ocrProduct['package'] ?? '',
                 'imageUrl': ocrProduct['image_url'] ?? '',
               };
-              
-              print('OCR Product Data: name=${ocrProduct['product_name']}, company=${ocrProduct['product_company']}, package=${ocrProduct['package']}');
+
+              print(
+                  'OCR Product Data: name=${ocrProduct['product_name']}, company=${ocrProduct['product_company']}, package=${ocrProduct['package']}');
             }
           } else {
             // جلب بيانات المنتج من products
             print('🔎 Fetching from products table with id: $productId');
-            
+
             final product = await _supabase
                 .from('products')
                 .select('id, name, company, image_url')
                 .eq('id', productId)
                 .maybeSingle();
-            
+
             print('📦 Product result: $product');
-            
+
             if (product != null) {
               // جلب الباكدج من جدول offers نفسه (الباكدج التي اختارها المستخدم عند إنشاء العرض)
               final packageName = (offer['package'] as String?) ?? '';
-              
+
               print('📦 Package from offer: $packageName');
-              
+
               productData = {
                 'id': product['id'],
                 'name': product['name'] ?? '',
@@ -1355,8 +1413,9 @@ class ProductRepository {
                 'package': packageName,
                 'imageUrl': product['image_url'] ?? '',
               };
-              
-              print('✅ Final Product Data: name=${product['name']}, company=${product['company']}, package=$packageName');
+
+              print(
+                  '✅ Final Product Data: name=${product['name']}, company=${product['company']}, package=$packageName');
             } else {
               print('❌ Product not found in products table for id: $productId');
             }
@@ -1395,12 +1454,17 @@ class ProductRepository {
   }) async {
     return await NetworkGuard.execute(() async {
       try {
-        final response = await _supabase.from('surgical_tools').insert({
-          'tool_name': toolName,
-          if (company != null && company.isNotEmpty) 'company': company,
-          if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
-          'created_by': createdBy,
-        }).select('id').single();
+        final response = await _supabase
+            .from('surgical_tools')
+            .insert({
+              'tool_name': toolName,
+              if (company != null && company.isNotEmpty) 'company': company,
+              if (imageUrl != null && imageUrl.isNotEmpty)
+                'image_url': imageUrl,
+              'created_by': createdBy,
+            })
+            .select('id')
+            .single();
 
         return response['id'] as String?;
       } catch (e) {
@@ -1446,7 +1510,8 @@ class ProductRepository {
   }
 
   /// جلب أدوات موزع معين
-  Future<List<Map<String, dynamic>>> getMySurgicalTools(String distributorId) async {
+  Future<List<Map<String, dynamic>>> getMySurgicalTools(
+      String distributorId) async {
     return await NetworkGuard.execute(() async {
       try {
         final response = await _supabase
@@ -1479,7 +1544,8 @@ class ProductRepository {
   }
 
   /// البحث في الأدوات الجراحية
-  Future<List<Map<String, dynamic>>> searchSurgicalTools(String searchQuery) async {
+  Future<List<Map<String, dynamic>>> searchSurgicalTools(
+      String searchQuery) async {
     return await NetworkGuard.execute(() async {
       try {
         final response = await _supabase.rpc('search_surgical_tools', params: {
@@ -1546,9 +1612,8 @@ class ProductRepository {
   Future<List<Map<String, dynamic>>> getAllSurgicalTools() async {
     return await NetworkGuard.execute(() async {
       try {
-        final response = await _supabase
-            .from('distributor_surgical_tools')
-            .select('''
+        final response =
+            await _supabase.from('distributor_surgical_tools').select('''
               id,
               description,
               price,
@@ -1565,8 +1630,7 @@ class ProductRepository {
                 company,
                 image_url
               )
-            ''')
-            .order('created_at', ascending: false);
+            ''').order('created_at', ascending: false);
 
         return List<Map<String, dynamic>>.from(response);
       } catch (e) {
@@ -1642,7 +1706,7 @@ class ProductRepository {
             .from('distributor_products')
             .delete()
             .eq('id', productId);
-        
+
         _scheduleCacheInvalidation();
         return true;
       } catch (e) {
@@ -1661,9 +1725,8 @@ class ProductRepository {
       try {
         await _supabase
             .from('distributor_products')
-            .update({'price': price})
-            .eq('id', id);
-        
+            .update({'price': price}).eq('id', id);
+
         _scheduleCacheInvalidation();
         return true;
       } catch (e) {
@@ -1680,9 +1743,8 @@ class ProductRepository {
     return await NetworkGuard.execute(() async {
       try {
         // First get distributor OCR products
-        final distOcrResponse = await _supabase
-            .from('distributor_ocr_products')
-            .select('''
+        final distOcrResponse =
+            await _supabase.from('distributor_ocr_products').select('''
               id,
               distributor_id,
               ocr_product_id,
@@ -1692,8 +1754,7 @@ class ProductRepository {
               price_updated_at,
               expiration_date,
               created_at
-            ''')
-            .order('created_at', ascending: false);
+            ''').order('created_at', ascending: false);
 
         if (distOcrResponse.isEmpty) {
           return [];
@@ -1735,10 +1796,7 @@ class ProductRepository {
   Future<bool> adminDeleteDistributorOcrProduct(String id) async {
     return await NetworkGuard.execute(() async {
       try {
-        await _supabase
-            .from('distributor_ocr_products')
-            .delete()
-            .eq('id', id);
+        await _supabase.from('distributor_ocr_products').delete().eq('id', id);
 
         _scheduleCacheInvalidation();
         return true;
@@ -1759,7 +1817,7 @@ class ProductRepository {
         final updateData = <String, dynamic>{
           'price': price,
         };
-        
+
         if (expirationDate != null) {
           updateData['expiration_date'] = expirationDate.toIso8601String();
         }
@@ -1790,15 +1848,12 @@ class ProductRepository {
           'name': name,
           'company': company,
         };
-        
+
         if (activePrinciple != null && activePrinciple.isNotEmpty) {
           updateData['active_principle'] = activePrinciple;
         }
 
-        await _supabase
-            .from('products')
-            .update(updateData)
-            .eq('id', id);
+        await _supabase.from('products').update(updateData).eq('id', id);
 
         _scheduleCacheInvalidation();
         return true;
@@ -1812,10 +1867,7 @@ class ProductRepository {
   Future<bool> adminDeleteProduct(String id) async {
     return await NetworkGuard.execute(() async {
       try {
-        await _supabase
-            .from('products')
-            .delete()
-            .eq('id', id);
+        await _supabase.from('products').delete().eq('id', id);
 
         _scheduleCacheInvalidation();
         return true;
@@ -2029,7 +2081,8 @@ final internalAllProductsProvider =
 
     final productsMap = {
       for (var doc in productDocs)
-        doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+        doc['id'].toString():
+            ProductModel.fromMap(Map<String, dynamic>.from(doc))
     };
 
     final products = rows
@@ -2090,7 +2143,8 @@ final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
 
     final productsMap = {
       for (var doc in productDocs)
-        doc['id'].toString(): ProductModel.fromMap(Map<String, dynamic>.from(doc))
+        doc['id'].toString():
+            ProductModel.fromMap(Map<String, dynamic>.from(doc))
     };
 
     final products = rows
@@ -2132,7 +2186,8 @@ final adminAllProductsProvider = FutureProvider<List<ProductModel>>((ref) {
       .getAllProductsForAdmin(bypassCache: true);
 });
 
-final adminOnlyDistributorProductsProvider = FutureProvider<List<ProductModel>>((ref) {
+final adminOnlyDistributorProductsProvider =
+    FutureProvider<List<ProductModel>>((ref) {
   // This provider returns ONLY distributor_products (excludes OCR products)
   ref.watch(productDataLastModifiedProvider);
   return ref
@@ -2140,16 +2195,18 @@ final adminOnlyDistributorProductsProvider = FutureProvider<List<ProductModel>>(
       .getOnlyDistributorProducts(bypassCache: true);
 });
 
-final myOffersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final myOffersProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = ref.watch(authServiceProvider).currentUser?.id;
   if (userId == null) return [];
-  
+
   return ref.watch(productRepositoryProvider).getMyOffersWithProducts(userId);
 });
 
 // ===== ADMIN PROVIDER FOR OCR PRODUCTS =====
 
-final adminAllDistributorOcrProductsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final adminAllDistributorOcrProductsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final repository = ref.watch(productRepositoryProvider);
   return repository.adminGetAllDistributorOcrProducts();
 });

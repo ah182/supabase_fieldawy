@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/courses/application/courses_provider.dart';
-import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,8 +44,10 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.course.title);
-    _descriptionController = TextEditingController(text: widget.course.description);
-    _priceController = TextEditingController(text: widget.course.price.toString());
+    _descriptionController =
+        TextEditingController(text: widget.course.description);
+    _priceController =
+        TextEditingController(text: widget.course.price.toString());
     _phoneController = TextEditingController();
     _completePhoneNumber = widget.course.phone;
     _currentImageUrl = widget.course.imageUrl;
@@ -86,7 +88,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
 
       // Use the cropped image directly
       final imageBytes = await croppedImage.readAsBytes();
-      
+
       setState(() {
         _processedImageFile = croppedImage;
         _processedImageBytes = imageBytes;
@@ -108,7 +110,8 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
 
   Future<File> _compressImage(File file) async {
     final tempDir = await getTemporaryDirectory();
-    final tempJpegPath = p.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
+    final tempJpegPath = p.join(
+        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
     final compressedFile = await FlutterImageCompress.compressAndGetFile(
       file.path,
       tempJpegPath,
@@ -179,10 +182,10 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
 
       // 1. Upload new image if changed
       if (_imageChanged && _processedImageFile != null) {
-        final cloudinaryService = ref.read(cloudinaryServiceProvider);
-        final uploadedUrl = await cloudinaryService.uploadImage(
-          imageFile: _processedImageFile!,
-          folder: 'vet_courses',
+        final smartImageService = ref.read(smartImageServiceProvider);
+        final uploadedUrl = await smartImageService.uploadDirectly(
+          _processedImageFile!,
+          'vet_courses',
         );
 
         if (uploadedUrl == null) {
@@ -193,29 +196,30 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
 
       // Clean and validate phone number format (E.164)
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
-      
+
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
-      
+
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
 
       // 2. Update course data in Supabase
-      final success = await ref.read(myCoursesNotifierProvider.notifier).updateCourse(
-        courseId: widget.course.id,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        price: double.parse(_priceController.text),
-        phone: cleanPhone,
-        imageUrl: imageUrl,
-      );
+      final success =
+          await ref.read(myCoursesNotifierProvider.notifier).updateCourse(
+                courseId: widget.course.id,
+                title: _titleController.text.trim(),
+                description: _descriptionController.text.trim(),
+                price: double.parse(_priceController.text),
+                phone: cleanPhone,
+                imageUrl: imageUrl,
+              );
 
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -223,7 +227,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          
+
           Navigator.of(context).pop(true);
         } else {
           throw Exception('courses_feature.update_failed_message'.tr());
@@ -232,7 +236,7 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('courses_feature.error_occurred'.tr()),
@@ -303,10 +307,12 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                                   placeholder: (context, url) => Container(
                                     color: Colors.blue[100],
                                     child: const Center(
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
+                                  errorWidget: (context, url, error) =>
+                                      Container(
                                     color: Colors.blue[100],
                                     child: const Icon(
                                       Icons.school_rounded,
@@ -323,7 +329,8 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                                     ),
                                     child: Center(
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
                                             Icons.edit,
@@ -332,7 +339,8 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'courses_feature.tap_to_change_image'.tr(),
+                                            'courses_feature.tap_to_change_image'
+                                                .tr(),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -480,7 +488,9 @@ class _EditCourseScreenState extends ConsumerState<EditCourseScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'courses_feature.saving'.tr() : 'courses_feature.save_changes'.tr(),
+                  _isSaving
+                      ? 'courses_feature.saving'.tr()
+                      : 'courses_feature.save_changes'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

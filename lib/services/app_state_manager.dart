@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fieldawy_store/features/home/presentation/screens/drawer_wrapper.dart';
+import 'package:fieldawy_store/features/settings/presentation/screens/settings_screen.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/my_products_screen.dart';
+import 'package:fieldawy_store/features/distributors/presentation/screens/distributors_screen.dart';
+import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
+import 'package:fieldawy_store/features/reviews/products_reviews_screen.dart';
+import 'package:fieldawy_store/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:fieldawy_store/features/products/presentation/screens/add_product_screen.dart';
+import 'package:fieldawy_store/features/vet_supplies/presentation/screens/vet_supplies_screen.dart';
+import 'package:fieldawy_store/features/jobs/presentation/screens/job_offers_screen.dart';
+import 'package:fieldawy_store/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:fieldawy_store/features/orders/presentation/screens/orders_screen.dart';
+import 'package:fieldawy_store/features/profile/presentation/screens/developer_profile_screen.dart';
 
 class AppStateManager extends StatefulWidget {
   final Widget child;
@@ -16,14 +29,14 @@ class AppStateManager extends StatefulWidget {
 
 class _AppStateManagerState extends State<AppStateManager>
     with WidgetsBindingObserver {
-  String? _lastRoute;
   bool _isAppInBackground = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadLastRoute();
+    // تم إزالة _loadLastRoute() - لما التطبيق يتقفل ويفتح تاني يبدأ من الـ Home
+    // Flutter بيحافظ على الـ state تلقائياً لما التطبيق يكون في الـ background
   }
 
   @override
@@ -35,18 +48,18 @@ class _AppStateManagerState extends State<AppStateManager>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
         _isAppInBackground = true;
-        _saveCurrentRoute();
+        // مش محتاجين نحفظ الـ route - Flutter بيحافظ على الـ state تلقائياً
         break;
       case AppLifecycleState.resumed:
         if (_isAppInBackground) {
           _isAppInBackground = false;
-          _loadLastRoute();
+          // Flutter بيحافظ على الـ state تلقائياً - مش محتاجين نحمل من SharedPreferences
         }
         break;
       case AppLifecycleState.hidden:
@@ -54,46 +67,12 @@ class _AppStateManagerState extends State<AppStateManager>
     }
   }
 
-  Future<void> _saveCurrentRoute() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_lastRoute != null) {
-      await prefs.setString('last_route', _lastRoute!);
-    }
-  }
-
-  Future<void> _loadLastRoute() async {
-    final prefs = await SharedPreferences.getInstance();
-    final route = prefs.getString('last_route');
-    if (route != null && mounted) {
-      _lastRoute = route;
-      // التحقق من صحة الصفحة المحفوظة
-      if (_isValidRoute(route)) {
-        _navigateToLastRoute(route);
-      }
-    }
-  }
-
-  bool _isValidRoute(String route) {
-    // تحقق من أن الصفحة المحفوظة لا تزال صالحة للمستخدم الحالي
-    return ['home', 'profile', 'settings', 'products', 'distributors'].contains(route);
-  }
+  // تم إزالة _saveCurrentRoute و _loadLastRoute و _isValidRoute و _navigateToLastRoute
+  // لأن Flutter بيحافظ على الـ state تلقائياً لما التطبيق في الـ background
+  // ولما التطبيق يتقفل خالص بيبدأ من الـ Home screen
 
   void updateCurrentRoute(String route) {
-    setState(() {
-      _lastRoute = route;
-    });
-  }
-
-  void _navigateToLastRoute(String route) {
-    // إرسال إشعار للتنقل للصفحة المحفوظة
-    // يمكن استخدام post frame callback لضمان تحديث الـ UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        // البحث عن NavigationService أو استخدام GlobalKey للتنقل
-        // يمكن إضافة منطق التنقل هنا حسب التصميم الحالي
-        print('Restoring to route: $route'); // للتسجيل المؤقت
-      }
-    });
+    // مش محتاجين نحفظ الـ route - للتتبع الداخلي فقط
   }
 
   @override
@@ -103,7 +82,8 @@ class _AppStateManagerState extends State<AppStateManager>
 }
 
 // Provider لحالة الصفحة الحالية
-final currentRouteProvider = StateNotifierProvider<CurrentRouteNotifier, String>((ref) {
+final currentRouteProvider =
+    StateNotifierProvider<CurrentRouteNotifier, String>((ref) {
   return CurrentRouteNotifier();
 });
 
@@ -112,20 +92,12 @@ class CurrentRouteNotifier extends StateNotifier<String> {
 
   void setCurrentRoute(String route) {
     state = route;
-    // حفظ في SharedPreferences
-    _saveRoute(route);
+    // تم إزالة حفظ الـ route في SharedPreferences
+    // Flutter بيحافظ على الـ state تلقائياً لما التطبيق في الـ background
   }
 
-  Future<void> _saveRoute(String route) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('last_route', route);
-  }
-
-  Future<void> restoreLastRoute() async {
-    final prefs = await SharedPreferences.getInstance();
-    final route = prefs.getString('last_route') ?? 'home';
-    state = route;
-  }
+  // تم إزالة _saveRoute و restoreLastRoute
+  // لأن مش محتاجين نحفظ الـ route - التطبيق يبدأ من الـ Home لما يتقفل
 }
 
 // Service للـ Navigation
@@ -141,60 +113,171 @@ class NavigationService {
 
   NavigationService(this.context, this.ref);
 
+  // ... existing methods ...
+
   void navigateTo(String route) {
+    // تحديث الحالة قبل التنقل
     final appStateManager = AppStateManager.of(context);
     appStateManager?.updateCurrentRoute(route);
     ref.read(currentRouteProvider.notifier).setCurrentRoute(route);
-    
-    // تنفيذ التنقل الفعلي حسب التصميم الحالي
+
+    // تنفيذ التنقل الفعلي
     switch (route) {
       case profileRoute:
-        // تنقل لصفحة الملف الشخصي
-        _navigateToProfile();
+        // Already handled in menu
         break;
       case settingsRoute:
-        // تنقل لصفحة الإعدادات
         _navigateToSettings();
         break;
       case productsRoute:
-        // تنقل لصفحة المنتجات
         _navigateToProducts();
         break;
       case distributorsRoute:
-        // تنقل لصفحة الموزعين
         _navigateToDistributors();
         break;
       case homeRoute:
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const DrawerWrapper()),
+          (route) => false,
+        );
+        break;
+      // New routes
+      case 'clinics_map':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const ClinicsMapScreen(),
+            settings: const RouteSettings(name: 'clinics_map')));
+        break;
+      case 'product_rating':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const ProductsWithReviewsScreen(),
+            settings: const RouteSettings(name: 'product_rating')));
+        break;
+      case 'dashboard':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const DashboardPage(),
+            settings: const RouteSettings(name: 'dashboard')));
+        break;
+      case 'my_products':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const MyProductsScreen(),
+            settings: const RouteSettings(name: 'my_products')));
+        break;
+      case 'add_products':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const AddProductScreen(),
+            settings: const RouteSettings(name: 'add_products')));
+        break;
+      case 'vet_supplies':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const VetSuppliesScreen(),
+            settings: const RouteSettings(name: 'vet_supplies')));
+        break;
+      case 'job_offers':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const JobOffersScreen(),
+            settings: const RouteSettings(name: 'job_offers')));
+        break;
+      case 'analytics':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const AnalyticsPage(),
+            settings: const RouteSettings(name: 'analytics')));
+        break;
+      case 'orders':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const OrdersScreen(),
+            settings: const RouteSettings(name: 'orders')));
+        break;
+      case 'developer_profile':
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const DeveloperProfileScreen(),
+            settings: const RouteSettings(name: 'developer_profile')));
+        break;
       default:
-        // العودة للصفحة الرئيسية
-        _navigateToHome();
+        // Try to handle dynamic routes or fallback to home
+        if (route.startsWith('/')) {
+          Navigator.of(context).pushNamed(route);
+        } else {
+          _navigateToHome();
+        }
         break;
     }
   }
 
-  void _navigateToProfile() {
-    // تنفيذ التنقل لصفحة الملف الشخصي
-    // يمكن استخدام Navigator.push أو تحديث الـ drawer
-  }
-
   void _navigateToSettings() {
-    // تنفيذ التنقل لصفحة الإعدادات
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => const SettingsScreen(),
+      settings: const RouteSettings(name: settingsRoute),
+    ));
   }
 
   void _navigateToProducts() {
-    // تنفيذ التنقل لصفحة المنتجات
+    // Assuming My products
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => const MyProductsScreen(),
+      settings: const RouteSettings(name: productsRoute),
+    ));
   }
 
   void _navigateToDistributors() {
-    // تنفيذ التنقل لصفحة الموزعين
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => const DistributorsScreen(),
+      settings: const RouteSettings(name: distributorsRoute),
+    ));
   }
 
   void _navigateToHome() {
-    // العودة للصفحة الرئيسية
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const DrawerWrapper()),
+      (route) => false,
+    );
+  }
+}
+
+// Global Navigator Observer
+class AppRouteObserver extends NavigatorObserver {
+  final WidgetRef ref;
+
+  AppRouteObserver(this.ref);
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    _updateRoute(route);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    if (previousRoute != null) {
+      _updateRoute(previousRoute);
+    }
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    if (newRoute != null) {
+      _updateRoute(newRoute);
+    }
+  }
+
+  void _updateRoute(Route<dynamic> route) {
+    final routeName = route.settings.name;
+    if (routeName != null &&
+        routeName.isNotEmpty &&
+        routeName != '/' &&
+        routeName != '/splash' &&
+        routeName != '/login') {
+      // Avoid saving auth/splash routes
+      Future.microtask(() {
+        ref.read(currentRouteProvider.notifier).setCurrentRoute(routeName);
+      });
+    }
   }
 }
 
 // Provider للـ NavigationService
 final navigationServiceProvider = Provider<NavigationService>((ref) {
-  throw UnimplementedError('navigationServiceProvider must be used with BuildContext');
+  throw UnimplementedError(
+      'navigationServiceProvider must be used with BuildContext');
 });

@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/config/firebase_config.dart';
 import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -18,7 +19,7 @@ class FCMTokenService {
     return await NetworkGuard.execute(() async {
       try {
         final userId = _supabase.auth.currentUser?.id;
-        
+
         if (userId == null) {
           print('⚠️ لا يوجد مستخدم مسجل الدخول - لن يتم حفظ Token');
           return;
@@ -27,10 +28,10 @@ class FCMTokenService {
         // الحصول على معلومات الجهاز
         String deviceType = 'Unknown';
         String? deviceName;
-        
+
         try {
           final deviceInfo = DeviceInfoPlugin();
-          
+
           // تحديد نوع المنصة أولاً
           if (kIsWeb) {
             // Web Platform
@@ -107,9 +108,15 @@ class FCMTokenService {
 
   /// الحصول على FCM Token وحفظه
   Future<String?> getAndSaveToken() async {
+    // Skip if Firebase is disabled
+    if (!FirebaseConfig.isFirebaseEnabled) {
+      print('⚠️ FCM: Firebase is disabled, skipping token retrieval');
+      return null;
+    }
+
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      
+
       if (token != null) {
         print('🔑 تم الحصول على FCM Token: ${token.substring(0, 20)}...');
         await saveToken(token);
@@ -129,7 +136,7 @@ class FCMTokenService {
     return await NetworkGuard.execute(() async {
       try {
         final userId = _supabase.auth.currentUser?.id;
-        
+
         if (userId == null) return;
 
         // حذف token للمستخدم الحالي فقط
@@ -138,7 +145,7 @@ class FCMTokenService {
           'p_user_id': userId,
           'p_token': token,
         });
-        
+
         print('✅ تم حذف FCM Token من Supabase للمستخدم الحالي');
       } catch (e) {
         print('❌ خطأ في حذف FCM Token: $e');
@@ -151,14 +158,11 @@ class FCMTokenService {
     return await NetworkGuard.execute(() async {
       try {
         final userId = _supabase.auth.currentUser?.id;
-        
+
         if (userId == null) return;
 
-        await _supabase
-            .from('user_tokens')
-            .delete()
-            .eq('user_id', userId);
-        
+        await _supabase.from('user_tokens').delete().eq('user_id', userId);
+
         print('✅ تم حذف جميع FCM Tokens للمستخدم');
       } catch (e) {
         print('❌ خطأ في حذف FCM Tokens: $e');
@@ -171,12 +175,12 @@ class FCMTokenService {
     return await NetworkGuard.execute(() async {
       try {
         final userId = _supabase.auth.currentUser?.id;
-        
+
         if (userId == null) return [];
 
         final response = await _supabase
             .rpc('get_user_tokens', params: {'p_user_id': userId});
-        
+
         return List<Map<String, dynamic>>.from(response);
       } catch (e) {
         print('❌ خطأ في الحصول على Tokens: $e');
@@ -187,6 +191,12 @@ class FCMTokenService {
 
   /// إعداد مستمع لتحديثات Token
   void setupTokenRefreshListener() {
+    // Skip if Firebase is disabled
+    if (!FirebaseConfig.isFirebaseEnabled) {
+      print('⚠️ FCM: Firebase is disabled, skipping token refresh listener');
+      return;
+    }
+
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
       print('🔄 تم تحديث FCM Token');
       saveToken(newToken);
@@ -197,10 +207,10 @@ class FCMTokenService {
   Future<void> initialize() async {
     // 1. الحصول على Token الحالي وحفظه
     await getAndSaveToken();
-    
+
     // 2. إعداد مستمع للتحديثات
     setupTokenRefreshListener();
-    
+
     print('✅ تم إعداد FCM Token Service');
   }
 }

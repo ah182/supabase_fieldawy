@@ -5,25 +5,27 @@ import 'package:fieldawy_store/features/home/application/user_data_provider.dart
 
 // كلاس لحفظ حالة الاختيارات
 class CatalogSelection {
-  final Map<String, double> prices; // key: 'productId_package', value: price (سواء محدد أو لا)
+  final Map<String, double>
+      prices; // key: 'productId_package', value: price (سواء محدد أو لا)
   final Set<String> selectedKeys; // المنتجات المحددة (التوجل مفعل)
-  final Map<String, DateTime> expirationDates; // key: 'productId_package', value: expiration date
-  
+  final Map<String, DateTime>
+      expirationDates; // key: 'productId_package', value: expiration date
+
   CatalogSelection({
-    this.prices = const {}, 
+    this.prices = const {},
     this.selectedKeys = const {},
     this.expirationDates = const {},
   });
 
   CatalogSelection copyWith({
-    Map<String, double>? prices, 
+    Map<String, double>? prices,
     Object? selectedKeys = const _Placeholder(),
     Map<String, DateTime>? expirationDates,
   }) {
     return CatalogSelection(
       prices: prices ?? this.prices,
-      selectedKeys: selectedKeys is _Placeholder 
-          ? this.selectedKeys 
+      selectedKeys: selectedKeys is _Placeholder
+          ? this.selectedKeys
           : (selectedKeys as Set<String>? ?? const {}),
       expirationDates: expirationDates ?? this.expirationDates,
     );
@@ -55,7 +57,8 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
 
   void setExpirationDate(String productId, String package, DateTime date) {
     final key = '${productId}_$package';
-    final newExpirationDates = Map<String, DateTime>.from(state.expirationDates);
+    final newExpirationDates =
+        Map<String, DateTime>.from(state.expirationDates);
     newExpirationDates[key] = date;
     state = state.copyWith(expirationDates: newExpirationDates);
   }
@@ -76,7 +79,8 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
     final key = '${productId}_$package';
     final newPrices = Map<String, double>.from(state.prices);
     final newSelectedKeys = Set<String>.from(state.selectedKeys);
-    final newExpirationDates = Map<String, DateTime>.from(state.expirationDates);
+    final newExpirationDates =
+        Map<String, DateTime>.from(state.expirationDates);
 
     if (newSelectedKeys.contains(key)) {
       // إلغاء التحديد - نزيل من selectedKeys لكن نحتفظ بالسعر
@@ -89,14 +93,15 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
       newSelectedKeys.add(key);
     }
     state = state.copyWith(
-      prices: newPrices, 
+      prices: newPrices,
       selectedKeys: newSelectedKeys,
       expirationDates: newExpirationDates,
     );
   }
 
   // دالة لحفظ كل المنتجات المختارة في Supabase
-  Future<bool> saveSelections({Set<String>? keysToSave, bool withExpiration = false}) async {
+  Future<bool> saveSelections(
+      {Set<String>? keysToSave, bool withExpiration = false}) async {
     final distributor = _ref.read(userDataProvider).asData?.value;
     if (distributor == null || state.selectedKeys.isEmpty) {
       return false;
@@ -124,7 +129,9 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
       final expirationDate = state.expirationDates[key];
       return MapEntry(key, {
         'price': value,
-        'expiration_date': withExpiration && expirationDate != null ? expirationDate.toIso8601String() : null,
+        'expiration_date': withExpiration && expirationDate != null
+            ? expirationDate.toIso8601String()
+            : null,
       });
     });
 
@@ -136,7 +143,7 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
             distributorName: distributor.displayName ?? 'اسم غير معروف',
             productsToAdd: productsToAdd,
           );
-      
+
       // Invalidate cache for my products
       _ref.read(cachingServiceProvider).invalidateWithPrefix('my_products_');
       _ref.invalidate(myProductsProvider);
@@ -146,14 +153,15 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
         ..removeWhere((key, value) => validSelections.containsKey(key));
       final newSelectedKeys = Set<String>.from(state.selectedKeys)
         ..removeWhere((key) => validSelections.containsKey(key));
-      final newExpirationDates = Map<String, DateTime>.from(state.expirationDates)
-        ..removeWhere((key, value) => validSelections.containsKey(key));
+      final newExpirationDates =
+          Map<String, DateTime>.from(state.expirationDates)
+            ..removeWhere((key, value) => validSelections.containsKey(key));
       state = state.copyWith(
-        prices: newPrices, 
+        prices: newPrices,
         selectedKeys: newSelectedKeys,
         expirationDates: newExpirationDates,
       );
-      
+
       return true;
     } catch (e) {
       print('Failed to save selections: $e');
@@ -169,7 +177,7 @@ class CatalogSelectionController extends StateNotifier<CatalogSelection> {
     final newExpirationDates = Map<String, DateTime>.from(state.expirationDates)
       ..removeWhere((key, value) => keysToClear.contains(key));
     state = state.copyWith(
-      prices: newPrices, 
+      prices: newPrices,
       selectedKeys: newSelectedKeys,
       expirationDates: newExpirationDates,
     );
@@ -191,9 +199,12 @@ enum CatalogContext {
   myProducts,
   offers,
   reviews,
+  clinicInventory,
 }
 
 final catalogSelectionControllerProvider = StateNotifierProvider.family<
-    CatalogSelectionController, CatalogSelection, CatalogContext>((ref, context) {
+    CatalogSelectionController,
+    CatalogSelection,
+    CatalogContext>((ref, context) {
   return CatalogSelectionController(ref);
 });

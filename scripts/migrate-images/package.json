@@ -1,0 +1,16 @@
+{
+    "name": "migrate-cloudinary-to-supabase",
+    "version": "1.0.0",
+    "description": "Migrate images from Cloudinary to Supabase Storage",
+    "main": "migrate-ocr-products.js",
+    "scripts": {
+        "migrate": "node migrate-ocr-products.js",
+        "migrate:test": "node migrate-ocr-products.js --test",
+        "migrate:dry-run": "node migrate-ocr-products.js --dry-run"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0",
+        "cloudinary": "^2.9.0",
+        "dotenv": "^16.3.1"
+    }
+}

@@ -31,13 +31,16 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:fieldawy_store/widgets/distributor_details_sheet.dart';
 
-final subscribedDistributorsIdsProvider = FutureProvider<Set<String>>((ref) async {
+final subscribedDistributorsIdsProvider =
+    FutureProvider<Set<String>>((ref) async {
   await SubscriptionCacheService.init();
-  final list = await DistributorSubscriptionService.getSubscribedDistributorIds();
+  final list =
+      await DistributorSubscriptionService.getSubscribedDistributorIds();
   return list.toSet();
 });
 
-final distributorsProvider = FutureProvider<List<DistributorModel>>((ref) async {
+final distributorsProvider =
+    FutureProvider<List<DistributorModel>>((ref) async {
   final supabase = Supabase.instance.client;
   final cache = ref.watch(cachingServiceProvider);
   const cacheKey = 'distributors_edge';
@@ -46,11 +49,13 @@ final distributorsProvider = FutureProvider<List<DistributorModel>>((ref) async 
     return await supabase.functions.invoke('get-distributors');
   }).then((response) {
     if (response.data == null) {
-      return <DistributorModel>[]; 
+      return <DistributorModel>[];
     }
     final List<dynamic> data = response.data;
     cache.set(cacheKey, data, duration: const Duration(minutes: 30));
-    final result = data.map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d))).toList();
+    final result = data
+        .map((d) => DistributorModel.fromMap(Map<String, dynamic>.from(d)))
+        .toList();
     return result;
   }).catchError((error) {
     return <DistributorModel>[];
@@ -58,7 +63,10 @@ final distributorsProvider = FutureProvider<List<DistributorModel>>((ref) async 
 
   final cached = cache.get<List<dynamic>>(cacheKey);
   if (cached != null) {
-    return cached.map((data) => DistributorModel.fromMap(Map<String, dynamic>.from(data))).toList();
+    return cached
+        .map(
+            (data) => DistributorModel.fromMap(Map<String, dynamic>.from(data)))
+        .toList();
   }
 
   try {
@@ -75,7 +83,8 @@ class DistributorsScreen extends ConsumerStatefulWidget {
   ConsumerState<DistributorsScreen> createState() => _DistributorsScreenState();
 }
 
-class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with SearchTrackingMixin {
+class _DistributorsScreenState extends ConsumerState<DistributorsScreen>
+    with SearchTrackingMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
@@ -83,7 +92,7 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
   String _ghostText = '';
   String _fullSuggestion = '';
   Timer? _debounce;
-  
+
   static const String _historyTabId = 'distributors';
 
   @override
@@ -153,7 +162,7 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
         final displayName = distributor.displayName.toLowerCase();
         return displayName.startsWith(query.toLowerCase());
       }).toList();
-      
+
       if (filtered.isNotEmpty) {
         final suggestion = filtered.first.displayName;
         setState(() {
@@ -174,10 +183,13 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
   void _showSearchHistoryDialog(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final history = ref.read(searchHistoryProvider)[_historyTabId] ?? [];
-    
+
     if (history.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isAr ? 'لا يوجد سجل بحث حالياً' : 'No search history available')),
+        SnackBar(
+            content: Text(isAr
+                ? 'لا يوجد سجل بحث حالياً'
+                : 'No search history available')),
       );
       return;
     }
@@ -196,7 +208,9 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
             _searchQuery = term;
             _debouncedSearchQuery = term;
           });
-          ref.read(searchHistoryProvider.notifier).addSearchTerm(term, _historyTabId);
+          ref
+              .read(searchHistoryProvider.notifier)
+              .addSearchTerm(term, _historyTabId);
           Navigator.pop(context);
           _searchFocusNode.unfocus();
         },
@@ -206,7 +220,7 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
 
   void _showSearchFiltersDialog(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    
+
     AwesomeDialog(
       context: context,
       dialogType: DialogType.noHeader,
@@ -226,9 +240,12 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                     Text(
                       isAr ? 'الفلاتر السريعة' : 'Quick Filters',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      ),
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
+                          ),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
@@ -248,35 +265,38 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                     ),
                   ],
                 ),
-                StatefulBuilder(
-                  builder: (context, setDialogState) {
-                    return Consumer(
-                      builder: (context, ref, child) {
-                        final filters = ref.watch(distributorFiltersProvider);
-                        final hasActiveFilters = filters.isNearest || filters.selectedGovernorate != null;
-                        
-                        if (!hasActiveFilters) return const SizedBox.shrink();
-                        
-                        return InkWell(
-                          onTap: () {
-                            ref.read(distributorFiltersProvider.notifier).resetFilters();
-                          },
-                          child: Text(
-                            isAr ? 'مسح الكل' : 'Clear All',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                ),
+                StatefulBuilder(builder: (context, setDialogState) {
+                  return Consumer(
+                    builder: (context, ref, child) {
+                      final filters = ref.watch(distributorFiltersProvider);
+                      final hasActiveFilters = filters.isNearest ||
+                          filters.selectedGovernorate != null;
+
+                      if (!hasActiveFilters) return const SizedBox.shrink();
+
+                      return InkWell(
+                        onTap: () {
+                          ref
+                              .read(distributorFiltersProvider.notifier)
+                              .resetFilters();
+                        },
+                        child: Text(
+                          isAr ? 'مسح الكل' : 'Clear All',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      );
+                    },
+                  );
+                }),
               ],
             ),
             const SizedBox(height: 16),
-            const QuickFiltersBar(showCheapest: false, useDistributorFilters: true),
+            const QuickFiltersBar(
+                showCheapest: false, useDistributorFilters: true),
             const SizedBox(height: 8),
           ],
         ),
@@ -292,7 +312,7 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
     List<Color>? gradientColors,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -310,22 +330,26 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: isActive 
-              ? (gradientColors == null ? color : null) 
-              : (isDark ? Colors.white.withOpacity(0.08) : color.withOpacity(0.05)),
-          boxShadow: isActive ? [
-            BoxShadow(
-              color: (gradientColors?.last ?? color).withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            )
-          ] : [],
+          color: isActive
+              ? (gradientColors == null ? color : null)
+              : (isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : color.withOpacity(0.05)),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: (gradientColors?.last ?? color).withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  )
+                ]
+              : [],
         ),
         child: Icon(
           icon,
           size: 18,
-          color: isActive 
-              ? Colors.white 
+          color: isActive
+              ? Colors.white
               : (isDark ? Colors.white70 : color.withOpacity(0.6)),
         ),
       ),
@@ -344,17 +368,20 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
       onTap: _hideKeyboard,
       child: MainScaffold(
         selectedIndex: 0,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const DistributorLeaderboardScreen(),
-              ),
-            );
-          },
-          child: const Icon(Icons.leaderboard_outlined),
-        ),
+        floatingActionButton: currentUserAsync.asData?.value?.role == 'admin'
+            ? FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const DistributorLeaderboardScreen(),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.leaderboard_outlined),
+              )
+            : null,
         body: NestedScrollView(
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
@@ -366,7 +393,8 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                 centerTitle: true,
                 backgroundColor: theme.colorScheme.surface,
                 leading: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: const BoxDecoration(
                     color: Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
@@ -388,7 +416,7 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                     ),
                   ),
                 ),
-                automaticallyImplyLeading: false, 
+                automaticallyImplyLeading: false,
                 title: Text(
                   'distributors_feature.title'.tr(),
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -396,11 +424,13 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                   ),
                 ),
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(100), // Adjusted height for search bar only
+                  preferredSize: const Size.fromHeight(
+                      100), // Adjusted height for search bar only
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 4.0),
                         child: Row(
                           children: [
                             // Search Bar
@@ -413,7 +443,11 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                     textInputAction: TextInputAction.search,
                                     onSubmitted: (value) {
                                       if (value.trim().isNotEmpty) {
-                                        ref.read(searchHistoryProvider.notifier).addSearchTerm(value, _historyTabId);
+                                        ref
+                                            .read(
+                                                searchHistoryProvider.notifier)
+                                            .addSearchTerm(
+                                                value, _historyTabId);
                                       }
                                       _searchFocusNode.unfocus();
                                     },
@@ -422,7 +456,8 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                         HapticFeedback.selectionClick();
                                       }
                                       if (_searchController.text.isNotEmpty) {
-                                        _updateSuggestions(_searchController.text);
+                                        _updateSuggestions(
+                                            _searchController.text);
                                       }
                                     },
                                     onChanged: (value) {
@@ -430,7 +465,9 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                         _searchQuery = value;
                                       });
                                       _debounce?.cancel();
-                                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                                      _debounce = Timer(
+                                          const Duration(milliseconds: 300),
+                                          () {
                                         setState(() {
                                           _debouncedSearchQuery = value;
                                         });
@@ -438,20 +475,29 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                       });
                                     },
                                     decoration: InputDecoration(
-                                      hintText: 'distributors_feature.search_hint'.tr(),
-                                      hintStyle: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                      hintText:
+                                          'distributors_feature.search_hint'
+                                              .tr(),
+                                      hintStyle:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface
+                                            .withOpacity(0.5),
                                       ),
                                       prefixIcon: Icon(
                                         Icons.search_rounded,
-                                        color: _searchFocusNode.hasFocus 
+                                        color: _searchFocusNode.hasFocus
                                             ? theme.colorScheme.primary
-                                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                                            : theme.colorScheme.onSurface
+                                                .withOpacity(0.6),
                                         size: 22,
                                       ),
                                       suffixIcon: _searchQuery.isNotEmpty
                                           ? IconButton(
-                                              icon: Icon(Icons.clear, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                              icon: Icon(Icons.clear,
+                                                  size: 18,
+                                                  color: theme
+                                                      .colorScheme.onSurface
+                                                      .withOpacity(0.7)),
                                               onPressed: () {
                                                 _searchController.clear();
                                                 setState(() {
@@ -465,67 +511,98 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                             )
                                           : null,
                                       filled: true,
-                                      fillColor: theme.brightness == Brightness.dark
-                                          ? theme.colorScheme.surface.withOpacity(0.8)
-                                          : theme.colorScheme.surface,
+                                      fillColor:
+                                          theme.brightness == Brightness.dark
+                                              ? theme.colorScheme.surface
+                                                  .withOpacity(0.8)
+                                              : theme.colorScheme.surface,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                        borderSide: BorderSide(
+                                            color: theme.colorScheme.outline
+                                                .withOpacity(0.3),
+                                            width: 1),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+                                        borderSide: BorderSide(
+                                            color: theme.colorScheme.outline
+                                                .withOpacity(0.3),
+                                            width: 1),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                        borderSide: BorderSide(
+                                            color: theme.colorScheme.primary,
+                                            width: 2),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 10),
                                     ),
                                   ),
                                   // Ghost Text
-                                  if (_ghostText.isNotEmpty && _searchFocusNode.hasFocus)
+                                  if (_ghostText.isNotEmpty &&
+                                      _searchFocusNode.hasFocus)
                                     Positioned(
                                       top: 12,
                                       right: 37,
                                       child: AnimatedOpacity(
-                                        opacity: _searchQuery.isNotEmpty ? 1.0 : 0.0,
-                                        duration: const Duration(milliseconds: 200),
+                                        opacity:
+                                            _searchQuery.isNotEmpty ? 1.0 : 0.0,
+                                        duration:
+                                            const Duration(milliseconds: 200),
                                         child: GestureDetector(
                                           onTap: () {
                                             if (_fullSuggestion.isNotEmpty) {
-                                              _searchController.text = _fullSuggestion;
+                                              _searchController.text =
+                                                  _fullSuggestion;
                                               setState(() {
                                                 _searchQuery = _fullSuggestion;
-                                                _debouncedSearchQuery = _fullSuggestion;
+                                                _debouncedSearchQuery =
+                                                    _fullSuggestion;
                                                 _ghostText = '';
                                                 _fullSuggestion = '';
                                               });
-                                              ref.read(searchHistoryProvider.notifier).addSearchTerm(_searchController.text, _historyTabId);
+                                              ref
+                                                  .read(searchHistoryProvider
+                                                      .notifier)
+                                                  .addSearchTerm(
+                                                      _searchController.text,
+                                                      _historyTabId);
                                               HapticFeedback.selectionClick();
                                               _searchFocusNode.requestFocus();
                                             }
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: theme.colorScheme.primary.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: theme.colorScheme.primary
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.primary),
+                                                Icon(Icons.auto_awesome,
+                                                    size: 12,
+                                                    color: theme
+                                                        .colorScheme.primary),
                                                 const SizedBox(width: 4),
                                                 Flexible(
                                                   child: Text(
                                                     _ghostText,
                                                     style: TextStyle(
-                                                      color: theme.colorScheme.primary,
-                                                      fontWeight: FontWeight.bold,
+                                                      color: theme
+                                                          .colorScheme.primary,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 12,
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     maxLines: 1,
                                                   ),
                                                 ),
@@ -538,37 +615,48 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                                 ],
                               ),
                             ),
-                            
+
                             // Action Buttons (History & Filter)
                             const SizedBox(width: 8),
-                            Consumer(
-                              builder: (context, ref, child) {
-                                final history = ref.watch(searchHistoryProvider)[_historyTabId] ?? [];
-                                final isFilterActive = filters.isNearest || filters.selectedGovernorate != null;
-                                final isHistoryActive = history.contains(_searchQuery) && _searchQuery.isNotEmpty;
+                            Consumer(builder: (context, ref, child) {
+                              final history = ref.watch(
+                                      searchHistoryProvider)[_historyTabId] ??
+                                  [];
+                              final isFilterActive = filters.isNearest ||
+                                  filters.selectedGovernorate != null;
+                              final isHistoryActive =
+                                  history.contains(_searchQuery) &&
+                                      _searchQuery.isNotEmpty;
 
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildSearchActionButton(
-                                      icon: Icons.history_rounded,
-                                      color: Colors.indigo,
-                                      isActive: isHistoryActive,
-                                      gradientColors: [Colors.indigo, Colors.blueAccent],
-                                      onTap: () => _showSearchHistoryDialog(context),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    _buildSearchActionButton(
-                                      icon: Icons.tune_rounded,
-                                      color: Colors.teal,
-                                      isActive: isFilterActive,
-                                      gradientColors: [Colors.teal, Colors.cyan.shade600],
-                                      onTap: () => _showSearchFiltersDialog(context),
-                                    ),
-                                  ],
-                                );
-                              }
-                            ),
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildSearchActionButton(
+                                    icon: Icons.history_rounded,
+                                    color: Colors.indigo,
+                                    isActive: isHistoryActive,
+                                    gradientColors: [
+                                      Colors.indigo,
+                                      Colors.blueAccent
+                                    ],
+                                    onTap: () =>
+                                        _showSearchHistoryDialog(context),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _buildSearchActionButton(
+                                    icon: Icons.tune_rounded,
+                                    color: Colors.teal,
+                                    isActive: isFilterActive,
+                                    gradientColors: [
+                                      Colors.teal,
+                                      Colors.cyan.shade600
+                                    ],
+                                    onTap: () =>
+                                        _showSearchFiltersDialog(context),
+                                  ),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -585,18 +673,23 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                 // Text Search
                 if (_debouncedSearchQuery.isNotEmpty) {
                   final query = _debouncedSearchQuery.toLowerCase();
-                  final matchesName = distributor.displayName.toLowerCase().contains(query) ||
-                      (distributor.companyName?.toLowerCase().contains(query) ?? false) ||
-                      (distributor.email?.toLowerCase().contains(query) ?? false);
+                  final matchesName = distributor.displayName
+                          .toLowerCase()
+                          .contains(query) ||
+                      (distributor.companyName?.toLowerCase().contains(query) ??
+                          false) ||
+                      (distributor.email?.toLowerCase().contains(query) ??
+                          false);
                   if (!matchesName) return false;
                 }
-                
+
                 // Governorate Filter
                 if (filters.selectedGovernorate != null) {
-                  final matchesGov = (distributor.governorates ?? []).contains(filters.selectedGovernorate);
+                  final matchesGov = (distributor.governorates ?? [])
+                      .contains(filters.selectedGovernorate);
                   if (!matchesGov) return false;
                 }
-                
+
                 return true;
               }).toList();
 
@@ -604,7 +697,8 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
               if (filters.isNearest) {
                 final currentUser = currentUserAsync.asData?.value;
                 if (currentUser != null) {
-                  filteredDistributors = LocationProximity.sortByProximity<DistributorModel>(
+                  filteredDistributors =
+                      LocationProximity.sortByProximity<DistributorModel>(
                     items: filteredDistributors,
                     getProximityScore: (distributor) {
                       return LocationProximity.calculateProximityScore(
@@ -636,9 +730,12 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (filters.selectedGovernorate != null || filters.isNearest)
+                      if (filters.selectedGovernorate != null ||
+                          filters.isNearest)
                         TextButton(
-                          onPressed: () => ref.read(distributorFiltersProvider.notifier).resetFilters(),
+                          onPressed: () => ref
+                              .read(distributorFiltersProvider.notifier)
+                              .resetFilters(),
                           child: Text('إعادة تعيين الفلاتر'),
                         ),
                       const SizedBox(height: 16),
@@ -661,8 +758,8 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
                     final distributor = filteredDistributors[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6.0),
-                      child: _buildDistributorCard(
-                          context, theme, distributor, ref, null, _debouncedSearchQuery),
+                      child: _buildDistributorCard(context, theme, distributor,
+                          ref, null, _debouncedSearchQuery),
                     );
                   },
                 ),
@@ -672,7 +769,9 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
             error: (error, stack) => RefreshableErrorWidget(
               message: 'حدث خطأ: $error',
               onRetry: () {
-                ref.read(cachingServiceProvider).invalidate('distributors_edge');
+                ref
+                    .read(cachingServiceProvider)
+                    .invalidate('distributors_edge');
                 // ignore: unused_result
                 ref.refresh(distributorsProvider);
               },
@@ -685,7 +784,12 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
 
   // كارت الموزع المحسن
   Widget _buildDistributorCard(
-      BuildContext context, ThemeData theme, DistributorModel distributor, WidgetRef ref, String? searchId, String searchQuery) {
+      BuildContext context,
+      ThemeData theme,
+      DistributorModel distributor,
+      WidgetRef ref,
+      String? searchId,
+      String searchQuery) {
     final currentUser = ref.read(userDataProvider).asData?.value;
     return _DistributorCard(
       key: ValueKey(distributor.id),
@@ -703,8 +807,6 @@ class _DistributorsScreenState extends ConsumerState<DistributorsScreen> with Se
       BuildContext context, ThemeData theme, DistributorModel distributor) {
     DistributorDetailsSheet.showWithModel(context, distributor);
   }
-
-
 }
 
 // Widget منفصل للكارت مع state management محلي
@@ -725,7 +827,8 @@ class _DistributorCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subscribedIdsAsync = ref.watch(subscribedDistributorsIdsProvider);
-    final isSubscribed = subscribedIdsAsync.asData?.value.contains(distributor.id) ?? false;
+    final isSubscribed =
+        subscribedIdsAsync.asData?.value.contains(distributor.id) ?? false;
 
     // Local state for optimistic UI updates (using a StatefulWidget would be better for complex state, but here we trigger provider refresh)
     // Actually, converting to ConsumerStatefulWidget or HookConsumerWidget is cleaner if we need local state.
@@ -758,10 +861,12 @@ class _DistributorCardStateful extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_DistributorCardStateful> createState() => _DistributorCardStatefulState();
+  ConsumerState<_DistributorCardStateful> createState() =>
+      _DistributorCardStatefulState();
 }
 
-class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStateful> {
+class _DistributorCardStatefulState
+    extends ConsumerState<_DistributorCardStateful> {
   late bool isSubscribed;
   late int subscribersCount;
   bool isLoading = false;
@@ -837,7 +942,8 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                               child: Icon(
                                 Icons.person_rounded,
                                 size: 28,
-                                color: widget.theme.colorScheme.onSurfaceVariant,
+                                color:
+                                    widget.theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           )
@@ -885,17 +991,22 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                                   ? Icons.business_rounded
                                   : Icons.person_outline_rounded,
                               size: 12,
-                              color: widget.theme.colorScheme.onSecondaryContainer,
+                              color:
+                                  widget.theme.colorScheme.onSecondaryContainer,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 widget.distributor.companyName ??
-                                    (widget.distributor.distributorType == 'company'
+                                    (widget.distributor.distributorType ==
+                                            'company'
                                         ? 'distributors_feature.company'.tr()
-                                        : 'distributors_feature.individual'.tr()),
-                                style: widget.theme.textTheme.labelSmall?.copyWith(
-                                  color: widget.theme.colorScheme.onSecondaryContainer,
+                                        : 'distributors_feature.individual'
+                                            .tr()),
+                                style:
+                                    widget.theme.textTheme.labelSmall?.copyWith(
+                                  color: widget
+                                      .theme.colorScheme.onSecondaryContainer,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 maxLines: 1,
@@ -948,7 +1059,8 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                                   Flexible(
                                     child: Text(
                                       'distributors_feature.near_you'.tr(),
-                                      style: widget.theme.textTheme.labelSmall?.copyWith(
+                                      style: widget.theme.textTheme.labelSmall
+                                          ?.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 9,
@@ -962,10 +1074,12 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                             )
                           // أيقونة للمحافظة فقط (بدون مركز مشترك)
                           else if (widget.currentUser?.governorates != null &&
-                                   LocationProximity.hasCommonGovernorate(
-                                     userGovernorates: widget.currentUser!.governorates!,
-                                     distributorGovernorates: widget.distributor.governorates,
-                                   ))
+                              LocationProximity.hasCommonGovernorate(
+                                userGovernorates:
+                                    widget.currentUser!.governorates!,
+                                distributorGovernorates:
+                                    widget.distributor.governorates,
+                              ))
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 7, vertical: 3),
@@ -988,8 +1102,10 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                                   const SizedBox(width: 2),
                                   Flexible(
                                     child: Text(
-                                      'distributors_feature.same_governorate'.tr(),
-                                      style: widget.theme.textTheme.labelSmall?.copyWith(
+                                      'distributors_feature.same_governorate'
+                                          .tr(),
+                                      style: widget.theme.textTheme.labelSmall
+                                          ?.copyWith(
                                         color: Colors.blue.shade700,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 9,
@@ -1015,14 +1131,20 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                                 Icon(
                                   Icons.inventory_2_rounded,
                                   size: 11,
-                                  color: widget.theme.colorScheme.onPrimaryContainer,
+                                  color: widget
+                                      .theme.colorScheme.onPrimaryContainer,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'distributors_feature.product_count_value'.tr(
-                                      namedArgs: {'count': widget.distributor.productCount.toString()}),
-                                  style: widget.theme.textTheme.labelMedium?.copyWith(
-                                    color: widget.theme.colorScheme.onPrimaryContainer,
+                                      namedArgs: {
+                                        'count': widget.distributor.productCount
+                                            .toString()
+                                      }),
+                                  style: widget.theme.textTheme.labelMedium
+                                      ?.copyWith(
+                                    color: widget
+                                        .theme.colorScheme.onPrimaryContainer,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 11,
                                   ),
@@ -1036,7 +1158,8 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: widget.theme.colorScheme.primary.withOpacity(0.1),
+                                color: widget.theme.colorScheme.primary
+                                    .withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -1050,7 +1173,8 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                                   const SizedBox(width: 4),
                                   Text(
                                     '$subscribersCount',
-                                    style: widget.theme.textTheme.labelMedium?.copyWith(
+                                    style: widget.theme.textTheme.labelMedium
+                                        ?.copyWith(
                                       color: widget.theme.colorScheme.primary,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,
@@ -1066,84 +1190,93 @@ class _DistributorCardStatefulState extends ConsumerState<_DistributorCardStatef
                 ),
                 // أيقونة الجرس للاشتراك
                 Container(
-                    width: 33,
-                    height: 33,
-                    decoration: BoxDecoration(
-                      color: isSubscribed
-                          ? widget.theme.colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: isSubscribed
-                          ? null
-                          : Border.all(
-                              color: widget.theme.colorScheme.outline.withOpacity(0.3),
-                              width: 1,
-                            ),
-                    ),
-                    child: IconButton(
-                      iconSize: 16,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: Icon(
-                        isSubscribed
-                            ? Icons.notifications_active_rounded
-                            : Icons.notifications_none_rounded,
-                        color: isSubscribed
-                            ? Colors.white
-                            : widget.theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                      onPressed: isLoading
-                          ? null
-                          : () async {
-                              setState(() {
-                                isLoading = true;
-                              });
-                              // Toggle subscription
-                              final success = await DistributorSubscriptionService
-                                  .toggleSubscription(widget.distributor.id);
-
-                              if (success) {
-                                // Refresh the provider to update UI
-                                ref.invalidate(subscribedDistributorsIdsProvider);
-                                
-                                setState(() {
-                                  // Update local state for immediate feedback
-                                  if (!isSubscribed) {
-                                    isSubscribed = true;
-                                    subscribersCount++;
-                                  } else {
-                                    isSubscribed = false;
-                                    if (subscribersCount > 0) {
-                                      subscribersCount--;
-                                    }
-                                  }
-                                });
-
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        !isSubscribed // Logic inverted here because we already flipped local state? No, success means operation done.
-                                            // Wait, if I flipped local state ABOVE, then isSubscribed reflects NEW state.
-                                            // So if isSubscribed is true, it means I just subscribed.
-                                            ? 'distributors_feature.unsubscribed'.tr(namedArgs: {'name': widget.distributor.displayName})
-                                            : 'distributors_feature.subscribed'.tr(namedArgs: {'name': widget.distributor.displayName}),
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              }
-                              setState(() {
-                                isLoading = false;
-                              });
-                            },
-                      tooltip: isSubscribed
-                          ? 'distributors_feature.unsubscribe_tooltip'.tr()
-                          : 'distributors_feature.subscribe_tooltip'.tr(),
-                    ),
+                  width: 33,
+                  height: 33,
+                  decoration: BoxDecoration(
+                    color: isSubscribed
+                        ? widget.theme.colorScheme.primary
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: isSubscribed
+                        ? null
+                        : Border.all(
+                            color: widget.theme.colorScheme.outline
+                                .withOpacity(0.3),
+                            width: 1,
+                          ),
                   ),
+                  child: IconButton(
+                    iconSize: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      isSubscribed
+                          ? Icons.notifications_active_rounded
+                          : Icons.notifications_none_rounded,
+                      color: isSubscribed
+                          ? Colors.white
+                          : widget.theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            setState(() {
+                              isLoading = true;
+                            });
+                            // Toggle subscription
+                            final success = await DistributorSubscriptionService
+                                .toggleSubscription(widget.distributor.id);
+
+                            if (success) {
+                              // Refresh the provider to update UI
+                              ref.invalidate(subscribedDistributorsIdsProvider);
+
+                              setState(() {
+                                // Update local state for immediate feedback
+                                if (!isSubscribed) {
+                                  isSubscribed = true;
+                                  subscribersCount++;
+                                } else {
+                                  isSubscribed = false;
+                                  if (subscribersCount > 0) {
+                                    subscribersCount--;
+                                  }
+                                }
+                              });
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      !isSubscribed // Logic inverted here because we already flipped local state? No, success means operation done.
+                                          // Wait, if I flipped local state ABOVE, then isSubscribed reflects NEW state.
+                                          // So if isSubscribed is true, it means I just subscribed.
+                                          ? 'distributors_feature.unsubscribed'
+                                              .tr(namedArgs: {
+                                              'name':
+                                                  widget.distributor.displayName
+                                            })
+                                          : 'distributors_feature.subscribed'
+                                              .tr(namedArgs: {
+                                              'name':
+                                                  widget.distributor.displayName
+                                            }),
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            }
+                            setState(() {
+                              isLoading = false;
+                            });
+                          },
+                    tooltip: isSubscribed
+                        ? 'distributors_feature.unsubscribe_tooltip'.tr()
+                        : 'distributors_feature.subscribe_tooltip'.tr(),
+                  ),
+                ),
                 const SizedBox(width: 4),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
@@ -1189,5 +1322,3 @@ class _ArrowBackPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-

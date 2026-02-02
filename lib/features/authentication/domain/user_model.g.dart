@@ -38,13 +38,15 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       distributionMethod: fields[18] as String?,
       subscribersCount: fields[19] as int?,
       rejectionReason: fields[20] as String?,
+      clinicCode: fields[21] as String?,
+      whatsappClicks: fields[22] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserModel obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +88,11 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       ..writeByte(19)
       ..write(obj.subscribersCount)
       ..writeByte(20)
-      ..write(obj.rejectionReason);
+      ..write(obj.rejectionReason)
+      ..writeByte(21)
+      ..write(obj.clinicCode)
+      ..writeByte(22)
+      ..write(obj.whatsappClicks);
   }
 
   @override

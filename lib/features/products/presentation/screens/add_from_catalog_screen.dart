@@ -32,18 +32,21 @@ import 'package:fieldawy_store/features/products/presentation/screens/add_produc
 import 'package:image_picker/image_picker.dart';
 import 'package:fieldawy_store/services/ocr_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fieldawy_store/features/clinic_inventory/presentation/widgets/add_to_inventory_from_catalog_sheet.dart';
 
 class AddFromCatalogScreen extends ConsumerStatefulWidget {
   final CatalogContext catalogContext;
   final bool showExpirationDate;
   final bool isFromOfferScreen;
   final bool isFromReviewRequest;
+  final int initialTabIndex;
   const AddFromCatalogScreen({
     super.key,
     required this.catalogContext,
     this.showExpirationDate = false,
     this.isFromOfferScreen = false,
     this.isFromReviewRequest = false,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -121,10 +124,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   @override
   void initState() {
     super.initState();
-    
 
     _searchController = TextEditingController();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+        length: 2, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController!.addListener(() {
       if (mounted) {
         // إخفاء الكيبورد عند تغيير التاب
@@ -159,7 +162,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange[800], size: 28),
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.orange[800], size: 28),
             const SizedBox(width: 12),
             const Text(
               'تنبيه هام',
@@ -204,10 +208,12 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.orange[800],
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: const Text('فهمت، سأقوم بالمراجعة', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('فهمت، سأقوم بالمراجعة',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -229,145 +235,185 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     final isDark = theme.brightness == Brightness.dark;
 
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: colorScheme.surface,
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // --- العنوان ---
-            Text(
-              "تحويل الصورة إلى بيانات",
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "صورالورقة بوضوح واجعلها في شكل جدول كما هو موضح ادناه باللغة الانجليزية، وسيتولى الذكاء الاصطناعي الباقي! 🚀\nسيتم استخراج البيانات (اسم الدواء، الحجم، السعر) تلقائياً وتنظيمها في جدول لتوفير وقتك ومجهودك.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[600],
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // --- المحاكاة البصرية (صورة -> جدول) ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          context: context,
+          builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: colorScheme.surface,
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.receipt_long_rounded, size: 40, color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.blueGrey),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.arrow_forward_rounded, color: colorScheme.primary),
-                ),
-                Icon(Icons.table_chart_rounded, size: 40, color: isDark ? Colors.greenAccent : Colors.green),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // --- الجدول التوضيحي (Responsive Table) ---
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: isDark ? colorScheme.outline.withOpacity(0.3) : Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(2), // Name (Wider)
-                    1: FlexColumnWidth(1.5), // Pack
-                    2: FlexColumnWidth(1), // Price
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  border: TableBorder(
-                    horizontalInside: BorderSide(color: isDark ? colorScheme.outline.withOpacity(0.2) : Colors.grey.shade200, width: 1),
+                // --- العنوان ---
+                Text(
+                  "تحويل الصورة إلى بيانات",
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "صورالورقة بوضوح واجعلها في شكل جدول كما هو موضح ادناه باللغة الانجليزية، وسيتولى الذكاء الاصطناعي الباقي! 🚀\nسيتم استخراج البيانات (اسم الدواء، الحجم، السعر) تلقائياً وتنظيمها في جدول لتوفير وقتك ومجهودك.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark
+                        ? colorScheme.onSurface.withOpacity(0.7)
+                        : Colors.grey[600],
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // --- المحاكاة البصرية (صورة -> جدول) ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Header Row
-                    TableRow(
-                      decoration: BoxDecoration(color: isDark ? colorScheme.surfaceVariant.withOpacity(0.5) : Colors.grey.shade100),
-                      children: const [
-                        Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                        Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                        Padding(padding: EdgeInsets.all(10), child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                      ],
+                    Icon(Icons.receipt_long_rounded,
+                        size: 40,
+                        color: isDark
+                            ? colorScheme.onSurface.withOpacity(0.5)
+                            : Colors.blueGrey),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(Icons.arrow_forward_rounded,
+                          color: colorScheme.primary),
                     ),
-                    // Data Rows
-                    _buildTableRow("Diflam", "100ml vial", "45", isDark, colorScheme),
-                    _buildTableRow("Histacure", "100ml vial", "130", isDark, colorScheme),
-                    _buildTableRow("Antoplex", "100ml vial", "600", isDark, colorScheme),
-                    _buildTableRow("Gentacure", "50ml vial", "125", isDark, colorScheme),
+                    Icon(Icons.table_chart_rounded,
+                        size: 40,
+                        color: isDark ? Colors.greenAccent : Colors.green),
                   ],
                 ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            // --- الأزرار ---
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 20),
+
+                // --- الجدول التوضيحي (Responsive Table) ---
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: isDark
+                            ? colorScheme.outline.withOpacity(0.3)
+                            : Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2), // Name (Wider)
+                        1: FlexColumnWidth(1.5), // Pack
+                        2: FlexColumnWidth(1), // Price
+                      },
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      border: TableBorder(
+                        horizontalInside: BorderSide(
+                            color: isDark
+                                ? colorScheme.outline.withOpacity(0.2)
+                                : Colors.grey.shade200,
+                            width: 1),
+                      ),
+                      children: [
+                        // Header Row
+                        TableRow(
+                          decoration: BoxDecoration(
+                              color: isDark
+                                  ? colorScheme.surfaceVariant.withOpacity(0.5)
+                                  : Colors.grey.shade100),
+                          children: const [
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Name",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12))),
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Package",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11))),
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Price",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12))),
+                          ],
+                        ),
+                        // Data Rows
+                        _buildTableRow(
+                            "Diflam", "100ml vial", "45", isDark, colorScheme),
+                        _buildTableRow("Histacure", "100ml vial", "130", isDark,
+                            colorScheme),
+                        _buildTableRow("Antoplex", "100ml vial", "600", isDark,
+                            colorScheme),
+                        _buildTableRow("Gentacure", "50ml vial", "125", isDark,
+                            colorScheme),
+                      ],
                     ),
-                    child: const Text("إلغاء"),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.camera_alt, size: 18),
-                    label: const Text("تصوير"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+                const SizedBox(height: 24),
+                // --- الأزرار ---
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text("إلغاء"),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context, true),
+                        icon: const Icon(Icons.camera_alt, size: 18),
+                        label: const Text("تصوير"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    ) ?? false;
+          ),
+        ) ??
+        false;
   }
 
-  TableRow _buildTableRow(String name, String pack, String price, bool isDark, ColorScheme colorScheme) {
+  TableRow _buildTableRow(String name, String pack, String price, bool isDark,
+      ColorScheme colorScheme) {
     return TableRow(
       children: [
-        Padding(padding: const EdgeInsets.all(10), child: Text(name, style: const TextStyle(fontSize: 12))),
         Padding(
-          padding: const EdgeInsets.all(10), 
-          child: Text(
-            pack, 
-            style: TextStyle(
-              fontSize: 12, 
-              color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[700]
-            )
-          )
-        ),
+            padding: const EdgeInsets.all(10),
+            child: Text(name, style: const TextStyle(fontSize: 12))),
         Padding(
-          padding: const EdgeInsets.all(10), 
-          child: Text(
-            price, 
-            style: TextStyle(
-              fontSize: 12, 
-              fontWeight: FontWeight.bold, 
-              color: isDark ? Colors.greenAccent : Colors.green
-            )
-          )
-        ),
+            padding: const EdgeInsets.all(10),
+            child: Text(pack,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? colorScheme.onSurface.withOpacity(0.7)
+                        : Colors.grey[700]))),
+        Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(price,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.greenAccent : Colors.green))),
       ],
     );
   }
@@ -382,7 +428,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
             children: [
               const Icon(Icons.timer, color: Colors.white),
               const SizedBox(width: 12),
-              Text('يرجى الانتظار ${remaining.inSeconds} ثانية قبل المسح التالي'),
+              Text(
+                  'يرجى الانتظار ${remaining.inSeconds} ثانية قبل المسح التالي'),
             ],
           ),
           backgroundColor: Colors.orange,
@@ -432,7 +479,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
         File file = File(image.path);
         OcrService service = OcrService();
-        
+
         // استخراج النص (JSON)
         String? jsonResult = await service.extractTextFromImage(file);
 
@@ -444,8 +491,11 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
           if (jsonResult != null && jsonResult.isNotEmpty) {
             try {
               // تنظيف النص من علامات Markdown إذا وجدت (Gemini يحب إضافتها)
-              String cleanJson = jsonResult.replaceAll('```json', '').replaceAll('```', '').trim();
-              
+              String cleanJson = jsonResult
+                  .replaceAll('```json', '')
+                  .replaceAll('```', '')
+                  .trim();
+
               final List<dynamic> decodedList = jsonDecode(cleanJson);
               final List<ExtractedItem> extractedItems = [];
 
@@ -454,7 +504,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                 String priceStr = item['price']?.toString() ?? '0';
                 // إبقاء الأرقام والنقطة فقط
                 priceStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
-                
+
                 extractedItems.add(ExtractedItem(
                   name: item['medicine_name']?.toString() ?? '',
                   package: item['package']?.toString() ?? '',
@@ -466,19 +516,23 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
                 // الانتقال لشاشة المراجعة (نفس سلوك الإكسل)
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => BulkAddReviewScreen(extractedItems: extractedItems),
+                    builder: (context) =>
+                        BulkAddReviewScreen(extractedItems: extractedItems),
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('لم يتم العثور على منتجات واضحة في الصورة')),
+                  const SnackBar(
+                      content:
+                          Text('لم يتم العثور على منتجات واضحة في الصورة')),
                 );
               }
-
             } catch (e) {
               print("OCR Parsing Error: $e");
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('فشل في قراءة البيانات: تأكد من وضوح الصورة')),
+                SnackBar(
+                    content:
+                        Text('فشل في قراءة البيانات: تأكد من وضوح الصورة')),
               );
             }
           } else {
@@ -513,117 +567,160 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     final isDark = theme.brightness == Brightness.dark;
 
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: colorScheme.surface,
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // --- العنوان ---
-            Text(
-              "استيراد ملف Excel",
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "يجب أن يكون ملف الإكسل منظماً بنفس تنسيق الجدول أدناه (باللغة الإنجليزية) لضمان قراءة البيانات بشكل صحيح.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark ? colorScheme.onSurface.withOpacity(0.7) : Colors.grey[600],
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // --- المحاكاة البصرية (ملف -> جدول) ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          context: context,
+          builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: colorScheme.surface,
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(FontAwesomeIcons.fileExcel, size: 40, color: isDark ? Colors.greenAccent : Colors.green),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.arrow_forward_rounded, color: colorScheme.primary),
-                ),
-                Icon(Icons.table_chart_rounded, size: 40, color: isDark ? colorScheme.onSurface.withOpacity(0.5) : Colors.blueGrey),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // --- الجدول التوضيحي (Responsive Table) ---
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: isDark ? colorScheme.outline.withOpacity(0.3) : Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(2), // Name (Wider)
-                    1: FlexColumnWidth(1.5), // Pack
-                    2: FlexColumnWidth(1), // Price
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  border: TableBorder(
-                    horizontalInside: BorderSide(color: isDark ? colorScheme.outline.withOpacity(0.2) : Colors.grey.shade200, width: 1),
+                // --- العنوان ---
+                Text(
+                  "استيراد ملف Excel",
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "يجب أن يكون ملف الإكسل منظماً بنفس تنسيق الجدول أدناه (باللغة الإنجليزية) لضمان قراءة البيانات بشكل صحيح.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark
+                        ? colorScheme.onSurface.withOpacity(0.7)
+                        : Colors.grey[600],
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // --- المحاكاة البصرية (ملف -> جدول) ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Header Row
-                    TableRow(
-                      decoration: BoxDecoration(color: isDark ? colorScheme.surfaceVariant.withOpacity(0.5) : Colors.grey.shade100),
-                      children: const [
-                        Padding(padding: EdgeInsets.all(10), child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                        Padding(padding: EdgeInsets.all(10), child: Text("Package", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                        Padding(padding: EdgeInsets.all(10), child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                      ],
+                    Icon(FontAwesomeIcons.fileExcel,
+                        size: 40,
+                        color: isDark ? Colors.greenAccent : Colors.green),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(Icons.arrow_forward_rounded,
+                          color: colorScheme.primary),
                     ),
-                    // Data Rows
-                    _buildTableRow("Diflam", "100ml vial", "45", isDark, colorScheme),
-                    _buildTableRow("Histacure", "100ml vial", "130", isDark, colorScheme),
-                    _buildTableRow("Antoplex", "100ml vial", "600", isDark, colorScheme),
-                    _buildTableRow("Gentacure", "50ml vial", "125", isDark, colorScheme),
+                    Icon(Icons.table_chart_rounded,
+                        size: 40,
+                        color: isDark
+                            ? colorScheme.onSurface.withOpacity(0.5)
+                            : Colors.blueGrey),
                   ],
                 ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            // --- الأزرار ---
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 20),
+
+                // --- الجدول التوضيحي (Responsive Table) ---
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: isDark
+                            ? colorScheme.outline.withOpacity(0.3)
+                            : Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2), // Name (Wider)
+                        1: FlexColumnWidth(1.5), // Pack
+                        2: FlexColumnWidth(1), // Price
+                      },
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      border: TableBorder(
+                        horizontalInside: BorderSide(
+                            color: isDark
+                                ? colorScheme.outline.withOpacity(0.2)
+                                : Colors.grey.shade200,
+                            width: 1),
+                      ),
+                      children: [
+                        // Header Row
+                        TableRow(
+                          decoration: BoxDecoration(
+                              color: isDark
+                                  ? colorScheme.surfaceVariant.withOpacity(0.5)
+                                  : Colors.grey.shade100),
+                          children: const [
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Name",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12))),
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Package",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11))),
+                            Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Text("Price",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12))),
+                          ],
+                        ),
+                        // Data Rows
+                        _buildTableRow(
+                            "Diflam", "100ml vial", "45", isDark, colorScheme),
+                        _buildTableRow("Histacure", "100ml vial", "130", isDark,
+                            colorScheme),
+                        _buildTableRow("Antoplex", "100ml vial", "600", isDark,
+                            colorScheme),
+                        _buildTableRow("Gentacure", "50ml vial", "125", isDark,
+                            colorScheme),
+                      ],
                     ),
-                    child: const Text("إلغاء"),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.upload_file, size: 15),
-                    label: const Text("اختيار"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+                const SizedBox(height: 24),
+                // --- الأزرار ---
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text("إلغاء"),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context, true),
+                        icon: const Icon(Icons.upload_file, size: 15),
+                        label: const Text("اختيار"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    ) ?? false;
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _pickExcelFile() async {
@@ -640,12 +737,16 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       if (result != null) {
         final path = result.files.single.path;
         if (path != null && mounted) {
-          setState(() { _isProcessingFile = true; });
+          setState(() {
+            _isProcessingFile = true;
+          });
           try {
             await _processExcelFile(path);
           } finally {
             if (mounted) {
-              setState(() { _isProcessingFile = false; });
+              setState(() {
+                _isProcessingFile = false;
+              });
             }
           }
         }
@@ -668,7 +769,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       if (sheet == null || sheet.maxRows < 2) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excel file is empty or has no data rows.')),
+            const SnackBar(
+                content: Text('Excel file is empty or has no data rows.')),
           );
         }
         return;
@@ -692,7 +794,9 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       if (!columnIndices.containsKey('name')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excel file must contain a column with \'name\' or \'product\' in the header.')),
+            const SnackBar(
+                content: Text(
+                    'Excel file must contain a column with \'name\' or \'product\' in the header.')),
           );
         }
         return;
@@ -702,20 +806,25 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       List<ExtractedItem> extractedItems = [];
       final nameIndex = columnIndices['name']!;
       final packageIndex = columnIndices['package']; // Can be null
-      final priceIndex = columnIndices['price'];   // Can be null
+      final priceIndex = columnIndices['price']; // Can be null
 
       for (var i = 1; i < sheet.maxRows; i++) {
         final row = sheet.row(i);
-        if (row.isEmpty || row.length <= nameIndex || row[nameIndex] == null) continue;
+        if (row.isEmpty || row.length <= nameIndex || row[nameIndex] == null)
+          continue;
 
         final name = row[nameIndex]?.value?.toString();
-        
-        final package = (packageIndex != null && row.length > packageIndex && row[packageIndex] != null)
-                        ? row[packageIndex]!.value?.toString()
-                        : '';
-        final price = (priceIndex != null && row.length > priceIndex && row[priceIndex] != null)
-                      ? double.tryParse(row[priceIndex]!.value?.toString() ?? '')
-                      : 0.0;
+
+        final package = (packageIndex != null &&
+                row.length > packageIndex &&
+                row[packageIndex] != null)
+            ? row[packageIndex]!.value?.toString()
+            : '';
+        final price = (priceIndex != null &&
+                row.length > priceIndex &&
+                row[priceIndex] != null)
+            ? double.tryParse(row[priceIndex]!.value?.toString() ?? '')
+            : 0.0;
 
         if (name != null && name.isNotEmpty) {
           extractedItems.add(ExtractedItem(
@@ -729,22 +838,25 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       if (mounted) {
         if (extractedItems.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No data could be extracted from the Excel file.')),
+            const SnackBar(
+                content:
+                    Text('No data could be extracted from the Excel file.')),
           );
         } else {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => BulkAddReviewScreen(extractedItems: extractedItems),
+              builder: (context) =>
+                  BulkAddReviewScreen(extractedItems: extractedItems),
             ),
           );
         }
       }
-
     } catch (e) {
       debugPrint('Error processing Excel file: $e');
       String errorMessage = 'Error processing file: $e';
       if (e.toString().contains('numFmtId')) {
-        errorMessage = 'Unsupported Excel format. Please re-save the file using Microsoft Excel or Google Sheets and try again.';
+        errorMessage =
+            'Unsupported Excel format. Please re-save the file using Microsoft Excel or Google Sheets and try again.';
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -754,9 +866,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     }
   }
 
-
-
-    void _buildMainCatalogShuffledDisplayItems(
+  void _buildMainCatalogShuffledDisplayItems(
       List<ProductModel> filteredProducts, String currentSearchQuery) {
     // لو البحث اتغير أو مش اتعمل شفل لحد دلوقتي، نعمل شفل
     if (_lastShuffledQuery != currentSearchQuery) {
@@ -769,7 +879,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       items.shuffle(); // شفل بس مرة وحدة للقائمة الحالية
       setState(() {
         _mainCatalogShuffledDisplayItems = items;
-        _lastShuffledQuery = currentSearchQuery; // نخزن نص البحث اللي اتشالّك وقت الشفل
+        _lastShuffledQuery =
+            currentSearchQuery; // نخزن نص البحث اللي اتشالّك وقت الشفل
       });
     }
     // لو `_lastShuffledQuery == currentSearchQuery`، يفضل نستخدم نفس `_shuffledDisplayItems`
@@ -788,7 +899,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       items.shuffle(); // شفل بس مرة وحدة للقائمة الحالية
       setState(() {
         _ocrCatalogShuffledDisplayItems = items;
-        _lastOcrShuffledQuery = currentSearchQuery; // نخزن نص البحث اللي اتشالّك وقت الشفل
+        _lastOcrShuffledQuery =
+            currentSearchQuery; // نخزن نص البحث اللي اتشالّك وقت الشفل
       });
     }
     // لو `_lastOcrShuffledQuery == currentSearchQuery`، يفضل نستخدم نفس `_ocrCatalogShuffledDisplayItems`
@@ -804,12 +916,18 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
   ) async {
     try {
       // Check if this specific product with package combination already exists in ocr_products
-      final existingOcrProducts = await ref.read(productRepositoryProvider).getOcrProducts();
+      final existingOcrProducts =
+          await ref.read(productRepositoryProvider).getOcrProducts();
       final existingProduct = existingOcrProducts.firstWhere(
-        (p) => p.name == product.name && 
-               p.company == product.company && 
-               p.package == package,
-        orElse: () => ProductModel(id: '', name: '', availablePackages: [], imageUrl: ''), // Default if not found
+        (p) =>
+            p.name == product.name &&
+            p.company == product.company &&
+            p.package == package,
+        orElse: () => ProductModel(
+            id: '',
+            name: '',
+            availablePackages: [],
+            imageUrl: ''), // Default if not found
       );
 
       if (existingProduct.id.isNotEmpty) {
@@ -817,24 +935,26 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         return existingProduct.id;
       } else {
         // Product doesn't exist, create new one
-        final newOcrProductId = await ref.read(productRepositoryProvider).addOcrProduct(
-          distributorId: distributorId,
-          distributorName: distributorName,
-          productName: product.name,
-          productCompany: product.company ?? '',
-          activePrinciple: product.activePrinciple ?? '',
-          package: package,
-          imageUrl: product.imageUrl,
-        );
+        final newOcrProductId =
+            await ref.read(productRepositoryProvider).addOcrProduct(
+                  distributorId: distributorId,
+                  distributorName: distributorName,
+                  productName: product.name,
+                  productCompany: product.company ?? '',
+                  activePrinciple: product.activePrinciple ?? '',
+                  package: package,
+                  imageUrl: product.imageUrl,
+                );
         return newOcrProductId;
       }
-        } catch (e) {
-          print('Error checking/creating OCR product: $e');
-          return null;
-        }
-      }
-    
-      Future<void> _showEditProductDialog(ProductModel product, String currentPackage) async {
+    } catch (e) {
+      print('Error checking/creating OCR product: $e');
+      return null;
+    }
+  }
+
+  Future<void> _showEditProductDialog(
+      ProductModel product, String currentPackage) async {
     // الانتقال إلى شاشة AddProductOcrScreen في وضع التعديل
     final result = await Navigator.push(
       context,
@@ -849,7 +969,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     );
 
     // تحديث القائمة إذا تم التعديل بنجاح
-    if (result == true || result != null) { // Assuming AddProductOcrScreen returns something on success
+    if (result == true || result != null) {
+      // Assuming AddProductOcrScreen returns something on success
       if (mounted) {
         ref.invalidate(ocrProductsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -858,12 +979,13 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       }
     }
   }
-  
-    @override
-    Widget build(BuildContext context) {
+
+  @override
+  Widget build(BuildContext context) {
     final allProductsAsync = ref.watch(productsProvider);
     final ocrProductsAsync = ref.watch(ocrProductsProvider);
-    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
+    final selection =
+        ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
 
     // Determine which list of items to use based on the active tab
     final currentItems = _tabController?.index == 0
@@ -879,10 +1001,10 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
 
     // Filter selected items from the current tab that have a valid price
     final validSelections = Map.from(selection.prices)
-      ..removeWhere((key, price) => 
-        !currentTabKeys.contains(key) || 
-        !selection.selectedKeys.contains(key) || 
-        price <= 0);
+      ..removeWhere((key, price) =>
+          !currentTabKeys.contains(key) ||
+          !selection.selectedKeys.contains(key) ||
+          price <= 0);
 
     // === تحديد الألوان المطلوبة للعناصر المخصصة ===
     final Color customElementColor = const Color.fromARGB(255, 119, 186, 225);
@@ -927,1075 +1049,1276 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
         child: Stack(
           children: [
             Scaffold(
-          // === تعديل AppBar علشان يحتوي على SearchBar وعداد المنتجات ===
-          appBar: AppBar(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('إضافة من الكتالوج'),
-                if (widget.isFromOfferScreen)
-                  Text(
-                    'اختر منتج واحد فقط',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-              ],
-            ),
-            actions: [
-              // زر الـ OCR الجديد
-              IconButton(
-                icon: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
-                onPressed: _pickAndProcessImage,
-                tooltip: 'Scan text from image',
-              ),
-              IconButton(
-                icon: const FaIcon(FontAwesomeIcons.fileExcel, color: Colors.green),
-                onPressed: _pickExcelFile,
-                tooltip: 'Import from Excel',
-              ),
-            ],
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            // إضافة SearchBar وعداد المنتجات في الـ AppBar
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(
-                  kToolbarHeight + 40.0 + kTextTabBarHeight), // زيادة الارتفاع لاستيعاب العداد
-              child: Column(
-                children: [
-                  // === شريط البحث المحسن ===
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 8.0),
-                    child: Stack(
-                      children: [
-                        TextField(
-                          controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                            
-                            // Update ghost text immediately
-                            if (value.isNotEmpty) {
-                              final provider = _tabController?.index == 0 ? productsProvider : ocrProductsProvider;
-                              final asyncValue = ref.read(provider);
-                              
-                              if (asyncValue is AsyncData<List<ProductModel>>) {
-                                final products = asyncValue.value;
-                                final matches = products.where((product) {
-                                  return product.name.toLowerCase().startsWith(value.toLowerCase());
-                                }).toList();
-                                
-                                setState(() {
-                                  if (matches.isNotEmpty) {
-                                    _ghostText = matches.first.name;
-                                    _fullSuggestion = matches.first.name;
-                                  } else {
-                                    _ghostText = '';
-                                    _fullSuggestion = '';
-                                  }
-                                });
-                              }
-                            } else {
-                              setState(() {
-                                _ghostText = '';
-                                _fullSuggestion = '';
-                              });
-                            }
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'ابحث عن منتج...',
-                            prefixIcon: Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+              // === تعديل AppBar علشان يحتوي على SearchBar وعداد المنتجات ===
+              appBar: AppBar(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('إضافة من الكتالوج'),
+                    if (widget.isFromOfferScreen)
+                      Text(
+                        'اختر منتج واحد فقط',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
                             ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _searchQuery = '';
+                      ),
+                  ],
+                ),
+                actions: [
+                  // زر الـ OCR الجديد
+                  IconButton(
+                    icon: const Icon(Icons.camera_alt_rounded,
+                        color: Colors.blue),
+                    onPressed: _pickAndProcessImage,
+                    tooltip: 'Scan text from image',
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.fileExcel,
+                        color: Colors.green),
+                    onPressed: _pickExcelFile,
+                    tooltip: 'Import from Excel',
+                  ),
+                ],
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                // إضافة SearchBar وعداد المنتجات في الـ AppBar
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(kToolbarHeight +
+                      40.0 +
+                      kTextTabBarHeight), // زيادة الارتفاع لاستيعاب العداد
+                  child: Column(
+                    children: [
+                      // === شريط البحث المحسن ===
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: Stack(
+                          children: [
+                            TextField(
+                              controller: _searchController,
+                              onChanged: (value) {
+                                setState(() {
+                                  _searchQuery = value;
+                                });
+
+                                // Update ghost text immediately
+                                if (value.isNotEmpty) {
+                                  final provider = _tabController?.index == 0
+                                      ? productsProvider
+                                      : ocrProductsProvider;
+                                  final asyncValue = ref.read(provider);
+
+                                  if (asyncValue
+                                      is AsyncData<List<ProductModel>>) {
+                                    final products = asyncValue.value;
+                                    final matches = products.where((product) {
+                                      return product.name
+                                          .toLowerCase()
+                                          .startsWith(value.toLowerCase());
+                                    }).toList();
+
+                                    setState(() {
+                                      if (matches.isNotEmpty) {
+                                        _ghostText = matches.first.name;
+                                        _fullSuggestion = matches.first.name;
+                                      } else {
                                         _ghostText = '';
                                         _fullSuggestion = '';
-                                      });
-                                    },
-                                  )
-                                : null,
-                          ),
-                        ),
-                        if (_ghostText.isNotEmpty)
-                          Positioned(
-                            top: 11,
-                            right: 55,
-                            child: GestureDetector(
-                              onTap: () {
-                                if (_fullSuggestion.isNotEmpty) {
-                                  _searchController.text = _fullSuggestion;
+                                      }
+                                    });
+                                  }
+                                } else {
                                   setState(() {
-                                    _searchQuery = _fullSuggestion;
                                     _ghostText = '';
                                     _fullSuggestion = '';
                                   });
                                 }
                               },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
-                                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                              decoration: InputDecoration(
+                                hintText: 'ابحث عن منتج...',
+                                prefixIcon: Icon(Icons.search),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
                                 ),
-                                child: Text(
-                                  _ghostText,
-                                  style: TextStyle(
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context).colorScheme.secondary,
-                                    fontWeight: FontWeight.bold,
+                                filled: true,
+                                fillColor:
+                                    Theme.of(context).colorScheme.surface,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _searchQuery = '';
+                                            _ghostText = '';
+                                            _fullSuggestion = '';
+                                          });
+                                        },
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            if (_ghostText.isNotEmpty)
+                              Positioned(
+                                top: 11,
+                                right: 55,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (_fullSuggestion.isNotEmpty) {
+                                      _searchController.text = _fullSuggestion;
+                                      setState(() {
+                                        _searchQuery = _fullSuggestion;
+                                        _ghostText = '';
+                                        _fullSuggestion = '';
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.1)
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _ghostText,
+                                      style: TextStyle(
+                                        color: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .secondary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // === عداد المنتجات المحسن ===
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0, vertical: 8.0),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outline
-                            .withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.storefront_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Builder(builder: (context) {
-                          final isMainTab = _tabController?.index == 0;
-                          final provider =
-                              isMainTab ? productsProvider : ocrProductsProvider;
-                          final asyncValue = ref.watch(provider);
-                          return asyncValue.when(
-                            data: (products) {
-                              List<ProductModel> filteredProducts;
+                      ),
+                      // === عداد المنتجات المحسن ===
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12.0, vertical: 8.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.storefront_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Builder(builder: (context) {
+                              final isMainTab = _tabController?.index == 0;
+                              final provider = isMainTab
+                                  ? productsProvider
+                                  : ocrProductsProvider;
+                              final asyncValue = ref.watch(provider);
+                              return asyncValue.when(
+                                data: (products) {
+                                  List<ProductModel> filteredProducts;
+                                  if (_searchQuery.isEmpty) {
+                                    filteredProducts = products;
+                                  } else {
+                                    filteredProducts =
+                                        products.where((product) {
+                                      final query = _searchQuery.toLowerCase();
+                                      final productName =
+                                          product.name.toLowerCase();
+                                      final productCompany =
+                                          product.company?.toLowerCase() ?? '';
+                                      final productActivePrinciple = product
+                                              .activePrinciple
+                                              ?.toLowerCase() ??
+                                          '';
+                                      return productName.contains(query) ||
+                                          productCompany.contains(query) ||
+                                          productActivePrinciple
+                                              .contains(query);
+                                    }).toList();
+                                  }
+                                  int totalItems = 0;
+                                  for (var p in products) {
+                                    totalItems += p.availablePackages.length;
+                                  }
+                                  int filteredItems = 0;
+                                  for (var p in filteredProducts) {
+                                    filteredItems += p.availablePackages.length;
+                                  }
+                                  return Text(
+                                    _searchQuery.isEmpty
+                                        ? 'إجمالي العناصر: $totalItems'
+                                        : 'عرض $filteredItems من $totalItems عنصر',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  );
+                                },
+                                loading: () => Text('جارٍ العد...',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                            fontWeight: FontWeight.w500)),
+                                error: (_, __) => Text('خطأ في العد',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            fontWeight: FontWeight.w500)),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TabBar(
+                        controller: _tabController,
+                        tabs: const [
+                          Tab(text: 'Main Cataloge'),
+                          Tab(text: 'OCR Cataloge'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              floatingActionButton: validSelections.isNotEmpty
+                  ? FloatingActionButton.extended(
+                      onPressed: widget.isFromReviewRequest
+                          ? () {
+                              final selection = ref.read(
+                                  catalogSelectionControllerProvider(
+                                      widget.catalogContext));
+                              if (selection.prices.isEmpty) return;
+
+                              final selectedKey = selection.prices.keys.first;
+
+                              // Debug
+                              print('🔍 CATALOG: Selected Key: $selectedKey');
+
+                              // استخراج الـ product_id من الـ key
+                              // الـ key format: "product_id_package"
+                              // نحتاج آخر underscore لفصل الـ package
+                              final lastUnderscoreIndex =
+                                  selectedKey.lastIndexOf('_');
+                              final productId = lastUnderscoreIndex > 0
+                                  ? selectedKey.substring(
+                                      0, lastUnderscoreIndex)
+                                  : selectedKey.split('_')[0];
+
+                              final productType = _tabController?.index == 0
+                                  ? 'product'
+                                  : 'ocr_product';
+
+                              print(
+                                  '🔍 CATALOG: Extracted Product ID: $productId');
+                              print('🔍 CATALOG: Product Type: $productType');
+
+                              // البحث عن معلومات المنتج (الاسم والصورة)
+                              String? productName;
+                              String? productImage;
+
+                              final provider = _tabController?.index == 0
+                                  ? productsProvider
+                                  : ocrProductsProvider;
+                              final asyncValue = ref.read(provider);
+
+                              asyncValue.whenData((products) {
+                                final product = products.firstWhere(
+                                  (p) => p.id == productId,
+                                  orElse: () => products.first,
+                                );
+                                productName = product.name;
+                                productImage = product.imageUrl;
+                              });
+
+                              Navigator.pop(context, {
+                                'product_id': productId,
+                                'product_type': productType,
+                                'product_name': productName ?? 'منتج',
+                                'product_image': productImage ?? '',
+                              });
+                            }
+                          : () async {
+                              FocusScope.of(context).unfocus();
+                              setState(() {
+                                _isSaving = true;
+                              });
+                              try {
+                                // Check which tab is currently active
+                                if (_tabController?.index == 1) {
+                                  // OCR Tab
+                                  try {
+                                    final userModel =
+                                        await ref.read(userDataProvider.future);
+                                    final distributorId = userModel?.id;
+                                    final distributorName =
+                                        userModel?.displayName ??
+                                            'اسم غير معروف';
+
+                                    if (distributorId == null) {
+                                      throw Exception('User not authenticated');
+                                    }
+
+                                    final selection = ref.read(
+                                        catalogSelectionControllerProvider(
+                                            widget.catalogContext));
+                                    final List<Map<String, dynamic>>
+                                        ocrProductsToAdd = [];
+                                    final Set<String> keysToClear = {};
+
+                                    // ✅ فحص تواريخ الصلاحية قبل البدء (لـ OCR)
+                                    if (widget.showExpirationDate ||
+                                        widget.isFromOfferScreen) {
+                                      for (var item
+                                          in _ocrCatalogShuffledDisplayItems) {
+                                        final ProductModel product =
+                                            item['product'];
+                                        final String package = item['package'];
+                                        final String key =
+                                            '${product.id}_$package';
+
+                                        if (selection.selectedKeys
+                                                .contains(key) &&
+                                            selection.expirationDates[key] ==
+                                                null) {
+                                          setState(() => _isSaving = false);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'تنبيه',
+                                                message:
+                                                    'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
+                                                contentType:
+                                                    ContentType.warning,
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                      }
+                                    }
+
+                                    for (var item
+                                        in _ocrCatalogShuffledDisplayItems) {
+                                      final ProductModel product =
+                                          item['product'];
+                                      final String package = item['package'];
+                                      final String key =
+                                          '${product.id}_$package';
+
+                                      final isSelectedNow = ref
+                                          .read(
+                                              catalogSelectionControllerProvider(
+                                                  widget.catalogContext))
+                                          .prices
+                                          .containsKey(key);
+
+                                      if (isSelectedNow) {
+                                        final price = ref
+                                                .read(
+                                                    catalogSelectionControllerProvider(
+                                                        widget.catalogContext))
+                                                .prices[key] ??
+                                            0.0;
+                                        final expirationDate = ref
+                                            .read(
+                                                catalogSelectionControllerProvider(
+                                                    widget.catalogContext))
+                                            .expirationDates[key];
+                                        if (price > 0) {
+                                          String? ocrProductId =
+                                              await _checkOrCreateOcrProduct(
+                                            ref,
+                                            distributorId,
+                                            distributorName,
+                                            product,
+                                            package,
+                                          );
+
+                                          if (ocrProductId != null) {
+                                            ocrProductsToAdd.add({
+                                              'ocrProductId': ocrProductId,
+                                              'price': price,
+                                              'expiration_date': expirationDate
+                                                  ?.toIso8601String(),
+                                              'package': package,
+                                            });
+                                            keysToClear.add(key);
+                                          }
+                                        }
+                                      }
+                                    }
+
+                                    if (ocrProductsToAdd.isNotEmpty) {
+                                      if (widget.isFromOfferScreen) {
+                                        // حفظ في جدول offers
+                                        final List<String> offerIds = [];
+                                        final List<Map<String, dynamic>>
+                                            offerDetails = [];
+
+                                        for (var item in ocrProductsToAdd) {
+                                          final offerId = await ref
+                                              .read(productRepositoryProvider)
+                                              .addOffer(
+                                                productId: item['ocrProductId'],
+                                                isOcr: true,
+                                                userId: distributorId,
+                                                price: item['price'],
+                                                expirationDate:
+                                                    item['expiration_date'] !=
+                                                            null
+                                                        ? DateTime.parse(item[
+                                                            'expiration_date'])
+                                                        : DateTime.now().add(
+                                                            const Duration(
+                                                                days: 365)),
+                                                package: item['package'],
+                                              );
+                                          if (offerId != null) {
+                                            offerIds.add(offerId);
+                                            offerDetails.add(item);
+                                          }
+                                        }
+
+                                        ref
+                                            .read(
+                                                catalogSelectionControllerProvider(
+                                                        widget.catalogContext)
+                                                    .notifier)
+                                            .clearSelections(keysToClear);
+
+                                        if (context.mounted) {
+                                          if (offerIds.length == 1) {
+                                            // منتج واحد - نفتح صفحة offer_detail_screen
+                                            final firstKey = keysToClear.first;
+                                            final firstProduct =
+                                                _ocrCatalogShuffledDisplayItems
+                                                    .firstWhere((item) =>
+                                                        '${item['product'].id}_${item['package']}' ==
+                                                        firstKey);
+                                            final productName =
+                                                firstProduct['product'].name;
+                                            final price =
+                                                offerDetails[0]['price'];
+                                            final expirationDate = offerDetails[
+                                                        0]['expiration_date'] !=
+                                                    null
+                                                ? DateTime.parse(offerDetails[0]
+                                                    ['expiration_date'])
+                                                : DateTime.now().add(
+                                                    const Duration(days: 365));
+
+                                            await Navigator.of(context)
+                                                .pushReplacement(
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    OfferDetailScreen(
+                                                  offerId: offerIds[0],
+                                                  productName: productName,
+                                                  price: price,
+                                                  expirationDate:
+                                                      expirationDate,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            // أكثر من منتج - نظهر رسالة نجاح ونرجع
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                elevation: 0,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                content: AwesomeSnackbarContent(
+                                                  title: 'نجاح',
+                                                  message:
+                                                      'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+                                                  contentType:
+                                                      ContentType.success,
+                                                ),
+                                              ),
+                                            );
+                                            Navigator.of(context).pop();
+                                          }
+                                        }
+                                      } else {
+                                        // الحفظ العادي في distributor_ocr_products
+                                        await ref
+                                            .read(productRepositoryProvider)
+                                            .addMultipleDistributorOcrProducts(
+                                              distributorId: distributorId,
+                                              distributorName: distributorName,
+                                              ocrProducts: ocrProductsToAdd,
+                                            );
+
+                                        ref
+                                            .read(
+                                                catalogSelectionControllerProvider(
+                                                        widget.catalogContext)
+                                                    .notifier)
+                                            .clearSelections(keysToClear);
+
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'نجاح',
+                                                message:
+                                                    'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
+                                                contentType:
+                                                    ContentType.success,
+                                              ),
+                                            ),
+                                          );
+                                          Navigator.of(context).pop();
+                                        }
+                                      }
+                                    } else {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            elevation: 0,
+                                            behavior: SnackBarBehavior.floating,
+                                            backgroundColor: Colors.transparent,
+                                            content: AwesomeSnackbarContent(
+                                              title: 'تنبيه',
+                                              message:
+                                                  'الرجاء تحديد منتجات بأسعار صحيحة',
+                                              contentType: ContentType.warning,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          elevation: 0,
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: Colors.transparent,
+                                          content: AwesomeSnackbarContent(
+                                            title: 'خطأ',
+                                            message:
+                                                'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
+                                            contentType: ContentType.failure,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } else {
+                                  // Main Catalog Tab
+                                  final mainCatalogKeys =
+                                      _mainCatalogShuffledDisplayItems
+                                          .map((item) {
+                                    final ProductModel product =
+                                        item['product'];
+                                    final String package = item['package'];
+                                    return '${product.id}_$package';
+                                  }).toSet();
+
+                                  final selection = ref.read(
+                                      catalogSelectionControllerProvider(
+                                          widget.catalogContext));
+
+                                  // ✅ فحص تواريخ الصلاحية قبل البدء (للكتالوج الرئيسي)
+                                  if (widget.showExpirationDate ||
+                                      widget.isFromOfferScreen) {
+                                    for (var item
+                                        in _mainCatalogShuffledDisplayItems) {
+                                      final ProductModel product =
+                                          item['product'];
+                                      final String package = item['package'];
+                                      final String key =
+                                          '${product.id}_$package';
+
+                                      if (selection.selectedKeys
+                                              .contains(key) &&
+                                          selection.expirationDates[key] ==
+                                              null) {
+                                        setState(() => _isSaving = false);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            elevation: 0,
+                                            behavior: SnackBarBehavior.floating,
+                                            backgroundColor: Colors.transparent,
+                                            content: AwesomeSnackbarContent(
+                                              title: 'تنبيه',
+                                              message:
+                                                  'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
+                                              contentType: ContentType.warning,
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    }
+                                  }
+
+                                  if (widget.isFromOfferScreen) {
+                                    // حفظ في جدول offers
+                                    final userModel =
+                                        await ref.read(userDataProvider.future);
+                                    final userId = userModel?.id;
+
+                                    if (userId != null) {
+                                      final selection = ref.read(
+                                          catalogSelectionControllerProvider(
+                                              widget.catalogContext));
+                                      final List<String> offerIds = [];
+                                      final List<Map<String, dynamic>>
+                                          offerDetails = [];
+
+                                      for (var item
+                                          in _mainCatalogShuffledDisplayItems) {
+                                        final ProductModel product =
+                                            item['product'];
+                                        final String package = item['package'];
+                                        final String key =
+                                            '${product.id}_$package';
+
+                                        if (selection.prices.containsKey(key)) {
+                                          final price =
+                                              selection.prices[key] ?? 0.0;
+                                          final expirationDate = selection
+                                                  .expirationDates[key] ??
+                                              DateTime.now().add(
+                                                  const Duration(days: 365));
+
+                                          if (price > 0) {
+                                            final offerId = await ref
+                                                .read(productRepositoryProvider)
+                                                .addOffer(
+                                                  productId: product.id,
+                                                  isOcr: false,
+                                                  userId: userId,
+                                                  price: price,
+                                                  expirationDate:
+                                                      expirationDate,
+                                                  package: package,
+                                                );
+                                            if (offerId != null) {
+                                              offerIds.add(offerId);
+                                              offerDetails.add({
+                                                'productName': product.name,
+                                                'price': price,
+                                                'expirationDate':
+                                                    expirationDate,
+                                              });
+                                            }
+                                          }
+                                        }
+                                      }
+
+                                      ref
+                                          .read(
+                                              catalogSelectionControllerProvider(
+                                                      widget.catalogContext)
+                                                  .notifier)
+                                          .clearSelections(mainCatalogKeys);
+
+                                      if (context.mounted) {
+                                        if (offerIds.length == 1) {
+                                          // منتج واحد - نفتح صفحة offer_detail_screen
+                                          await Navigator.of(context)
+                                              .pushReplacement(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  OfferDetailScreen(
+                                                offerId: offerIds[0],
+                                                productName: offerDetails[0]
+                                                    ['productName'],
+                                                price: offerDetails[0]['price'],
+                                                expirationDate: offerDetails[0]
+                                                    ['expirationDate'],
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          // أكثر من منتج - نظهر رسالة نجاح ونرجع
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              content: AwesomeSnackbarContent(
+                                                title: 'نجاح',
+                                                message:
+                                                    'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
+                                                contentType:
+                                                    ContentType.success,
+                                              ),
+                                            ),
+                                          );
+                                          Navigator.of(context).pop();
+                                        }
+                                      }
+                                    }
+                                  } else {
+                                    // الحفظ العادي في distributor_products
+                                    final success = await ref
+                                        .read(
+                                            catalogSelectionControllerProvider(
+                                                    widget.catalogContext)
+                                                .notifier)
+                                        .saveSelections(
+                                            keysToSave: mainCatalogKeys,
+                                            withExpiration:
+                                                widget.showExpirationDate);
+
+                                    if (success && context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          elevation: 0,
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: Colors.transparent,
+                                          content: AwesomeSnackbarContent(
+                                            title: 'نجاح',
+                                            message: 'تم حفظ المنتجات بنجاح',
+                                            contentType: ContentType.success,
+                                          ),
+                                        ),
+                                      );
+                                      Navigator.of(context).pop();
+                                    } else if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          elevation: 0,
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: Colors.transparent,
+                                          content: AwesomeSnackbarContent(
+                                            title: 'تنبيه',
+                                            message:
+                                                'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
+                                            contentType: ContentType.warning,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isSaving = false;
+                                  });
+                                }
+                              }
+                            },
+                      label: Text(
+                        widget.isFromReviewRequest
+                            ? 'تأكيد الاختيار'
+                            : 'add_items'.tr(
+                                namedArgs: {
+                                  'count': validSelections.length.toString()
+                                },
+                              ),
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.check_rounded),
+                      elevation: 2,
+                    )
+                  : null,
+              body: Stack(
+                children: [
+                  TabBarView(
+                    controller: _tabController,
+                    children: [
+                      allProductsAsync.when(
+                        data: (products) {
+                          // === فلترة المنتجات حسب نص البحث (في الاسم، الشركة، والمادة الفعالة) ===
+                          List<ProductModel> filteredProducts;
+                          if (_searchQuery.isEmpty) {
+                            filteredProducts = products;
+                          } else {
+                            filteredProducts = products.where((product) {
+                              // تحويل النص للحروف صغيرة علشان المقارنة تكون case-insensitive
+                              final query = _searchQuery.toLowerCase();
+                              final productName = product.name.toLowerCase();
+                              // تأكد إن الخواص دي موجودة في ProductModel
+                              final productCompany =
+                                  product.company?.toLowerCase() ?? '';
+                              final productActivePrinciple =
+                                  product.activePrinciple?.toLowerCase() ?? '';
+
+                              // بنشوف لو النص موجود في أي واحد من الثلاثة
+                              return productName.contains(query) ||
+                                  productCompany.contains(query) ||
+                                  productActivePrinciple.contains(query);
+                            }).toList();
+                          }
+
+                          // === بني القائمة العشوائية إذا لسه ما اتعملتش أو البحث اتغير ===
+                          _buildMainCatalogShuffledDisplayItems(
+                              filteredProducts, _searchQuery);
+
+                          if (_mainCatalogShuffledDisplayItems.isEmpty) {
+                            // عرض رسالة مناسبة لو مفيش منتجات بعد الفلترة والشفل
+                            if (_searchQuery.isNotEmpty) {
+                              // لو في بحث ونتائج فاضية
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.search_off_rounded,
+                                      size: 64,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withOpacity(0.6),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'لا توجد نتائج للبحث.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              // لو مفيش منتجات أصلاً
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.inventory_2_rounded,
+                                      size: 64,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withOpacity(0.6),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'لا توجد منتجات في الكتالوج الرئيسي.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 90, top: 8),
+                            itemCount: _mainCatalogShuffledDisplayItems
+                                .length, // استخدم القائمة العشوائية
+                            itemBuilder: (context, index) {
+                              final item =
+                                  _mainCatalogShuffledDisplayItems[index];
+                              final ProductModel product = item['product'];
+                              final String package = item['package'];
+                              return _ProductCatalogItem(
+                                  key: ValueKey('${product.id}_$package'),
+                                  catalogContext: widget.catalogContext,
+                                  product: product,
+                                  package: package,
+                                  showExpirationDate: widget.showExpirationDate,
+                                  singleSelection: widget.isFromOfferScreen ||
+                                      widget.isFromReviewRequest,
+                                  hidePrice: widget.isFromReviewRequest);
+                            },
+                          );
+                        },
+                        loading: () => ListView.builder(
+                          itemCount: 6,
+                          padding: const EdgeInsets.all(16.0),
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: ProductCardShimmer(),
+                            );
+                          },
+                        ),
+                        error: (error, stack) => RefreshableErrorWidget(
+                          message: 'حدث خطأ: $error',
+                          onRetry: () => ref.refresh(productsProvider),
+                        ),
+                      ),
+                      // Tab for OCR Catalog - fetch and display OCR products
+                      ref.watch(ocrProductsProvider).when(
+                            data: (ocrProducts) {
+                              // Filter OCR products based on search query
+                              List<ProductModel> filteredOcrProducts;
                               if (_searchQuery.isEmpty) {
-                                filteredProducts = products;
+                                filteredOcrProducts = ocrProducts;
                               } else {
-                                filteredProducts = products.where((product) {
+                                filteredOcrProducts =
+                                    ocrProducts.where((product) {
                                   final query = _searchQuery.toLowerCase();
-                                  final productName = product.name.toLowerCase();
+                                  final productName =
+                                      product.name.toLowerCase();
                                   final productCompany =
                                       product.company?.toLowerCase() ?? '';
                                   final productActivePrinciple =
-                                      product.activePrinciple?.toLowerCase() ?? '';
+                                      product.activePrinciple?.toLowerCase() ??
+                                          '';
+
                                   return productName.contains(query) ||
                                       productCompany.contains(query) ||
                                       productActivePrinciple.contains(query);
                                 }).toList();
                               }
-                              int totalItems = 0;
-                              for (var p in products) {
-                                totalItems += p.availablePackages.length;
-                              }
-                              int filteredItems = 0;
-                              for (var p in filteredProducts) {
-                                filteredItems += p.availablePackages.length;
-                              }
-                              return Text(
-                                _searchQuery.isEmpty
-                                    ? 'إجمالي العناصر: $totalItems'
-                                    : 'عرض $filteredItems من $totalItems عنصر',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                      fontWeight: FontWeight.w600,
+
+                              // Build shuffled display items for OCR products
+                              _buildOcrCatalogShuffledDisplayItems(
+                                  filteredOcrProducts, _searchQuery);
+
+                              if (_ocrCatalogShuffledDisplayItems.isEmpty) {
+                                // Show appropriate message if no OCR products
+                                if (_searchQuery.isNotEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off_rounded,
+                                          size: 64,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.6),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'لا توجد نتائج للبحث في OCR.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ],
                                     ),
+                                  );
+                                } else {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.inventory_2_rounded,
+                                          size: 64,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.6),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'لا توجد منتجات في OCR الكتالوج.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                              }
+
+                              return ListView.builder(
+                                padding:
+                                    const EdgeInsets.only(bottom: 90, top: 8),
+                                itemCount:
+                                    _ocrCatalogShuffledDisplayItems.length,
+                                itemBuilder: (context, index) {
+                                  final item =
+                                      _ocrCatalogShuffledDisplayItems[index];
+                                  final ProductModel product = item['product'];
+                                  final String package = item['package'];
+                                  final currentUserId =
+                                      ref.watch(userDataProvider).value?.id;
+                                  final canEdit = currentUserId != null &&
+                                      product.distributorId == currentUserId;
+
+                                  return _ProductCatalogItem(
+                                    key: ValueKey('${product.id}_$package'),
+                                    catalogContext: widget.catalogContext,
+                                    product: product,
+                                    package: package,
+                                    showExpirationDate:
+                                        widget.showExpirationDate,
+                                    singleSelection: widget.isFromOfferScreen ||
+                                        widget.isFromReviewRequest,
+                                    hidePrice: widget.isFromReviewRequest,
+                                    canEdit: canEdit,
+                                    onEdit: () => _showEditProductDialog(
+                                        product, package),
+                                  );
+                                },
                               );
                             },
-                            loading: () => Text('جارٍ العد...',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        fontWeight: FontWeight.w500)),
-                            error: (_, __) => Text('خطأ في العد',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                        color:
-                                            Theme.of(context).colorScheme.error,
-                                        fontWeight: FontWeight.w500)),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TabBar(
-                    controller: _tabController,
-                    tabs: const [
-                      Tab(text: 'Main Cataloge'),
-                      Tab(text: 'OCR Cataloge'),
+                            loading: () => ListView.builder(
+                              itemCount: 6,
+                              padding: const EdgeInsets.all(16.0),
+                              itemBuilder: (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: ProductCardShimmer(),
+                                );
+                              },
+                            ),
+                            error: (error, stack) => RefreshableErrorWidget(
+                              message: 'حدث خطأ في تحميل OCR: $error',
+                              onRetry: () => ref.refresh(ocrProductsProvider),
+                            ),
+                          ),
                     ],
+                  ),
+                  if (_isProcessingFile)
+                    Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  if (_isSaving)
+                    Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  if (_isOcrLoading)
+                    Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text(
+                              'جاري استخراج النص من الصورة...',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Floating Stats Widget
+                  Positioned(
+                    left: 16,
+                    bottom: 16,
+                    child: Builder(
+                      builder: (context) {
+                        final isMainTab = _tabController?.index == 0;
+                        final products = isMainTab
+                            ? (allProductsAsync.valueOrNull ?? [])
+                            : (ocrProductsAsync.valueOrNull ?? []);
+
+                        final categorized = _categorizeProducts(products);
+                        final completeCount =
+                            categorized['complete']?.length ?? 0;
+                        final missingPriceCount =
+                            categorized['missingPrice']?.length ?? 0;
+                        final notActivatedCount =
+                            categorized['notActivated']?.length ?? 0;
+
+                        // Only show if there are items in any category
+                        if (completeCount == 0 &&
+                            missingPriceCount == 0 &&
+                            notActivatedCount == 0) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Material(
+                              elevation: 4,
+                              borderRadius: BorderRadius.circular(12),
+                              color: Theme.of(context).colorScheme.surface,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context)
+                                        .dividerColor
+                                        .withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Complete Badge
+                                    if (completeCount > 0)
+                                      _StatsBadge(
+                                        count: completeCount,
+                                        label: 'مكتمل',
+                                        color: Colors.green,
+                                        icon: Icons.check_circle,
+                                        onTap: () => _showStatsDialog(
+                                            'complete', products),
+                                      ),
+                                    if (completeCount > 0 &&
+                                        (missingPriceCount > 0 ||
+                                            notActivatedCount > 0))
+                                      const SizedBox(height: 6),
+                                    // Missing Price Badge
+                                    if (missingPriceCount > 0)
+                                      _StatsBadge(
+                                        count: missingPriceCount,
+                                        label: 'بدون سعر',
+                                        color: Colors.orange,
+                                        icon: Icons.warning_amber_rounded,
+                                        onTap: () => _showStatsDialog(
+                                            'missingPrice', products),
+                                      ),
+                                    if (missingPriceCount > 0 &&
+                                        notActivatedCount > 0)
+                                      const SizedBox(height: 6),
+                                    // Not Activated Badge
+                                    if (notActivatedCount > 0)
+                                      _StatsBadge(
+                                        count: notActivatedCount,
+                                        label: 'غير مفعّل',
+                                        color: Colors.red,
+                                        icon: Icons.toggle_off,
+                                        onTap: () => _showStatsDialog(
+                                            'notActivated', products),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -5,
+                              right: -5,
+                              child: InkWell(
+                                onTap: () {
+                                  ref
+                                      .read(catalogSelectionControllerProvider(
+                                              widget.catalogContext)
+                                          .notifier)
+                                      .clearAll();
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).cardColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: const Color.fromARGB(
+                                            255, 245, 241, 241)),
+                                  ),
+                                  child: Icon(Icons.close,
+                                      size: 16,
+                                      color: const Color.fromARGB(
+                                          255, 243, 136, 136)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          floatingActionButton: validSelections.isNotEmpty
-              ? FloatingActionButton.extended(
-                  onPressed: widget.isFromReviewRequest
-                      ? () {
-                          final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
-                          if (selection.prices.isEmpty) return;
-
-                          final selectedKey = selection.prices.keys.first;
-                          
-                          // Debug
-                          print('🔍 CATALOG: Selected Key: $selectedKey');
-                          
-                          // استخراج الـ product_id من الـ key
-                          // الـ key format: "product_id_package"
-                          // نحتاج آخر underscore لفصل الـ package
-                          final lastUnderscoreIndex = selectedKey.lastIndexOf('_');
-                          final productId = lastUnderscoreIndex > 0 
-                              ? selectedKey.substring(0, lastUnderscoreIndex)
-                              : selectedKey.split('_')[0];
-                          
-                          final productType = _tabController?.index == 0 ? 'product' : 'ocr_product';
-
-                          print('🔍 CATALOG: Extracted Product ID: $productId');
-                          print('🔍 CATALOG: Product Type: $productType');
-
-                          // البحث عن معلومات المنتج (الاسم والصورة)
-                          String? productName;
-                          String? productImage;
-                          
-                          final provider = _tabController?.index == 0 ? productsProvider : ocrProductsProvider;
-                          final asyncValue = ref.read(provider);
-                          
-                          asyncValue.whenData((products) {
-                            final product = products.firstWhere(
-                              (p) => p.id == productId,
-                              orElse: () => products.first,
-                            );
-                            productName = product.name;
-                            productImage = product.imageUrl;
-                          });
-
-                          Navigator.pop(context, {
-                            'product_id': productId,
-                            'product_type': productType,
-                            'product_name': productName ?? 'منتج',
-                            'product_image': productImage ?? '',
-                          });
-                        }
-                      : () async {
-                    FocusScope.of(context).unfocus();
-                    setState(() {
-                      _isSaving = true;
-                    });
-                    try {
-                      // Check which tab is currently active
-                      if (_tabController?.index == 1) {
-                        // OCR Tab
-                        try {
-                          final userModel = await ref.read(userDataProvider.future);
-                          final distributorId = userModel?.id;
-                          final distributorName = userModel?.displayName ?? 'اسم غير معروف';
-
-                          if (distributorId == null) {
-                            throw Exception('User not authenticated');
-                          }
-
-                          final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
-                          final List<Map<String, dynamic>> ocrProductsToAdd = [];
-                          final Set<String> keysToClear = {};
-
-                          // ✅ فحص تواريخ الصلاحية قبل البدء (لـ OCR)
-                          if (widget.showExpirationDate || widget.isFromOfferScreen) {
-                            for (var item in _ocrCatalogShuffledDisplayItems) {
-                              final ProductModel product = item['product'];
-                              final String package = item['package'];
-                              final String key = '${product.id}_$package';
-                              
-                              if (selection.selectedKeys.contains(key) && selection.expirationDates[key] == null) {
-                                setState(() => _isSaving = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    elevation: 0,
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: Colors.transparent,
-                                    content: AwesomeSnackbarContent(
-                                      title: 'تنبيه',
-                                      message: 'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
-                                      contentType: ContentType.warning,
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                            }
-                          }
-
-                          for (var item in _ocrCatalogShuffledDisplayItems) {
-                            final ProductModel product = item['product'];
-                            final String package = item['package'];
-                            final String key = '${product.id}_$package';
-
-                            final isSelectedNow = ref
-                                .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                .prices
-                                .containsKey(key);
-
-                            if (isSelectedNow) {
-                              final price = ref
-                                      .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                      .prices[key] ??
-                                  0.0;
-                              final expirationDate = ref
-                                  .read(catalogSelectionControllerProvider(widget.catalogContext))
-                                  .expirationDates[key];
-                              if (price > 0) {
-                                String? ocrProductId = await _checkOrCreateOcrProduct(
-                                  ref,
-                                  distributorId,
-                                  distributorName,
-                                  product,
-                                  package,
-                                );
-
-                                if (ocrProductId != null) {
-                                  ocrProductsToAdd.add({
-                                    'ocrProductId': ocrProductId,
-                                    'price': price,
-                                    'expiration_date': expirationDate?.toIso8601String(),
-                                    'package': package,
-                                  });
-                                  keysToClear.add(key);
-                                }
-                              }
-                            }
-                          }
-
-                          if (ocrProductsToAdd.isNotEmpty) {
-                            if (widget.isFromOfferScreen) {
-                              // حفظ في جدول offers
-                              final List<String> offerIds = [];
-                              final List<Map<String, dynamic>> offerDetails = [];
-
-                              for (var item in ocrProductsToAdd) {
-                                final offerId = await ref.read(productRepositoryProvider).addOffer(
-                                      productId: item['ocrProductId'],
-                                      isOcr: true,
-                                      userId: distributorId,
-                                      price: item['price'],
-                                      expirationDate: item['expiration_date'] != null
-                                          ? DateTime.parse(item['expiration_date'])
-                                          : DateTime.now().add(const Duration(days: 365)),
-                                      package: item['package'],
-                                    );
-                                if (offerId != null) {
-                                  offerIds.add(offerId);
-                                  offerDetails.add(item);
-                                }
-                              }
-
-                              ref
-                                  .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
-                                  .clearSelections(keysToClear);
-
-                              if (context.mounted) {
-                                if (offerIds.length == 1) {
-                                  // منتج واحد - نفتح صفحة offer_detail_screen
-                                  final firstKey = keysToClear.first;
-                                  final firstProduct = _ocrCatalogShuffledDisplayItems.firstWhere(
-                                      (item) => '${item['product'].id}_${item['package']}' == firstKey);
-                                  final productName = firstProduct['product'].name;
-                                  final price = offerDetails[0]['price'];
-                                  final expirationDate = offerDetails[0]['expiration_date'] != null
-                                      ? DateTime.parse(offerDetails[0]['expiration_date'])
-                                      : DateTime.now().add(const Duration(days: 365));
-
-                                  await Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(
-                                      builder: (context) => OfferDetailScreen(
-                                        offerId: offerIds[0],
-                                        productName: productName,
-                                        price: price,
-                                        expirationDate: expirationDate,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  // أكثر من منتج - نظهر رسالة نجاح ونرجع
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      elevation: 0,
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: Colors.transparent,
-                                      content: AwesomeSnackbarContent(
-                                        title: 'نجاح',
-                                        message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
-                                        contentType: ContentType.success,
-                                      ),
-                                    ),
-                                  );
-                                  Navigator.of(context).pop();
-                                }
-                              }
-                            } else {
-                              // الحفظ العادي في distributor_ocr_products
-                              await ref.read(productRepositoryProvider).addMultipleDistributorOcrProducts(
-                                    distributorId: distributorId,
-                                    distributorName: distributorName,
-                                    ocrProducts: ocrProductsToAdd,
-                                  );
-
-                              ref
-                                  .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
-                                  .clearSelections(keysToClear);
-
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    elevation: 0,
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: Colors.transparent,
-                                    content: AwesomeSnackbarContent(
-                                      title: 'نجاح',
-                                      message: 'تم إضافة ${ocrProductsToAdd.length} منتج إلى OCR بنجاح',
-                                      contentType: ContentType.success,
-                                    ),
-                                  ),
-                                );
-                                Navigator.of(context).pop();
-                              }
-                            }
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  elevation: 0,
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.transparent,
-                                  content: AwesomeSnackbarContent(
-                                    title: 'تنبيه',
-                                    message: 'الرجاء تحديد منتجات بأسعار صحيحة',
-                                    contentType: ContentType.warning,
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                elevation: 0,
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.transparent,
-                                content: AwesomeSnackbarContent(
-                                  title: 'خطأ',
-                                  message: 'فشل إضافة المنتجات إلى OCR: ${e.toString()}',
-                                  contentType: ContentType.failure,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      } else {
-                        // Main Catalog Tab
-                        final mainCatalogKeys = _mainCatalogShuffledDisplayItems.map((item) {
-                          final ProductModel product = item['product'];
-                          final String package = item['package'];
-                          return '${product.id}_$package';
-                        }).toSet();
-
-                        final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
-
-                        // ✅ فحص تواريخ الصلاحية قبل البدء (للكتالوج الرئيسي)
-                        if (widget.showExpirationDate || widget.isFromOfferScreen) {
-                          for (var item in _mainCatalogShuffledDisplayItems) {
-                            final ProductModel product = item['product'];
-                            final String package = item['package'];
-                            final String key = '${product.id}_$package';
-                            
-                            if (selection.selectedKeys.contains(key) && selection.expirationDates[key] == null) {
-                              setState(() => _isSaving = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  elevation: 0,
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Colors.transparent,
-                                  content: AwesomeSnackbarContent(
-                                    title: 'تنبيه',
-                                    message: 'يرجى تحديد تاريخ الصلاحية للمنتج: ${product.name}',
-                                    contentType: ContentType.warning,
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-                          }
-                        }
-
-                        if (widget.isFromOfferScreen) {
-                          // حفظ في جدول offers
-                          final userModel = await ref.read(userDataProvider.future);
-                          final userId = userModel?.id;
-
-                          if (userId != null) {
-                            final selection = ref.read(catalogSelectionControllerProvider(widget.catalogContext));
-                            final List<String> offerIds = [];
-                            final List<Map<String, dynamic>> offerDetails = [];
-
-                            for (var item in _mainCatalogShuffledDisplayItems) {
-                              final ProductModel product = item['product'];
-                              final String package = item['package'];
-                              final String key = '${product.id}_$package';
-
-                              if (selection.prices.containsKey(key)) {
-                                final price = selection.prices[key] ?? 0.0;
-                                final expirationDate = selection.expirationDates[key] ??
-                                    DateTime.now().add(const Duration(days: 365));
-
-                                if (price > 0) {
-                                  final offerId = await ref.read(productRepositoryProvider).addOffer(
-                                        productId: product.id,
-                                        isOcr: false,
-                                        userId: userId,
-                                        price: price,
-                                        expirationDate: expirationDate,
-                                        package: package,
-                                      );
-                                  if (offerId != null) {
-                                    offerIds.add(offerId);
-                                    offerDetails.add({
-                                      'productName': product.name,
-                                      'price': price,
-                                      'expirationDate': expirationDate,
-                                    });
-                                  }
-                                }
-                              }
-                            }
-
-                            ref
-                                .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
-                                .clearSelections(mainCatalogKeys);
-
-                            if (context.mounted) {
-                              if (offerIds.length == 1) {
-                                // منتج واحد - نفتح صفحة offer_detail_screen
-                                await Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (context) => OfferDetailScreen(
-                                      offerId: offerIds[0],
-                                      productName: offerDetails[0]['productName'],
-                                      price: offerDetails[0]['price'],
-                                      expirationDate: offerDetails[0]['expirationDate'],
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                // أكثر من منتج - نظهر رسالة نجاح ونرجع
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    elevation: 0,
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: Colors.transparent,
-                                    content: AwesomeSnackbarContent(
-                                      title: 'نجاح',
-                                      message: 'تم إضافة ${offerIds.length} منتج للعروض بنجاح',
-                                      contentType: ContentType.success,
-                                    ),
-                                  ),
-                                );
-                                Navigator.of(context).pop();
-                              }
-                            }
-                          }
-                        } else {
-                          // الحفظ العادي في distributor_products
-                          final success = await ref
-                              .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
-                              .saveSelections(
-                                  keysToSave: mainCatalogKeys, withExpiration: widget.showExpirationDate);
-
-                          if (success && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                elevation: 0,
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.transparent,
-                                content: AwesomeSnackbarContent(
-                                  title: 'نجاح',
-                                  message: 'تم حفظ المنتجات بنجاح',
-                                  contentType: ContentType.success,
-                                ),
-                              ),
-                            );
-                            Navigator.of(context).pop();
-                          } else if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                elevation: 0,
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.transparent,
-                                content: AwesomeSnackbarContent(
-                                  title: 'تنبيه',
-                                  message: 'حدث خطأ أثناء حفظ المنتجات أو لا يوجد منتجات للحفظ',
-                                  contentType: ContentType.warning,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-                      }
-                    }
-                  },
-                  label: Text(
-                    widget.isFromReviewRequest
-                        ? 'تأكيد الاختيار'
-                        : 'add_items'.tr(
-                            namedArgs: {'count': validSelections.length.toString()},
-                          ),
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.check_rounded),
-                  elevation: 2,
-                )
-              : null,
-          body: Stack(
-            children: [
-              TabBarView(
-                controller: _tabController,
-                children: [
-                  allProductsAsync.when(
-                    data: (products) {
-                      // === فلترة المنتجات حسب نص البحث (في الاسم، الشركة، والمادة الفعالة) ===
-                      List<ProductModel> filteredProducts;
-                      if (_searchQuery.isEmpty) {
-                        filteredProducts = products;
-                      } else {
-                        filteredProducts = products.where((product) {
-                          // تحويل النص للحروف صغيرة علشان المقارنة تكون case-insensitive
-                          final query = _searchQuery.toLowerCase();
-                          final productName = product.name.toLowerCase();
-                          // تأكد إن الخواص دي موجودة في ProductModel
-                          final productCompany =
-                              product.company?.toLowerCase() ?? '';
-                          final productActivePrinciple =
-                              product.activePrinciple?.toLowerCase() ?? '';
-
-                          // بنشوف لو النص موجود في أي واحد من الثلاثة
-                          return productName.contains(query) ||
-                              productCompany.contains(query) ||
-                              productActivePrinciple.contains(query);
-                        }).toList();
-                      }
-
-                      // === بني القائمة العشوائية إذا لسه ما اتعملتش أو البحث اتغير ===
-                      _buildMainCatalogShuffledDisplayItems(filteredProducts, _searchQuery);
-
-                      if (_mainCatalogShuffledDisplayItems.isEmpty) {
-                        // عرض رسالة مناسبة لو مفيش منتجات بعد الفلترة والشفل
-                        if (_searchQuery.isNotEmpty) {
-                          // لو في بحث ونتائج فاضية
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off_rounded,
-                                  size: 64,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.6),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'لا توجد نتائج للبحث.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          // لو مفيش منتجات أصلاً
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.inventory_2_rounded,
-                                  size: 64,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.6),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'لا توجد منتجات في الكتالوج الرئيسي.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 90, top: 8),
-                        itemCount:
-                            _mainCatalogShuffledDisplayItems.length, // استخدم القائمة العشوائية
-                        itemBuilder: (context, index) {
-                          final item = _mainCatalogShuffledDisplayItems[index];
-                          final ProductModel product = item['product'];
-                          final String package = item['package'];
-                          return _ProductCatalogItem(
-                              key: ValueKey('${product.id}_$package'),
-                              catalogContext: widget.catalogContext,
-                              product: product,
-                              package: package,
-                              showExpirationDate: widget.showExpirationDate,
-                              singleSelection: widget.isFromOfferScreen || widget.isFromReviewRequest,
-                              hidePrice: widget.isFromReviewRequest);
-                        },
-                      );
-                    },
-                    loading: () => ListView.builder(
-                      itemCount: 6,
-                      padding: const EdgeInsets.all(16.0),
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: ProductCardShimmer(),
-                        );
-                      },
-                    ),
-                    error: (error, stack) => RefreshableErrorWidget(
-                      message: 'حدث خطأ: $error',
-                      onRetry: () => ref.refresh(productsProvider),
-                    ),
-                  ),
-                  // Tab for OCR Catalog - fetch and display OCR products
-                  ref.watch(ocrProductsProvider).when(
-                    data: (ocrProducts) {
-                      // Filter OCR products based on search query
-                      List<ProductModel> filteredOcrProducts;
-                      if (_searchQuery.isEmpty) {
-                        filteredOcrProducts = ocrProducts;
-                      } else {
-                        filteredOcrProducts = ocrProducts.where((product) {
-                          final query = _searchQuery.toLowerCase();
-                          final productName = product.name.toLowerCase();
-                          final productCompany = product.company?.toLowerCase() ?? '';
-                          final productActivePrinciple = product.activePrinciple?.toLowerCase() ?? '';
-
-                          return productName.contains(query) ||
-                              productCompany.contains(query) ||
-                              productActivePrinciple.contains(query);
-                        }).toList();
-                      }
-
-                      // Build shuffled display items for OCR products
-                      _buildOcrCatalogShuffledDisplayItems(filteredOcrProducts, _searchQuery);
-
-                      if (_ocrCatalogShuffledDisplayItems.isEmpty) {
-                        // Show appropriate message if no OCR products
-                        if (_searchQuery.isNotEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off_rounded,
-                                  size: 64,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.6),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'لا توجد نتائج للبحث في OCR.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.inventory_2_rounded,
-                                  size: 64,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.6),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'لا توجد منتجات في OCR الكتالوج.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 90, top: 8),
-                        itemCount: _ocrCatalogShuffledDisplayItems.length,
-                        itemBuilder: (context, index) {
-                          final item = _ocrCatalogShuffledDisplayItems[index];
-                          final ProductModel product = item['product'];
-                          final String package = item['package'];
-                          final currentUserId = ref.watch(userDataProvider).value?.id;
-                          final canEdit = currentUserId != null && product.distributorId == currentUserId;
-
-                          return _ProductCatalogItem(
-                                  key: ValueKey('${product.id}_$package'),
-                                  catalogContext: widget.catalogContext,
-                                  product: product,
-                                  package: package,
-                                  showExpirationDate:
-                                      widget.showExpirationDate,
-                                  singleSelection: widget.isFromOfferScreen || widget.isFromReviewRequest,
-                                  hidePrice: widget.isFromReviewRequest,
-                                  canEdit: canEdit,
-                                  onEdit: () => _showEditProductDialog(product, package),
-                          );
-                        },
-                      );
-                    },
-                    loading: () => ListView.builder(
-                      itemCount: 6,
-                      padding: const EdgeInsets.all(16.0),
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: ProductCardShimmer(),
-                        );
-                      },
-                    ),
-                    error: (error, stack) => RefreshableErrorWidget(
-                      message: 'حدث خطأ في تحميل OCR: $error',
-                      onRetry: () => ref.refresh(ocrProductsProvider),
-                    ),
-                  ),
-                ],
-              ),
-              if (_isProcessingFile)
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              if (_isSaving)
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              if (_isOcrLoading)
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          'جاري استخراج النص من الصورة...',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              // Floating Stats Widget
-              Positioned(
-                left: 16,
-                bottom: 16,
-                child: Builder(
-                  builder: (context) {
-                    final isMainTab = _tabController?.index == 0;
-                    final products = isMainTab 
-                        ? (allProductsAsync.valueOrNull ?? []) 
-                        : (ocrProductsAsync.valueOrNull ?? []);
-
-                    final categorized = _categorizeProducts(products);
-                    final completeCount = categorized['complete']?.length ?? 0;
-                    final missingPriceCount = categorized['missingPrice']?.length ?? 0;
-                    final notActivatedCount = categorized['notActivated']?.length ?? 0;
-
-                    // Only show if there are items in any category
-                    if (completeCount == 0 && missingPriceCount == 0 && notActivatedCount == 0) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Material(
-                          elevation: 4,
-                          borderRadius: BorderRadius.circular(12),
-                          color: Theme.of(context).colorScheme.surface,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Theme.of(context).dividerColor.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Complete Badge
-                                if (completeCount > 0)
-                                  _StatsBadge(
-                                    count: completeCount,
-                                    label: 'مكتمل',
-                                    color: Colors.green,
-                                    icon: Icons.check_circle,
-                                    onTap: () => _showStatsDialog('complete', products),
-                                  ),
-                                if (completeCount > 0 && (missingPriceCount > 0 || notActivatedCount > 0))
-                                  const SizedBox(height: 6),
-                                // Missing Price Badge
-                                if (missingPriceCount > 0)
-                                  _StatsBadge(
-                                    count: missingPriceCount,
-                                    label: 'بدون سعر',
-                                    color: Colors.orange,
-                                    icon: Icons.warning_amber_rounded,
-                                    onTap: () => _showStatsDialog('missingPrice', products),
-                                  ),
-                                if (missingPriceCount > 0 && notActivatedCount > 0)
-                                  const SizedBox(height: 6),
-                                // Not Activated Badge
-                                if (notActivatedCount > 0)
-                                  _StatsBadge(
-                                    count: notActivatedCount,
-                                    label: 'غير مفعّل',
-                                    color: Colors.red,
-                                    icon: Icons.toggle_off,
-                                    onTap: () => _showStatsDialog('notActivated', products),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: -5,
-                          right: -5,
-                          child: InkWell(
-                            onTap: () {
-                              ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier).clearAll();
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color.fromARGB(255, 245, 241, 241)),
-                              ),
-                              child: Icon(Icons.close, size: 16, color: const Color.fromARGB(255, 243, 136, 136)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
-       
-        ],
-      ),
       ),
     );
   }
 
   // Method to calculate product states
-  Map<String, List<Map<String, dynamic>>> _categorizeProducts(List<ProductModel> products) {
-    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
+  Map<String, List<Map<String, dynamic>>> _categorizeProducts(
+      List<ProductModel> products) {
+    final selection =
+        ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
 
     final Map<String, List<Map<String, dynamic>>> categorized = {
       'complete': [], // مفعّل + كاتب السعر
@@ -2006,7 +2329,7 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
     for (var product in products) {
       for (var package in product.availablePackages) {
         final String key = '${product.id}_$package';
-        
+
         final bool isSelected = selection.selectedKeys.contains(key);
         final double? price = selection.prices[key];
         final bool hasValidPrice = price != null && price > 0;
@@ -2093,7 +2416,8 @@ class _AddFromCatalogScreenState extends ConsumerState<AddFromCatalogScreen>
       print("======== DIALOG CLOSED WITH EDITS: $edits ========");
 
       // Update the provider state here, in the main screen's context.
-      final controller = ref.read(catalogSelectionControllerProvider(widget.catalogContext).notifier);
+      final controller = ref.read(
+          catalogSelectionControllerProvider(widget.catalogContext).notifier);
       edits.forEach((key, data) {
         final productId = data['productId']!;
         final package = data['package']!;
@@ -2132,102 +2456,102 @@ class _StatsDialogState extends ConsumerState<_StatsDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-            maxWidth: 500,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: widget.headerColor,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxWidth: 500,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: widget.headerColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${widget.items.length}',
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              // List
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: widget.items.length,
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    final product = item['product'] as ProductModel;
-                    final package = item['package'] as String;
-                    final key = item['key'] as String;
-                    final price = item['price'] as double?;
-
-                    return _ProductStatusItem(
-                      catalogContext: widget.catalogContext,
-                      product: product,
-                      package: package,
-                      uniqueKey: key,
-                      initialPrice: price,
-                      category: widget.category,
-                      onPriceChanged: (newPrice) {
-                        // حفظ مؤقت في الـ Dialog
-                        _tempPriceEdits[key] = {
-                          'productId': product.id,
-                          'package': package,
-                          'price': newPrice,
-                        };
-                      },
-                    );
-                  },
-                ),
-              ),
-              // Close button
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Don't update the state here.
-                    // Just pop and return the temporary edits.
-                    Navigator.pop(context, _tempPriceEdits);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  ),
+                  Text(
+                    '${widget.items.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: const Text('إغلاق'),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            // List
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.items.length,
+                itemBuilder: (context, index) {
+                  final item = widget.items[index];
+                  final product = item['product'] as ProductModel;
+                  final package = item['package'] as String;
+                  final key = item['key'] as String;
+                  final price = item['price'] as double?;
+
+                  return _ProductStatusItem(
+                    catalogContext: widget.catalogContext,
+                    product: product,
+                    package: package,
+                    uniqueKey: key,
+                    initialPrice: price,
+                    category: widget.category,
+                    onPriceChanged: (newPrice) {
+                      // حفظ مؤقت في الـ Dialog
+                      _tempPriceEdits[key] = {
+                        'productId': product.id,
+                        'package': package,
+                        'price': newPrice,
+                      };
+                    },
+                  );
+                },
+              ),
+            ),
+            // Close button
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () {
+                  // Don't update the state here.
+                  // Just pop and return the temporary edits.
+                  Navigator.pop(context, _tempPriceEdits);
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('إغلاق'),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -2257,7 +2581,7 @@ class _ProductStatusItem extends ConsumerStatefulWidget {
 
 class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
   late TextEditingController _priceController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -2274,9 +2598,10 @@ class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
 
   @override
   Widget build(BuildContext context) {
-    final selection = ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
+    final selection =
+        ref.watch(catalogSelectionControllerProvider(widget.catalogContext));
     final isSelected = selection.selectedKeys.contains(widget.uniqueKey);
-    
+
     // تحديث السعر من الـ state فقط إذا مفيش callback (يعني مش في Dialog)
     if (widget.onPriceChanged == null) {
       final currentPrice = selection.prices[widget.uniqueKey];
@@ -2343,14 +2668,17 @@ class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           widget.package,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSecondaryContainer,
                           ),
                         ),
                       ),
@@ -2371,17 +2699,21 @@ class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
                         } else {
                           // من الشاشة الأساسية - حفظ مباشرة
                           final controller = ref.read(
-                              catalogSelectionControllerProvider(widget.catalogContext).notifier);
+                              catalogSelectionControllerProvider(
+                                      widget.catalogContext)
+                                  .notifier);
 
                           if (value.trim().isEmpty) {
-                            controller.setPrice(widget.product.id, widget.package, '0');
+                            controller.setPrice(
+                                widget.product.id, widget.package, '0');
                           } else {
-                            controller.setPrice(widget.product.id, widget.package, value);
+                            controller.setPrice(
+                                widget.product.id, widget.package, value);
                           }
                         }
                       },
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'price'.tr(),
                         prefixText: 'EGP ',
@@ -2449,9 +2781,12 @@ class _ProductStatusItemState extends ConsumerState<_ProductStatusItem> {
             Switch(
               value: isSelected,
               onChanged: (value) {
-                final priceText = _priceController.text.isEmpty ? '0' : _priceController.text;
+                final priceText =
+                    _priceController.text.isEmpty ? '0' : _priceController.text;
                 ref
-                    .read(catalogSelectionControllerProvider(widget.catalogContext).notifier)
+                    .read(catalogSelectionControllerProvider(
+                            widget.catalogContext)
+                        .notifier)
                     .toggleProduct(
                       widget.product.id,
                       widget.package,
@@ -2554,7 +2889,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selection = ref.watch(catalogSelectionControllerProvider(catalogContext));
+    final selection =
+        ref.watch(catalogSelectionControllerProvider(catalogContext));
     final uniqueKey = '${product.id}_$package';
     final isSelected = selection.selectedKeys.contains(uniqueKey);
 
@@ -2562,7 +2898,6 @@ class _ProductCatalogItem extends HookConsumerWidget {
     final expirationDateController = useTextEditingController();
     final focusNode = useMemoized(() => FocusNode(), const []);
     final expirationDateFocusNode = useMemoized(() => FocusNode(), const []);
-    
 
     useEffect(() {
       // This effect ALWAYS synchronizes the text field with the provider state.
@@ -2571,22 +2906,25 @@ class _ProductCatalogItem extends HookConsumerWidget {
 
       // HACK: Force-read the latest state from the provider to bypass a timing
       // issue where the `selection` object from the build method is stale.
-      final latestSelection = ref.read(catalogSelectionControllerProvider(catalogContext));
+      final latestSelection =
+          ref.read(catalogSelectionControllerProvider(catalogContext));
       final priceFromState = latestSelection.prices[uniqueKey];
       final isSelectedNow = latestSelection.selectedKeys.contains(uniqueKey);
 
-      final priceString = (priceFromState == null || priceFromState <= 0) ? '' : priceFromState.toString();
+      final priceString = (priceFromState == null || priceFromState <= 0)
+          ? ''
+          : priceFromState.toString();
 
       if (priceController.text != priceString) {
         priceController.text = priceString;
       }
-      
+
       if (!isSelectedNow) {
         if (expirationDateController.text.isNotEmpty) {
           expirationDateController.clear();
         }
       }
-      
+
       return null;
     }, [selection]); // Depend only on selection for robustness
 
@@ -2634,6 +2972,12 @@ class _ProductCatalogItem extends HookConsumerWidget {
               // === تحسين الصورة مع إمكانية المعاينة ===
               GestureDetector(
                 onTap: () {
+                  // إذا كان السياق هو جرد العيادة، نفتح شيت إضافة للجرد
+                  if (catalogContext == CatalogContext.clinicInventory) {
+                    AddToInventoryFromCatalogSheet.show(
+                        context, product, package);
+                    return;
+                  }
                   // استدعاء الدالة كـ static من الـ StatefulWidget
                   AddFromCatalogScreen.showProductDetailDialog(
                       context, product, package);
@@ -2688,7 +3032,10 @@ class _ProductCatalogItem extends HookConsumerWidget {
                             children: [
                               Text(
                                 product.name,
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 15,
                                     ),
@@ -2696,36 +3043,50 @@ class _ProductCatalogItem extends HookConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               // عرض اسم الموزع الأصلي في تاب الـ OCR فقط
-                              if (product.distributorUuid != null || (product.distributorId != null && product.distributorId!.isNotEmpty))
+                              if (product.distributorUuid != null ||
+                                  (product.distributorId != null &&
+                                      product.distributorId!.isNotEmpty))
                                 Consumer(
                                   builder: (context, ref, child) {
-                                    final distributorsAsync = ref.watch(distributorsProvider);
+                                    final distributorsAsync =
+                                        ref.watch(distributorsProvider);
                                     // محاولة البحث بالـ UUID أو بالاسم (في حال كان الـ ID مخزناً في حقل distributorId)
-                                    final currentName = distributorsAsync.maybeWhen(
+                                    final currentName =
+                                        distributorsAsync.maybeWhen(
                                       data: (distributors) {
-                                        final dist = distributors.firstWhereOrNull((d) => 
-                                          d.id == product.distributorUuid || 
-                                          d.id == product.distributorId
-                                        );
+                                        final dist =
+                                            distributors.firstWhereOrNull((d) =>
+                                                d.id ==
+                                                    product.distributorUuid ||
+                                                d.id == product.distributorId);
                                         return dist?.displayName;
                                       },
                                       orElse: () => null,
                                     );
-                                    
-                                    // إذا لم نجد الاسم في القائمة، نعرض الاسم المخزن بشرط ألا يكون UUID
-                                    final finalDisplayName = currentName ?? 
-                                      (product.distributorId != null && !product.distributorId!.contains('-') 
-                                        ? product.distributorId 
-                                        : null);
 
-                                    if (finalDisplayName == null) return const SizedBox.shrink();
-                                    
+                                    // إذا لم نجد الاسم في القائمة، نعرض الاسم المخزن بشرط ألا يكون UUID
+                                    final finalDisplayName = currentName ??
+                                        (product.distributorId != null &&
+                                                !product.distributorId!
+                                                    .contains('-')
+                                            ? product.distributorId
+                                            : null);
+
+                                    if (finalDisplayName == null)
+                                      return const SizedBox.shrink();
+
                                     return Text(
                                       'بواسطة: $finalDisplayName',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-                                        fontSize: 10,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withOpacity(0.7),
+                                            fontSize: 10,
+                                          ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     );
@@ -2779,7 +3140,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
                       ),
                     const SizedBox(height: 8),
                     // === حقل السعر المحسن ===
-                    if (!hidePrice)
+                    if (!hidePrice &&
+                        catalogContext != CatalogContext.clinicInventory)
                       SizedBox(
                         height: 40,
                         width: 150,
@@ -2791,8 +3153,12 @@ class _ProductCatalogItem extends HookConsumerWidget {
                           onChanged: (value) {
                             // Debounce the input to update the state only when the user stops typing.
                             debounceTimer.value?.cancel();
-                            debounceTimer.value = Timer(const Duration(milliseconds: 1500), () {
-                              final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
+                            debounceTimer.value =
+                                Timer(const Duration(milliseconds: 1500), () {
+                              final controller = ref.read(
+                                  catalogSelectionControllerProvider(
+                                          catalogContext)
+                                      .notifier);
                               if (value.trim().isEmpty) {
                                 controller.setPrice(product.id, package, '0');
                               } else {
@@ -2803,7 +3169,10 @@ class _ProductCatalogItem extends HookConsumerWidget {
                           onEditingComplete: () {
                             // When editing is done, cancel any pending timer and update immediately.
                             debounceTimer.value?.cancel();
-                            final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
+                            final controller = ref.read(
+                                catalogSelectionControllerProvider(
+                                        catalogContext)
+                                    .notifier);
                             final value = priceController.text;
                             if (value.trim().isEmpty) {
                               controller.setPrice(product.id, package, '0');
@@ -2816,63 +3185,63 @@ class _ProductCatalogItem extends HookConsumerWidget {
                               decimal: true),
                           decoration: InputDecoration(
                             labelText: 'price'.tr(),
-                          prefixText: 'EGP ',
-                          prefixStyle: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 12,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceVariant
-                              .withOpacity(0.5),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outline
-                                  .withOpacity(0.3),
-                              width: 1.0,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: isSelected
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.5)
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .outline
-                                      .withOpacity(0.3),
-                              width: isSelected ? 1.5 : 1.0,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
+                            prefixText: 'EGP ',
+                            prefixStyle: TextStyle(
+                              fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
-                              width: 2,
+                              fontSize: 12,
+                            ),
+                            filled: true,
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceVariant
+                                .withOpacity(0.5),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withOpacity(0.3),
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: isSelected
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.5)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withOpacity(0.3),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                            hintText: isSelected ? null : 'حدد المنتج',
+                            hintStyle: TextStyle(
+                              color: Theme.of(context).disabledColor,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
                           ),
-                          hintText: isSelected ? null : 'حدد المنتج',
-                          hintStyle: TextStyle(
-                            color: Theme.of(context).disabledColor,
-                            fontStyle: FontStyle.italic,
-                            fontSize: 12,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                          style: TextStyle(fontSize: 14),
                         ),
-                        style: TextStyle(fontSize: 14),
                       ),
-                    ),
                     if (showExpirationDate) ...[
                       const SizedBox(height: 8),
                       SizedBox(
@@ -2894,7 +3263,8 @@ class _ProductCatalogItem extends HookConsumerWidget {
                                   DateFormat('MM-yyyy').format(picked);
                               expirationDateController.text = formattedDate;
                               ref
-                                  .read(catalogSelectionControllerProvider(catalogContext)
+                                  .read(catalogSelectionControllerProvider(
+                                          catalogContext)
                                       .notifier)
                                   .setExpirationDate(
                                       product.id, package, picked);
@@ -2927,40 +3297,88 @@ class _ProductCatalogItem extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // === تحسين الـ Switch ===
-              Switch.adaptive(
-                value: isSelected,
-                onChanged: (value) {
-                  final controller = ref.read(catalogSelectionControllerProvider(catalogContext).notifier);
-                  
-                  // إذا كان singleSelection مفعل ونريد اختيار منتج جديد
-                  if (singleSelection && value) {
-                    // امسح كل الاختيارات السابقة أولاً
-                    final currentSelections = ref.read(catalogSelectionControllerProvider(catalogContext)).prices.keys.toSet();
-                    controller.clearSelections(currentSelections);
-                  }
-                  
-                  // عند hidePrice، نستخدم قيمة افتراضية (1) بدلاً من قيمة حقل السعر
-                  // التأكد من أننا لا نمرر نصًا فارغًا للسعر لتجنب خطأ التحويل
-                  final priceText = priceController.text.isEmpty ? '0' : priceController.text;
-                  controller.toggleProduct(product.id, package, hidePrice ? '1' : priceText);
+              if (catalogContext == CatalogContext.clinicInventory)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => AddToInventoryFromCatalogSheet.show(
+                          context, product, package),
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Text(
+                          'إضافة',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                // === تحسين الـ Switch ===
+                Switch.adaptive(
+                  value: isSelected,
+                  onChanged: (value) {
+                    final controller = ref.read(
+                        catalogSelectionControllerProvider(catalogContext)
+                            .notifier);
 
-                  // لو المنتج بقى محدد، نركز على حقل السعر (إلا إذا كان مخفي)
-                  if (value && !hidePrice) {
-                    // استخدام Future.microtask علشان نتأكد إن الحقل اتشالّك قبل ما نركز عليه
-                    Future.microtask(() {
-                      focusNode.requestFocus();
-                    });
-                  } else if (!value) {
-                    // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
-                    if (!hidePrice) {
-                      priceController.clear();
-                      focusNode.unfocus();
+                    // إذا كان singleSelection مفعل ونريد اختيار منتج جديد
+                    if (singleSelection && value) {
+                      // امسح كل الاختيارات السابقة أولاً
+                      final currentSelections = ref
+                          .read(catalogSelectionControllerProvider(
+                              catalogContext))
+                          .prices
+                          .keys
+                          .toSet();
+                      controller.clearSelections(currentSelections);
                     }
-                    expirationDateController.clear();
-                  }
-                },
-              ),
+
+                    // عند hidePrice، نستخدم قيمة افتراضية (1) بدلاً من قيمة حقل السعر
+                    // التأكد من أننا لا نمرر نصًا فارغًا للسعر لتجنب خطأ التحويل
+                    final priceText = priceController.text.isEmpty
+                        ? '0'
+                        : priceController.text;
+                    controller.toggleProduct(
+                        product.id, package, hidePrice ? '1' : priceText);
+
+                    // لو المنتج بقى محدد، نركز على حقل السعر (إلا إذا كان مخفي)
+                    if (value && !hidePrice) {
+                      // استخدام Future.microtask علشان نتأكد إن الحقل اتشالّك قبل ما نركز عليه
+                      Future.microtask(() {
+                        focusNode.requestFocus();
+                      });
+                    } else if (!value) {
+                      // لو اتشال التحديد، نمسح النص ونخلّي الحقل يفقد التركيز
+                      if (!hidePrice) {
+                        priceController.clear();
+                        focusNode.unfocus();
+                      }
+                      expirationDateController.clear();
+                    }
+                  },
+                ),
             ],
           ),
         ),

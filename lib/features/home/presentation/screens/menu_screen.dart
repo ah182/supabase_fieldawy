@@ -1,4 +1,5 @@
 import 'package:fieldawy_store/features/clinics/presentation/screens/clinics_map_screen.dart';
+import 'package:fieldawy_store/features/clinic_inventory/presentation/clinic_inventory_screen.dart';
 
 // ignore: unused_import
 import 'package:cached_network_image/cached_network_image.dart';
@@ -31,6 +32,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fieldawy_store/features/admin_dashboard/presentation/screens/admin_dashboard_screen.dart';
 
 import 'package:fieldawy_store/features/profile/presentation/screens/developer_profile_screen.dart';
+import 'package:fieldawy_store/features/posts/presentation/screens/posts_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -70,9 +72,10 @@ class MenuScreen extends ConsumerWidget {
                     // Admin gets admin dashboard + all other items
                     menuItems = [
                       _getAdminMenuItems(context),
-                      const Divider(color: Colors.white24, thickness: 1, height: 24),
+                      const Divider(
+                          color: Colors.white24, thickness: 1, height: 24),
                     ];
-                    
+
                     // Add all other items, remove duplicates by title
                     final allItems = [
                       ..._getDoctorMenuItems(context),
@@ -90,7 +93,8 @@ class MenuScreen extends ConsumerWidget {
                     menuItems.addAll(uniqueItems.values);
                   } else if (user.role == 'doctor') {
                     menuItems = _getDoctorMenuItems(context);
-                  } else if (user.role == 'distributor' || user.role == 'company') {
+                  } else if (user.role == 'distributor' ||
+                      user.role == 'company') {
                     menuItems = _getDistributorMenuItems(context);
                   } else {
                     menuItems = _getViewerMenuItems(context);
@@ -100,15 +104,23 @@ class MenuScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     children: [
                       ...menuItems,
-                      const Divider(color: Colors.white24, thickness: 1, height: 24),
+                      const Divider(
+                          color: Colors.white24, thickness: 1, height: 24),
                       _buildMenuItem(
-                        icon: FontAwesomeIcons.headset, // Changed icon to headset
-                        title: (context.locale.languageCode == 'en') ? 'Contact Support' : 'تواصل مع الدعم',
+                        icon:
+                            FontAwesomeIcons.headset, // Changed icon to headset
+                        title: (context.locale.languageCode == 'en')
+                            ? 'Contact Support'
+                            : 'تواصل مع الدعم',
                         onTap: () {
                           // Close drawer and navigate
                           ZoomDrawer.of(context)!.close();
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const DeveloperProfileScreen()),
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const DeveloperProfileScreen(),
+                                settings: const RouteSettings(
+                                    name: 'developer_profile')),
                           );
                         },
                       ),
@@ -131,7 +143,8 @@ class MenuScreen extends ConsumerWidget {
                   customHeader: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                      color:
+                          Theme.of(context).colorScheme.error.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -158,14 +171,14 @@ class MenuScreen extends ConsumerWidget {
 
   List<Widget> _getDistributorMenuItems(BuildContext context) {
     return [
-    
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
           title: 'home.menu.clinics_map'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ClinicsMapScreen()));
+                builder: (context) => const ClinicsMapScreen(),
+                settings: const RouteSettings(name: 'clinics_map')));
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
@@ -173,7 +186,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ProductsWithReviewsScreen()));
+                builder: (context) => const ProductsWithReviewsScreen(),
+                settings: const RouteSettings(name: 'product_rating')));
           }),
       _buildMenuItem(
           icon: Icons.dashboard_outlined,
@@ -181,32 +195,35 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const DashboardPage()));
+                builder: (context) => const DashboardPage(),
+                settings: const RouteSettings(name: 'dashboard')));
           }),
-     
       _buildMenuItem(
           icon: Icons.inventory_2_outlined, // أيقونة جديدة
           title: 'home.menu.my_medicines'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const MyProductsScreen()));
+                builder: (context) => const MyProductsScreen(),
+                settings: const RouteSettings(name: 'my_products')));
           }),
       _buildMenuItem(
-          icon: Icons.production_quantity_limits_outlined,
-          title: 'home.menu.add_products'.tr(),
-          onTap: () {
-            Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
-          },
-        ),
+        icon: Icons.production_quantity_limits_outlined,
+        title: 'home.menu.add_products'.tr(),
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const AddProductScreen(),
+              settings: const RouteSettings(name: 'add_products')));
+        },
+      ),
       _buildMenuItem(
           icon: Icons.inventory_2_outlined,
           title: 'home.menu.vet_supplies'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const VetSuppliesScreen()));
+                builder: (context) => const VetSuppliesScreen(),
+                settings: const RouteSettings(name: 'vet_supplies')));
           }),
       _buildMenuItem(
           icon: Icons.work_outline,
@@ -214,7 +231,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const JobOffersScreen()));
+                builder: (context) => const JobOffersScreen(),
+                settings: const RouteSettings(name: 'job_offers')));
           }),
       _buildMenuItem(
           icon: Icons.settings_outlined,
@@ -222,21 +240,60 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const SettingsScreen()));
+                builder: (context) => const SettingsScreen(),
+                settings: const RouteSettings(name: 'settings')));
           }),
     ];
   }
 
   List<Widget> _getDoctorMenuItems(BuildContext context) {
     return [
-      
+      // Posts menu item with FontAwesome icon
+      ListTile(
+        leading: CachedNetworkImage(
+          imageUrl:
+              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Newspaper-icon.png',
+          width: 20,
+          height: 20,
+          color: Colors.white70,
+          placeholder: (context, url) => const FaIcon(
+              FontAwesomeIcons.newspaper,
+              color: Colors.white70,
+              size: 20),
+          errorWidget: (context, url, error) => const FaIcon(
+              FontAwesomeIcons.newspaper,
+              color: Colors.white70,
+              size: 20),
+        ),
+        title: Text(
+          context.locale.languageCode == 'ar'
+              ? 'منشورات الأطباء'
+              : 'Doctors Posts',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        onTap: () {
+          ZoomDrawer.of(context)!.close();
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) => const PostsScreen(),
+              settings: const RouteSettings(name: 'posts')));
+        },
+        splashColor: Colors.white24,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
       _buildMenuItem(
           icon: Icons.map_outlined, // New map icon
           title: 'home.menu.clinics_map'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ClinicsMapScreen()));
+                builder: (context) => const ClinicsMapScreen(),
+                settings: const RouteSettings(name: 'clinics_map')));
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
@@ -244,7 +301,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ProductsWithReviewsScreen()));
+                builder: (context) => const ProductsWithReviewsScreen(),
+                settings: const RouteSettings(name: 'product_rating')));
           }),
       _buildMenuItem(
           icon: Icons.analytics_outlined,
@@ -252,7 +310,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const AnalyticsPage()));
+                builder: (context) => const AnalyticsPage(),
+                settings: const RouteSettings(name: 'analytics')));
           }),
       _buildMenuItem(
           icon: Icons.people_alt_outlined,
@@ -260,7 +319,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const DistributorsScreen()));
+                builder: (context) => const DistributorsScreen(),
+                settings: const RouteSettings(name: 'distributors')));
           }),
       _buildMenuItem(
           icon: Icons.shopping_cart_outlined,
@@ -268,31 +328,63 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const OrdersScreen()));
+                builder: (context) => const OrdersScreen(),
+                settings: const RouteSettings(name: 'orders')));
           }),
-      _buildMenuItem(
-          icon: Icons.add_business_outlined,
-          title: 'home.menu.add_products'.tr(),
-          onTap: () {
-            Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
-          },
+      ListTile(
+        leading: CachedNetworkImage(
+          imageUrl:
+              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Kit-Medical-icon.png',
+          width: 20,
+          height: 20,
+          color: Colors.white70,
+          placeholder: (context, url) => const Icon(
+              Icons.medical_services_outlined,
+              color: Colors.white70,
+              size: 20),
+          errorWidget: (context, url, error) => const Icon(
+              Icons.medical_services_outlined,
+              color: Colors.white70,
+              size: 20),
         ),
+        title: Text(
+          context.locale.languageCode == 'ar'
+              ? 'جرد العيادة'
+              : 'Clinic Inventory',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        onTap: () {
+          ZoomDrawer.of(context)!.close();
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) => const ClinicInventoryScreen(),
+              settings: const RouteSettings(name: 'clinic_inventory')));
+        },
+        splashColor: Colors.white24,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
       _buildMenuItem(
-          icon: Icons.inventory_2_outlined,
-          title: 'home.menu.vet_supplies'.tr(),
-          onTap: () {
-            ZoomDrawer.of(context)!.close();
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const VetSuppliesScreen()));
-          }),
+        icon: Icons.add_business_outlined,
+        title: 'home.menu.add_products'.tr(),
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const AddProductScreen(),
+              settings: const RouteSettings(name: 'add_products')));
+        },
+      ),
       _buildMenuItem(
           icon: Icons.work_outline,
           title: 'home.menu.job_offers'.tr(),
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const JobOffersScreen()));
+                builder: (context) => const JobOffersScreen(),
+                settings: const RouteSettings(name: 'job_offers')));
           }),
       _buildMenuItem(
           icon: Icons.settings_outlined,
@@ -300,7 +392,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const SettingsScreen()));
+                builder: (context) => const SettingsScreen(),
+                settings: const RouteSettings(name: 'settings')));
           }),
     ];
   }
@@ -313,7 +406,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ClinicsMapScreen()));
+                builder: (context) => const ClinicsMapScreen(),
+                settings: const RouteSettings(name: 'clinics_map')));
           }),
       _buildMenuItem(
           icon: Icons.rate_review,
@@ -321,7 +415,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ProductsWithReviewsScreen()));
+                builder: (context) => const ProductsWithReviewsScreen(),
+                settings: const RouteSettings(name: 'product_rating')));
           }),
       _buildMenuItem(
           icon: Icons.work_outline,
@@ -329,7 +424,8 @@ class MenuScreen extends ConsumerWidget {
           onTap: () {
             ZoomDrawer.of(context)!.close();
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const JobOffersScreen()));
+                builder: (context) => const JobOffersScreen(),
+                settings: const RouteSettings(name: 'job_offers')));
           }),
     ];
   }
@@ -368,8 +464,10 @@ class MenuScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   color: currentThemeMode == ThemeMode.dark
-                      ? const Color.fromARGB(255, 125, 125, 125).withOpacity(0.2)
-                      : const Color.fromARGB(255, 125, 125, 125).withOpacity(0.2),
+                      ? const Color.fromARGB(255, 125, 125, 125)
+                          .withOpacity(0.2)
+                      : const Color.fromARGB(255, 125, 125, 125)
+                          .withOpacity(0.2),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
@@ -424,8 +522,6 @@ class MenuScreen extends ConsumerWidget {
     );
   }
 
-
-
 // ... existing code ...
 
   Widget _getAdminMenuItems(BuildContext context) {
@@ -435,8 +531,8 @@ class MenuScreen extends ConsumerWidget {
       onTap: () {
         ZoomDrawer.of(context)!.close();
         // استخدام النسخة Web المناسبة للإدارة
-        Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => const AdminScaffold()));
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const AdminScaffold()));
       },
     );
   }

@@ -33,13 +33,14 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       isFavorite: fields[13] as bool,
       views: fields[14] as int,
       surgicalToolId: fields[15] as String?,
+      efficiencyScore: fields[16] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ProductModel obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -71,7 +72,9 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       ..writeByte(14)
       ..write(obj.views)
       ..writeByte(15)
-      ..write(obj.surgicalToolId);
+      ..write(obj.surgicalToolId)
+      ..writeByte(16)
+      ..write(obj.efficiencyScore);
   }
 
   @override

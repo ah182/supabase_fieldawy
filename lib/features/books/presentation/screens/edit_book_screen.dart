@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fieldawy_store/features/books/application/books_provider.dart';
-import 'package:fieldawy_store/services/cloudinary_service.dart';
+import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,8 +46,10 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
     super.initState();
     _bookNameController = TextEditingController(text: widget.book.name);
     _authorController = TextEditingController(text: widget.book.author);
-    _descriptionController = TextEditingController(text: widget.book.description);
-    _priceController = TextEditingController(text: widget.book.price.toString());
+    _descriptionController =
+        TextEditingController(text: widget.book.description);
+    _priceController =
+        TextEditingController(text: widget.book.price.toString());
     _phoneController = TextEditingController();
     _completePhoneNumber = widget.book.phone;
     _currentImageUrl = widget.book.imageUrl;
@@ -111,7 +113,8 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
 
   Future<File> _compressImage(File file) async {
     final tempDir = await getTemporaryDirectory();
-    final tempJpegPath = p.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
+    final tempJpegPath = p.join(
+        tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_temp.jpg');
     final compressedFile = await FlutterImageCompress.compressAndGetFile(
       file.path,
       tempJpegPath,
@@ -141,8 +144,6 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
     );
     return croppedFile != null ? File(croppedFile.path) : null;
   }
-
-
 
   void _showImageSourceDialog() {
     showModalBottomSheet(
@@ -184,10 +185,10 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
 
       // 1. Upload new image if changed
       if (_imageChanged && _processedImageFile != null) {
-        final cloudinaryService = ref.read(cloudinaryServiceProvider);
-        final uploadedUrl = await cloudinaryService.uploadImage(
-          imageFile: _processedImageFile!,
-          folder: 'vet_books',
+        final smartImageService = ref.read(smartImageServiceProvider);
+        final uploadedUrl = await smartImageService.uploadDirectly(
+          _processedImageFile!,
+          'vet_books',
         );
 
         if (uploadedUrl == null) {
@@ -198,30 +199,31 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
 
       // Clean and validate phone number format (E.164)
       final cleanPhone = _completePhoneNumber.replaceAll(RegExp(r'[^+\d]'), '');
-      
+
       if (cleanPhone.isEmpty || !cleanPhone.startsWith('+')) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
-      
+
       // Validate E.164 format: +[1-9]\d{1,14}
       if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(cleanPhone)) {
         throw Exception('job_offers_feature.phone_invalid'.tr());
       }
 
       // 2. Update book data in Supabase
-      final success = await ref.read(myBooksNotifierProvider.notifier).updateBook(
-        bookId: widget.book.id,
-        name: _bookNameController.text.trim(),
-        author: _authorController.text.trim(),
-        description: _descriptionController.text.trim(),
-        price: double.parse(_priceController.text),
-        phone: cleanPhone,
-        imageUrl: imageUrl,
-      );
+      final success =
+          await ref.read(myBooksNotifierProvider.notifier).updateBook(
+                bookId: widget.book.id,
+                name: _bookNameController.text.trim(),
+                author: _authorController.text.trim(),
+                description: _descriptionController.text.trim(),
+                price: double.parse(_priceController.text),
+                phone: cleanPhone,
+                imageUrl: imageUrl,
+              );
 
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -229,7 +231,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          
+
           Navigator.of(context).pop(true);
         } else {
           throw Exception('books_feature.update_failed_message'.tr());
@@ -238,7 +240,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('books_feature.error_occurred'.tr()),
@@ -316,10 +318,12 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                                   placeholder: (context, url) => Container(
                                     color: Colors.orange[100],
                                     child: const Center(
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
+                                  errorWidget: (context, url, error) =>
+                                      Container(
                                     color: Colors.orange[100],
                                     child: const Icon(
                                       Icons.menu_book_rounded,
@@ -336,7 +340,8 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                                     ),
                                     child: Center(
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
                                             Icons.edit,
@@ -345,7 +350,8 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'books_feature.tap_to_change_image'.tr(),
+                                            'books_feature.tap_to_change_image'
+                                                .tr(),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -511,7 +517,9 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                       )
                     : const Icon(Icons.save),
                 label: Text(
-                  _isSaving ? 'books_feature.saving'.tr() : 'books_feature.save_changes'.tr(),
+                  _isSaving
+                      ? 'books_feature.saving'.tr()
+                      : 'books_feature.save_changes'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -529,6 +537,5 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
         ),
       ),
     );
-    
-}
+  }
 }

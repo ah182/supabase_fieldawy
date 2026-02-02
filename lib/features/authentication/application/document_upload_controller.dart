@@ -64,7 +64,8 @@ class DocumentUploadController extends StateNotifier<File?> {
     final userId = _ref.read(authServiceProvider).currentUser?.id;
     if (userId == null) return null;
     final storageService = _ref.read(storageServiceProvider);
-    return await storageService.uploadDocument(state!, userId);
+    // رفع المستند إلى فولدر 'documents' في Supabase Storage
+    return await storageService.uploadDocument(state!, 'documents');
   }
 
   void clearImage() {

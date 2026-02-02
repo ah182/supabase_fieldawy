@@ -10,6 +10,8 @@ import '../../../../../widgets/shimmer_loader.dart';
 import '../../services/auth_service.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fieldawy_store/features/authentication/presentation/screens/auth_gate.dart';
+import '../../../clinic_inventory/presentation/clinic_inventory_screen.dart';
+import '../../../clinic_inventory/data/services/clinic_assistant_auth_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -103,26 +105,99 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       final fakeEmail = "$phone@fieldawy.com";
 
-      await ref.read(authServiceProvider).signInWithEmailAndPassword(
-        email: fakeEmail, 
-        password: password
-      );
-      
+      await ref
+          .read(authServiceProvider)
+          .signInWithEmailAndPassword(email: fakeEmail, password: password);
     } on AuthException catch (e) {
       if (mounted) {
         String errorMessage = 'login_failed'.tr();
         if (e.message.contains('Invalid login credentials')) {
-          errorMessage = context.locale.languageCode == 'ar' 
-              ? 'رقم الهاتف أو كلمة المرور غير صحيحة' 
+          errorMessage = context.locale.languageCode == 'ar'
+              ? 'رقم الهاتف أو كلمة المرور غير صحيحة'
               : 'Invalid phone number or password';
         }
         _showError(errorMessage);
       }
     } catch (e) {
-      if (mounted) _showError('login_failed'.tr()); 
+      if (mounted) _showError('login_failed'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _signInAsAssistant(String code) async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Verify code and set global state
+      final success = await ref
+          .read(clinicAssistantAuthServiceProvider)
+          .verifyAndLogin(code);
+
+      if (!success) {
+        if (mounted) _showError('رمز الدخول غير صحيح');
+        return;
+      }
+
+      // 2. Navigate directly to Inventory Screen
+      if (mounted) {
+        // Use root navigator to push on top of everything
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const ClinicInventoryScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) _showError('error_title'.tr());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showAssistantLoginDialog() {
+    final codeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('دخول مساعد العيادة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'أدخل كود الوصول الخاص بالعيادة للدخول إلى نظام الجرد فقط.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codeController,
+              decoration: const InputDecoration(
+                labelText: 'كود الوصول (Clinic Access Code)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.key),
+              ),
+              textCapitalization: TextCapitalization.characters,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (codeController.text.isNotEmpty) {
+                _signInAsAssistant(codeController.text);
+              }
+            },
+            child: const Text('دخول'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _signInWithGoogle() async {
@@ -142,9 +217,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _contactSupportForPassword() async {
     final phone = _phoneController.text.trim();
-    final message = "أهلاً إدارة فيلدوي، لقد نسيت كلمة المرور الخاصة بحسابي.\nرقم الهاتف: $phone";
-    final url = Uri.parse("https://wa.me/201017016217?text=${Uri.encodeComponent(message)}");
-    
+    final message =
+        "أهلاً إدارة فيلدوي، لقد نسيت كلمة المرور الخاصة بحسابي.\nرقم الهاتف: $phone";
+    final url = Uri.parse(
+        "https://wa.me/201017016217?text=${Uri.encodeComponent(message)}");
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -158,7 +235,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
       content: AwesomeSnackbarContent(
-        title: 'error_title'.tr(), 
+        title: 'error_title'.tr(),
         message: message,
         contentType: ContentType.failure,
       ),
@@ -204,14 +281,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                        minHeight: size.height - MediaQuery.of(context).padding.top),
+                        minHeight:
+                            size.height - MediaQuery.of(context).padding.top),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: horizontalPadding),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          /* ... existing children ... */
                           SizedBox(height: size.height * 0.02),
-                          
+
                           // Logo Section
                           FadeTransition(
                             opacity: _fadeAnimation,
@@ -233,9 +313,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                             ),
                           ),
-                          
+
                           SizedBox(height: size.height * 0.05),
-    
+
                           // Main Action Area
                           FadeTransition(
                             opacity: _fadeAnimation,
@@ -250,38 +330,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               )),
                               child: _isLoading
                                   ? _buildLoadingWidget()
-                                  : _showLoginForm 
-                                      ? _buildLoginForm() 
+                                  : _showLoginForm
+                                      ? _buildLoginForm()
                                       : _buildStartButton(isSmallScreen),
                             ),
                           ),
-                          
+
                           SizedBox(height: size.height * 0.03),
-    
+
                           // Toggle Button (Start New vs Login) - REMOVED FROM HERE
-    
+
                           if (!_showLoginForm) ...[
-                             SizedBox(height: size.height * 0.02),
+                            SizedBox(height: size.height * 0.02),
                             _buildSecureBadge(textTheme),
                           ],
-    
+
                           SizedBox(height: size.height * 0.02),
                         ],
                       ),
                     ),
                   ),
                 ),
-                
+
                 // زر الرجوع - يجب أن يكون في نهاية الـ Stack ليكون فوق الـ SingleChildScrollView
                 if (_showLoginForm)
                   Positioned(
                     top: 10,
                     left: 10,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                      onPressed: () => setState(() => _showLoginForm = false),
+                      icon: const Icon(Icons.arrow_back_ios_rounded,
+                          color: Colors.white70),
+                      onPressed: () {
+                        setState(() => _showLoginForm = false);
+                      },
                     ),
                   ),
+
+                // زر دخول المساعد (أعلى اليسار/اليمين) - نضعه في النهاية ليكون فوق المحتوى
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    onPressed: _showAssistantLoginDialog,
+                    icon: const Icon(Icons.medical_services_outlined,
+                        color: Colors.white70),
+                    tooltip: 'دخول مساعد العيادة',
+                  ),
+                ),
 
                 // --- Footer: Login Toggle (RichText for perfect BiDi support) ---
                 if (!_showLoginForm)
@@ -338,13 +433,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Phone Input
           TextFormField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             style: const TextStyle(color: Colors.black87),
-            validator: (val) => (val == null || val.length < 10) ? 'pleaseEnterValidPhone'.tr() : null,
+            validator: (val) => (val == null || val.length < 10)
+                ? 'pleaseEnterValidPhone'.tr()
+                : null,
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
@@ -353,22 +450,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               floatingLabelBehavior: FloatingLabelBehavior.never,
               hintText: '01xxxxxxxxx',
               hintStyle: const TextStyle(color: Colors.grey),
-              prefixIcon: const Icon(Icons.phone, color: Color.fromARGB(255, 36, 203, 228)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Color(0xFF00B894), width: 1.5)),
-              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1)),
-              focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+              prefixIcon: const Icon(Icons.phone,
+                  color: Color.fromARGB(255, 36, 203, 228)),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF00B894), width: 1.5)),
+              errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.red, width: 1)),
+              focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.red, width: 1.5)),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Password Input
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
             style: const TextStyle(color: Colors.black87),
-            validator: (val) => (val == null || val.length < 6) ? 'password_too_short'.tr() : null,
+            validator: (val) => (val == null || val.length < 6)
+                ? 'password_too_short'.tr()
+                : null,
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
@@ -377,16 +488,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               floatingLabelBehavior: FloatingLabelBehavior.never,
               hintText: '******',
               hintStyle: const TextStyle(color: Colors.grey),
-              prefixIcon: const Icon(Icons.lock, color: Color.fromARGB(255, 69, 212, 234)),
+              prefixIcon: const Icon(Icons.lock,
+                  color: Color.fromARGB(255, 69, 212, 234)),
               suffixIcon: IconButton(
-                icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: const Color.fromARGB(255, 142, 137, 137)),
-                onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: const Color.fromARGB(255, 142, 137, 137)),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Color(0xFF00B894), width: 1.5)),
-              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1)),
-              focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF00B894), width: 1.5)),
+              errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.red, width: 1)),
+              focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.red, width: 1.5)),
             ),
           ),
           const SizedBox(height: 10),
@@ -436,12 +564,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 49, 174, 188),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text(
-                "login".tr(), 
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
-              ),
+              child: Text("login".tr(),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           )
         ],
@@ -451,13 +579,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildSecureBadge(TextTheme textTheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.transparent, 
-        borderRadius: BorderRadius.circular(30), 
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15), 
+          color: Colors.white.withOpacity(0.15),
           width: 1,
         ),
         boxShadow: [
@@ -478,22 +605,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.verified_rounded, 
+              Icons.verified_rounded,
               size: 22,
-              color: Color(0xFF89CFF0), 
+              color: Color(0xFF89CFF0),
             ),
           ),
           const SizedBox(width: 12),
           Flexible(
             child: Text(
               'secureLogin'.tr(),
-              textAlign: TextAlign.center, 
+              textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 13, 
-                height: 1.3, 
-                letterSpacing: 0.5, 
+                fontSize: 13,
+                height: 1.3,
+                letterSpacing: 0.5,
                 shadows: [
                   const Shadow(
                     offset: Offset(0, 1),
@@ -582,7 +709,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           size: 20,
         ),
         label: Text(
-          "letsStart".tr(), 
+          "letsStart".tr(),
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -591,7 +718,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color.fromARGB(255, 48, 182, 192), // Vibrant Mint/Teal Green
+          backgroundColor: const Color.fromARGB(
+              255, 48, 182, 192), // Vibrant Mint/Teal Green
           foregroundColor: Colors.white,
           elevation: 3,
           shadowColor: Colors.black26,

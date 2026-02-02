@@ -19,7 +19,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img; // إضافة مكتبة الصور
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fieldawy_store/widgets/shimmer_loader.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 // ignore: unused_import
@@ -31,7 +30,7 @@ import 'package:fieldawy_store/services/smart_image_service.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:fieldawy_store/features/ocr_test/services/ai_analysis_service.dart';
-
+import 'package:fieldawy_store/features/clinic_inventory/data/services/clinic_inventory_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -40,6 +39,7 @@ class AddProductOcrScreen extends ConsumerStatefulWidget {
   final bool isFromOfferScreen;
   final bool isFromSurgicalTools;
   final bool isFromReviewRequest;
+  final bool isFromClinicInventory;
   final ProductModel? productToEdit; // Added parameter
 
   const AddProductOcrScreen({
@@ -48,6 +48,7 @@ class AddProductOcrScreen extends ConsumerStatefulWidget {
     this.isFromOfferScreen = false,
     this.isFromSurgicalTools = false,
     this.isFromReviewRequest = false,
+    this.isFromClinicInventory = false,
     this.productToEdit, // Initialize
   });
 
@@ -77,12 +78,18 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   final _expirationDateController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  // Inventory-specific controllers
+  final _quantityController = TextEditingController(text: '1');
+  final _minStockController = TextEditingController(text: '5');
+  final _unitSizeController = TextEditingController(text: '1');
+  String _unitType = 'piece';
+
   final _packageFocusNode = FocusNode(); // جديد
 
   // AI Service Instance
   final _aiService = AiAnalysisService();
 
-  final String _openRouterApiKey = dotenv.env['OPENROUTER_API_KEY'] ?? "";  
+  final String _openRouterApiKey = dotenv.env['OPENROUTER_API_KEY'] ?? "";
 
   final List<String> _packageTypes = [
     'bottle',
@@ -106,7 +113,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // مستمع لتنظيف حقل العبوة عند فقدان التركيز
     _packageFocusNode.addListener(() {
       if (!_packageFocusNode.hasFocus) {
@@ -146,8 +153,48 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     );
     final match = regex.firstMatch(text);
     if (match != null) {
+      final cleanPackage = match.group(0)!.toLowerCase();
       setState(() {
-        _packageController.text = match.group(0)!.toLowerCase();
+        _packageController.text = cleanPackage;
+      });
+      _parseUnitInfo(cleanPackage); // Auto-update unit fields
+    }
+  }
+
+  /// استخراج معلومات الوحدة تلقائياً من النص
+  void _parseUnitInfo(String packageText) {
+    if (!widget.isFromClinicInventory) return;
+
+    // 1. استخراج الرقم
+    final numRegex = RegExp(r'(\d+(?:\.\d+)?)');
+    final numMatch = numRegex.firstMatch(packageText);
+    if (numMatch != null) {
+      final size = numMatch.group(1)!;
+      _unitSizeController.text = size;
+    }
+
+    // 2. استخراج النوع
+    String lower = packageText.toLowerCase();
+    String newType = 'piece';
+
+    if (lower.contains('ml')) {
+      newType = 'ml';
+    } else if (lower.contains('gm') || lower.contains('g')) {
+      newType = 'gram';
+    } else if (lower.contains('l')) {
+      newType = 'ml';
+      // لو لتر نضرب في 1000؟ حالياً نعتبر الحجم هو المكتوب
+    } else if (lower.contains('tab') || lower.contains('cap')) {
+      newType = 'tablet';
+    } else if (lower.contains('amp')) {
+      newType = 'ampoule';
+    } else if (lower.contains('vial')) {
+      newType = 'box'; // عادة الفيال تباع بالواحدة
+    }
+
+    if (newType != _unitType) {
+      setState(() {
+        _unitType = newType;
       });
     }
   }
@@ -159,7 +206,16 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.blue),
+            CachedNetworkImage(
+              imageUrl:
+                  'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Circle-Info-icon.png',
+              width: 24,
+              height: 24,
+              placeholder: (context, url) =>
+                  const Icon(Icons.info_outline, color: Colors.blue),
+              errorWidget: (context, url, error) =>
+                  const Icon(Icons.info_outline, color: Colors.blue),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -201,7 +257,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     _companyController.text = product.company ?? '';
     _activePrincipleController.text = product.activePrinciple ?? '';
     _existingImageUrl = product.imageUrl;
-    
+
     // Try to parse package
     final package = product.package ?? '';
     String foundType = '';
@@ -217,14 +273,15 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     } else {
       _packageController.text = package;
     }
-    
+
     // Trigger validation initially
     WidgetsBinding.instance.addPostFrameCallback((_) => _validateForm());
   }
 
   void _validateForm() {
     bool isValid;
-    final hasImage = _processedImageBytes != null || (_existingImageUrl != null && _existingImageUrl!.isNotEmpty);
+    final hasImage = _processedImageBytes != null ||
+        (_existingImageUrl != null && _existingImageUrl!.isNotEmpty);
 
     if (widget.isFromReviewRequest) {
       isValid = hasImage &&
@@ -237,8 +294,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           _priceController.text.isNotEmpty &&
           _descriptionController.text.isNotEmpty;
     } else if (widget.productToEdit != null) {
-       // For editing, price and expiration date are hidden, so we don't validate them.
-       isValid = hasImage &&
+      // For editing, price and expiration date are hidden, so we don't validate them.
+      isValid = hasImage &&
           _nameController.text.isNotEmpty &&
           _companyController.text.isNotEmpty &&
           _activePrincipleController.text.isNotEmpty &&
@@ -256,7 +313,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               ? _expirationDateController.text.isNotEmpty
               : true);
     }
-    
+
     if (_isFormValid != isValid) {
       setState(() {
         _isFormValid = isValid;
@@ -392,17 +449,19 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   Future<File> _enhanceImageLocal(File file) async {
     try {
       final bytes = await file.readAsBytes();
-      
+
       // نقوم بالمعالجة في Isolate منفصل لضمان سلاسة التطبيق
-      final Uint8List? processedBytes = await compute(_applyLocalFilters, bytes);
-      
+      final Uint8List? processedBytes =
+          await compute(_applyLocalFilters, bytes);
+
       if (processedBytes == null) return file;
 
       final tempDir = await getTemporaryDirectory();
-      final path = p.join(tempDir.path, 'enhanced_${DateTime.now().millisecondsSinceEpoch}.png');
+      final path = p.join(tempDir.path,
+          'enhanced_${DateTime.now().millisecondsSinceEpoch}.png');
       final enhancedFile = File(path);
       await enhancedFile.writeAsBytes(processedBytes);
-      
+
       return enhancedFile;
     } catch (e) {
       print('⚠️ Error enhancing image locally: $e');
@@ -428,7 +487,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
   Future<void> _processOCR(File image) async {
     final inputImage = InputImage.fromFilePath(image.path);
     final recognizedText = await _textRecognizer.processImage(inputImage);
-    
+
     // 1. Spatial Sorting: Sort blocks by Y-axis
     List<TextBlock> sortedBlocks = List.from(recognizedText.blocks);
     sortedBlocks.sort((a, b) {
@@ -444,11 +503,15 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     // 🚀 PHASE 1: Try AI Analysis First
     if (rawText.trim().isNotEmpty) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white)),
                 const SizedBox(width: 10),
                 const Text('Analyzing with AI...'),
               ],
@@ -461,34 +524,48 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
       try {
         print("🤖 [OCR Screen] Attempting AI Analysis...");
-        final aiResult = await _aiService.analyzeText(rawText, _openRouterApiKey);
-        
+        final aiResult =
+            await _aiService.analyzeText(rawText, _openRouterApiKey);
+
         print("✅ [OCR Screen] AI Success: ${aiResult.toJson()}");
-        
+
         // Populate Fields from AI
         setState(() {
           if (aiResult.name != null) _nameController.text = aiResult.name!;
-          if (aiResult.company != null) _companyController.text = aiResult.company!;
-          if (aiResult.activeIngredient != null) _activePrincipleController.text = aiResult.activeIngredient!;
+          if (aiResult.company != null) {
+            _companyController.text = aiResult.company!;
+          }
+          if (aiResult.activeIngredient != null) {
+            _activePrincipleController.text = aiResult.activeIngredient!;
+          }
           if (aiResult.packageSize != null) {
-             _packageController.text = aiResult.packageSize!;
-             
-             // Smart Package Type Selection based on AI result
-             final pkg = aiResult.packageSize!.toLowerCase();
-             final name = aiResult.name?.toLowerCase() ?? '';
-             
-             if (pkg.contains('ml') || pkg.contains('l')) {
-               if (name.contains('spray')) _selectedPackageType = 'spray';
-               else if (name.contains('drop')) _selectedPackageType = 'drops';
-               else if (name.contains('susp')) _selectedPackageType = 'bottle'; // suspension
-               else _selectedPackageType = 'bottle';
-             } else if (pkg.contains('tab') || pkg.contains('cap')) {
-               _selectedPackageType = 'tab';
-             } else if (pkg.contains('gm') || pkg.contains('g')) {
-                if (name.contains('cream')) _selectedPackageType = 'cream';
-                else if (name.contains('gel')) _selectedPackageType = 'gel';
-                else _selectedPackageType = 'powder';
-             }
+            _packageController.text = aiResult.packageSize!;
+
+            // Smart Package Type Selection based on AI result
+            final pkg = aiResult.packageSize!.toLowerCase();
+            final name = aiResult.name?.toLowerCase() ?? '';
+
+            if (pkg.contains('ml') || pkg.contains('l')) {
+              if (name.contains('spray')) {
+                _selectedPackageType = 'spray';
+              } else if (name.contains('drop')) {
+                _selectedPackageType = 'drops';
+              } else if (name.contains('susp')) {
+                _selectedPackageType = 'bottle'; // suspension
+              } else {
+                _selectedPackageType = 'bottle';
+              }
+            } else if (pkg.contains('tab') || pkg.contains('cap')) {
+              _selectedPackageType = 'tab';
+            } else if (pkg.contains('gm') || pkg.contains('g')) {
+              if (name.contains('cream')) {
+                _selectedPackageType = 'cream';
+              } else if (name.contains('gel')) {
+                _selectedPackageType = 'gel';
+              } else {
+                _selectedPackageType = 'powder';
+              }
+            }
           }
         });
 
@@ -501,11 +578,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           );
         }
         return; // ✅ Exit if AI succeeds
-
       } catch (e) {
         print("⚠️ [OCR Screen] AI Failed: $e");
         print("🔄 [OCR Screen] Falling back to Standard Regex Engine...");
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -530,7 +606,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     for (var block in sortedBlocks) {
       for (var line in block.lines) {
         String clean = _cleanText(line.text);
-        if (clean.length > 2) { // تجاهل الضوضاء القصيرة
+        if (clean.length > 2) {
+          // تجاهل الضوضاء القصيرة
           allLines.add(clean);
         }
       }
@@ -548,23 +625,73 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     String extractedPrice = "";
 
     // قوائم الكلمات المفتاحية (قاعدة بيانات مصغرة)
-    final vetKeywords = ['injectable', 'solution', 'suspension', 'tablet', 'bolus', 'cattle', 'sheep', 'swine', 'horse', 'dog', 'cat', 'veterinary', 'use only', 'dose', 'mg/ml', 'ml', 'l'];
-    final knownCompanies = ['zoetis', 'msd', 'elanco', 'boehringer', 'bayer', 'merck', 'pfizer', 'virbac', 'ceva', 'vetoquinol', 'adwia', 'pharma', 'company', 'co.', 'ltd', 'inc'];
-    final chemicals = ['tulathromycin', 'oxytetracycline', 'ivermectin', 'amoxicillin', 'penicillin', 'tylosin', 'enrofloxacin', 'flunixin', 'dexamethasone', 'calcium', 'magnesium'];
+    final vetKeywords = [
+      'injectable',
+      'solution',
+      'suspension',
+      'tablet',
+      'bolus',
+      'cattle',
+      'sheep',
+      'swine',
+      'horse',
+      'dog',
+      'cat',
+      'veterinary',
+      'use only',
+      'dose',
+      'mg/ml',
+      'ml',
+      'l'
+    ];
+    final knownCompanies = [
+      'zoetis',
+      'msd',
+      'elanco',
+      'boehringer',
+      'bayer',
+      'merck',
+      'pfizer',
+      'virbac',
+      'ceva',
+      'vetoquinol',
+      'adwia',
+      'pharma',
+      'company',
+      'co.',
+      'ltd',
+      'inc'
+    ];
+    final chemicals = [
+      'tulathromycin',
+      'oxytetracycline',
+      'ivermectin',
+      'amoxicillin',
+      'penicillin',
+      'tylosin',
+      'enrofloxacin',
+      'flunixin',
+      'dexamethasone',
+      'calcium',
+      'magnesium'
+    ];
 
     // 1. استخراج الحجم (Package Size)
     // نبحث عن أرقام يتبعها وحدات قياس (ml, L, gm, kg)
-    final packageRegex = RegExp(r'(\d+(?:\.\d+)?\s*(?:mL|L|ml|l|gm|g|kg|vials?|doses?))', caseSensitive: false);
-    
+    final packageRegex = RegExp(
+        r'(\d+(?:\.\d+)?\s*(?:mL|L|ml|l|gm|g|kg|vials?|doses?))',
+        caseSensitive: false);
+
     for (var line in allLines) {
       if (extractedPackage.isEmpty) {
         final match = packageRegex.firstMatch(line);
         if (match != null) {
           // نتأكد أنه ليس تركيز (مثل 100 mg/mL) بل حجم عبوة (Net Contents: 100 mL)
           if (!line.toLowerCase().contains('/')) {
-             extractedPackage = match.group(0)!;
-          } else if (line.toLowerCase().contains('net') || line.toLowerCase().contains('content')) {
-             extractedPackage = match.group(0)!;
+            extractedPackage = match.group(0)!;
+          } else if (line.toLowerCase().contains('net') ||
+              line.toLowerCase().contains('content')) {
+            extractedPackage = match.group(0)!;
           }
         }
       }
@@ -586,19 +713,19 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     for (var i = 0; i < allLines.length; i++) {
       String line = allLines[i];
       String lineLower = line.toLowerCase();
-      
+
       // البحث عن أسماء كيميائية معروفة
       if (chemicals.any((c) => lineLower.contains(c))) {
-         extractedActive = line;
-         // لا نحذف السطر هنا، ربما يكون جزء من اسم المنتج
-         break;
+        extractedActive = line;
+        // لا نحذف السطر هنا، ربما يكون جزء من اسم المنتج
+        break;
       }
-      
+
       // البحث عن نمط (xxxxxx)
       if (line.contains('(') && line.contains(')')) {
-         // غالباً المادة الفعالة تكتب تحت الاسم بين قوسين
-         extractedActive = line.replaceAll(RegExp(r'[()]'), '');
-         break;
+        // غالباً المادة الفعالة تكتب تحت الاسم بين قوسين
+        extractedActive = line.replaceAll(RegExp(r'[()]'), '');
+        break;
       }
     }
 
@@ -606,12 +733,12 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     // الافتراض: هو أول سطر "مميز" وعريض ليس وصفاً عاماً
     for (var line in allLines) {
       String lineLower = line.toLowerCase();
-      
+
       // تجاهل الأسطر التي تحتوي كلمات وصفية بحتة إذا جاءت في البداية
-      bool isGenericDesc = vetKeywords.any((k) => lineLower == k) || 
-                           lineLower.startsWith('net content') ||
-                           packageRegex.hasMatch(line); // تجاهل السطر لو كان عبارة عن حجم فقط
-                           
+      bool isGenericDesc = vetKeywords.any((k) => lineLower == k) ||
+          lineLower.startsWith('net content') ||
+          packageRegex.hasMatch(line); // تجاهل السطر لو كان عبارة عن حجم فقط
+
       if (!isGenericDesc && extractedName.isEmpty) {
         extractedName = line;
         break;
@@ -622,26 +749,30 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     final price = _extractPrice(allLines);
     if (price != null) extractedPrice = price;
 
-
     // تعيين القيم للحقول
     setState(() {
       _nameController.text = extractedName;
       _companyController.text = extractedCompany;
       _activePrincipleController.text = extractedActive;
-      
+
       // محاولة ضبط نوع العبوة
       if (extractedPackage.isNotEmpty) {
         _packageController.text = extractedPackage;
         // استنتاج النوع من النص
-        if (extractedPackage.toLowerCase().contains('ml') || extractedPackage.toLowerCase().contains('l')) {
-           if (extractedName.toLowerCase().contains('spray')) _selectedPackageType = 'spray';
-           else if (extractedName.toLowerCase().contains('drop')) _selectedPackageType = 'drops';
-           else _selectedPackageType = 'bottle'; // Default liquid
+        if (extractedPackage.toLowerCase().contains('ml') ||
+            extractedPackage.toLowerCase().contains('l')) {
+          if (extractedName.toLowerCase().contains('spray')) {
+            _selectedPackageType = 'spray';
+          } else if (extractedName.toLowerCase().contains('drop')) {
+            _selectedPackageType = 'drops';
+          } else {
+            _selectedPackageType = 'bottle'; // Default liquid
+          }
         } else if (extractedPackage.toLowerCase().contains('tab')) {
-           _selectedPackageType = 'tab';
+          _selectedPackageType = 'tab';
         }
       }
-      
+
       if (extractedPrice.isNotEmpty) _priceController.text = extractedPrice;
     });
 
@@ -663,9 +794,11 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
     // نبحث عن أنماط السعر المختلفة
     final pricePatterns = [
-      RegExp(r'(?:price|egp|le|£|جنيه)\s*:?\s*(\d+(?:\.\d{1,2})?)', caseSensitive: false),
+      RegExp(r'(?:price|egp|le|£|جنيه)\s*:?\s*(\d+(?:\.\d{1,2})?)',
+          caseSensitive: false),
       RegExp(r'(\d+(?:\.\d{1,2})?)\s*(?:egp|le|£|جنيه)', caseSensitive: false),
-      RegExp(r'(?:^|\s)(\d{2,4}(?:\.\d{1,2})?)\s*(?:egp|le|$)', caseSensitive: false),
+      RegExp(r'(?:^|\s)(\d{2,4}(?:\.\d{1,2})?)\s*(?:egp|le|$)',
+          caseSensitive: false),
     ];
 
     for (var pattern in pricePatterns) {
@@ -684,7 +817,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
     // لو مفيش، نبحث عن أي رقم معقول
     for (var line in lines) {
-      final numberMatch = RegExp(r'\b(\d{1,5}(?:\.\d{1,2})?)\b').allMatches(line);
+      final numberMatch =
+          RegExp(r'\b(\d{1,5}(?:\.\d{1,2})?)\b').allMatches(line);
       for (var match in numberMatch) {
         final num = double.tryParse(match.group(1) ?? '');
         if (num != null && num >= 10 && num < 100000) {
@@ -712,8 +846,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
     try {
       // ✅ التحقق من تاريخ الصلاحية في الحالات الإلزامية (فقط عند الإضافة الجديدة)
       // عند التعديل (productToEdit != null)، تاريخ الصلاحية غير مطلوب أو مخفي
-      if (widget.productToEdit == null && 
-          (widget.showExpirationDate || widget.isFromOfferScreen) && 
+      if (widget.productToEdit == null &&
+          (widget.showExpirationDate || widget.isFromOfferScreen) &&
           _expirationDateController.text.isEmpty) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -744,14 +878,14 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           folder: 'ocr',
         );
       }
-      
+
       if (finalUrl == null) throw Exception('Image is required');
 
       final name = _nameController.text;
       final company = _companyController.text;
       final activePrinciple = _activePrincipleController.text;
       String package = _packageController.text;
-      
+
       // عند الاستخدام من صفحة التقييمات، لا نحفظ في جدول ocr_products
       // فقط نرجع البيانات الممسوحة والصورة المرفوعة
       if (widget.isFromReviewRequest) {
@@ -763,7 +897,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         }
 
         if (mounted) {
-          print('✅ OCR Process complete for Review Request - returning data without saving to DB');
+          print(
+              '✅ OCR Process complete for Review Request - returning data without saving to DB');
           setState(() => _isSaving = false);
           Navigator.pop(context, {
             'product_id': 'temp_ocr', // معرف مؤقت
@@ -775,7 +910,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           return;
         }
       }
-      
+
       // Price is only required for new products (not editing) and not from review request
       double? price;
       if (widget.productToEdit == null && !widget.isFromReviewRequest) {
@@ -826,8 +961,56 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
             Navigator.of(context).pop();
             return;
           } else {
-             throw Exception('Failed to update product');
+            throw Exception('Failed to update product');
           }
+        }
+
+        // ============================================
+        // جرد العيادة (Clinic Inventory)
+        // ============================================
+        if (widget.isFromClinicInventory) {
+          final inventoryService = ref.read(clinicInventoryServiceProvider);
+
+          // حساب تاريخ الصلاحية
+          DateTime? expiryDate;
+          if (_expirationDateController.text.isNotEmpty) {
+            expiryDate =
+                DateFormat('MM-yyyy').parse(_expirationDateController.text);
+          }
+
+          // قراءة الكمية والحد الأدنى من الحقول
+          final quantity = int.tryParse(_quantityController.text) ?? 1;
+          final minStock = int.tryParse(_minStockController.text) ?? 5;
+
+          await inventoryService.addInventoryItem(
+            productName: name,
+            package: package,
+            company: company.isNotEmpty ? company : null,
+            imageUrl: finalUrl,
+            quantity: quantity,
+            purchasePrice: price ?? 0,
+            unitType: _unitType,
+            unitSize: double.tryParse(_unitSizeController.text) ?? 1.0,
+            expiryDate: expiryDate,
+            minStock: minStock,
+          );
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                elevation: 0,
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.transparent,
+                content: AwesomeSnackbarContent(
+                  title: 'تم بنجاح',
+                  message: 'تمت إضافة المنتج للجرد بنجاح',
+                  contentType: ContentType.success,
+                ),
+              ),
+            );
+            Navigator.of(context).pop();
+          }
+          return;
         }
 
         // ============================================
@@ -835,12 +1018,12 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         // ============================================
         if (widget.isFromSurgicalTools) {
           final description = _descriptionController.text;
-          
+
           String? surgicalToolId;
-          
+
           // إضافة الأداة للكتالوج العام فقط إذا تم تحديد الخيار
           if (_addToGeneralCatalog) {
-             surgicalToolId = await productRepo.addSurgicalTool(
+            surgicalToolId = await productRepo.addSurgicalTool(
               toolName: name,
               company: company.isNotEmpty ? company : null,
               imageUrl: finalUrl,
@@ -861,7 +1044,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
               status: _selectedStatus,
               // تمرير البيانات الإضافية في حالة عدم الإضافة للكتالوج العام
               toolName: !_addToGeneralCatalog ? name : null,
-              company: !_addToGeneralCatalog && company.isNotEmpty ? company : null,
+              company:
+                  !_addToGeneralCatalog && company.isNotEmpty ? company : null,
               imageUrl: !_addToGeneralCatalog ? finalUrl : null,
             );
 
@@ -883,7 +1067,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
             }
           }
         }
-        
+
         // ============================================
         // المنتجات العادية (OCR)
         // ============================================
@@ -909,15 +1093,16 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
             package: package,
             imageUrl: finalUrl,
           );
-          
+
           if (ocrProductId != null) {
             if (widget.isFromOfferScreen) {
               // حفظ في جدول offers فقط
               // للـ offers، التاريخ إجباري
-              final offerExpirationDate = _expirationDateController.text.isNotEmpty
+              final offerExpirationDate = _expirationDateController
+                      .text.isNotEmpty
                   ? DateFormat('MM-yyyy').parse(_expirationDateController.text)
                   : DateTime.now().add(const Duration(days: 365));
-              
+
               final offerId = await productRepo.addOffer(
                 productId: ocrProductId,
                 isOcr: true,
@@ -965,7 +1150,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 expirationDate: expirationDate, // null إذا قادم من my_products
               );
             }
-            
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -984,7 +1169,6 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
           }
         }
       }
-
     } catch (e) {
       print('Error saving product: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1012,7 +1196,17 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.auto_awesome, color: Colors.amber),
+            CachedNetworkImage(
+              imageUrl:
+                  'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Wand-Magic-Sparkles-icon.png',
+              width: 24,
+              height: 24,
+              color: Colors.amber,
+              placeholder: (context, url) =>
+                  const Icon(Icons.auto_awesome, color: Colors.amber),
+              errorWidget: (context, url, error) =>
+                  const Icon(Icons.auto_awesome, color: Colors.amber),
+            ),
             const SizedBox(width: 10),
             Text(
               'ocr.image_notice_title'.tr(),
@@ -1027,7 +1221,8 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('ocr.got_it'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('ocr.got_it'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1085,10 +1280,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                 baseColor: Colors.white,
               )
             : Text(
-                widget.isFromReviewRequest 
-                    ? 'ocr.confirm_selection'.tr() 
-                    : widget.productToEdit != null 
-                        ? 'ocr.update_product'.tr() 
+                widget.isFromReviewRequest
+                    ? 'ocr.confirm_selection'.tr()
+                    : widget.productToEdit != null
+                        ? 'ocr.update_product'.tr()
                         : 'ocr.save_product'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontSize: 16,
@@ -1103,7 +1298,9 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
         title: Text(
           widget.productToEdit != null
               ? 'ocr.update_product_title'.tr()
-              : (widget.isFromSurgicalTools ? 'ocr.add_surgical_tool'.tr() : 'ocr.add_product_title'.tr()),
+              : (widget.isFromSurgicalTools
+                  ? 'ocr.add_surgical_tool'.tr()
+                  : 'ocr.add_product_title'.tr()),
           style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -1192,14 +1389,17 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           fit: BoxFit.contain,
                         ),
                       )
-                    else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                    else if (_existingImageUrl != null &&
+                        _existingImageUrl!.isNotEmpty)
                       SizedBox(
                         height: 250,
                         child: CachedNetworkImage(
                           imageUrl: _existingImageUrl!,
                           fit: BoxFit.contain,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) => const Icon(Icons.error),
+                          placeholder: (context, url) =>
+                              const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
                         ),
                       )
                     else
@@ -1263,33 +1463,37 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                   final distributorsAsync = ref.watch(distributorsProvider);
                   final currentName = distributorsAsync.maybeWhen(
                     data: (distributors) {
-                      final dist = distributors.firstWhereOrNull((d) => 
-                        d.id == widget.productToEdit!.distributorUuid || 
-                        d.id == widget.productToEdit!.distributorId
-                      );
+                      final dist = distributors.firstWhereOrNull((d) =>
+                          d.id == widget.productToEdit!.distributorUuid ||
+                          d.id == widget.productToEdit!.distributorId);
                       return dist?.displayName;
                     },
                     orElse: () => null,
                   );
-                  
-                  final finalDisplayName = currentName ?? 
-                    (widget.productToEdit!.distributorId != null && !widget.productToEdit!.distributorId!.contains('-') 
-                      ? widget.productToEdit!.distributorId 
-                      : null);
+
+                  final finalDisplayName = currentName ??
+                      (widget.productToEdit!.distributorId != null &&
+                              !widget.productToEdit!.distributorId!
+                                  .contains('-')
+                          ? widget.productToEdit!.distributorId
+                          : null);
 
                   if (finalDisplayName == null) return const SizedBox.shrink();
-                  
+
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                      border: Border.all(
+                          color: theme.colorScheme.primary.withOpacity(0.2)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.person_pin_rounded, size: 16, color: theme.colorScheme.primary),
+                        Icon(Icons.person_pin_rounded,
+                            size: 16, color: theme.colorScheme.primary),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -1328,19 +1532,41 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                   children: [
                     // الاسم - إجباري دائماً
                     _buildTextField(
-                        widget.isFromSurgicalTools ? 'ocr.label_tool_name'.tr() : 'ocr.label_product_name'.tr(),
-                        Icons.medical_services,
+                        widget.isFromSurgicalTools
+                            ? 'ocr.label_tool_name'.tr()
+                            : 'ocr.label_product_name'.tr(),
+                        CachedNetworkImage(
+                          imageUrl:
+                              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Prescription-Bottle-Medical-icon.png',
+                          width: 20,
+                          height: 20,
+                          color: accentColor,
+                          placeholder: (context, url) =>
+                              Icon(Icons.medical_services, color: accentColor),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.medical_services, color: accentColor),
+                        ),
                         _nameController,
                         inputBgColor,
                         inputBorderColor,
                         accentColor),
                     const SizedBox(height: 16),
-                    
+
                     // الشركة - اختياري للأدوات الجراحية، إجباري للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
                           'ocr.label_company'.tr(),
-                          Icons.business,
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Building-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: accentColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.business, color: accentColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.business, color: accentColor),
+                          ),
                           _companyController,
                           inputBgColor,
                           inputBorderColor,
@@ -1349,31 +1575,61 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                     ] else ...[
                       _buildTextField(
                           'ocr.label_company_optional'.tr(),
-                          Icons.business,
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Building-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: accentColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.business, color: accentColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.business, color: accentColor),
+                          ),
                           _companyController,
                           inputBgColor,
                           inputBorderColor,
                           accentColor),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Active Principle - فقط للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
                           'ocr.label_active_principle'.tr(),
-                          Icons.science,
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Vial-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: accentColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.science, color: accentColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.science, color: accentColor),
+                          ),
                           _activePrincipleController,
                           inputBgColor,
                           inputBorderColor,
                           accentColor),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Package Description - فقط للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       _buildTextField(
                           'ocr.label_package_desc'.tr(),
-                          Icons.content_paste,
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Box-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: accentColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.content_paste, color: accentColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.content_paste, color: accentColor),
+                          ),
                           _packageController,
                           inputBgColor,
                           inputBorderColor,
@@ -1382,17 +1638,30 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           focusNode: _packageFocusNode), // جديد
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Package Type - فقط للمنتجات
                     if (!widget.isFromSurgicalTools) ...[
                       DropdownButtonFormField<String>(
                         value: _selectedPackageType,
                         decoration: InputDecoration(
                           labelText: 'ocr.label_package_type'.tr(),
-                          prefixIcon: Icon(
-                            FontAwesomeIcons.boxesStacked,
-                            size: 20,
-                            color: accentColor,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Layer-Group-icon.png',
+                              width: 20,
+                              height: 20,
+                              color: accentColor,
+                              placeholder: (context, url) => Icon(
+                                  Icons.category,
+                                  color: accentColor,
+                                  size: 20),
+                              errorWidget: (context, url, error) => Icon(
+                                  Icons.category,
+                                  color: accentColor,
+                                  size: 20),
+                            ),
                           ),
                           filled: true,
                           fillColor: inputBgColor,
@@ -1414,27 +1683,47 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Description - فقط للأدوات الجراحية، إجباري
                     if (widget.isFromSurgicalTools) ...[
                       _buildTextField(
                           'ocr.label_description'.tr(),
-                          Icons.description,
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-File-Lines-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: accentColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.description, color: accentColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.description, color: accentColor),
+                          ),
                           _descriptionController,
                           inputBgColor,
                           inputBorderColor,
                           accentColor,
                           maxLines: 3),
                       const SizedBox(height: 16),
-                      
+
                       // حالة الأداة
                       DropdownButtonFormField<String>(
                         value: _selectedStatus,
                         decoration: InputDecoration(
                           labelText: 'ocr.label_tool_status'.tr(),
-                          prefixIcon: Icon(
-                            Icons.info_outline,
-                            color: accentColor,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Circle-Info-icon.png',
+                              width: 20,
+                              height: 20,
+                              color: accentColor,
+                              placeholder: (context, url) =>
+                                  Icon(Icons.info_outline, color: accentColor),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.info_outline, color: accentColor),
+                            ),
                           ),
                           filled: true,
                           fillColor: inputBgColor,
@@ -1448,15 +1737,19 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: accentColor, width: 2),
+                            borderSide:
+                                BorderSide(color: accentColor, width: 2),
                           ),
                         ),
                         items: _statusKeys.map((String key) {
                           String label = key;
-                          if (key == 'جديد') label = 'ocr.status_new'.tr();
-                          else if (key == 'مستعمل') label = 'ocr.status_used'.tr();
-                          else if (key == 'كسر زيرو') label = 'ocr.status_like_new'.tr();
-                          
+                          if (key == 'جديد')
+                            label = 'ocr.status_new'.tr();
+                          else if (key == 'مستعمل')
+                            label = 'ocr.status_used'.tr();
+                          else if (key == 'كسر زيرو')
+                            label = 'ocr.status_like_new'.tr();
+
                           return DropdownMenuItem<String>(
                             value: key,
                             child: Text(label),
@@ -1475,13 +1768,13 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       // خيار الإضافة للكتالوج العام - تصميم احترافي
                       Container(
                         decoration: BoxDecoration(
-                          color: _addToGeneralCatalog 
-                              ? accentColor.withOpacity(0.1) 
+                          color: _addToGeneralCatalog
+                              ? accentColor.withOpacity(0.1)
                               : inputBgColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _addToGeneralCatalog 
-                                ? accentColor.withOpacity(0.5) 
+                            color: _addToGeneralCatalog
+                                ? accentColor.withOpacity(0.5)
                                 : inputBorderColor,
                             width: 1.5,
                           ),
@@ -1495,10 +1788,35 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           },
                           title: Row(
                             children: [
-                              Icon(
-                                _addToGeneralCatalog ? Icons.public : Icons.public_off,
-                                size: 20,
-                                color: _addToGeneralCatalog ? accentColor : theme.colorScheme.onSurface.withOpacity(0.6),
+                              CachedNetworkImage(
+                                imageUrl:
+                                    'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Globe-icon.png',
+                                width: 20,
+                                height: 20,
+                                color: _addToGeneralCatalog
+                                    ? accentColor
+                                    : theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                                placeholder: (context, url) => Icon(
+                                  _addToGeneralCatalog
+                                      ? Icons.public
+                                      : Icons.public_off,
+                                  size: 20,
+                                  color: _addToGeneralCatalog
+                                      ? accentColor
+                                      : theme.colorScheme.onSurface
+                                          .withOpacity(0.6),
+                                ),
+                                errorWidget: (context, url, error) => Icon(
+                                  _addToGeneralCatalog
+                                      ? Icons.public
+                                      : Icons.public_off,
+                                  size: 20,
+                                  color: _addToGeneralCatalog
+                                      ? accentColor
+                                      : theme.colorScheme.onSurface
+                                          .withOpacity(0.6),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -1506,7 +1824,9 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                                   'إضافة للكتالوج العام',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _addToGeneralCatalog ? accentColor : theme.colorScheme.onSurface,
+                                    color: _addToGeneralCatalog
+                                        ? accentColor
+                                        : theme.colorScheme.onSurface,
                                     fontSize: 15,
                                   ),
                                 ),
@@ -1514,18 +1834,21 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                             ],
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 32), // Indent to align with text
+                            padding: const EdgeInsets.only(
+                                top: 4, left: 32), // Indent to align with text
                             child: Text(
                               'عند التفعيل، سيتم إدراج الأداة في قاعدة البيانات العامة ليتمكن الموزعون الآخرون من استخدامها.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.6),
                                 height: 1.3,
                               ),
                             ),
                           ),
                           activeColor: accentColor,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -1533,12 +1856,25 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // السعر - إجباري دائماً (مخفي عند isFromReviewRequest وعند التعديل productToEdit != null)
-                    if (!widget.isFromReviewRequest && widget.productToEdit == null) ...[
+                    if (!widget.isFromReviewRequest &&
+                        widget.productToEdit == null) ...[
                       _buildTextField(
-                          'ocr.label_price'.tr(),
-                          Icons.attach_money,
+                          widget.isFromClinicInventory
+                              ? 'سعر الشراء'
+                              : 'ocr.label_price'.tr(),
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Money-Bill-icon.png',
+                            width: 20,
+                            height: 20,
+                            color: priceColor,
+                            placeholder: (context, url) =>
+                                Icon(Icons.attach_money, color: priceColor),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.attach_money, color: priceColor),
+                          ),
                           _priceController,
                           inputBgColor,
                           inputBorderColor,
@@ -1546,12 +1882,118 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
                           keyboardType: TextInputType.number),
                       const SizedBox(height: 16),
                     ],
-                    
+
+                    // ============================================
+                    // حقول الجرد - فقط عند القدوم من صفحة الجرد
+                    // ============================================
+                    if (widget.isFromClinicInventory) ...[
+                      // الكمية
+                      _buildTextField(
+                        'الكمية (عدد العلب)',
+                        CachedNetworkImage(
+                          imageUrl:
+                              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Boxes-Stacked-icon.png',
+                          width: 20,
+                          height: 20,
+                          color: accentColor,
+                          placeholder: (context, url) => Icon(
+                              Icons.inventory_2_rounded,
+                              color: accentColor),
+                          errorWidget: (context, url, error) => Icon(
+                              Icons.inventory_2_rounded,
+                              color: accentColor),
+                        ),
+                        _quantityController,
+                        inputBgColor,
+                        inputBorderColor,
+                        accentColor,
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // الحد الأدنى للمخزون
+                      _buildTextField(
+                        'الحد الأدنى (للتنبيه عند النواقص)',
+                        CachedNetworkImage(
+                          imageUrl:
+                              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Triangle-Exclamation-icon.png',
+                          width: 20,
+                          height: 20,
+                          color: Colors.orange,
+                          placeholder: (context, url) => const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange),
+                          errorWidget: (context, url, error) => const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange),
+                        ),
+                        _minStockController,
+                        inputBgColor,
+                        inputBorderColor,
+                        Colors.orange,
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // إعدادات البيع الجزئي (تمت إزالتها بناءً على طلب المستخدم)
+                      // الحقول موجودة بالفعل في تعريف المنتج (Package)
+
+                      // تاريخ الصلاحية للجرد
+                      _buildTextField(
+                        'تاريخ الصلاحية',
+                        CachedNetworkImage(
+                          imageUrl:
+                              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Calendar-Days-icon.png',
+                          width: 20,
+                          height: 20,
+                          color: accentColor,
+                          placeholder: (context, url) =>
+                              Icon(Icons.calendar_today, color: accentColor),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.calendar_today, color: accentColor),
+                        ),
+                        _expirationDateController,
+                        inputBgColor,
+                        inputBorderColor,
+                        accentColor,
+                        readOnly: true,
+                        onTap: () async {
+                          final DateTime now = DateTime.now();
+                          final DateTime? picked = await showMonthPicker(
+                            context: context,
+                            initialDate: now,
+                            firstDate: DateTime(now.year, now.month),
+                            lastDate: DateTime(2101, 12),
+                          );
+                          if (picked != null) {
+                            final formattedDate =
+                                DateFormat('MM-yyyy').format(picked);
+                            _expirationDateController.text = formattedDate;
+                            _validateForm();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Expiration Date - حسب showExpirationDate (مخفي عند التعديل productToEdit != null)
-                    if (widget.showExpirationDate && widget.productToEdit == null)
+                    // وأيضاً مخفي عند القدوم من الجرد لأننا أضفناه في قسم الجرد أعلاه
+                    if (widget.showExpirationDate &&
+                        widget.productToEdit == null &&
+                        !widget.isFromClinicInventory)
                       _buildTextField(
                         'ocr.label_expiration_date'.tr(),
-                        Icons.calendar_today,
+                        CachedNetworkImage(
+                          imageUrl:
+                              'https://icons.iconarchive.com/icons/fa-team/fontawesome/128/FontAwesome-Calendar-Days-icon.png',
+                          width: 20,
+                          height: 20,
+                          color: accentColor,
+                          placeholder: (context, url) =>
+                              Icon(Icons.calendar_today, color: accentColor),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.calendar_today, color: accentColor),
+                        ),
                         _expirationDateController,
                         inputBgColor,
                         inputBorderColor,
@@ -1587,7 +2029,7 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
 
   Widget _buildTextField(
     String label,
-    IconData icon,
+    Widget prefixIcon,
     TextEditingController controller,
     Color bgColor,
     Color borderColor,
@@ -1609,7 +2051,10 @@ class _AddProductOcrScreenState extends ConsumerState<AddProductOcrScreen> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        prefixIcon: Icon(icon, color: iconColor),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(12),
+          child: prefixIcon,
+        ),
         filled: true,
         fillColor: bgColor,
         border: OutlineInputBorder(

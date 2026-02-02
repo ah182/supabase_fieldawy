@@ -13,6 +13,7 @@ class InvoicePreviewScreen extends StatelessWidget {
   final Uint8List pdfBytes;
   final String? whatsappNumber;
   final String? distributorId;
+  final String title;
 
   const InvoicePreviewScreen({
     super.key,
@@ -20,6 +21,7 @@ class InvoicePreviewScreen extends StatelessWidget {
     required this.pdfBytes,
     this.whatsappNumber,
     this.distributorId,
+    this.title = 'معاينة الفاتورة',
   });
 
   @override
@@ -28,7 +30,7 @@ class InvoicePreviewScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('معاينة الفاتورة'),
+        title: Text(title),
         actions: [
           IconButton(
             icon: Icon(Icons.save_alt_outlined,
@@ -90,50 +92,54 @@ class InvoicePreviewScreen extends StatelessWidget {
                             child: const Text('إلغاء'),
                             onPressed: () => Navigator.of(ctx).pop(),
                           ),
-                              ElevatedButton(
-                                child: const Text('متابعة'),
-                                onPressed: () async {
-                                  Navigator.of(ctx).pop();
-                                  try {
-                                    if (distributorId != null && whatsappNumber != null) {
-                                      final distributor = DistributorModel(
-                                        id: distributorId!,
-                                        displayName: '', // Not needed for tracking
-                                        whatsappNumber: whatsappNumber,
-                                        // Other fields can be dummy/null as they aren't used for tracking
-                                      );
-                                      // Pass the custom invoice message
-                                      const msg = 'مرحباً، إليك فاتورتك.';
-                                      await DistributorAnalyticsService.instance.openWhatsApp(context, distributor, message: msg);
-                                    } else {
-                                      final message = 'مرحباً، إليك فاتورتك.';
-                                      final whatsappUrl =
-                                        'https://api.whatsapp.com/send?phone=20$whatsappNumber&text=${Uri.encodeComponent(message)}';
+                          ElevatedButton(
+                            child: const Text('متابعة'),
+                            onPressed: () async {
+                              Navigator.of(ctx).pop();
+                              try {
+                                if (distributorId != null &&
+                                    whatsappNumber != null) {
+                                  final distributor = DistributorModel(
+                                    id: distributorId!,
+                                    displayName: '', // Not needed for tracking
+                                    whatsappNumber: whatsappNumber,
+                                    // Other fields can be dummy/null as they aren't used for tracking
+                                  );
+                                  // Pass the custom invoice message
+                                  const msg = 'مرحباً، إليك فاتورتك.';
+                                  await DistributorAnalyticsService.instance
+                                      .openWhatsApp(context, distributor,
+                                          message: msg);
+                                } else {
+                                  final message = 'مرحباً، إليك فاتورتك.';
+                                  final whatsappUrl =
+                                      'https://api.whatsapp.com/send?phone=20$whatsappNumber&text=${Uri.encodeComponent(message)}';
 
-                                      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-                                        await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
-                                      } else {
-                                        throw 'Could not launch WhatsApp';
-                                      }
-                                    }
-                                  } catch (e) {
-                                      if (context.mounted) {
-                                      final snackBar = SnackBar(
-                                        elevation: 0,
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: Colors.transparent,
-                                        content: AwesomeSnackbarContent(
-                                          title: 'خطأ'.tr(),
-                                          message:
-                                              'تعذر فتح واتساب. يرجى التأكد من تثبيت التطبيق.',
-                                          contentType: ContentType.failure,
-                                        ),
-                                      );
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(snackBar);
-                                    }
+                                  if (await canLaunchUrl(
+                                      Uri.parse(whatsappUrl))) {
+                                    await launchUrl(Uri.parse(whatsappUrl),
+                                        mode: LaunchMode.externalApplication);
+                                  } else {
+                                    throw 'Could not launch WhatsApp';
                                   }
-
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  final snackBar = SnackBar(
+                                    elevation: 0,
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.transparent,
+                                    content: AwesomeSnackbarContent(
+                                      title: 'خطأ'.tr(),
+                                      message:
+                                          'تعذر فتح واتساب. يرجى التأكد من تثبيت التطبيق.',
+                                      contentType: ContentType.failure,
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(snackBar);
+                                }
+                              }
                             },
                           ),
                         ],
