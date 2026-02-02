@@ -20,14 +20,22 @@ class ClinicAssistantAuthService {
       final code = accessCode.trim().toUpperCase(); // Normalize format
       if (code.isEmpty) return false;
 
-      // Call the RPC function to find the user ID associated with this code
-      final response =
-          await _supabase.rpc('get_user_id_by_clinic_code', params: {
+      // Ensure we are signed in (anonymously if needed) before calling RPC
+      if (_supabase.auth.currentUser == null) {
+        await _supabase.auth.signInAnonymously();
+      }
+
+      // Call the new RPC function that sets the metadata claim
+      final response = await _supabase.rpc('login_clinic_assistant', params: {
         'code_input': code,
       });
 
-      if (response != null) {
-        final userId = response as String;
+      if (response != null && response['success'] == true) {
+        final userId = response['target_user_id'] as String;
+
+        // Refresh the session to ensure the local JWT has the new metadata
+        await _supabase.auth.refreshSession();
+
         // set the global state
         _ref.read(clinicAssistantUserIdProvider.notifier).state = userId;
         return true;
